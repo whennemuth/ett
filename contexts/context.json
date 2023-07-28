@@ -1,0 +1,12 @@
+{
+  "SCENARIO": "default",
+  "STACK_ID": "ett",
+  "ACCOUNT": "037860335094",
+  "REGION": "us-east-2",
+  "LANDSCAPE": "dev",
+  "TAGS": {
+    "Service": "Client",
+    "Function": "ett",
+    "Landscape": "dev"
+  }
+}

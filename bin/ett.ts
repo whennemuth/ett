@@ -1,21 +1,35 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
-import * as cdk from 'aws-cdk-lib';
-import { EttStack } from '../lib/ett-stack';
+import { App, StackProps } from 'aws-cdk-lib';
+import * as context from '../contexts/context.json';
+import { CognitoConstruct } from '../lib/Cognito';
+import { AbstractStack } from '../lib/AbstractStack';
+import { StaticSiteConstruct } from '../lib/StaticSite';
 
-const app = new cdk.App();
-new EttStack(app, 'EttStack', {
-  /* If you don't specify 'env', this stack will be environment-agnostic.
-   * Account/Region-dependent features and context lookups will not work,
-   * but a single synthesized template can be deployed anywhere. */
+const app = new App();
+app.node.setContext('stack-parms', context);
+const stackName = `${context.STACK_ID}-${context.LANDSCAPE}`;
 
-  /* Uncomment the next line to specialize this stack for the AWS Account
-   * and Region that are implied by the current CLI configuration. */
-  // env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
+const stackProps: StackProps = {
+  stackName: stackName,
+  description: 'Ethical transparency tool',
+  env: {
+    account: context.ACCOUNT,
+    region: context.REGION
+  },
+  tags: {
+    Service: context.TAGS.Service,
+    Function: context.TAGS.Function,
+    Landscape: context.TAGS.Landscape
+  }
+}
 
-  /* Uncomment the next line if you know exactly what Account and Region you
-   * want to deploy the stack to. */
-  // env: { account: '123456789012', region: 'us-east-1' },
+const stack = new AbstractStack(app, stackName, stackProps);
 
-  /* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */
+const cognito = new CognitoConstruct(stack, `${stackName}-cognito`);
+
+const staticSite = new StaticSiteConstruct(stack, `${stackName}-static-site`, {
+  userPool: cognito.getUserPool(),
+  userPoolClient: cognito.getUserPoolClient()
 });
+
