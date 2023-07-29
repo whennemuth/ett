@@ -1,4 +1,5 @@
 import { Construct } from 'constructs';
+import { IContext } from '../contexts/IContext';
 import { Runtime, Code } from 'aws-cdk-lib/aws-lambda';
 import { AbstractFunction } from './AbstractFunction';
 import { RestApi, LambdaIntegration, IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
@@ -27,17 +28,18 @@ export class HelloWorldFunction extends AbstractFunction {
 
   public createAuthorizedResource(resourcePath: string, authorizer: IAuthorizer): string {
 
+    const stageName = this.context.TAGS.Landscape;
+
     const api = new RestApi(this, `${this.constructId}-rest-api`, {
-      deployOptions: {
-        stageName: this.context.TAGS.Landscape,
-      },
+      deployOptions: { stageName },      
     });
 
     const integration = new LambdaIntegration(this);
     const endpointResource = api.root.addResource(resourcePath);
     endpointResource.addMethod('GET', integration, { authorizer });
 
-    return `${api.domainName}/${resourcePath}`;
+    // return `${api.domainName}/${resourcePath}`;
+    return `https://${api.restApiId}.execute-api.${this.context.REGION}.amazonaws.com/${stageName}/myendpoint`
   }
 
 }
