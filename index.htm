@@ -87,14 +87,15 @@
             <h1 class="display-5 fw-bold" style="text-align:center">Welcome to the<br>Ethical Transparency Tool (ETT)</h1>
             <p class="text-justify fs-4" style="text-align:justify">ETT is designed to support AAU’s harassment prevention principles and the recommendations of NASEM’s June 2018 report on sexual harassment of women in academic science, engineering, and medicine by helping to create a norm of transparency about findings of misconduct against a person, across the higher-education and research ecosystem of societies, institutions of higher education, and other research organizations. This tool covers sexual, gender, and racial misconduct — as well as professional licensure, financial, and research misconduct to maximize its utility.</p>
             <center>
-              <button class="btn btn-primary btn-lg" type="button" onclick="signIn()">Login</button>
-              <button class="btn btn-primary btn-lg" type="button" onclick="signUp()">Signup</button>
+              <button id="btnSignin" class="btn btn-primary btn-lg" type="button" onclick="signIn()">Login</button>
+              <button id="btnSignup" class="btn btn-primary btn-lg" type="button" onclick="signUp()">Signup</button>
             </center>
           </div>
           <div id="app-section" class="container-fluid py-5" style="display: none">
             <center>
               <p class="fs-4">Welcome, <span id="username"></span>!</p>
               <p><button class="btn btn-primary btn-lg" type="button" onclick="callApi()">Call API</button></p>
+              <p><span id="apiResponse"></span></p>
             </center>            
             <button type="button" class="btn btn-danger" onclick="signOut()">Sign out</button>
           </div>
@@ -110,7 +111,9 @@
 
     const COGNITO_DOMAIN = 'COGNITO_DOMAIN_PLACEHOLDER';
     const CLIENT_ID = 'CLIENT_ID_PLACEHOLDER';
-    const REDIRECT_URI = 'REDIRECT_URI_PLACEHOLDER'
+    const REDIRECT_URI = 'REDIRECT_URI_PLACEHOLDER';
+    const USER_POOL_REGION = 'USER_POOL_REGION_PLACEHOLDER';
+    const HELLO_WORLD_API_URI = 'HELLO_WORLD_API_URI_PLACEHOLDER';
 
     /**
      * Generate a code verifier
@@ -170,7 +173,7 @@
       const params = {
         response_type: 'code',
         client_id: CLIENT_ID,
-        redirect_uri: REDIRECT_URI,
+        redirect_uri: `${REDIRECT_URI}?action=login`,
         state: state,
         code_challenge: codeChallenge,
         code_challenge_method: 'S256'
@@ -206,7 +209,7 @@
       const params = {
         grant_type: 'authorization_code',
         client_id: CLIENT_ID,
-        redirect_uri: REDIRECT_URI,
+        redirect_uri: `${REDIRECT_URI}?action=login`,
         state: savedState,
         code: authorizationCode,
         code_verifier: codeVerifier
@@ -241,15 +244,25 @@
       });
     }
 
-    function contactHelloWorldAPI() {
-      console.log('TODO: implement this function');
+    function signUp() {
+
+      const params = {
+        client_id: CLIENT_ID,
+        response_type: 'code',
+        scope: 'email+openid+phone',
+        redirect_uri: `${REDIRECT_URI}?action=signedup`
+      };
+
+      const queryString = Object.keys(params).map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`).join('&');
+      const signUpUrl = `${COGNITO_DOMAIN}.auth.${USER_POOL_REGION}.amazoncognito.com/signup?${queryString}`;
+      window.location.href = signUpUrl;
     }
 
     /**
      * Authenticate with the cognito user pool in such a way as to reflect that it implements the
      * oauth PKCE standard. The final redirect should come with a JWT for all api access.
      */
-    function login() {
+    function signIn() {
       const codeVerifier = generateCodeVerifier();
       const state = getRandomString(12);
 
@@ -264,16 +277,29 @@
       });
     }
 
-    function signUp() {
-      console.error('Not implemented');
-    }
-
-    function signIn() {
-      console.error('Not implemented');
-    }
-
     function signOut() {
-      console.error('Not implemented');
+      const signOutUri = `https://${COGNITO_DOMAIN}.auth.${USER_POOL_REGION}.amazoncognito.com/logout?client_id=${CLIENT_ID}&logout_uri=https://example.com`;
+
+      fetch(signOutUri, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      .then((response) => {
+        if (response.ok) {
+          console.log('Sign out successful');
+          // Remove JWT access and refresh tokens from cookies
+          AccessJwtCookie.clearJwt();
+          RefreshJwtCookie.clearJwt();
+          document.getElementById('auth-section').style.display = 'block';
+          document.getElementById('app-section').style.display = 'none';
+        } 
+        else {
+          console.log('Sign out failed');
+        }
+      })
+      .catch((error) => {
+        console.error('Error during sign out:', error);
+      });
     }
 
     function callApi() {
@@ -281,29 +307,28 @@
     }
 
     /**
-     * This is a utility object for processing the JWT received from cognito and the cookie it is stored in.
+     * This function serves as a utility object for processing JWTs received from cognito and the cookies they are stored in.
      */
-    const AuthJwtCookie = {
-      cookieName: 'EttAccessJwt',
-      getCookie: () => {
+    const JwtCookie = function(cookieName) {
+      this.getCookie = function() {
         const cookies = document.cookie.split(';').map(cookie => cookie.trim());
         for (const cookie of cookies) {
-          if (cookie.startsWith(AuthJwtCookie.cookieName + '=')) {
+          if (cookie.startsWith(cookieName + '=')) {
             return cookie;
           }
         }
         return null; // JWT cookie not found
-      },
-      getJwt: () => {
-        const cookie = AuthJwtCookie.getCookie();
+      };
+      this.getJwt = function() {
+        const cookie = this.getCookie();
         if(cookie) {
-          return decodeURIComponent(cookie.substring(AuthJwtCookie.cookieName.length + 1));
+          return decodeURIComponent(cookie.substring(cookieName.length + 1));
         }
         return null; // JWT cookie not found
-      },
-      setJwt: jwt => {
+      };
+      this.setJwt = function(jwt) {
         const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
-        const decodedToken = AuthJwtCookie.getDecodedToken(jwt);
+        const decodedToken = this.getDecodedToken(jwt);
         const expirationDate = new Date();
         if(decodedToken.expires_in) {
           expirationDate.setTime(expirationDate.getTime() + decodedToken.expires_in * 1000); // Convert expires_in from seconds to milliseconds
@@ -318,35 +343,38 @@
         }
         const expires = `; expires=${expirationDate.toUTCString()}`;
         const cookieValue = encodeURIComponent(jwt) + expires + secureFlag + '; HttpOnly; SameSite=Strict';
-        document.cookie = `${AuthJwtCookie.cookieName}=${cookieValue}`;
-      },
-      getDecodedToken: jwt => {
-        if(!jwt) jwt = AuthJwtCookie.getJwt();
+        document.cookie = `${cookieName}=${cookieValue}`;
+      };
+      this.clearJwt = function() {
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+      };
+      this.getDecodedToken = function(jwt) {
+        if(!jwt) jwt = this.getJwt();
         if(!jwt) return null;
         return JSON.parse(atob(jwt.split('.')[1])); // Decoding the token payload (middle part)
-      },
-      jwtExpired: () => {
-        const decodedToken = AuthJwtCookie.getDecodedToken();
+      };
+      this.jwtExpired = function() {
+        const decodedToken = this.getDecodedToken();
         if (!decodedToken?.expires_in) return true;
         const expirationTime = new Date(decodedToken.iat * 1000 + decodedToken.expires_in * 1000);
         const currentTime = new Date();
         return currentTime >= expirationTime;    
-      },
-      cookieExpired: () => {
-        /**
-         * This function is an alternative to jwtExpired. The cookie expiration was set during its creation
-         * based on the expiration of the jwt. Should be same result but more efficient to check expiration this way.
-         */ 
-        const cookie = AuthJwtCookie.getCookie();
+      };
+      /**
+       * This function is an alternative to jwtExpired. The cookie expiration was set during its creation
+       * based on the expiration of the jwt. Should be same result but more efficient to check expiration this way.
+       */ 
+      this.cookieExpired = function() {
+        const cookie = this.getCookie();
         if(cookie) {
           const expirationTime = new Date(cookie.split(';').find(part => part.trim().startsWith('expires='))).getTime();
           const currentTime = new Date().getTime();
           return currentTime >= expirationTime;
         }
         return true;
-      },
-      getUser: () => {
-        const decodedToken = AuthJwtCookie.getDecodedToken();
+      };
+      this.getUser = function() {
+        const decodedToken = this.getDecodedToken();
         return {
           id: decodedToken.sub,
           name: decodedToken.username,
@@ -355,23 +383,34 @@
           }
         };
       }
-    }
+    };
+
+    const AccessJwtCookie = new JwtCookie('EttAccessJwt');
+    const RefreshJwtCookie = new JwtCookie('EttRefreshJwt');
 
     // Check the querystring for action=login on page load
     window.onload = () => {
       const queryParams = new URLSearchParams(window.location.search);
       const checkAuth = () => {
-        if(!AuthJwtCookie.jwtExpired()) {
-          const user = AuthJwtCookie.getUser();
+        if(!AccessJwtCookie.jwtExpired()) {
+          const user = AccessJwtCookie.getUser();
           document.getElementById('username').innerHTML = user.asString();
           document.getElementById('auth-section').style.display = 'none';
           document.getElementById('app-section').style.display = 'block';
         }
+        else if(!RefreshJwtCookie.jwtExpired()) {
+          // TODO: Use the refresh token to restore access.
+          console.log('Token refresh not implemented yet.');
+        }
       }
+
       if(queryParams.get('action') === 'login') {
         exchangeAuthorizationCode(checkAuth);
       }
       else {
+        if(queryParams.get('action') === 'signedup') {
+          document.getElementById('btnSignup').style.display = 'none';
+        }
         checkAuth();
       }      
     };

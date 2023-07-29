@@ -7,15 +7,23 @@ import { Distribution, OriginAccessIdentity, LambdaEdgeEventType } from 'aws-cdk
 import { S3Origin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { RestApi, LambdaIntegration, MethodLoggingLevel } from 'aws-cdk-lib/aws-apigateway';
 import { AbstractFunction } from './AbstractFunction';
-import { UserPool, UserPoolClient } from 'aws-cdk-lib/aws-cognito';
 
-export interface StaticSiteProps { userPool:UserPool, userPoolClient: UserPoolClient }
+export interface StaticSiteProps { 
+  distribution:Distribution, 
+  cognitoUserPoolClientId: string,
+  cognitoUserPoolProviderUrl: string,
+  apiUris:[{
+    id:string, 
+    value:string
+  }]
+};
 
 export class StaticSiteConstruct extends Construct {
 
   constructId: string;
   scope: Construct;
   context: IContext;
+  filterFunction: AbstractFunction;
   props: StaticSiteProps;
 
   constructor(scope: Construct, constructId: string, props:StaticSiteProps) {
@@ -29,7 +37,7 @@ export class StaticSiteConstruct extends Construct {
 
     this.buildResources();
   }
-
+  
   buildResources(): void {
 
     const bucket = new Bucket(this, `${this.constructId}-bucket`, {
@@ -44,36 +52,37 @@ export class StaticSiteConstruct extends Construct {
       handler: 'index.handler',
       code: Code.fromAsset('lambda/edge'),
       environment: {
-        CLIENT_ID: this.props.userPoolClient.userPoolClientId,
-        COGNITO_DOMAIN: this.props.userPool.userPoolProviderUrl,
         INDEX_FILE_URI: '/index.htm'
       }
     });
 
-    const distribution = new Distribution(this, `${this.constructId}-distribution`, {
-      defaultBehavior: {
-        origin: new S3Origin(bucket, {
-          originAccessIdentity: new OriginAccessIdentity(this, `${this.constructId}-distribution-oai`),
-        })
-      },
-      defaultRootObject: 'index.htm',
-      additionalBehaviors: {
-        '*.htm': // Matches any .htm file in any directory, at any depth.
-        {
-          origin: new S3Origin(bucket, {
-            originAccessIdentity: new OriginAccessIdentity(this, `${this.constructId}-distribution-oai`),
-          }),
-          edgeLambdas: [
-            {
-              functionVersion: filterFunction.currentVersion,
-              eventType: LambdaEdgeEventType.ORIGIN_RESPONSE
-            },
-          ],
-        }
+    /**
+     * Add an s3 bucket origin to the distribution that requires retrieved html files go through
+     * a lambda function filter so as to inject values into placeholder locations in the html file.
+     */
+    this.props.distribution.addBehavior(
+      '*.htm', // Matches any .htm file in any directory, at any depth.
+      new S3Origin(bucket, {
+        originAccessIdentity: new OriginAccessIdentity(this, `${this.constructId}-distribution-oai`),
+      }),
+      {
+        edgeLambdas: [
+          {
+            functionVersion: filterFunction.currentVersion,
+            eventType: LambdaEdgeEventType.ORIGIN_RESPONSE
+          },
+        ],
       }
-    });
+    )
 
-    filterFunction.addEnvironment('REDIRECT_URI', `${distribution.domainName}/index.htm?action=login`);
+    // Add the environment variables for the lambda filter function.
+    filterFunction.addEnvironment('REDIRECT_URI', `${this.props.distribution.domainName}/index.htm`);
+    filterFunction.addEnvironment('USER_POOL_REGION', this.context.REGION);
+    filterFunction.addEnvironment('CLIENT_ID', this.props.cognitoUserPoolClientId);
+    filterFunction.addEnvironment('COGNITO_DOMAIN', this.props.cognitoUserPoolProviderUrl);
+    this.props.apiUris.forEach(item => {
+      filterFunction.addEnvironment(item.id, item.value);
+    });
 
     bucket.grantRead(filterFunction);
 
@@ -89,12 +98,14 @@ export class StaticSiteConstruct extends Construct {
     const resource = api.root.addResource('lambda-at-edge');
     const method = resource.addMethod('ANY', integration);
 
+
     // Output the CloudFront distribution endpoint
     if( this.scope instanceof Stack) {
       new CfnOutput((<Stack> this.scope), 'CloudFrontURL', {
-        value: distribution.distributionDomainName,
+        value: this.props.distribution.distributionDomainName,
         description: 'The domain name of the Cloudfront Distribution, such as d111111abcdef8.cloudfront.net.'
       });
     };
   }
+
 }

@@ -3,7 +3,6 @@ export interface IContext {
     STACK_ID: string;
     ACCOUNT:  string;
     REGION:   string;
-    LANDSCAPE:string;
     TAGS:     Tags;
 }
 

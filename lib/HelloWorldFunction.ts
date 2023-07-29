@@ -25,17 +25,19 @@ export class HelloWorldFunction extends AbstractFunction {
     });
   };
 
-  public createAuthorizedResource(resourcePath: string, authorizer: IAuthorizer) {
+  public createAuthorizedResource(resourcePath: string, authorizer: IAuthorizer): string {
 
     const api = new RestApi(this, `${this.constructId}-rest-api`, {
       deployOptions: {
-        stageName: this.context.LANDSCAPE,
+        stageName: this.context.TAGS.Landscape,
       },
     });
 
     const integration = new LambdaIntegration(this);
     const endpointResource = api.root.addResource(resourcePath);
-    endpointResource.addMethod('GET', integration);
-    endpointResource.addMethod('GET', integration, { authorizer })
+    endpointResource.addMethod('GET', integration, { authorizer });
+
+    return `${api.domainName}/${resourcePath}`;
   }
+
 }
