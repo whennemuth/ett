@@ -50,10 +50,22 @@ export class StaticSiteConstruct extends Construct {
       functionName: `${this.constructId}-edge-filter-function`,
       runtime: Runtime.NODEJS_18_X,
       handler: 'index.handler',
-      code: Code.fromAsset('lambda/edge'),
-      environment: {
-        INDEX_FILE_URI: '/index.htm'
-      }
+      code: Code.fromAsset('lib/lambda/edge'),
+    });
+
+    /**
+     * Lambda@edge functions cannot have environment variables, so these values must 
+     * be passed to the function by the origin as custom headers.
+     */
+    const customHeaders: Record<string, string> = {
+      INDEX_FILE_URI: '/index.htm',
+      REDIRECT_URI: `${this.props.distribution.domainName}/index.htm`,
+      USER_POOL_REGION: this.context.REGION,
+      CLIENT_ID: this.props.cognitoUserPoolClientId,
+      COGNITO_DOMAIN: this.props.cognitoUserPoolProviderUrl
+    }
+    this.props.apiUris.forEach(item => {
+      customHeaders[item.id] = item.value
     });
 
     /**
@@ -64,6 +76,7 @@ export class StaticSiteConstruct extends Construct {
       '*.htm', // Matches any .htm file in any directory, at any depth.
       new S3Origin(bucket, {
         originAccessIdentity: new OriginAccessIdentity(this, `${this.constructId}-distribution-oai`),
+        customHeaders
       }),
       {
         edgeLambdas: [
@@ -74,15 +87,6 @@ export class StaticSiteConstruct extends Construct {
         ],
       }
     )
-
-    // Add the environment variables for the lambda filter function.
-    filterFunction.addEnvironment('REDIRECT_URI', `${this.props.distribution.domainName}/index.htm`);
-    filterFunction.addEnvironment('USER_POOL_REGION', this.context.REGION);
-    filterFunction.addEnvironment('CLIENT_ID', this.props.cognitoUserPoolClientId);
-    filterFunction.addEnvironment('COGNITO_DOMAIN', this.props.cognitoUserPoolProviderUrl);
-    this.props.apiUris.forEach(item => {
-      filterFunction.addEnvironment(item.id, item.value);
-    });
 
     bucket.grantRead(filterFunction);
 
