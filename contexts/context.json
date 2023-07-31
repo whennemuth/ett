@@ -2,7 +2,7 @@
   "SCENARIO": "default",
   "STACK_ID": "ett",
   "ACCOUNT": "037860335094",
-  "REGION": "us-east-2",
+  "REGION": "us-east-1",
   "TAGS": {
     "Service": "Client",
     "Function": "ett",

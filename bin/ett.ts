@@ -28,16 +28,16 @@ const stackProps: StackProps = {
 
 const stack = new AbstractStack(app, stackName, stackProps);
 
-const distribution = new Distribution(stack, `${stackName}-static-site-distribution`, {
-  defaultBehavior: { origin: new HttpOrigin('http://dummy/origin') },
+const distribution = new Distribution(stack, 'EttStaticSiteDistribution', {
+  defaultBehavior: { origin: new HttpOrigin('www.dummy-origin.com') },
   defaultRootObject: 'index.htm',
 });
 
-const cognito = new CognitoConstruct(stack, `${stackName}-cognito`, { distribution: {
+const cognito = new CognitoConstruct(stack, 'EttCognito', { distribution: {
   domainName: distribution.domainName
 }});
 
-const staticSite = new StaticSiteConstruct(stack, `${stackName}-static-site`, { 
+const staticSite = new StaticSiteConstruct(stack, 'EttStaticSite', { 
   distribution,
   cognitoUserPoolClientId: cognito.getUserPoolClient().userPoolClientId,
   cognitoUserPoolProviderUrl: cognito.getUserPool().userPoolProviderUrl,

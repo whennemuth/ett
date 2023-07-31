@@ -1,9 +1,11 @@
 import { Construct } from 'constructs';
 import { IContext } from '../contexts/IContext';
-import { UserPool, UserPoolClient, AccountRecovery, StringAttribute, UserPoolClientIdentityProvider, OAuthScope } from 'aws-cdk-lib/aws-cognito';
+import { UserPool, UserPoolClient, AccountRecovery, StringAttribute, 
+  UserPoolClientIdentityProvider, OAuthScope,  CfnUserPoolUICustomizationAttachment} from 'aws-cdk-lib/aws-cognito';
 import { HelloWorldFunction } from './HelloWorldFunction'; 
 import { CognitoUserPoolsAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 import { Stack, CfnOutput, Duration } from 'aws-cdk-lib';
+import * as fs from 'fs';
 
 export interface CognitoProps { distribution: { domainName:string } };
 
@@ -31,7 +33,7 @@ export class CognitoConstruct extends Construct {
 
   buildResources(): void {
 
-    this.userPool = new UserPool(this, `${this.constructId}-userpool`, {
+    this.userPool = new UserPool(this, 'UserPool', {
       userPoolName: `${this.constructId}-userpool`,
       accountRecovery: AccountRecovery.EMAIL_AND_PHONE_WITHOUT_MFA,
       selfSignUpEnabled: true,
@@ -51,7 +53,7 @@ export class CognitoConstruct extends Construct {
       },
     });
 
-    this.userPoolClient = this.userPool.addClient(`${this.constructId}-userpoolclient`, {
+    this.userPoolClient = this.userPool.addClient('Client', {
       userPoolClientName: `${this.constructId}-userpoolclient`,
       supportedIdentityProviders: [ UserPoolClientIdentityProvider.COGNITO ],
       oAuth: {
@@ -66,12 +68,12 @@ export class CognitoConstruct extends Construct {
         callbackUrls: [
           'http://localhost:3000/index.htm',
           'http://localhost:3000/index.htm?action=login',
-          `${this.props.distribution.domainName}/index.htm`,
-          `${this.props.distribution.domainName}/index.htm?action=login`,
+          `https://${this.props.distribution.domainName}/index.htm`,
+          `https://${this.props.distribution.domainName}/index.htm?action=login`,
         ],
         logoutUrls: [
           'http://localhost:3000/index.htm?action=logout',
-          `${this.props.distribution.domainName}/index.htm?action=logout`,
+          `https://${this.props.distribution.domainName}/index.htm?action=logout`,
         ]
       },
       accessTokenValidity: Duration.days(1),
@@ -79,20 +81,34 @@ export class CognitoConstruct extends Construct {
       authSessionValidity: Duration.minutes(5)
     });
 
-    this.userPool.addDomain(`${this.constructId}-domain`, {
+    this.userPool.addDomain('Domain', {
       cognitoDomain: {
         domainPrefix: `${this.context.STACK_ID}-${this.context.TAGS.Landscape}`
       }
     });
 
-    const authorizer = new CognitoUserPoolsAuthorizer(this, `${this.constructId}-authorizer`, {
+    // TODO: figure out how to add an image for custom logo
+    // https://github.com/aws/aws-cdk/issues/6953
+    // https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-app-ui-customization.html
+    // const uiAttachment = new CfnUserPoolUICustomizationAttachment(
+    //   this,
+    //   `${this.constructId}-ui-attachment`,
+    //   {
+    //     clientId: this.userPoolClient.userPoolClientId,
+    //     userPoolId: this.userPool.userPoolId,
+    //     css: fs.readFileSync('./cognito-hosted-ui.css').toString('utf-8')
+    //   }
+    // );
+
+    const authorizer = new CognitoUserPoolsAuthorizer(this, 'UserPoolAuthorizer', {
       authorizerName: `${this.constructId}-authorizer`,
       cognitoUserPools: [ this.userPool ],
       identitySource: 'method.request.header.Authorization',
     });
 
     // Create a simple test api endpoint with backing lambda for testing out the authorizer.
-    const helloWorldFunction = new HelloWorldFunction(this, `${this.constructId}-lambda-helloworld`);
+    const helloWorldFunction = new HelloWorldFunction(this, 'HelloWorldLambda');
+    // helloWorldFunction.preventOrphanedLogs();
     this.helloWorldApiUri = helloWorldFunction.createAuthorizedResource('hello-world', authorizer);
 
     // Output the CloudFront distribution endpoint

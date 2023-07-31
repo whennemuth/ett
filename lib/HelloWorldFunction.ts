@@ -6,13 +6,14 @@ import { RestApi, LambdaIntegration, IAuthorizer } from 'aws-cdk-lib/aws-apigate
 
 export class HelloWorldFunction extends AbstractFunction {
 
-  constructor(scope: Construct, constructId: string, props?: any) {
+  constructor(scope: Construct, constructId: string) {
 
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
       handler: 'index.handler',
       functionName: constructId,
       description: 'Just a simple lambda for testing cognito authorization',
+      cleanup: true,
       code: Code.fromInline(`
         exports.handler = async (event) => {
           console.log(JSON.stringify(event, null, 2));
@@ -30,8 +31,11 @@ export class HelloWorldFunction extends AbstractFunction {
 
     const stageName = this.context.TAGS.Landscape;
 
-    const api = new RestApi(this, `${this.constructId}-rest-api`, {
-      deployOptions: { stageName },      
+    const api = new RestApi(this, 'RestApi', {
+      deployOptions: { 
+        stageName,
+        description: 'Rest API for to be integrated with lambda for testing cognito authorization' 
+      },
     });
 
     const integration = new LambdaIntegration(this);
