@@ -4,8 +4,7 @@ import { UserPool, UserPoolClient, AccountRecovery, StringAttribute,
   UserPoolClientIdentityProvider, OAuthScope,  CfnUserPoolUICustomizationAttachment} from 'aws-cdk-lib/aws-cognito';
 import { HelloWorldFunction } from './HelloWorldFunction'; 
 import { CognitoUserPoolsAuthorizer } from 'aws-cdk-lib/aws-apigateway';
-import { Stack, CfnOutput, Duration } from 'aws-cdk-lib';
-import * as fs from 'fs';
+import { Duration } from 'aws-cdk-lib';
 
 export interface CognitoProps { distribution: { domainName:string } };
 
@@ -109,21 +108,7 @@ export class CognitoConstruct extends Construct {
     // Create a simple test api endpoint with backing lambda for testing out the authorizer.
     const helloWorldFunction = new HelloWorldFunction(this, 'HelloWorldLambda');
     // helloWorldFunction.preventOrphanedLogs();
-    this.helloWorldApiUri = helloWorldFunction.createAuthorizedResource('hello-world', authorizer);
-
-    // Output the CloudFront distribution endpoint
-    if( this.scope instanceof Stack) {
-      new CfnOutput((<Stack> this.scope), 'UserPoolProviderUrl', {
-        value: this.userPool.userPoolProviderUrl,
-        description: 'User pool provider URL'
-      });
-      new CfnOutput((<Stack> this.scope), 'HelloWorldApiUri', {
-        value: this.helloWorldApiUri,
-        description: 'Hello world api uri, just for testing access.'
-      });
-
-    };
-    
+    this.helloWorldApiUri = helloWorldFunction.createAuthorizedResource('hello-world', authorizer);    
   }
 
   public getUserPool(): UserPool {
