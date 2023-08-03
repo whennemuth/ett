@@ -35,7 +35,9 @@ const stackProps: StackProps = {
 const stack = new AbstractStack(app, stackName, stackProps);
 
 const distribution = new Distribution(stack, 'EttStaticSiteDistribution', {
-  defaultBehavior: { origin: new HttpOrigin('www.dummy-origin.com') },
+  defaultBehavior: { 
+    origin: new HttpOrigin('dummy-origin.com', { originId: 'dummy-origin' }) 
+  },
   defaultRootObject: 'index.htm',
 });
 
@@ -63,8 +65,8 @@ const staticSite = new StaticSiteConstruct(stack, 'EttStaticSite', {
 distribution.addBehavior(
   '*.htm', // Matches any .htm file in any directory, at any depth.
   new HttpOrigin(
-    `https://${staticSite.getOlapName()}-${context.REGION}.s3-object-lambda.${context.REGION}.amazonaws.com`, 
-    { originId: `${staticSite.getOlapName()}-origin` }
+    `${StaticSiteConstruct.olapName}-${context.ACCOUNT}.s3-object-lambda.${context.REGION}.amazonaws.com`, 
+    { originId: `${StaticSiteConstruct.olapName}-origin` }
   )
 )
 

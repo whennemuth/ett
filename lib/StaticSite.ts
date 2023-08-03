@@ -2,11 +2,12 @@ import { Construct } from 'constructs';
 import { IContext } from '../contexts/IContext';
 import { RemovalPolicy } from 'aws-cdk-lib';
 import { BlockPublicAccess, Bucket, CfnAccessPoint } from 'aws-cdk-lib/aws-s3';
-import { CfnAccessPointPolicy, CfnAccessPoint as Olap, CfnAccessPointPolicy as OlapPolicy} from 'aws-cdk-lib/aws-s3objectlambda';
+import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
+import { CfnAccessPoint as Olap, CfnAccessPointPolicy as OlapPolicy} from 'aws-cdk-lib/aws-s3objectlambda';
 import { Runtime, Code } from 'aws-cdk-lib/aws-lambda';
 import { AbstractFunction } from './AbstractFunction';
 import * as path from 'path';
-import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { Effect, PolicyDocument, Policy, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 
 export interface StaticSiteProps {
   distribution: {
@@ -27,12 +28,20 @@ export interface StaticSiteProps {
 
 export class StaticSiteConstruct extends Construct {
 
-  bucketName: string = 'ett-static-site-content';
+  static bucketName: string = 'ett-static-site-content';
+
+  /**
+   * Get the olap name as a concatenation that anticipate it, not from the construct directly because that will
+   * lead to a circular dependency issue with the distribution.
+   * @returns 
+   */
+  static olapName: string = `${StaticSiteConstruct.bucketName}-olap`;
+  static accessPointName: string = `${StaticSiteConstruct.bucketName}-ap`;
+
   constructId: string;
   scope: Construct;
   context: IContext;
   props: StaticSiteProps;
-  olap: Olap;
 
   constructor(scope: Construct, constructId: string, props:StaticSiteProps) {
 
@@ -49,7 +58,7 @@ export class StaticSiteConstruct extends Construct {
   buildResources(): void {
 
     const bucket = new Bucket(this, 'Bucket', {
-      bucketName: this.bucketName,
+      bucketName: StaticSiteConstruct.bucketName,
       publicReadAccess: false,
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
       removalPolicy: RemovalPolicy.DESTROY
@@ -80,32 +89,29 @@ export class StaticSiteConstruct extends Construct {
     });
 
     const ap = new CfnAccessPoint(this, 'BucketAccessPoint', {
-      bucket: this.bucketName,
-      name: `${this.bucketName}-ap`,  
+      bucket: StaticSiteConstruct.bucketName,
+      name: StaticSiteConstruct.accessPointName, 
+      // policy: new Policy(this, 'BucketAccessPointPolicy', {
+      policy: new PolicyDocument({
+          statements: [ new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: [ 's3:*' ],
+          principals: [ new ServicePrincipal('cloudfront.amazonaws.com') ],
+          resources: [
+            `arn:aws:s3:${this.context.REGION}:${this.context.ACCOUNT}:accesspoint/${StaticSiteConstruct.accessPointName}`,
+            `arn:aws:s3:${this.context.REGION}:${this.context.ACCOUNT}:accesspoint/${StaticSiteConstruct.accessPointName}/object/*`
+          ],
+          conditions: {
+            'ForAnyValue:StringEquals': {
+              'aws:CalledVia': 's3-object-lambda.amazonaws.com'
+            }
+          }
+        })]
+      })
     });
 
-    new CfnAccessPointPolicy(this, 'BucketAccessPointPolicy', {
-      objectLambdaAccessPoint: ap.ref,
-      policyDocument: {
-        Effect: Effect.ALLOW,
-        Actions: [ 's3:*' ],
-        Principal: {
-          Service: 'cloudfront.amazonaws.com'
-        },
-        Resources: [
-          `arn:aws:s3:${this.context.REGION}:${this.context.ACCOUNT}:accesspoint/${ap.ref}`,
-          `arn:aws:s3:${this.context.REGION}:${this.context.ACCOUNT}:accesspoint/${ap.ref}/object/*`
-        ],
-        Conditions: {
-          'ForAnyValue:StringEquals': {
-            'aws:CalledVia': 's3-object-lambda.amazonaws.com'
-          }
-        }
-      }
-    });    
-
-    this.olap = new Olap(this, 'BucketOlap', {
-      name: `${this.bucketName}-olap`,
+    const olap = new Olap(this, 'BucketOlap', {
+      name: StaticSiteConstruct.olapName,
       objectLambdaConfiguration: {
         supportingAccessPoint: ap.attrArn,
         cloudWatchMetricsEnabled: false,
@@ -113,33 +119,40 @@ export class StaticSiteConstruct extends Construct {
           {
             actions: [ 'GetObject' ],
             contentTransformation: {
-              FunctionArn: injectionFunction.functionArn
-            },
+              AwsLambda: {
+                FunctionArn: injectionFunction.functionArn
+              }
+            }
           }
         ],
         allowedFeatures: [ 'GetObject-Range', 'GetObject-PartNumber', 'HeadObject-Range', 'HeadObject-PartNumber' ]
       }
     });
 
-    new OlapPolicy(this, 'BucketOlapPolicy', {
-      objectLambdaAccessPoint: this.olap.ref,
-      policyDocument: {
-        Effect: Effect.ALLOW,
-        Actions: [ 's3-object-lambda:Get*' ],
-        Principal: {
-          Service: 'cloudfront.amazonaws.com'
-        },
-        Resources: [ `arn:aws:s3-object-lambda:${this.context.REGION}:${this.context.ACCOUNT}:accesspoint/${this.olap.ref}` ],
-        Conditions: {
-          StringEquals: {
-            'aws:SourceArn': `arn:aws:cloudfront::${this.context.ACCOUNT}:distribution/${this.props.distribution.id}`
+    const olapPolicy = new OlapPolicy(this, 'BucketOlapPolicy', {
+      objectLambdaAccessPoint: olap.ref,
+      policyDocument: new PolicyDocument({
+        statements: [ new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: [ 's3-object-lambda:Get*' ],
+          principals: [ new ServicePrincipal('cloudfront.amazonaws.com') ],
+          resources: [ `arn:aws:s3-object-lambda:${this.context.REGION}:${this.context.ACCOUNT}:accesspoint/${olap.ref}` ],
+          conditions: {
+            StringEquals: {
+              'aws:SourceArn': `arn:aws:cloudfront::${this.context.ACCOUNT}:distribution/${this.props.distribution.id}`
+            }
           }
-        }
-      }
-    });
-  }
+        })]
+      })
+    }); 
 
-  public getOlapName(): string {
-    return `${this.bucketName}-olap`;
+    olapPolicy.addDependency(olap);
+
+    new BucketDeployment(this, 'BucketContentDeployment', {
+      destinationBucket: bucket,
+      sources: [
+        Source.asset(path.resolve(__dirname, `../frontend`))
+      ],
+    });
   }
 }
