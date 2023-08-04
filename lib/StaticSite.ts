@@ -1,13 +1,13 @@
 import { Construct } from 'constructs';
 import { IContext } from '../contexts/IContext';
-import { RemovalPolicy } from 'aws-cdk-lib';
+import { CfnResource, RemovalPolicy } from 'aws-cdk-lib';
 import { BlockPublicAccess, Bucket, CfnAccessPoint } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
 import { CfnAccessPoint as Olap, CfnAccessPointPolicy as OlapPolicy} from 'aws-cdk-lib/aws-s3objectlambda';
 import { Runtime, Code } from 'aws-cdk-lib/aws-lambda';
 import { AbstractFunction } from './AbstractFunction';
 import * as path from 'path';
-import { Effect, PolicyDocument, Policy, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { Effect, PolicyDocument, PolicyStatement, ServicePrincipal, AnyPrincipal } from 'aws-cdk-lib/aws-iam';
 
 export interface StaticSiteProps {
   distribution: {
@@ -41,57 +41,33 @@ export class StaticSiteConstruct extends Construct {
   constructId: string;
   scope: Construct;
   context: IContext;
-  props: StaticSiteProps;
+  bucket: Bucket;
+  ap: CfnAccessPoint;
 
-  constructor(scope: Construct, constructId: string, props:StaticSiteProps) {
+  constructor(scope: Construct, constructId: string) {
 
     super(scope, constructId);
 
     this.scope = scope;
     this.constructId = constructId;
     this.context = scope.node.getContext('stack-parms');
-    this.props = props;
-
-    this.buildResources();
+ 
+    this.buildBucketAndAccessPoint();
   }
 
-  buildResources(): void {
+  buildBucketAndAccessPoint(): void {
 
-    const bucket = new Bucket(this, 'Bucket', {
+    this.bucket = new Bucket(this, 'Bucket', {
       bucketName: StaticSiteConstruct.bucketName,
       publicReadAccess: false,
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-      removalPolicy: RemovalPolicy.DESTROY
+      removalPolicy: RemovalPolicy.DESTROY,    
+      autoDeleteObjects: true  
     });
 
-    const injectionFunction = new AbstractFunction(this, 'InjectionFunction', {
-      functionName: `${this.constructId}-injection-function`,
-      runtime: Runtime.NODEJS_18_X,
-      handler: 'Injector.handler',
-      code: Code.fromAsset(path.join(__dirname, `lambda`)),
-      logRetention: 7,
-      cleanup: true,
-      initialPolicy: [new PolicyStatement({
-        effect: Effect.ALLOW,
-        resources: [ '*' ],
-        actions: [ 's3-object-lambda:WriteGetObjectResponse' ]
-      })],
-      environment: {
-        CLIENT_ID: this.props.cognito.userPool.clientId,
-        REDIRECT_URI: this.props.distribution.domainName,
-        USER_POOL_REGION: this.context.REGION,
-        COGNITO_DOMAIN: this.props.cognito.userPool.providerUrl,        
-      },
-    });
-
-    this.props.apiUris.forEach(item => {
-      injectionFunction.addEnvironment(item.id, item.value);
-    });
-
-    const ap = new CfnAccessPoint(this, 'BucketAccessPoint', {
+    this.ap = new CfnAccessPoint(this, 'BucketAccessPoint', {
       bucket: StaticSiteConstruct.bucketName,
       name: StaticSiteConstruct.accessPointName, 
-      // policy: new Policy(this, 'BucketAccessPointPolicy', {
       policy: new PolicyDocument({
           statements: [ new PolicyStatement({
           effect: Effect.ALLOW,
@@ -110,10 +86,61 @@ export class StaticSiteConstruct extends Construct {
       })
     });
 
+    this.ap.addDependency(this.bucket.node.defaultChild as CfnResource);
+
+    this.bucket.addToResourcePolicy(new PolicyStatement({
+      effect: Effect.ALLOW,
+      principals: [ new AnyPrincipal()],
+      actions: [ '*' ],
+      resources: [
+        `arn:aws:s3:::${StaticSiteConstruct.bucketName}`,
+        `arn:aws:s3:::${StaticSiteConstruct.bucketName}/*`,
+      ],
+      conditions: {
+        StringEquals: {
+          's3:DataAccessPointAccount': this.context.ACCOUNT
+        }
+      }
+    }));
+
+    new BucketDeployment(this, 'BucketContentDeployment', {
+      destinationBucket: this.bucket,
+      sources: [
+        Source.asset(path.resolve(__dirname, `../frontend`))
+      ],
+    });
+  }
+
+  public addOlap(props:StaticSiteProps): void {
+
+    const injectionFunction = new AbstractFunction(this, 'InjectionFunction', {
+      functionName: `${this.constructId}-injection-function`,
+      runtime: Runtime.NODEJS_18_X,
+      handler: 'Injector.handler',
+      code: Code.fromAsset(path.join(__dirname, `lambda`)),
+      logRetention: 7,
+      cleanup: true,
+      initialPolicy: [new PolicyStatement({
+        effect: Effect.ALLOW,
+        resources: [ '*' ],
+        actions: [ 's3-object-lambda:WriteGetObjectResponse' ]
+      })],
+      environment: {
+        CLIENT_ID: props.cognito.userPool.clientId,
+        REDIRECT_URI: props.distribution.domainName,
+        USER_POOL_REGION: this.context.REGION,
+        COGNITO_DOMAIN: props.cognito.userPool.providerUrl,        
+      },
+    });
+
+    props.apiUris.forEach(item => {
+      injectionFunction.addEnvironment(item.id, item.value);
+    });
+
     const olap = new Olap(this, 'BucketOlap', {
       name: StaticSiteConstruct.olapName,
       objectLambdaConfiguration: {
-        supportingAccessPoint: ap.attrArn,
+        supportingAccessPoint: this.ap.attrArn,
         cloudWatchMetricsEnabled: false,
         transformationConfigurations: [
           {
@@ -136,23 +163,24 @@ export class StaticSiteConstruct extends Construct {
           effect: Effect.ALLOW,
           actions: [ 's3-object-lambda:Get*' ],
           principals: [ new ServicePrincipal('cloudfront.amazonaws.com') ],
-          resources: [ `arn:aws:s3-object-lambda:${this.context.REGION}:${this.context.ACCOUNT}:accesspoint/${olap.ref}` ],
+          resources: [ 
+            `arn:aws:s3-object-lambda:${this.context.REGION}:${this.context.ACCOUNT}:accesspoint/${olap.ref}` 
+          ],
           conditions: {
             StringEquals: {
-              'aws:SourceArn': `arn:aws:cloudfront::${this.context.ACCOUNT}:distribution/${this.props.distribution.id}`
+              'aws:SourceArn': `arn:aws:cloudfront::${this.context.ACCOUNT}:distribution/${props.distribution.id}`
             }
           }
         })]
       })
     }); 
 
-    olapPolicy.addDependency(olap);
+    // olapPolicy.addDependency(olap);
 
-    new BucketDeployment(this, 'BucketContentDeployment', {
-      destinationBucket: bucket,
-      sources: [
-        Source.asset(path.resolve(__dirname, `../frontend`))
-      ],
-    });
   }
+
+  public getBucket(): Bucket {
+    return this.bucket;
+  }
+
 }
