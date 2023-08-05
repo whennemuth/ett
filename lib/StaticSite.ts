@@ -28,7 +28,7 @@ export interface StaticSiteProps {
 
 export class StaticSiteConstruct extends Construct {
 
-  static bucketName: string = 'ett-static-site-content';
+  static bucketName: string = 'ett-static-site-content2';
 
   /**
    * Get the olap name as a concatenation that anticipate it, not from the construct directly because that will
@@ -42,7 +42,7 @@ export class StaticSiteConstruct extends Construct {
   scope: Construct;
   context: IContext;
   bucket: Bucket;
-  ap: CfnAccessPoint;
+  olap: Olap;
 
   constructor(scope: Construct, constructId: string) {
 
@@ -65,7 +65,7 @@ export class StaticSiteConstruct extends Construct {
       autoDeleteObjects: true  
     });
 
-    this.ap = new CfnAccessPoint(this, 'BucketAccessPoint', {
+    const ap = new CfnAccessPoint(this, 'BucketAccessPoint', {
       bucket: StaticSiteConstruct.bucketName,
       name: StaticSiteConstruct.accessPointName, 
       policy: new PolicyDocument({
@@ -86,7 +86,7 @@ export class StaticSiteConstruct extends Construct {
       })
     });
 
-    this.ap.addDependency(this.bucket.node.defaultChild as CfnResource);
+    ap.addDependency(this.bucket.node.defaultChild as CfnResource);
 
     this.bucket.addToResourcePolicy(new PolicyStatement({
       effect: Effect.ALLOW,
@@ -109,9 +109,6 @@ export class StaticSiteConstruct extends Construct {
         Source.asset(path.resolve(__dirname, `../frontend`))
       ],
     });
-  }
-
-  public addOlap(props:StaticSiteProps): void {
 
     const injectionFunction = new AbstractFunction(this, 'InjectionFunction', {
       functionName: `${this.constructId}-injection-function`,
@@ -126,21 +123,21 @@ export class StaticSiteConstruct extends Construct {
         actions: [ 's3-object-lambda:WriteGetObjectResponse' ]
       })],
       environment: {
-        CLIENT_ID: props.cognito.userPool.clientId,
-        REDIRECT_URI: props.distribution.domainName,
+        // CLIENT_ID: props.cognito.userPool.clientId,
+        // REDIRECT_URI: props.distribution.domainName,
         USER_POOL_REGION: this.context.REGION,
-        COGNITO_DOMAIN: props.cognito.userPool.providerUrl,        
+        // COGNITO_DOMAIN: props.cognito.userPool.providerUrl,        
       },
     });
 
-    props.apiUris.forEach(item => {
-      injectionFunction.addEnvironment(item.id, item.value);
-    });
+    // props.apiUris.forEach(item => {
+    //   injectionFunction.addEnvironment(item.id, item.value);
+    // });
 
-    const olap = new Olap(this, 'BucketOlap', {
+    this.olap = new Olap(this, 'BucketOlap', {
       name: StaticSiteConstruct.olapName,
       objectLambdaConfiguration: {
-        supportingAccessPoint: this.ap.attrArn,
+        supportingAccessPoint: ap.attrArn,
         cloudWatchMetricsEnabled: false,
         transformationConfigurations: [
           {
@@ -157,18 +154,20 @@ export class StaticSiteConstruct extends Construct {
     });
 
     const olapPolicy = new OlapPolicy(this, 'BucketOlapPolicy', {
-      objectLambdaAccessPoint: olap.ref,
+      objectLambdaAccessPoint: this.olap.ref,
       policyDocument: new PolicyDocument({
         statements: [ new PolicyStatement({
           effect: Effect.ALLOW,
           actions: [ 's3-object-lambda:Get*' ],
           principals: [ new ServicePrincipal('cloudfront.amazonaws.com') ],
           resources: [ 
-            `arn:aws:s3-object-lambda:${this.context.REGION}:${this.context.ACCOUNT}:accesspoint/${olap.ref}` 
+            `arn:aws:s3-object-lambda:${this.context.REGION}:${this.context.ACCOUNT}:accesspoint/${this.olap.ref}` 
           ],
           conditions: {
-            StringEquals: {
-              'aws:SourceArn': `arn:aws:cloudfront::${this.context.ACCOUNT}:distribution/${props.distribution.id}`
+            // Means any distribution in the account can access the olap, but there will probably be only
+            // one distribution in the account anyway.
+            StringLike: {
+              'aws:SourceArn': `arn:aws:cloudfront::${this.context.ACCOUNT}:distribution/*`
             }
           }
         })]
@@ -181,6 +180,10 @@ export class StaticSiteConstruct extends Construct {
 
   public getBucket(): Bucket {
     return this.bucket;
+  }
+
+  public getOlapAlias(): string {
+    return this.olap.attrAliasValue;
   }
 
 }

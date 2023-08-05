@@ -26,10 +26,7 @@ export class CloudfrontConstruct extends Construct {
       origin: new HttpOrigin('dummy-origin.com', { originId: 'dummy-origin' })
     }
 
-    if(props.bucket && props.olapAlias) {
-      throw new Error('Illegal parameters [CloudfrontConstructProps]: bucket and olapAlias are mutually exclusive.');
-    }
-    else if(props.bucket) {
+  if(props.bucket && !props.olapAlias) {
       // Use object access identity (legacy)
       this.distribution = new Distribution(this, 'Distribution', {
         defaultBehavior,
@@ -41,7 +38,7 @@ export class CloudfrontConstruct extends Construct {
         }
       });      
     }
-    else {
+    else if(props.bucket && props.olapAlias) {
       // Use object access control (new)
 
       /**
@@ -60,7 +57,8 @@ export class CloudfrontConstruct extends Construct {
         defaultRootObject: 'index.htm',
         additionalBehaviors: {
           '*.htm': {
-            origin: new HttpOrigin(`${props.olapAlias}.s3.REGION.amazonaws.com`)
+            //origin: new HttpOrigin(`${props.olapAlias}.s3.REGION.amazonaws.com`)
+            origin: new S3Origin(props.bucket)
           }
         }
       });

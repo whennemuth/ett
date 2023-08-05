@@ -32,6 +32,7 @@ const stack = new AbstractStack(app, stackName, stackProps);
 const staticSite = new StaticSiteConstruct(stack, 'EttStaticSite');
 
 const cloudfront = new CloudfrontConstruct(stack, 'EttCloudfront', {
+  olapAlias: staticSite.getOlapAlias(),
   bucket: staticSite.getBucket()
 });
 
@@ -39,22 +40,22 @@ const cognito = new CognitoConstruct(stack, 'EttCognito', { distribution: {
   domainName: cloudfront.getDistributionDomainName()
 }});
 
-staticSite.addOlap({
-  distribution: {
-    id: cloudfront.getDistributionId(),
-    domainName: cloudfront.getDistributionDomainName()
-  },
-  cognito: {
-    userPool: {
-      clientId: cognito.getUserPoolClient().userPoolClientId,
-      providerUrl: cognito.getUserPool().userPoolProviderUrl
-    }
-  },
-  apiUris: [{
-    id: 'HELLO_WORLD_API_URI',
-    value: cognito.getHelloWorldApiUri()
-  }]
-});
+// staticSite.addOlap({
+//   distribution: {
+//     id: cloudfront.getDistributionId(),
+//     domainName: cloudfront.getDistributionDomainName()
+//   },
+//   cognito: {
+//     userPool: {
+//       clientId: cognito.getUserPoolClient().userPoolClientId,
+//       providerUrl: cognito.getUserPool().userPoolProviderUrl
+//     }
+//   },
+//   apiUris: [{
+//     id: 'HELLO_WORLD_API_URI',
+//     value: cognito.getHelloWorldApiUri()
+//   }]
+// });
 
 
 
