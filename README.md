@@ -2,21 +2,58 @@
 
 Documentation pending...
 
-Create a `./contexts/context.json` file and adjust the values appropriately.
-*NOTE: Make sure the BUCKET_NAME value does not collide with an existing bucket.*
+### Steps
 
-```
-{
-  "SCENARIO": "default",
-  "STACK_ID": "ett",
-  "ACCOUNT": "[Your account ID]",
-  "REGION": "[Your desired region]",
-  "BUCKET_NAME": "ett-static-site-content",
-  "TAGS": {
-    "Service": "client",
-    "Function": "ett",
-    "Landscape": "dev"
-  }
-}
-```
+1. Create a `./context/context.json` file.
+   This file will contain all parameters that the cdk will use when generating the Cloudformation template it later deploys. Most of these parameters correspond to something one might otherwise use as values being supplied to Cloudformation if it were being invoked directly, but they will appear "hard-coded" in the stack template. [From CDK docs on parameters](https://docs.aws.amazon.com/cdk/v2/guide/parameters.html):
+
+   > *In general, we recommend against using AWS CloudFormation parameters with the AWS CDK. The usual ways to pass values into AWS CDK apps are [context values](https://docs.aws.amazon.com/cdk/v2/guide/context.html) and environment variables. Because they are not available at synthesis time, parameter values cannot be easily used for flow control and other purposes in your CDK app.*
+
+   ```
+   {
+     "SCENARIO": "default",
+     "STACK_ID": "ett",
+     "ACCOUNT": "[Your account ID]",
+     "REGION": "[Your desired region]",
+     "BUCKET_NAME": "ett-static-site-content",
+     "TAGS": {
+       "Service": "client",
+       "Function": "ett",
+       "Landscape": "dev"
+     }
+   }
+   ```
+
+   *NOTE: Make sure the BUCKET_NAME value does not collide with an existing bucket.*
+
+2. Obtain [security credentials](https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds.html?icmpid=docs_homepage_genref) for the admin-level [IAM role](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html) you will be using for accessing the aws account to lookup and/or deploy resources.
+   Create a [named profile](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html#cli-configure-files-using-profiles) out of these credentials in your [`~/.aws/credentials`](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html#cli-configure-files-where) file.
+
+3. Install all dependencies:
+
+   ```
+   npm install
+   ```
+
+4. *Bootstrapping* is the process of provisioning resources for the AWS CDK before you can deploy AWS CDK apps into an AWS [environment](https://docs.aws.amazon.com/cdk/v2/guide/environments.html). *(An AWS environment is a combination of an AWS account and Region).* You only need to bootstrap once for your chosen region within your account. The presence of a `"CDKToolKit"` cloud-formation stack for that region will indicate bootstrapping has already occurred. To bootstrap, follow [these steps](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html#bootstrapping-howto). The simple bootstrapping command is:
+
+   ```
+   export AWS_PROFILE=my_named_profile
+   cdk bootstrap aws://[aws account ID]/us-east-1
+   ```
+
+5. [OPTIONAL] Run the [CDK synth command](https://docs.aws.amazon.com/cdk/v2/guide/cli.html#cli-synth) command to generate the cloudformation template that will be used to create the stack:
+
+   ```
+   mkdir ./cdk.out 2> /dev/null
+   cdk synth --profile my_named_profile &> cdk.out/ett.template.yaml
+   ```
+
+   *NOTE: The synth command will create a .json file, but will also output yaml to stdout. The command above redirects that output to a yaml file alongside the json file.*
+
+6. Run the [CDK deploy command](https://docs.aws.amazon.com/cdk/v2/guide/cli.html#cli-deploy) to create the stack:
+
+   ```
+   cdk deploy --profile my_named_profile --no-rollback
+   ```
 
