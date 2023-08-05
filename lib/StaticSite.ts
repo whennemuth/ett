@@ -28,16 +28,6 @@ export interface StaticSiteProps {
 
 export class StaticSiteConstruct extends Construct {
 
-  static bucketName: string = 'ett-static-site-content2';
-
-  /**
-   * Get the olap name as a concatenation that anticipate it, not from the construct directly because that will
-   * lead to a circular dependency issue with the distribution.
-   * @returns 
-   */
-  static olapName: string = `${StaticSiteConstruct.bucketName}-olap`;
-  static accessPointName: string = `${StaticSiteConstruct.bucketName}-ap`;
-
   constructId: string;
   scope: Construct;
   context: IContext;
@@ -57,8 +47,12 @@ export class StaticSiteConstruct extends Construct {
 
   buildBucketAndAccessPoint(): void {
 
+    const bucketName: string = this.context.BUCKET_NAME;
+    const olapName: string = `${bucketName}-olap`;
+    const accessPointName: string = `${bucketName}-ap`;
+  
     this.bucket = new Bucket(this, 'Bucket', {
-      bucketName: StaticSiteConstruct.bucketName,
+      bucketName: bucketName,
       publicReadAccess: false,
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
       removalPolicy: RemovalPolicy.DESTROY,    
@@ -66,16 +60,16 @@ export class StaticSiteConstruct extends Construct {
     });
 
     const ap = new CfnAccessPoint(this, 'BucketAccessPoint', {
-      bucket: StaticSiteConstruct.bucketName,
-      name: StaticSiteConstruct.accessPointName, 
+      bucket: bucketName,
+      name: accessPointName, 
       policy: new PolicyDocument({
           statements: [ new PolicyStatement({
           effect: Effect.ALLOW,
           actions: [ 's3:*' ],
           principals: [ new ServicePrincipal('cloudfront.amazonaws.com') ],
           resources: [
-            `arn:aws:s3:${this.context.REGION}:${this.context.ACCOUNT}:accesspoint/${StaticSiteConstruct.accessPointName}`,
-            `arn:aws:s3:${this.context.REGION}:${this.context.ACCOUNT}:accesspoint/${StaticSiteConstruct.accessPointName}/object/*`
+            `arn:aws:s3:${this.context.REGION}:${this.context.ACCOUNT}:accesspoint/${accessPointName}`,
+            `arn:aws:s3:${this.context.REGION}:${this.context.ACCOUNT}:accesspoint/${accessPointName}/object/*`
           ],
           conditions: {
             'ForAnyValue:StringEquals': {
@@ -93,8 +87,8 @@ export class StaticSiteConstruct extends Construct {
       principals: [ new AnyPrincipal()],
       actions: [ '*' ],
       resources: [
-        `arn:aws:s3:::${StaticSiteConstruct.bucketName}`,
-        `arn:aws:s3:::${StaticSiteConstruct.bucketName}/*`,
+        `arn:aws:s3:::${bucketName}`,
+        `arn:aws:s3:::${bucketName}/*`,
       ],
       conditions: {
         StringEquals: {
@@ -135,7 +129,7 @@ export class StaticSiteConstruct extends Construct {
     // });
 
     this.olap = new Olap(this, 'BucketOlap', {
-      name: StaticSiteConstruct.olapName,
+      name: olapName,
       objectLambdaConfiguration: {
         supportingAccessPoint: ap.attrArn,
         cloudWatchMetricsEnabled: false,

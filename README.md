@@ -1,14 +1,22 @@
-# Welcome to your CDK TypeScript project
+# ETT (Ethical Transparency Tool)
 
-This is a blank project for CDK development with TypeScript.
+Documentation pending...
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+Create a `./contexts/context.json` file and adjust the values appropriately.
+*NOTE: Make sure the BUCKET_NAME value does not collide with an existing bucket.*
 
-## Useful commands
+```
+{
+  "SCENARIO": "default",
+  "STACK_ID": "ett",
+  "ACCOUNT": "[Your account ID]",
+  "REGION": "[Your desired region]",
+  "BUCKET_NAME": "ett-static-site-content",
+  "TAGS": {
+    "Service": "client",
+    "Function": "ett",
+    "Landscape": "dev"
+  }
+}
+```
 
-* `npm run build`   compile typescript to js
-* `npm run watch`   watch for changes and compile
-* `npm run test`    perform the jest unit tests
-* `cdk deploy`      deploy this stack to your default AWS account/region
-* `cdk diff`        compare deployed stack with current state
-* `cdk synth`       emits the synthesized CloudFormation template
