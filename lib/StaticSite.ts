@@ -104,18 +104,29 @@ export class StaticSiteConstruct extends Construct {
       ],
     });
 
+    const functionName = `${this.constructId}-injection-function`;
     const injectionFunction = new AbstractFunction(this, 'InjectionFunction', {
-      functionName: `${this.constructId}-injection-function`,
+      functionName,
       runtime: Runtime.NODEJS_18_X,
       handler: 'Injector.handler',
       code: Code.fromAsset(path.join(__dirname, `lambda`)),
       logRetention: 7,
       cleanup: true,
-      initialPolicy: [new PolicyStatement({
-        effect: Effect.ALLOW,
-        resources: [ '*' ],
-        actions: [ 's3-object-lambda:WriteGetObjectResponse' ]
-      })],
+      initialPolicy: [
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          resources: [ '*' ],
+          actions: [ 's3-object-lambda:WriteGetObjectResponse' ]
+        }),
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          principals: [ new ServicePrincipal('cloudfront.amazonaws.com') ],
+          actions: [ 'lambda:InvokeFunction' ],
+          resources: [
+            `arn:aws:lambda:${this.context.REGION}:${this.context.ACCOUNT}:function:${functionName}`
+          ]
+        })
+      ],
       environment: {
         // CLIENT_ID: props.cognito.userPool.clientId,
         // REDIRECT_URI: props.distribution.domainName,

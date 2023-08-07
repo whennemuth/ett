@@ -32,8 +32,7 @@ const stack = new AbstractStack(app, stackName, stackProps);
 const staticSite = new StaticSiteConstruct(stack, 'EttStaticSite');
 
 const cloudfront = new CloudfrontConstruct(stack, 'EttCloudfront', {
-  olapAlias: staticSite.getOlapAlias(),
-  bucket: staticSite.getBucket()
+  olapAlias: staticSite.getOlapAlias()
 });
 
 const cognito = new CognitoConstruct(stack, 'EttCognito', { distribution: {

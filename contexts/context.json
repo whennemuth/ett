@@ -3,7 +3,7 @@
   "STACK_ID": "ett",
   "ACCOUNT": "770203350335",
   "REGION": "us-east-1",
-  "BUCKET_NAME": "ett-static-site-content",
+  "BUCKET_NAME": "ett-static-site-content2",
   "TAGS": {
     "Service": "client",
     "Function": "ett",
