@@ -1,194 +1,74 @@
-import { Construct } from 'constructs';
+import { Construct } from "constructs";
 import { IContext } from '../contexts/IContext';
-import { CfnResource, RemovalPolicy } from 'aws-cdk-lib';
-import { BlockPublicAccess, Bucket, CfnAccessPoint } from 'aws-cdk-lib/aws-s3';
+import { RemovalPolicy } from 'aws-cdk-lib';
+import { BlockPublicAccess, Bucket } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
-import { CfnAccessPoint as Olap, CfnAccessPointPolicy as OlapPolicy} from 'aws-cdk-lib/aws-s3objectlambda';
-import { Runtime, Code } from 'aws-cdk-lib/aws-lambda';
-import { AbstractFunction } from './AbstractFunction';
 import * as path from 'path';
-import { Effect, PolicyDocument, PolicyStatement, ServicePrincipal, AnyPrincipal } from 'aws-cdk-lib/aws-iam';
 
-export interface StaticSiteProps {
-  distribution: {
-    id: string,
-    domainName: string
-  },
-  cognito: {
-    userPool: {
-      clientId: string,
-      providerUrl: string     
-    }
-  },
-  apiUris:[{
-    id:string, 
-    value:string
-  }]
-};
-
-export class StaticSiteConstruct extends Construct {
+/**
+ * This is the boilerplate for the static site. It includes bucket creation and the uploading of an index file.
+ * Subclasses will add functionality by implementing the customize function.
+ */
+export abstract class StaticSiteConstruct extends Construct {
 
   constructId: string;
   scope: Construct;
   context: IContext;
   bucket: Bucket;
-  olap: Olap;
-
-  constructor(scope: Construct, constructId: string) {
+  props: any;
+  
+  constructor(scope: Construct, constructId: string, props:any) {
 
     super(scope, constructId);
 
     this.scope = scope;
     this.constructId = constructId;
+    this.props = props;
     this.context = scope.node.getContext('stack-parms');
- 
-    this.buildBucketAndAccessPoint();
-  }
-
-  buildBucketAndAccessPoint(): void {
 
     const bucketName: string = this.context.BUCKET_NAME;
-    const olapName: string = `${bucketName}-olap`;
-    const accessPointName: string = `${bucketName}-ap`;
   
-    this.bucket = new Bucket(this, 'Bucket', {
-      bucketName: bucketName,
-      publicReadAccess: false,
-      blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-      removalPolicy: RemovalPolicy.DESTROY,    
-      autoDeleteObjects: true  
-    });
+    this.customize();
+  }
 
-    const ap = new CfnAccessPoint(this, 'BucketAccessPoint', {
-      bucket: bucketName,
-      name: accessPointName, 
-      policy: new PolicyDocument({
-          statements: [ new PolicyStatement({
-          effect: Effect.ALLOW,
-          actions: [ 's3:*' ],
-          principals: [ new ServicePrincipal('cloudfront.amazonaws.com') ],
-          resources: [
-            `arn:aws:s3:${this.context.REGION}:${this.context.ACCOUNT}:accesspoint/${accessPointName}`,
-            `arn:aws:s3:${this.context.REGION}:${this.context.ACCOUNT}:accesspoint/${accessPointName}/object/*`
-          ],
-          conditions: {
-            'ForAnyValue:StringEquals': {
-              'aws:CalledVia': 's3-object-lambda.amazonaws.com'
-            }
-          }
-        })]
-      })
-    });
-
-    ap.addDependency(this.bucket.node.defaultChild as CfnResource);
-
-    this.bucket.addToResourcePolicy(new PolicyStatement({
-      effect: Effect.ALLOW,
-      principals: [ new AnyPrincipal()],
-      actions: [ '*' ],
-      resources: [
-        `arn:aws:s3:::${bucketName}`,
-        `arn:aws:s3:::${bucketName}/*`,
-      ],
-      conditions: {
-        StringEquals: {
-          's3:DataAccessPointAccount': this.context.ACCOUNT
-        }
+  public abstract customize(): void;
+ 
+  public getBucket(): Bucket {
+    if( ! this.bucket) {
+      if(this.props.bucket) {
+        this.bucket = this.props.bucket;
       }
-    }));
+      else {
+        this.bucket = new Bucket(this, 'Bucket', {
+          bucketName: this.context.BUCKET_NAME,
+          publicReadAccess: false,
+          blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+          removalPolicy: RemovalPolicy.DESTROY,    
+          autoDeleteObjects: true  
+        });
+      }
+    }
+    return this.bucket;
+  }
 
-    new BucketDeployment(this, 'BucketContentDeployment', {
-      destinationBucket: this.bucket,
+  /**
+   * Set up a bucket deployment to upload the index.htm file to the bucket as part of the overall
+   * cdk deployment. If a lambda needs to have been created already that will intercept this file on its
+   * way into the bucket so as to modify it's content, a dependency to the corresponding resource(s)
+   * needs to be applied to the BucketDeployment.
+   */
+  public setIndexFileForUpload(dependOn?:Construct[]) {
+    const deployment = new BucketDeployment(this, 'BucketContentDeployment', {
+      destinationBucket: this.getBucket(),
       sources: [
         Source.asset(path.resolve(__dirname, `../frontend`))
       ],
     });
 
-    const functionName = `${this.constructId}-injection-function`;
-    const injectionFunction = new AbstractFunction(this, 'InjectionFunction', {
-      functionName,
-      runtime: Runtime.NODEJS_18_X,
-      handler: 'Injector.handler',
-      code: Code.fromAsset(path.join(__dirname, `lambda`)),
-      logRetention: 7,
-      cleanup: true,
-      initialPolicy: [
-        new PolicyStatement({
-          effect: Effect.ALLOW,
-          resources: [ '*' ],
-          actions: [ 's3-object-lambda:WriteGetObjectResponse' ]
-        }),
-        new PolicyStatement({
-          effect: Effect.ALLOW,
-          principals: [ new ServicePrincipal('cloudfront.amazonaws.com') ],
-          actions: [ 'lambda:InvokeFunction' ],
-          resources: [
-            `arn:aws:lambda:${this.context.REGION}:${this.context.ACCOUNT}:function:${functionName}`
-          ]
-        })
-      ],
-      environment: {
-        // CLIENT_ID: props.cognito.userPool.clientId,
-        // REDIRECT_URI: props.distribution.domainName,
-        USER_POOL_REGION: this.context.REGION,
-        // COGNITO_DOMAIN: props.cognito.userPool.providerUrl,        
-      },
-    });
-
-    // props.apiUris.forEach(item => {
-    //   injectionFunction.addEnvironment(item.id, item.value);
-    // });
-
-    this.olap = new Olap(this, 'BucketOlap', {
-      name: olapName,
-      objectLambdaConfiguration: {
-        supportingAccessPoint: ap.attrArn,
-        cloudWatchMetricsEnabled: false,
-        transformationConfigurations: [
-          {
-            actions: [ 'GetObject' ],
-            contentTransformation: {
-              AwsLambda: {
-                FunctionArn: injectionFunction.functionArn
-              }
-            }
-          }
-        ],
-        allowedFeatures: [ 'GetObject-Range', 'GetObject-PartNumber', 'HeadObject-Range', 'HeadObject-PartNumber' ]
-      }
-    });
-
-    const olapPolicy = new OlapPolicy(this, 'BucketOlapPolicy', {
-      objectLambdaAccessPoint: this.olap.ref,
-      policyDocument: new PolicyDocument({
-        statements: [ new PolicyStatement({
-          effect: Effect.ALLOW,
-          actions: [ 's3-object-lambda:Get*' ],
-          principals: [ new ServicePrincipal('cloudfront.amazonaws.com') ],
-          resources: [ 
-            `arn:aws:s3-object-lambda:${this.context.REGION}:${this.context.ACCOUNT}:accesspoint/${this.olap.ref}` 
-          ],
-          conditions: {
-            // Means any distribution in the account can access the olap, but there will probably be only
-            // one distribution in the account anyway.
-            StringLike: {
-              'aws:SourceArn': `arn:aws:cloudfront::${this.context.ACCOUNT}:distribution/*`
-            }
-          }
-        })]
+    if(dependOn) {
+      dependOn.forEach(d => {
+        deployment.node.addDependency(d);
       })
-    }); 
-
-    // olapPolicy.addDependency(olap);
-
+    }
   }
-
-  public getBucket(): Bucket {
-    return this.bucket;
-  }
-
-  public getOlapAlias(): string {
-    return this.olap.attrAliasValue;
-  }
-
 }

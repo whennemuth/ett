@@ -32,7 +32,7 @@ Documentation pending...
 3. Install all dependencies:
 
    ```
-   npm install
+   find . -maxdepth 4 -name package.json -execdir npm install \;
    ```
 
 4. *Bootstrapping* is the process of provisioning resources for the AWS CDK before you can deploy AWS CDK apps into an AWS [environment](https://docs.aws.amazon.com/cdk/v2/guide/environments.html). *(An AWS environment is a combination of an AWS account and Region).* You only need to bootstrap once for your chosen region within your account. The presence of a `"CDKToolKit"` cloud-formation stack for that region will indicate bootstrapping has already occurred. To bootstrap, follow [these steps](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html#bootstrapping-howto). The simple bootstrapping command is:
@@ -50,6 +50,27 @@ Documentation pending...
    ```
 
    *NOTE: The synth command will create a .json file, but will also output yaml to stdout. The command above redirects that output to a yaml file alongside the json file.*
+
+6. [OPTIONAL] Debug synthesis with breakpoints:
+   If developing in vscode, add the following debug cofiguration to the `${workspaceFolder}/.vscode/launch.json` file:
+
+   ```
+   {
+     "version": "0.2.0",
+     "configurations": [
+       {
+         "type": "node",
+         "request": "launch",
+         "name": "CDK Debugger (App)",
+         "skipFiles": ["<node_internals>/**"],
+         "runtimeArgs": ["-r", "./ett-auth/node_modules/ts-node/register/transpile-only"],
+         "args": ["${workspaceFolder}/ett-auth/bin/ett.ts"]
+       }
+     ]
+   }
+   ```
+
+   Place a breakpoint at the desired location and run the launch configuration.
 
 6. Run the [CDK deploy command](https://docs.aws.amazon.com/cdk/v2/guide/cli.html#cli-deploy) to create the stack:
 

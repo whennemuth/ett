@@ -1,9 +1,9 @@
 {
   "SCENARIO": "default",
   "STACK_ID": "ett",
-  "ACCOUNT": "770203350335",
-  "REGION": "us-east-1",
-  "BUCKET_NAME": "ett-static-site-content2",
+  "ACCOUNT": "037860335094",
+  "REGION": "us-east-2",
+  "BUCKET_NAME": "ett-static-site-content",
   "TAGS": {
     "Service": "client",
     "Function": "ett",
