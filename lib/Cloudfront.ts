@@ -57,8 +57,6 @@ export class CloudfrontConstruct extends Construct {
     cfnDist.addPropertyOverride('DistributionConfig.Origins.1.S3OriginConfig.OriginAccessIdentity', "");
 
     if(props.olapAlias) {
-
-
       cfnDist.addPropertyOverride('DistributionConfig.Origins.1.DomainName', `${props.olapAlias}.s3.${this.context.REGION}.amazonaws.com`);
     }
   }

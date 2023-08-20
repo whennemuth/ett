@@ -25,8 +25,6 @@ export abstract class StaticSiteConstruct extends Construct {
     this.constructId = constructId;
     this.props = props;
     this.context = scope.node.getContext('stack-parms');
-
-    const bucketName: string = this.context.BUCKET_NAME;
   
     this.customize();
   }
@@ -35,7 +33,7 @@ export abstract class StaticSiteConstruct extends Construct {
  
   public getBucket(): Bucket {
     if( ! this.bucket) {
-      if(this.props.bucket) {
+      if(this.props?.bucket) {
         this.bucket = this.props.bucket;
       }
       else {

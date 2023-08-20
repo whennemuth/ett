@@ -160,7 +160,9 @@
      * Generate a code challenge from the verifier
      */
     async function generateCodeChallenge(codeVerifier) {
-      const codeChallenge = base64UrlEncode(await crypto.subtle.digest('SHA-256', codeVerifier));
+      const encoder = new TextEncoder();
+      const encodedVerifier = encoder.encode(codeVerifier);
+      const codeChallenge = base64UrlEncode(await crypto.subtle.digest('SHA-256', encodedVerifier));
       return codeChallenge;
     }
 
@@ -169,11 +171,10 @@
      * acquiring an authorization code to exchange for a JWT.
      */
     function initiateAuthorizationRequest(codeChallenge, state) {
-      
       const params = {
         response_type: 'code',
         client_id: CLIENT_ID,
-        redirect_uri: `${REDIRECT_URI}?action=login`,
+        redirect_uri: `https://${REDIRECT_URI}?action=login`,
         state: state,
         code_challenge: codeChallenge,
         code_challenge_method: 'S256'
@@ -201,7 +202,7 @@
         throw Error("Probable session hijacking attack!");
       }
 
-      if( ! code) {
+      if( ! authorizationCode) {
         throw Error('Authorization code not found in the URL.');
       }
 
@@ -209,7 +210,7 @@
       const params = {
         grant_type: 'authorization_code',
         client_id: CLIENT_ID,
-        redirect_uri: `${REDIRECT_URI}?action=login`,
+        redirect_uri: `https://${REDIRECT_URI}?action=login`,
         state: savedState,
         code: authorizationCode,
         code_verifier: codeVerifier
@@ -226,17 +227,9 @@
       })
       .then(response => response.json())
       .then(data => {
-        AuthJwtCookie.setJwt(data.access_token);
-        if(data.refresh_token) {
-          /**
-           * Handle the token response: TODO how to properly
-           *   1) Determine the need for
-           *   2) Ask for
-           *   3) Handle the receipt of
-           * a refresh token
-           */
-           console.log("Not implemented (Not sure how to handle refresh tokens yet)");
-        } 
+        AccessJwtCookie.setJwt(data.access_token);
+        IDJwtCookie.setJwt(data.id_token);
+        // RefreshJwtCookie.setJwt(data.refresh_token);
         callback();       
       })
       .catch(error => {
@@ -250,11 +243,11 @@
         client_id: CLIENT_ID,
         response_type: 'code',
         scope: 'email+openid+phone',
-        redirect_uri: `${REDIRECT_URI}?action=signedup`
+        redirect_uri: encodeURIComponent(`https://${REDIRECT_URI}?action=signedup`)
       };
 
-      const queryString = Object.keys(params).map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`).join('&');
-      const signUpUrl = `${COGNITO_DOMAIN}.auth.${USER_POOL_REGION}.amazoncognito.com/signup?${queryString}`;
+      const queryString = Object.keys(params).map(key => `${key}=${params[key]}`).join('&');
+      const signUpUrl = `${COGNITO_DOMAIN}/signup?${queryString}`;
       window.location.href = signUpUrl;
     }
 
@@ -278,32 +271,39 @@
     }
 
     function signOut() {
-      const signOutUri = `https://${COGNITO_DOMAIN}.auth.${USER_POOL_REGION}.amazoncognito.com/logout?client_id=${CLIENT_ID}&logout_uri=https://example.com`;
+      const params = {
+        client_id: CLIENT_ID,
+        logout_uri: encodeURIComponent(`https://${REDIRECT_URI}?action=logout`)
+      };
+      const queryString = Object.keys(params).map(key => `${key}=${params[key]}`).join('&');
+      const signOutUrl = `${COGNITO_DOMAIN}/logout?${queryString}`;
 
-      fetch(signOutUri, {
+      window.location.href = signOutUrl;
+    }
+
+    // https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-the-access-token.html
+    // https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-integrate-with-cognito.html
+    function callApi() {
+      fetch(HELLO_WORLD_API_URI, {
         method: 'POST',
+        mode: "cors",
         credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+          'Content-Type': 'application/json'
+        }
       })
       .then((response) => {
         if (response.ok) {
-          console.log('Sign out successful');
-          // Remove JWT access and refresh tokens from cookies
-          AccessJwtCookie.clearJwt();
-          RefreshJwtCookie.clearJwt();
-          document.getElementById('auth-section').style.display = 'block';
-          document.getElementById('app-section').style.display = 'none';
+          document.getElementById('apiResponse').innerHTML = `API response: ${JSON.stringify(response.body, null, 2)}`;
         } 
         else {
-          console.log('Sign out failed');
+          document.getElementById('apiResponse').innerHTML = `Bad response: <br><textarea rows=5 cols=80>${JSON.stringify(response.body, null, 2)}</textarea>`;
         }
       })
       .catch((error) => {
-        console.error('Error during sign out:', error);
+        document.getElementById('apiResponse').innerHTML = `API error: <br><textarea rows=5 cols=80>${JSON.stringify({msg: error.message, stack: error.stack}, null, 2)}</textarea>`;
       });
-    }
-
-    function callApi() {
-      console.error('Not implemented');
     }
 
     /**
@@ -334,7 +334,6 @@
           expirationDate.setTime(expirationDate.getTime() + decodedToken.expires_in * 1000); // Convert expires_in from seconds to milliseconds
         } 
         else if(decodedToken.exp) {
-          // Probably won't encounter an "exp" claim since we are using oauth2
           expirationDate.setTime(decodedToken.exp * 1000); // Convert the 'exp' claim to milliseconds
         }
         else {
@@ -342,8 +341,11 @@
           return;
         }
         const expires = `; expires=${expirationDate.toUTCString()}`;
-        const cookieValue = encodeURIComponent(jwt) + expires + secureFlag + '; HttpOnly; SameSite=Strict';
+        const cookieValue = encodeURIComponent(jwt) + expires + secureFlag + '; SameSite=Strict';
         document.cookie = `${cookieName}=${cookieValue}`;
+        // Now that the cookie is set and we have the JWT, we don't need the state and code verfier values anymore.
+        const storage = window.sessionStorage;
+        storage.clear();
       };
       this.clearJwt = function() {
         document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
@@ -355,10 +357,16 @@
       };
       this.jwtExpired = function() {
         const decodedToken = this.getDecodedToken();
-        if (!decodedToken?.expires_in) return true;
-        const expirationTime = new Date(decodedToken.iat * 1000 + decodedToken.expires_in * 1000);
         const currentTime = new Date();
-        return currentTime >= expirationTime;    
+        if (decodedToken?.expires_in) {
+          const expirationTime = new Date(decodedToken.iat * 1000 + decodedToken.expires_in * 1000);
+          return currentTime >= expirationTime;              
+        }
+        else if(decodedToken?.exp) {
+          const expirationTime = new Date(decodedToken.exp * 1000);
+          return currentTime >= expirationTime;
+        }
+        return true;
       };
       /**
        * This function is an alternative to jwtExpired. The cookie expiration was set during its creation
@@ -371,20 +379,18 @@
           const currentTime = new Date().getTime();
           return currentTime >= expirationTime;
         }
+        console.log(`${cookieName} cookie is expired`);
         return true;
       };
       this.getUser = function() {
         const decodedToken = this.getDecodedToken();
         return {
-          id: decodedToken.sub,
-          name: decodedToken.username,
-          asString: () => {
-            return `${decodedToken.username} (${decodedToken.sub})`
-          }
+          name: decodedToken.name
         };
       }
     };
 
+    const IDJwtCookie= new JwtCookie('EttIdJwt')
     const AccessJwtCookie = new JwtCookie('EttAccessJwt');
     const RefreshJwtCookie = new JwtCookie('EttRefreshJwt');
 
@@ -393,8 +399,8 @@
       const queryParams = new URLSearchParams(window.location.search);
       const checkAuth = () => {
         if(!AccessJwtCookie.jwtExpired()) {
-          const user = AccessJwtCookie.getUser();
-          document.getElementById('username').innerHTML = user.asString();
+          const user = IDJwtCookie.getUser();
+          document.getElementById('username').innerHTML = user.name;
           document.getElementById('auth-section').style.display = 'none';
           document.getElementById('app-section').style.display = 'block';
         }
@@ -411,8 +417,15 @@
         if(queryParams.get('action') === 'signedup') {
           document.getElementById('btnSignup').style.display = 'none';
         }
+        if(queryParams.get('action') === 'logout') {
+          console.log('Sign out successful');
+          // Remove JWT access and refresh tokens from cookies
+          AccessJwtCookie.clearJwt();
+          IDJwtCookie.clearJwt();
+          RefreshJwtCookie.clearJwt();
+        }
         checkAuth();
-      }      
+      }    
     };
 
   </script>

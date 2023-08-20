@@ -1,10 +1,10 @@
 import { Construct } from 'constructs';
 import { IContext } from '../contexts/IContext';
-import { UserPool, UserPoolClient, AccountRecovery, StringAttribute, 
-  UserPoolClientIdentityProvider, OAuthScope,  CfnUserPoolUICustomizationAttachment} from 'aws-cdk-lib/aws-cognito';
-import { HelloWorldFunction } from './HelloWorldFunction'; 
+import { UserPool, UserPoolClient, AccountRecovery, StringAttribute, StandardAttribute,
+  UserPoolClientIdentityProvider, OAuthScope,  CfnUserPoolUICustomizationAttachment, UserPoolDomain} from 'aws-cdk-lib/aws-cognito';
+import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { CognitoUserPoolsAuthorizer } from 'aws-cdk-lib/aws-apigateway';
-import { Duration } from 'aws-cdk-lib';
+import { EttUserPoolClient } from './CognitoUserPoolClient';
 
 export interface CognitoProps { distribution: { domainName:string } };
 
@@ -15,7 +15,7 @@ export class CognitoConstruct extends Construct {
   context: IContext;
   userPool: UserPool;
   userPoolClient: UserPoolClient;
-  helloWorldApiUri: string;
+  userPoolDomain: UserPoolDomain;
   props: CognitoProps;
 
   constructor(scope: Construct, constructId: string, props:CognitoProps) {
@@ -33,6 +33,7 @@ export class CognitoConstruct extends Construct {
   buildResources(): void {
 
     this.userPool = new UserPool(this, 'UserPool', {
+      removalPolicy: RemovalPolicy.DESTROY,
       userPoolName: `${this.constructId}-userpool`,
       accountRecovery: AccountRecovery.EMAIL_AND_PHONE_WITHOUT_MFA,
       selfSignUpEnabled: true,
@@ -50,41 +51,32 @@ export class CognitoConstruct extends Construct {
         email: new StringAttribute(),
         phone: new StringAttribute({ mutable: true })
       },
+      standardAttributes: {
+        fullname: { required: true, mutable: true },
+        nickname: { required: false, mutable: true }
+      }
     });
 
-    this.userPoolClient = this.userPool.addClient('Client', {
-      userPoolClientName: `${this.constructId}-userpoolclient`,
-      supportedIdentityProviders: [ UserPoolClientIdentityProvider.COGNITO ],
-      oAuth: {
-        flows: {
-          authorizationCodeGrant: true,
-          implicitCodeGrant: false
-        },
-        scopes: [
-          // TODO: Figure out what these actually do - read up on scopes.
-          OAuthScope.EMAIL, OAuthScope.PHONE, OAuthScope.PROFILE
-        ],
-        callbackUrls: [
-          'http://localhost:3000/index.htm',
-          'http://localhost:3000/index.htm?action=login',
-          `https://${this.props.distribution.domainName}/index.htm`,
-          `https://${this.props.distribution.domainName}/index.htm?action=login`,
-        ],
-        logoutUrls: [
-          'http://localhost:3000/index.htm?action=logout',
-          `https://${this.props.distribution.domainName}/index.htm?action=logout`,
-        ]
-      },
-      accessTokenValidity: Duration.days(1),
-      refreshTokenValidity: Duration.days(7),
-      authSessionValidity: Duration.minutes(5)
+    this.userPoolClient = EttUserPoolClient.buildCustomScopedClient(this.userPool, 'default', {
+      callbackDomainName: this.props.distribution.domainName,
+    });
+
+    this.userPoolDomain = new UserPoolDomain(this, 'Domain', {
+      userPool: this.userPool,
+      cognitoDomain: {
+        domainPrefix: `${this.context.STACK_ID}-${this.context.TAGS.Landscape}`,
+      }
     });
 
     this.userPool.addDomain('Domain', {
       cognitoDomain: {
-        domainPrefix: `${this.context.STACK_ID}-${this.context.TAGS.Landscape}`
+        domainPrefix: `${this.context.STACK_ID}-${this.context.TAGS.Landscape}`,
       }
     });
+
+    // const baseUrl = this.userPoolDomain.baseUrl({fips: false});
+
+    // const signinUrl = this.userPoolDomain.signInUrl(this.userPoolClient, {signInPath:'logon',redirectUri:'TBD'});
 
     // TODO: figure out how to add an image for custom logo
     // https://github.com/aws/aws-cdk/issues/6953
@@ -98,28 +90,17 @@ export class CognitoConstruct extends Construct {
     //     css: fs.readFileSync('./cognito-hosted-ui.css').toString('utf-8')
     //   }
     // );
-
-    const authorizer = new CognitoUserPoolsAuthorizer(this, 'UserPoolAuthorizer', {
-      authorizerName: `${this.constructId}-authorizer`,
-      cognitoUserPools: [ this.userPool ],
-      identitySource: 'method.request.header.Authorization',
-    });
-
-    // Create a simple test api endpoint with backing lambda for testing out the authorizer.
-    const helloWorldFunction = new HelloWorldFunction(this, 'HelloWorldLambda');
-    // helloWorldFunction.preventOrphanedLogs();
-    this.helloWorldApiUri = helloWorldFunction.createAuthorizedResource('hello-world', authorizer);    
   }
 
   public getUserPool(): UserPool {
     return this.userPool;
   }
 
-  public getUserPoolClient(): UserPoolClient {
+  public getDefaultUserPoolClient(): UserPoolClient {
     return this.userPoolClient;
   }
 
-  public getHelloWorldApiUri(): string {
-    return this.helloWorldApiUri;
+  public getUserPoolDomain(): string {
+    return this.userPoolDomain.baseUrl();
   }
 };
