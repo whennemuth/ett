@@ -1,9 +1,7 @@
 import { Construct } from 'constructs';
 import { IContext } from '../contexts/IContext';
-import { UserPool, UserPoolClient, AccountRecovery, StringAttribute, StandardAttribute,
-  UserPoolClientIdentityProvider, OAuthScope,  CfnUserPoolUICustomizationAttachment, UserPoolDomain} from 'aws-cdk-lib/aws-cognito';
+import { UserPool, UserPoolClient, UserPoolDomain, AccountRecovery, StringAttribute, CfnUserPoolUICustomizationAttachment} from 'aws-cdk-lib/aws-cognito';
 import { Duration, RemovalPolicy } from 'aws-cdk-lib';
-import { CognitoUserPoolsAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 import { EttUserPoolClient } from './CognitoUserPoolClient';
 
 export interface CognitoProps { distribution: { domainName:string } };

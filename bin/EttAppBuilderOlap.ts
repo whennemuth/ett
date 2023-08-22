@@ -1,6 +1,7 @@
 import { IContext } from "../contexts/IContext";
 import { CloudfrontConstruct } from "../lib/Cloudfront";
 import { CognitoConstruct } from "../lib/Cognito";
+import { HelloWorldApi } from "../lib/HelloWorldApi";
 import { StaticSiteCustomOutConstruct } from "../lib/StaticSiteCustomOut";
 import { AppBuilder } from "./EttAppBuilder";
 
@@ -25,12 +26,16 @@ export class AppBuilderOlap extends AppBuilder {
       domainName: this.cloudfront.getDistributionDomainName()
     }});
 
-    const helloWorldUserPoolClient = this.helloWorldFunction.createAuthorizedResource(
-      'hello-world', 
-      this.cognito.getUserPool(), 
-      this.cloudfront.getDistributionDomainName());
+    this.helloWorldApi = new HelloWorldApi(this.stack, 'HelloWorldLambda', {
+      userPool: this.cognito.getUserPool(),
+      cloudfrontDomain: this.cloudfront.getDistributionDomainName()
+    });
 
-    // If using this construct, would need to get the client_id of helloWorldUserPoolClient 
+    // INCOMPLETE FUNCTIONALITY:
+    // Create a parmeter store construct here.
+    // If using this construct, you will need to get this.helloWorldFunction.getUserPoolClientId()
+    // and all other values to be injected into html page into parameter store first. Then adjust the
+    // object lambda code to reach into the parameter store for these values in order to "inject" them. 
   }
 
 }

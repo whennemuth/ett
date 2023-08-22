@@ -4,6 +4,7 @@ import { CognitoConstruct } from "../lib/Cognito";
 import { StaticSiteConstruct } from "../lib/StaticSite";
 import { StaticSiteCustomInConstruct } from "../lib/StaticSiteCustomIn";
 import { AppBuilder } from "./EttAppBuilder";
+import { HelloWorldApi } from "../lib/HelloWorldApi";
 
 export class AppBuilderEvent extends AppBuilder {
 
@@ -25,20 +26,20 @@ export class AppBuilderEvent extends AppBuilder {
       domainName: this.cloudfront.getDistributionDomainName()
     }});
 
-    const helloWorldUserPoolClient = this.helloWorldFunction.createAuthorizedResource(
-      'hello-world', 
-      this.cognito.getUserPool(), 
-      this.cloudfront.getDistributionDomainName());
+    this.helloWorldApi = new HelloWorldApi(this.stack, 'HelloWorldLambda', {
+      userPool: this.cognito.getUserPool(),
+      cloudfrontDomain: this.cloudfront.getDistributionDomainName()
+    });
 
     // Set up the event, lambda and associated policies for modification of html files as they are uploaded to the bucket.
     this.staticSite = new StaticSiteCustomInConstruct(this.stack, 'EttStaticSite', {
       bucket,
-      cognitoClientId: helloWorldUserPoolClient.userPoolClientId,
+      cognitoClientId: this.helloWorldApi.getUserPoolClientId(),
       cognitoDomain: this.cognito.getUserPoolDomain(),
       cognitoRedirectURI: `${this.cloudfront.getDistributionDomainName()}/index.htm`,
       cognitoUserpoolRegion: this.context.REGION,
       distributionId: this.cloudfront.getDistributionId(),
-      apiUris: [ { name: 'HELLO_WORLD_API_URI', value: this.helloWorldFunction.getRestApiUrl() } ]
+      apiUris: [ { name: 'HELLO_WORLD_API_URI', value: this.helloWorldApi.getRestApiUrl() } ]
     });  
   }
 }

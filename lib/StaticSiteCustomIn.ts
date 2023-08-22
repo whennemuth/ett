@@ -64,7 +64,7 @@ export class StaticSiteCustomInConstruct extends StaticSiteConstruct {
       ],
       conditions: {
         StringEquals: {
-          'aws:SourceArn': `arn:aws:cloudfront::037860335094:distribution/${inProps.distributionId}`
+          'aws:SourceArn': `arn:aws:cloudfront::${this.context.ACCOUNT}:distribution/${inProps.distributionId}`
         }
       }
     }));

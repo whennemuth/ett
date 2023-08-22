@@ -4,7 +4,7 @@ import { CognitoConstruct } from '../lib/Cognito';
 import { AbstractStack } from '../lib/AbstractStack';
 import { CloudfrontConstruct } from '../lib/Cloudfront';
 import { StaticSiteConstruct } from '../lib/StaticSite';
-import { HelloWorldFunction } from '../lib/HelloWorldFunction';
+import { HelloWorldApi } from '../lib/HelloWorldApi';
 
 export abstract class AppBuilder {
 
@@ -13,7 +13,7 @@ export abstract class AppBuilder {
   staticSite: StaticSiteConstruct;
   cloudfront: CloudfrontConstruct;
   cognito: CognitoConstruct;
-  helloWorldFunction: HelloWorldFunction
+  helloWorldApi: HelloWorldApi;
   
   constructor(context:IContext) {
     this.context = context;
@@ -36,7 +36,6 @@ export abstract class AppBuilder {
     }
 
     this.stack = new AbstractStack(app, stackName, stackProps);
-    this.helloWorldFunction = new HelloWorldFunction(this.stack, 'HelloWorldLambda');
   }
 
   public build(): void {
@@ -54,7 +53,7 @@ export abstract class AppBuilder {
       description: 'User pool provider URL'
     });    
     new CfnOutput(this.stack, 'HelloWorldApiUri', {
-      value: this.helloWorldFunction.getRestApiUrl(),
+      value: this.helloWorldApi.getRestApiUrl(),
       description: 'Hello world api uri, just for testing access.'
     });  
   }

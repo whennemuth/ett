@@ -2,7 +2,8 @@ import { Construct } from 'constructs';
 import { IContext } from '../contexts/IContext';
 import { Distribution, CfnOriginAccessControl, CfnDistribution, CachePolicy } from 'aws-cdk-lib/aws-cloudfront';
 import { HttpOrigin, S3Origin } from 'aws-cdk-lib/aws-cloudfront-origins';
-import { Bucket } from 'aws-cdk-lib/aws-s3';
+import { Bucket, ObjectOwnership } from 'aws-cdk-lib/aws-s3';
+import { RemovalPolicy } from 'aws-cdk-lib';
 
 export interface CloudfrontConstructProps {
   bucket: Bucket,
@@ -29,6 +30,11 @@ export class CloudfrontConstruct extends Construct {
     this.distribution = new Distribution(this, 'Distribution', {
       defaultBehavior,
       defaultRootObject: 'index.htm',
+      logBucket: new Bucket(this, 'DistributionLogsBucket', {
+        removalPolicy: RemovalPolicy.DESTROY,    
+        autoDeleteObjects: true,
+        objectOwnership: ObjectOwnership.OBJECT_WRITER
+      }),
       additionalBehaviors: {
         '*.htm': {
           origin: new S3Origin(props.bucket),
