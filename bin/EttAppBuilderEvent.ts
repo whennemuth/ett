@@ -4,7 +4,7 @@ import { CognitoConstruct } from "../lib/Cognito";
 import { StaticSiteConstruct } from "../lib/StaticSite";
 import { StaticSiteCustomInConstruct } from "../lib/StaticSiteCustomIn";
 import { AppBuilder } from "./EttAppBuilder";
-import { HelloWorldApi } from "../lib/api/HelloWorldApi";
+import { HelloWorldApi } from "../lib/role/HelloWorld";
 
 export class AppBuilderEvent extends AppBuilder {
 
