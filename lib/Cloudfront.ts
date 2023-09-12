@@ -36,7 +36,8 @@ export class CloudfrontConstruct extends Construct {
         objectOwnership: ObjectOwnership.OBJECT_WRITER
       }),
       additionalBehaviors: {
-        '*.htm': {
+        // '*.htm': {
+        '*.*': {
           origin: new S3Origin(props.bucket),
           cachePolicy: CachePolicy.CACHING_DISABLED
         }

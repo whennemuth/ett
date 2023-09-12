@@ -1,0 +1,14 @@
+{
+  "name": "ett-user-admin",
+  "version": "1.0.0",
+  "description": "Actions available to an ETT registered entity administrator",
+  "main": "index.mjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Warren Hennemuth",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.410.0"
+  }
+}

@@ -1,9 +1,22 @@
 # ETT (Ethical Transparency Tool)
 
-Documentation pending...
+This repository comprises a cloud-based implementation of the [Ethical Transparency Tool for The Societies Consortium on Sexual Harassment in STEMM](https://societiesconsortium.com/ett/) as described in the [Overview Briefing Packet](https://societiesconsortium.com/wp-content/uploads/2022/12/Ethical-Transparency-Tool-Briefing-Packet-Without-Forms.pdf). This implementation is designed for hosting on [AWS](https://aws.amazon.com/) and built completely around [AWS serverless technologies](https://aws.amazon.com/serverless/).
+
+### Prerequisites
+
+- [AWS CDK](https://docs.aws.amazon.com/cdk/v2/guide/home.html)
+- [AWS CLI](https://aws.amazon.com/cli/)
+- [Node & NPM](https://nodejs.org/en/download)
+- [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
+- [Visual Studio Code](https://code.visualstudio.com/download)
+- Admin role for target account *(ie: Shibboleth-InfraMgt/yourself@bu.edu, for the BU CSS account)*
 
 ### Steps
 
+Build the entire application and AWS infrastructure from scratch.
+
+1. Clone this repository
+   
 1. Create a `./context/context.json` file.
    This file will contain all parameters that the cdk will use when generating the Cloudformation template it later deploys. Most of these parameters correspond to something one might otherwise use as values being supplied to Cloudformation if it were being invoked directly, but they will appear "hard-coded" in the stack template. [From CDK docs on parameters](https://docs.aws.amazon.com/cdk/v2/guide/parameters.html):
 
@@ -52,7 +65,7 @@ Documentation pending...
    *NOTE: The synth command will create a .json file, but will also output yaml to stdout. The command above redirects that output to a yaml file alongside the json file.*
 
 6. [OPTIONAL] Debug synthesis with breakpoints:
-   If developing in vscode, add the following debug cofiguration to the `${workspaceFolder}/.vscode/launch.json` file:
+   If developing in vscode, add the following debug configuration to the `${workspaceFolder}/.vscode/launch.json` file:
 
    ```
    {
@@ -72,6 +85,8 @@ Documentation pending...
 
    Place a breakpoint at the desired location and run the launch configuration.
 
+6. Enable API Gateway Logging for the account. Follow [these directions](./docs/EnableApiGatewayLogging.md)
+   
 6. Run the [CDK deploy command](https://docs.aws.amazon.com/cdk/v2/guide/cli.html#cli-deploy) to create the stack:
 
    ```

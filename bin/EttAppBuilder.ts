@@ -4,7 +4,7 @@ import { CognitoConstruct } from '../lib/Cognito';
 import { AbstractStack } from '../lib/AbstractStack';
 import { CloudfrontConstruct } from '../lib/Cloudfront';
 import { StaticSiteConstruct } from '../lib/StaticSite';
-import { HelloWorldApi } from '../lib/HelloWorldApi';
+import { HelloWorldApi } from '../lib/api/HelloWorldApi';
 
 export abstract class AppBuilder {
 

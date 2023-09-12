@@ -26,7 +26,7 @@ export class AbstractFunction extends Function {
     
     if(props.cleanup) {
       // The log group gets created as a resource by the cdk, and so gets deleted along with the stack.
-      const log_group = new LogGroup(scope, `${constructId}-LogGroup`, {
+      const log_group = new LogGroup(this, `${constructId}LogGroup`, {
         logGroupName: `/aws/lambda/${props.functionName}`,
         removalPolicy: RemovalPolicy.DESTROY,
       });

@@ -8,13 +8,13 @@ export interface CognitoProps { distribution: { domainName:string } };
 
 export class CognitoConstruct extends Construct {
 
-  constructId: string;
-  scope: Construct;
-  context: IContext;
-  userPool: UserPool;
-  userPoolClient: UserPoolClient;
-  userPoolDomain: UserPoolDomain;
-  props: CognitoProps;
+  private constructId: string;
+  private scope: Construct;
+  private context: IContext;
+  private userPool: UserPool;
+  private userPoolClient: UserPoolClient;
+  private userPoolDomain: UserPoolDomain;
+  private props: CognitoProps;
 
   constructor(scope: Construct, constructId: string, props:CognitoProps) {
 
@@ -55,7 +55,7 @@ export class CognitoConstruct extends Construct {
       }
     });
 
-    this.userPoolClient = EttUserPoolClient.buildCustomScopedClient(this.userPool, 'default', {
+    this.userPoolClient = EttUserPoolClient.buildCustomScopedClient(this.userPool, 'entity-admin', {
       callbackDomainName: this.props.distribution.domainName,
     });
 
@@ -71,10 +71,6 @@ export class CognitoConstruct extends Construct {
         domainPrefix: `${this.context.STACK_ID}-${this.context.TAGS.Landscape}`,
       }
     });
-
-    // const baseUrl = this.userPoolDomain.baseUrl({fips: false});
-
-    // const signinUrl = this.userPoolDomain.signInUrl(this.userPoolClient, {signInPath:'logon',redirectUri:'TBD'});
 
     // TODO: figure out how to add an image for custom logo
     // https://github.com/aws/aws-cdk/issues/6953
@@ -92,10 +88,6 @@ export class CognitoConstruct extends Construct {
 
   public getUserPool(): UserPool {
     return this.userPool;
-  }
-
-  public getDefaultUserPoolClient(): UserPoolClient {
-    return this.userPoolClient;
   }
 
   public getUserPoolDomain(): string {

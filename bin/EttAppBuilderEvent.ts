@@ -4,7 +4,7 @@ import { CognitoConstruct } from "../lib/Cognito";
 import { StaticSiteConstruct } from "../lib/StaticSite";
 import { StaticSiteCustomInConstruct } from "../lib/StaticSiteCustomIn";
 import { AppBuilder } from "./EttAppBuilder";
-import { HelloWorldApi } from "../lib/HelloWorldApi";
+import { HelloWorldApi } from "../lib/api/HelloWorldApi";
 
 export class AppBuilderEvent extends AppBuilder {
 
@@ -26,7 +26,7 @@ export class AppBuilderEvent extends AppBuilder {
       domainName: this.cloudfront.getDistributionDomainName()
     }});
 
-    this.helloWorldApi = new HelloWorldApi(this.stack, 'HelloWorldLambda', {
+    this.helloWorldApi = new HelloWorldApi(this.stack, 'HelloWorld', {
       userPool: this.cognito.getUserPool(),
       cloudfrontDomain: this.cloudfront.getDistributionDomainName()
     });

@@ -1,5 +1,5 @@
 import { Duration } from "aws-cdk-lib";
-import { IUserPoolClient, OAuthScope, UserPool, UserPoolClient, UserPoolClientIdentityProvider, UserPoolClientProps } from "aws-cdk-lib/aws-cognito";
+import { OAuthScope, UserPool, UserPoolClient, UserPoolClientIdentityProvider, UserPoolClientProps } from "aws-cdk-lib/aws-cognito";
 
 export interface EttUserPoolClientProps { callbackDomainName:string, customScopes?:OAuthScope[] }
 
