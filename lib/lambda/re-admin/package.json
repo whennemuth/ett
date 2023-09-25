@@ -1,5 +1,5 @@
 {
-  "name": "ett-user-admin",
+  "name": "ett-re-admin",
   "version": "1.0.0",
   "description": "Actions available to an ETT registered entity administrator",
   "main": "index.mjs",

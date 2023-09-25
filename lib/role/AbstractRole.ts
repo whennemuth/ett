@@ -21,13 +21,15 @@ export interface ApiParms {
 
 /**
  * This class serves as a baseline for a role, upon which broad division for api access for the app is based -
- * That is, what kind of user is logged in through cognito. This class creates for the role an api, lambda function, 
- * user pool client, and oauth integration. All default settings can be override by subclasses.
+ * That is, what kind of user is logged in through cognito (or a private super user). 
+ * This class creates for the role an api, lambda function,  user pool client, and oauth integration. 
+ * All default settings can be override by subclasses.
  */
-export class AbstractApi extends Construct {
+export class AbstractRoleApi extends Construct {
 
   private restApiUrl: string;
   private userPoolClient: UserPoolClient;
+  private lambdaFunction: Function;
   
   constructor(scope: Construct, constructId: string, parms: ApiParms) {
 
@@ -36,6 +38,7 @@ export class AbstractApi extends Construct {
     const context: IContext = scope.node.getContext('stack-parms');
     const stageName = context.TAGS.Landscape;
     const { userPool, cloudfrontDomain, lambdaFunction, roleName, roleName:resourceServerId, description, bannerImage, resourceId, scopes, methods } = parms;
+    this.lambdaFunction = lambdaFunction;
 
     // Create a log group for the api gateway to log to.
     const log_group = new LogGroup(this, `RestApiLogGroup`, {
@@ -138,5 +141,9 @@ export class AbstractApi extends Construct {
 
   public getUserPoolClientId(): string {
     return this.userPoolClient.userPoolClientId;
+  }
+
+  public getLambdaFunction(): Function {
+    return this.lambdaFunction;
   }
 }

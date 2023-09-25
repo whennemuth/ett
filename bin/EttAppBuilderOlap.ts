@@ -1,7 +1,7 @@
 import { IContext } from "../contexts/IContext";
 import { CloudfrontConstruct } from "../lib/Cloudfront";
-import { CognitoConstruct } from "../lib/Cognito";
-import { HelloWorldApi } from "../lib/api/HelloWorldApi";
+import { CognitoConstruct } from "../lib/lambda/Cognito";
+import { HelloWorldApi } from "../lib/role/HelloWorld";
 import { StaticSiteCustomOutConstruct } from "../lib/StaticSiteCustomOut";
 import { AppBuilder } from "./EttAppBuilder";
 

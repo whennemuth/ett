@@ -1,11 +1,15 @@
 import { RemovalPolicy } from "aws-cdk-lib";
-import { AttributeType, Billing, TableV2, TableClass } from "aws-cdk-lib/aws-dynamodb";
+import { AttributeType, Billing, TableV2, TableClass, ProjectionType } from "aws-cdk-lib/aws-dynamodb";
 import { Construct } from "constructs";
 import { IContext } from "../contexts/IContext";
 
 export class DynamoDbConstruct extends Construct {
   
+  static DYNAMODB_TABLES_USERS_TABLE_NAME: string = 'ett-users';
+
   context: IContext;
+
+  private usersTable: TableV2;
   
   constructor(scope: Construct, constructId: string, props:any) {
 
@@ -13,17 +17,29 @@ export class DynamoDbConstruct extends Construct {
 
     this.context = scope.node.getContext('stack-parms');
 
-    const entityTable = new TableV2(this, 'DbUsers', {
-      tableName: 'Users',
-      partitionKey: { name: 'CognitoUserEmail', type: AttributeType.STRING },
+    this.usersTable = new TableV2(this, 'DbUsers', {
+      tableName: DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME,
+      partitionKey: { name: 'Email', type: AttributeType.STRING },
       sortKey: { name: 'EntityName', type: AttributeType.STRING },
       billing: Billing.onDemand(),
       tableClass: TableClass.STANDARD_INFREQUENT_ACCESS,
       removalPolicy: RemovalPolicy.DESTROY,
       pointInTimeRecovery: true,
-      deletionProtection: this.context.TAGS.Landscape == 'prod',      
+      deletionProtection: this.context.TAGS.Landscape == 'prod', 
+      globalSecondaryIndexes: [
+        {
+          indexName: 'EntityIndex',
+          partitionKey: { name: 'EntityName', type: AttributeType.STRING },
+          sortKey: { name: 'Email', type: AttributeType.STRING },
+          projectionType: ProjectionType.KEYS_ONLY,
+          // projectionType: ProjectionType.INCLUDE,
+          // nonKeyAttributes: [ role, disclosures, etc...]
+        }
+      ]    
     });
+  }
 
-
+  public getUsersTable(): TableV2 {
+    return this.usersTable;
   }
 }

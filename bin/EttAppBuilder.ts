@@ -1,19 +1,28 @@
 import { App, StackProps, CfnOutput } from 'aws-cdk-lib';
 import { IContext } from '../contexts/IContext';
-import { CognitoConstruct } from '../lib/Cognito';
+import { CognitoConstruct } from '../lib/lambda/Cognito';
 import { AbstractStack } from '../lib/AbstractStack';
 import { CloudfrontConstruct } from '../lib/Cloudfront';
 import { StaticSiteConstruct } from '../lib/StaticSite';
-import { HelloWorldApi } from '../lib/api/HelloWorldApi';
+import { DynamoDbConstruct } from "../lib/DynamoDb";
+import { HelloWorldApi } from '../lib/role/HelloWorld';
+import { ReAdminUserApi } from '../lib/role/ReAdmin';
 
+/**
+ * This abstract class provides baseline functionality via the template design pattern such that 
+ * all subclasses create the resources, but the shared functionality is "templated" here, like bucket 
+ * index file uploading, setting of cloudformation outputs, etc.
+ */
 export abstract class AppBuilder {
 
-  context: IContext;
-  stack: AbstractStack;
-  staticSite: StaticSiteConstruct;
-  cloudfront: CloudfrontConstruct;
-  cognito: CognitoConstruct;
+  protected context: IContext;
+  protected stack: AbstractStack;
+  protected staticSite: StaticSiteConstruct;
+  protected cloudfront: CloudfrontConstruct;
+  protected cognito: CognitoConstruct;
+  protected dynamodb: DynamoDbConstruct;
   helloWorldApi: HelloWorldApi;
+  protected reAdminApi: ReAdminUserApi;
   
   constructor(context:IContext) {
     this.context = context;
@@ -40,10 +49,13 @@ export abstract class AppBuilder {
 
   public build(): void {
 
+    // Build each resource for the stack.
     this.buildResources();
     
+    // Ensure that static html content is uploaded to the bucket that was created.
     this.staticSite.setIndexFileForUpload([ this.cloudfront, this.cognito]);
 
+    // Set the cloudformation outputs.
     new CfnOutput(this.stack, 'CloudFrontURL', {
       value: `https://${this.cloudfront.getDistributionDomainName()}`,
       description: 'The domain name of the Cloudfront Distribution, such as d111111abcdef8.cloudfront.net.'

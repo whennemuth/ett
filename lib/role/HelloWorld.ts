@@ -1,8 +1,9 @@
 import { ResourceServerScope, UserPool } from "aws-cdk-lib/aws-cognito";
+import { Function } from 'aws-cdk-lib/aws-lambda';
 import { AbstractFunction } from "../AbstractFunction";
 import { Construct } from "constructs";
 import { Code, Runtime } from "aws-cdk-lib/aws-lambda";
-import { AbstractApi } from "./AbstractRole";
+import { AbstractRoleApi } from "./AbstractRole";
 
 export interface HelloWorldParms {
   userPool: UserPool, 
@@ -11,7 +12,7 @@ export interface HelloWorldParms {
 
 export class HelloWorldApi extends Construct {
 
-  private api: AbstractApi;
+  private api: AbstractRoleApi;
 
   constructor(scope: Construct, constructId: string, parms: HelloWorldParms) {
 
@@ -46,7 +47,7 @@ export class HelloWorldApi extends Construct {
       };`
     )});
 
-    this.api = new AbstractApi(scope, `${constructId}Api`, {
+    this.api = new AbstractRoleApi(scope, `${constructId}Api`, {
       cloudfrontDomain,
       lambdaFunction,
       userPool,
@@ -68,5 +69,9 @@ export class HelloWorldApi extends Construct {
 
   public getUserPoolClientId(): string {
     return this.api.getUserPoolClientId();
+  }
+
+  public getLambdaFunction(): Function {
+    return this.api.getLambdaFunction();
   }
 }
