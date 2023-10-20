@@ -59,7 +59,7 @@ The following [jest documentation](https://jestjs.io/docs/ecmascript-modules) wa
 
 ### Gotchas:
 
-Use of the aws-sdk-client-mock mocking library will typically fail if your modules/functions under test are in a subdirectory for a nodejs code that is part of a lambda function, and therefore has its own node_modules directory within:
+Use of the [aws-sdk-client-mock](https://aws.amazon.com/blogs/developer/mocking-modular-aws-sdk-for-javascript-v3-in-unit-tests/) mocking library will typically fail if your modules/functions under test are in a subdirectory for a nodejs code that is part of a lambda function, and therefore has its own node_modules directory within:
 
 ```
 root

@@ -35,10 +35,12 @@ export class StaticSiteCustomInConstruct extends StaticSiteConstruct {
     const conversionFunction = new AbstractFunction(this, 'TextConverterFunction', {
       functionName,
       runtime: Runtime.NODEJS_18_X,
-      handler: 'Injector.handler',
+      // handler: 'Injector.handler',
+      handler: 'handler',
       logRetention: 7,
       cleanup: true,
-      code: Code.fromAsset(path.join(__dirname, `lambda/injector-event`)),
+      entry: path.join(__dirname, `lambda/functions/injector-event/injector.mjs`),
+      // code: Code.fromAsset(path.join(__dirname, `lambda/functions/injector-event`)),
       environment: {
         COGNITO_DOMAIN: inProps.cognitoDomain,
         CLIENT_ID: inProps.cognitoClientId,

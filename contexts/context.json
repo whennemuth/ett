@@ -1,10 +1,9 @@
 {
-  "SCENARIO": "default",
+  "SCENARIO": "dynamodb",
   "STACK_ID": "ett",
   "ACCOUNT": "037860335094",
   "REGION": "us-east-2",
   "BUCKET_NAME": "ett-static-site-content",
-  "BUCKET_OLAP": false,
   "TAGS": {
     "Service": "client",
     "Function": "ett",

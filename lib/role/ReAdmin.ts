@@ -1,11 +1,9 @@
 import { ResourceServerScope, UserPool } from "aws-cdk-lib/aws-cognito";
-import { AbstractFunction } from "../AbstractFunction";
 import { Construct } from "constructs";
-import { Runtime, Code } from "aws-cdk-lib/aws-lambda";
-import path = require("path");
 import { AbstractRoleApi } from "./AbstractRole";
 import { IContext } from "../../contexts/IContext";
-import { Function } from 'aws-cdk-lib/aws-lambda';
+import { Function, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { AbstractFunction } from "../AbstractFunction";
 import { DynamoDbConstruct } from "../DynamoDb";
 
 export interface AdminUserParms {
@@ -25,11 +23,16 @@ export class ReAdminUserApi extends Construct {
 
     const lambdaFunction = new AbstractFunction(scope, `${constructId}Lambda`, {
       runtime: Runtime.NODEJS_18_X,
-      handler: 'User.handler',
+      entry: 'lib/lambda/functions/re-admin/ReAdminUser.ts',
+      // handler: 'handler',
       functionName: `${constructId}Lambda`,
-      description: 'Just a simple lambda for testing cognito authorization',
+      description: 'Function for all re admin user activity.',
       cleanup: true,
-      code: Code.fromAsset(path.join(__dirname, `../lambda/re-admin`)),
+      bundling: {
+        externalModules: [
+          '@aws-sdk/*',
+        ]
+      },
       environment: {
         REGION: context.REGION,
         DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME

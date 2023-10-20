@@ -1,11 +1,11 @@
 import { RemovalPolicy } from 'aws-cdk-lib';
-import { Function, FunctionProps } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { IContext } from '../contexts/IContext';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { LogGroup } from 'aws-cdk-lib/aws-logs';
+import { NodejsFunction, NodejsFunctionProps } from 'aws-cdk-lib/aws-lambda-nodejs';
 
-export interface AbstractFunctionProps extends FunctionProps {
+export interface AbstractFunctionProps extends NodejsFunctionProps {
   cleanup?: boolean
 };
 
@@ -13,7 +13,7 @@ export interface AbstractFunctionProps extends FunctionProps {
  * Abstract class for lambda functions to extend so as to acquire some boilerplate functionality, among
  * which is the automatic cleanup of function logs when the stack the lambda function belongs to is deleted.
  */
-export class AbstractFunction extends Function {
+export class AbstractFunction extends NodejsFunction {
   constructId: string;
   context: IContext;
   scope: Construct;

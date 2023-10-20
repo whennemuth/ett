@@ -1,9 +1,10 @@
 import { ResourceServerScope, UserPool } from "aws-cdk-lib/aws-cognito";
 import { Function } from 'aws-cdk-lib/aws-lambda';
-import { AbstractFunction } from "../AbstractFunction";
 import { Construct } from "constructs";
 import { Code, Runtime } from "aws-cdk-lib/aws-lambda";
 import { AbstractRoleApi } from "./AbstractRole";
+import { LogGroup } from "aws-cdk-lib/aws-logs";
+import { RemovalPolicy } from "aws-cdk-lib";
 
 export interface HelloWorldParms {
   userPool: UserPool, 
@@ -20,12 +21,11 @@ export class HelloWorldApi extends Construct {
 
     const { userPool, cloudfrontDomain } = parms;
 
-    const lambdaFunction = new AbstractFunction(scope, `${constructId}Lambda`, {
+    const lambdaFunction = new Function(scope, `${constructId}Lambda`, {
       runtime: Runtime.NODEJS_18_X,
       handler: 'index.handler',
       functionName: `${constructId}Lambda`,
       description: 'Just a simple lambda for testing cognito authorization',
-      cleanup: true,
       code: Code.fromInline(`
       exports.handler = async (event) => {
         console.log(JSON.stringify(event, null, 2));
@@ -47,6 +47,13 @@ export class HelloWorldApi extends Construct {
       };`
     )});
 
+    const log_group = new LogGroup(this, `${constructId}LogGroup`, {
+      logGroupName: `/aws/lambda/${constructId}Lambda`,
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+
+    log_group.grantWrite(lambdaFunction);
+    
     this.api = new AbstractRoleApi(scope, `${constructId}Api`, {
       cloudfrontDomain,
       lambdaFunction,

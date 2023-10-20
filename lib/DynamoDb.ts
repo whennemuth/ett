@@ -2,6 +2,7 @@ import { RemovalPolicy } from "aws-cdk-lib";
 import { AttributeType, Billing, TableV2, TableClass, ProjectionType } from "aws-cdk-lib/aws-dynamodb";
 import { Construct } from "constructs";
 import { IContext } from "../contexts/IContext";
+import { UserFields } from "./lambda/dao/entity";
 
 export class DynamoDbConstruct extends Construct {
   
@@ -19,8 +20,8 @@ export class DynamoDbConstruct extends Construct {
 
     this.usersTable = new TableV2(this, 'DbUsers', {
       tableName: DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME,
-      partitionKey: { name: 'Email', type: AttributeType.STRING },
-      sortKey: { name: 'EntityName', type: AttributeType.STRING },
+      partitionKey: { name: UserFields.email, type: AttributeType.STRING },
+      sortKey: { name: UserFields.entity_name, type: AttributeType.STRING },
       billing: Billing.onDemand(),
       tableClass: TableClass.STANDARD_INFREQUENT_ACCESS,
       removalPolicy: RemovalPolicy.DESTROY,
@@ -29,8 +30,8 @@ export class DynamoDbConstruct extends Construct {
       globalSecondaryIndexes: [
         {
           indexName: 'EntityIndex',
-          partitionKey: { name: 'EntityName', type: AttributeType.STRING },
-          sortKey: { name: 'Email', type: AttributeType.STRING },
+          partitionKey: { name: UserFields.entity_name, type: AttributeType.STRING },
+          sortKey: { name: UserFields.email, type: AttributeType.STRING },
           projectionType: ProjectionType.KEYS_ONLY,
           // projectionType: ProjectionType.INCLUDE,
           // nonKeyAttributes: [ role, disclosures, etc...]

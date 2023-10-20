@@ -16,7 +16,7 @@ This repository comprises a cloud-based implementation of the [Ethical Transpare
 Build the entire application and AWS infrastructure from scratch.
 
 1. Clone this repository
-   
+  
 1. Create a `./context/context.json` file.
    This file will contain all parameters that the cdk will use when generating the Cloudformation template it later deploys. Most of these parameters correspond to something one might otherwise use as values being supplied to Cloudformation if it were being invoked directly, but they will appear "hard-coded" in the stack template. [From CDK docs on parameters](https://docs.aws.amazon.com/cdk/v2/guide/parameters.html):
 
@@ -59,7 +59,7 @@ Build the entire application and AWS infrastructure from scratch.
 
    ```
    mkdir ./cdk.out 2> /dev/null
-   cdk synth --profile my_named_profile &> cdk.out/ett.template.yaml
+   cdk synth &> cdk.out/ett.template.yaml
    ```
 
    *NOTE: The synth command will create a .json file, but will also output yaml to stdout. The command above redirects that output to a yaml file alongside the json file.*
@@ -86,10 +86,10 @@ Build the entire application and AWS infrastructure from scratch.
    Place a breakpoint at the desired location and run the launch configuration.
 
 6. Enable API Gateway Logging for the account. Follow [these directions](./docs/EnableApiGatewayLogging.md)
-   
+  
 6. Run the [CDK deploy command](https://docs.aws.amazon.com/cdk/v2/guide/cli.html#cli-deploy) to create the stack:
 
    ```
-   cdk deploy --profile my_named_profile --no-rollback
+   cdk deploy --no-rollback
    ```
 
