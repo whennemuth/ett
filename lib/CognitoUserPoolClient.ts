@@ -1,26 +1,35 @@
 import { Duration } from "aws-cdk-lib";
 import { OAuthScope, UserPool, UserPoolClient, UserPoolClientIdentityProvider, UserPoolClientProps } from "aws-cdk-lib/aws-cognito";
+import { Role } from './lambda/dao/entity';
 
-export interface EttUserPoolClientProps { callbackDomainName:string, customScopes?:OAuthScope[] }
+export interface EttUserPoolClientProps { callbackDomainName:string, role:Role, customScopes?:OAuthScope[] }
 
 /**
  * Static factory class for producing a UserPoolClients universal characteristics preset, but custom scopes injected. 
  */
 export class EttUserPoolClient extends UserPoolClient {
   
+  private role:Role;
+
   constructor(userPool: UserPool, id: string, props: UserPoolClientProps) {    
     super(userPool, `${id}-userpool-client`, props);
   }
 
-  public static buildCustomScopedClient(userPool: UserPool, id: string, props: EttUserPoolClientProps): UserPoolClient {
+  public getRole(): Role {
+    return this.role;
+  }
+
+  public static buildCustomScopedClient(userPool: UserPool, id: string, props: EttUserPoolClientProps): EttUserPoolClient {
     
     let scopes:OAuthScope[] = [ OAuthScope.EMAIL, OAuthScope.PHONE, OAuthScope.PROFILE ];
-    if(props.customScopes) {
-      scopes = scopes.concat(props.customScopes);
+    const {customScopes, callbackDomainName, role } = props;
+    if(customScopes) {
+      scopes = scopes.concat(customScopes);
     }
 
-    return new EttUserPoolClient(userPool, id, {
+    const client = new EttUserPoolClient(userPool, id, {
       userPool,
+      userPoolClientName: `${role}-ett-userpool-client`,
       supportedIdentityProviders: [ UserPoolClientIdentityProvider.COGNITO ],
       oAuth: {
         flows: {
@@ -29,18 +38,22 @@ export class EttUserPoolClient extends UserPoolClient {
         },
         scopes,
         callbackUrls: [
-          `https://${props.callbackDomainName}/index.htm`,
-          `https://${props.callbackDomainName}/index.htm?action=login`,
-          `https://${props.callbackDomainName}/index.htm?action=signedup`,
+          `https://${callbackDomainName}/index.htm`,
+          `https://${callbackDomainName}/index.htm?action=login`,
+          `https://${callbackDomainName}/index.htm?action=signedup`,
         ],
         logoutUrls: [
-          `https://${props.callbackDomainName}/index.htm?action=logout`,
+          `https://${callbackDomainName}/index.htm?action=logout`,
         ]
       },
       accessTokenValidity: Duration.days(1),
       idTokenValidity: Duration.days(1),
       refreshTokenValidity: Duration.days(7),
       authSessionValidity: Duration.minutes(5)
-    })
+    });
+
+    client.role = role;
+
+    return client;
   }
 }

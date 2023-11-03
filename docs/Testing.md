@@ -5,12 +5,10 @@ An attempt is made to follow test-driven development.
 
 ### ESM support
 
-In order to allow jest to test against ECMAScript Modules, it is necessary to activate its experimental support for ESM.
+In order to allow jest to test against [ECMAScript Modules](https://nodejs.org/api/esm.html#modules-ecmascript-modules), it is necessary to activate its experimental support for ESM.
 The following [jest documentation](https://jestjs.io/docs/ecmascript-modules) was followed in order to do this, but a few things are worth pointing out that were encountered while getting this to work:
 
 - Do NOT explicitly mark the nodejs project as using modules by putting `"type": "module"` into the package.json file.
-
-- Make sure that files under test and the test files themselves have the `.mjs` extension.
 
 - One could activate the ESM support by exporting the necessary environment variable:
 
@@ -56,6 +54,40 @@ The following [jest documentation](https://jestjs.io/docs/ecmascript-modules) wa
   
   With this launch configuration, you can place a breakpoint inside your tests, or the file under test and step through the code.
   *NOTE: If on windows, the `--runTestsByPath` jest argument is necessary*
+
+### Launch configurations:
+
+Part of testing includes mocking for lambda functions. In particular, it is helpful in typescript to have the [event object](https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-concepts.html#gettingstarted-concepts-event) mocked.
+The AWS article ["Using types for the event object"](https://docs.aws.amazon.com/lambda/latest/dg/typescript-handler.html#event-types) explains how to do this, but here are the relevant steps:
+
+1. [Install the SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html)
+
+2. install [quicktype](https://quicktype.io/typescript):
+
+   ```
+   npm install -g quicktype
+   ```
+
+3. Create a sample event:
+
+   ```
+   cd lib/lambda/lib
+   sam local generate-event cloudfront simple-remote-call > sp-event.json
+   ```
+
+4. Extract a type from the sample event:
+
+   ```
+   quicktype sp-event.json -o SimpleRemoteCall.ts
+   ```
+
+5. For any lambda entry-point file that expects to process such an event, you can now type the event object passed to the handler:
+
+   ```
+   import { SimpleRemoteCall, Request as BasicRequest } from './lib/SimpleRemoteCall';
+   ...
+   export const handler =  async (event:SimpleRemoteCall) => {
+   ```
 
 ### Gotchas:
 

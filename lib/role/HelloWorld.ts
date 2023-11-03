@@ -5,6 +5,7 @@ import { Code, Runtime } from "aws-cdk-lib/aws-lambda";
 import { AbstractRoleApi } from "./AbstractRole";
 import { LogGroup } from "aws-cdk-lib/aws-logs";
 import { RemovalPolicy } from "aws-cdk-lib";
+import { Roles } from  '../lambda/dao/entity';
 
 export interface HelloWorldParms {
   userPool: UserPool, 
@@ -58,7 +59,7 @@ export class HelloWorldApi extends Construct {
       cloudfrontDomain,
       lambdaFunction,
       userPool,
-      roleName: 'hello-world',
+      role: Roles.HELLO_WORLD,
       description: 'Simple hello world api for initial proving of authentication and scopes',
       bannerImage: 'client-hello-world.png',
       resourceId: 'greeting',

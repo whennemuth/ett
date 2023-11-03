@@ -9,10 +9,8 @@ import { CloudfrontConstruct } from '../lib/Cloudfront';
 import { CognitoConstruct } from '../lib/Cognito';
 import { DynamoDbConstruct } from '../lib/DynamoDb';
 import { HelloWorldApi } from '../lib/role/HelloWorld';
-import { ReAdminUserApi } from '../lib/role/ReAdmin';
+import { ReAdminUserApi, LambdaFunction } from '../lib/role/ReAdmin';
 import { StaticSiteCustomInConstruct } from '../lib/StaticSiteCustomIn';
-import { AbstractFunction } from '../lib/AbstractFunction';
-import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import path = require('path');
 
 const context:IContext = <IContext>ctx;
@@ -22,7 +20,7 @@ app.node.setContext('stack-parms', context);
 const stackName = `${context.STACK_ID}-${context.TAGS.Landscape}`;
 
 const stackProps: StackProps = {
-  stackName: stackName,
+  stackName,
   description: 'Ethical transparency tool',
   env: {
     account: context.ACCOUNT,
@@ -47,12 +45,10 @@ const buildAll = () => {
   const cloudfront = new CloudfrontConstruct(stack, 'EttCloudfront', { bucket });
 
   // Set up the cognito userpool and userpool client
-  const cognito = new CognitoConstruct(stack, 'EttCognito', { distribution: {
-    domainName: cloudfront.getDistributionDomainName()
-  }});
+  const cognito = new CognitoConstruct(stack, 'EttCognito');
 
   // Set up the dynamodb table for users.
-  const dynamodb = buildDynamoDb();
+  const dynamodb = new DynamoDbConstruct(stack, 'EttDynamodb', { });
 
   // Set up the api gateway resources.
   const apiParms = {
@@ -107,29 +103,8 @@ const buildAll = () => {
 
 const buildDynamoDb = (): DynamoDbConstruct => {
   const db = new DynamoDbConstruct(stack, 'EttDynamodb', { });
-
-  // const lambdaFunction = new ReAdminUserLambda(stack, 'ReAdminUserLambda').getLambdaFunction();
-
-  const lambdaFunction = new AbstractFunction(stack, 'ReAdminUserLambda', {
-    runtime: Runtime.NODEJS_18_X,
-    entry: 'lib/lambda/functions/re-admin/ReAdminUser.ts',
-    // handler: 'handler',
-    functionName: 'ReAdminUserLambda',
-    description: 'Function for all re admin user activity.',
-    cleanup: true,
-    bundling: {
-      externalModules: [
-        '@aws-sdk/*',
-      ]
-    },
-    environment: {
-      REGION: context.REGION,
-      DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME
-    }
-  });
-
+  const lambdaFunction = new LambdaFunction(stack, 'ReAdminUserLambda');
   db.getUsersTable().grantReadWriteData(lambdaFunction);
-
   return db;
 }
 

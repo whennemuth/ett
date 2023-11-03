@@ -1,10 +1,10 @@
 import { ResourceServerScope, UserPool } from "aws-cdk-lib/aws-cognito";
 import { Construct } from "constructs";
 import { AbstractRoleApi } from "./AbstractRole";
-import { IContext } from "../../contexts/IContext";
 import { Function, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { AbstractFunction } from "../AbstractFunction";
 import { DynamoDbConstruct } from "../DynamoDb";
+import { Roles } from '../lambda/dao/entity';
 
 export interface AdminUserParms {
   userPool: UserPool, 
@@ -19,31 +19,13 @@ export class ReAdminUserApi extends Construct {
     super(scope, constructId);
 
     const { userPool, cloudfrontDomain } = parms;
-    const context: IContext = scope.node.getContext('stack-parms');
-
-    const lambdaFunction = new AbstractFunction(scope, `${constructId}Lambda`, {
-      runtime: Runtime.NODEJS_18_X,
-      entry: 'lib/lambda/functions/re-admin/ReAdminUser.ts',
-      // handler: 'handler',
-      functionName: `${constructId}Lambda`,
-      description: 'Function for all re admin user activity.',
-      cleanup: true,
-      bundling: {
-        externalModules: [
-          '@aws-sdk/*',
-        ]
-      },
-      environment: {
-        REGION: context.REGION,
-        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME
-      }
-    });
+    const lambdaFunction = new LambdaFunction(scope, `${constructId}Lambda`);
 
     this.api = new AbstractRoleApi(scope, `${constructId}Api`, {
       cloudfrontDomain,
       lambdaFunction,
       userPool,
-      roleName: 're-admin',
+      role: Roles.RE_ADMIN,
       description: 'Api for all operations that are open to a registered entity administrator',
       bannerImage: 'client-admin.png',
       resourceId: 'admin',
@@ -72,5 +54,29 @@ export class ReAdminUserApi extends Construct {
   public getLambdaFunction(): Function {
     return this.api.getLambdaFunction();
   }
+}
 
+/**
+ * Just the lambda function without the api gateway and cognito scoping resources.
+ */
+export class LambdaFunction extends AbstractFunction {
+  constructor(scope: Construct, constructId: string) {
+    super(scope, constructId, {
+      runtime: Runtime.NODEJS_18_X,
+      entry: 'lib/lambda/functions/re-admin/ReAdminUser.ts',
+      // handler: 'handler',
+      functionName: constructId,
+      description: 'Function for all re admin user activity.',
+      cleanup: true,
+      bundling: {
+        externalModules: [
+          '@aws-sdk/*',
+        ]
+      },
+      environment: {
+        REGION: scope.node.getContext('stack-parms').REGION,
+        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME
+      }
+    });
+  }
 }

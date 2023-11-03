@@ -12,22 +12,43 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Test RE-Admin",
+      "name": "Admin user CRUD",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/dao/test/dao-launcher.ts",
+        "delete"
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "DYNAMODB_USER_TABLE_NAME": "ett-users",
+        "REGION": "us-east-2"
+      }   
+    },
+
+    // JEST TESTS
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest DAO crud",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
         "--runTestsByPath", 
         "-i", 
-        "${workspaceFolder}/lib/lambda/functions/re-admin/ReAdminUser.test.mjs" 
+        "${workspaceFolder}/lib/lambda/dao/test/dao.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
-      "env": { "DYNAMODB_USER_TABLE_NAME": "ett-users" }
+      "env": {
+        "DYNAMODB_USER_TABLE_NAME": "ett-users",
+        "ACTION_TO_TEST": ""
+      }
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Test DAO builder",
+      "name": "Jest DAO builder",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
         "--runTestsByPath", 
@@ -37,23 +58,43 @@
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
-      "env": { "DYNAMODB_USER_TABLE_NAME": "ett-users" }
+      "env": { 
+        "DYNAMODB_USER_TABLE_NAME": "ett-users"
+      }
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Admin user CRUD",
-      "skipFiles": [ "<node_internals>/**" ],
-      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
-      "args": [
-        "${workspaceFolder}/lib/lambda/launcher.ts",
-        "test"
-      ], 
+      "name": "Jest RE-Admin Lambda",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "-i", 
+        "${workspaceFolder}/lib/lambda/functions/re-admin/ReAdminUser.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
       "env": {
-        "AWS_PROFILE": "bu",
+        "DYNAMODB_USER_TABLE_NAME": "ett-users"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest PostSignup Lambda",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "-i", 
+        "${workspaceFolder}/lib/lambda/functions/cognito/PostSignup.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "env": { 
         "DYNAMODB_USER_TABLE_NAME": "ett-users",
-        "REGION": "us-east-2"
-      }   
+      }
     }
   ]
 }

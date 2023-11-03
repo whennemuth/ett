@@ -6,12 +6,13 @@ import { Duration, RemovalPolicy } from "aws-cdk-lib";
 import { AccessLogFormat, CognitoUserPoolsAuthorizer, Cors, LambdaIntegration, LogGroupLogDestination, MethodLoggingLevel, RestApi } from "aws-cdk-lib/aws-apigateway";
 import { Function } from 'aws-cdk-lib/aws-lambda';
 import { EttUserPoolClient } from "../CognitoUserPoolClient";
+import { Role } from '../lambda/dao/entity';
 
 export interface ApiParms {
   userPool: UserPool, 
   cloudfrontDomain: string,
   lambdaFunction: Function,
-  roleName: string,
+  role: Role,
   description: string,
   bannerImage: string,
   resourceId: string,
@@ -21,9 +22,9 @@ export interface ApiParms {
 
 /**
  * This class serves as a baseline for a role, upon which broad division for api access for the app is based -
- * That is, what kind of user is logged in through cognito (or a private super user). 
- * This class creates for the role an api, lambda function,  user pool client, and oauth integration. 
- * All default settings can be override by subclasses.
+ * that is, what kind of user is logged in through cognito (or a private super user). 
+ * This class creates for the role an api, lambda function, user pool client, and oauth integration. 
+ * All default settings can be overridden by subclasses.
  */
 export class AbstractRoleApi extends Construct {
 
@@ -37,7 +38,7 @@ export class AbstractRoleApi extends Construct {
     
     const context: IContext = scope.node.getContext('stack-parms');
     const stageName = context.TAGS.Landscape;
-    const { userPool, cloudfrontDomain, lambdaFunction, roleName, roleName:resourceServerId, description, bannerImage, resourceId, scopes, methods } = parms;
+    const { userPool, cloudfrontDomain, lambdaFunction, role, role:resourceServerId, description, bannerImage, resourceId, scopes, methods } = parms;
     this.lambdaFunction = lambdaFunction;
 
     // Create a log group for the api gateway to log to.
@@ -49,7 +50,7 @@ export class AbstractRoleApi extends Construct {
     // Create the api gateway REST api.
     const api = new RestApi(this, `LambdaRestApi`, {
       description,
-      restApiName: `${roleName}-rest-api-${stageName}`,
+      restApiName: `${role}-rest-api-${stageName}`,
       deployOptions: { 
         stageName,
         accessLogDestination: new LogGroupLogDestination(log_group),
@@ -103,18 +104,19 @@ export class AbstractRoleApi extends Construct {
     });
 
     // Create a user pool client for this role and its scopes.
-    this.userPoolClient = EttUserPoolClient.buildCustomScopedClient(userPool, roleName, {
+    this.userPoolClient = EttUserPoolClient.buildCustomScopedClient(userPool, role, {
       callbackDomainName: cloudfrontDomain,
+      role,
       customScopes: scopes.map((scope: ResourceServerScope) => {
         return OAuthScope.resourceServer(resourceServer, scope)
       }),
     });
-    
+
     /**
      * Adding a custom logo image is problematic with cloudformation: https://github.com/aws/aws-cdk/issues/6953.
      * However, the css of the top banner can be modified to point at an image url, so that is just as good.
      */
-    const uiAttachment = new CfnUserPoolUICustomizationAttachment(
+    new CfnUserPoolUICustomizationAttachment(
       this,
       `${constructId}UIAttachment`,
       {

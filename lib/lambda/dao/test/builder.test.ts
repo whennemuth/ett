@@ -1,3 +1,4 @@
+import { UpdateItemCommandInput } from '@aws-sdk/client-dynamodb';
 import { Builder, getBuilderInstance } from '../builder';
 import { User, UserFields, YN } from '../entity';
 
@@ -35,11 +36,23 @@ const testBuildUpdate = () => {
   const builder:Builder = getBuilderInstance(input, TableName);
  
   describe('buildUpdateItem', () => {
-    it('Should return predicted values except update_timestamp, which should be between two points in time.', async() => {
-      const output = builder.buildUpdateItem();
-      expect(output).toMatchObject(expectedOutput);
-    })
-    // RESUME NEXT: Create a string to date function and perform 2 asserts against the returned update_timestamp field
+    const before = Date.now();
+    let isoTimestamp:number = 0;
+
+    it('Should return an object whose properties match predicted values, excluding update_timestamp.', () => {
+      const output:UpdateItemCommandInput = builder.buildUpdateItem();
+      expect(output).toMatchObject(expectedOutput); // Note: not using toEqual because excluding update_timestamp
+      isoTimestamp = Date.parse((output.ExpressionAttributeValues || {})[':v2'].S || '');
+    });
+
+    it('Should return and update_timestamp for a time after the test began.', () => {
+      expect(isoTimestamp).toBeGreaterThanOrEqual(before);
+    });
+
+    it('Should return and update_timestamp for a time before now.', () => {
+      const after = Date.now();
+      expect(isoTimestamp).toBeLessThanOrEqual(after);
+    });
   });
   
 }

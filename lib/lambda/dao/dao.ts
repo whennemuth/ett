@@ -1,14 +1,31 @@
-import { DynamoDBClient, PutItemCommand, GetItemCommand, QueryCommand, UpdateItemCommand, AttributeValue } from '@aws-sdk/client-dynamodb'
-import { User, UserFields, YN } from './entity';
+import { DynamoDBClient, PutItemCommand, GetItemCommand, QueryCommand, UpdateItemCommand, AttributeValue, UpdateItemCommandInput, DeleteItemCommand } from '@aws-sdk/client-dynamodb'
+import { User, UserFields, YN, Validator } from './entity';
 import { Builder, getBuilderInstance } from './builder'; 
 
 const dbclient = new DynamoDBClient({ region: process.env.REGION });
+const validator = Validator();
 
-export type DAO = { create(): any; read(): any; update(): any; query(): any; _delete(): any; test(): any };
+export type DAO = { 
+  create():Promise<any>; 
+  read():Promise<User|User[]>; 
+  update():Promise<any>; 
+  Delete():Promise<any>; 
+  test():Promise<any> 
+};
 
 export class DAOFactory {
   constructor() { }
+  
   public static getInstance(userinfo:any): DAO {
+    const { email, entity_name, role='', fullname='', active='' } = userinfo;
+    
+    if( role && ! validator.isRole(role)) {
+      throw new Error(`Invalid role specified: ${role}`);
+    }
+    if( active && ! validator.isYesNo(active)) {
+      throw new Error(`Invalid Y/N active field value specified: ${active}`);
+    }
+
     return crud(userinfo);
   }
 }
@@ -20,7 +37,7 @@ export class DAOFactory {
  */
 export function crud(userinfo:User): DAO {
 
-  const { email, entity_name, role="", fullname="", active=YN.Yes } = userinfo;
+  const { email, entity_name, role='', fullname='', active=YN.Yes } = userinfo;
 
   /**
    * Create a new user.
@@ -38,34 +55,45 @@ export function crud(userinfo:User): DAO {
     const params = {
       TableName: process.env.DYNAMODB_USER_TABLE_NAME,
       Item: { 
-        email: { S: email }, 
-        entity_name: { S: entity_name }, 
-        fullname: { S: fullname },
-        role: { S: role },
-        create_timestamp: { S: dte},
-        update_timestamp: { S: dte},
-        active: { S: active },
+        [UserFields.email]: { S: email }, 
+        [UserFields.entity_name]: { S: entity_name }, 
+        [UserFields.fullname]: { S: fullname },
+        [UserFields.role]: { S: role },
+        // https://aws.amazon.com/blogs/database/working-with-date-and-timestamp-data-types-in-amazon-dynamodb/
+        [UserFields.create_timestamp]: { S: dte},
+        [UserFields.update_timestamp]: { S: dte},
+        [UserFields.active]: { S: active },
       }
     };
     const command = new PutItemCommand(params);
-    return sendCommand(command);
+    return await sendCommand(command);
+  }
+
+  const read = async ():Promise<User|User[]> => {
+    if(userinfo.entity_name) {
+      return await _read() as User;
+    }
+    else {
+      return await _query() as User[];
+    }
   }
 
   /**
    * Get a single record for a user in association with a specific registered entity.
    * @returns 
    */
-  const read = async () => {
+  const _read = async ():Promise<User> => {
     console.log(`Reading ${email} / ${entity_name}`);
     const params = {
       TableName: process.env.DYNAMODB_USER_TABLE_NAME,
       Key: { 
-        email: { S: email, },
-        entity_name: { S: entity_name }
+        [UserFields.email]: { S: email, },
+        [UserFields.entity_name]: { S: entity_name }
       }
     };
     const command = new GetItemCommand(params);
-    return sendCommand(command);
+    const retval = await sendCommand(command);
+    return await loadUser(retval.Item) as User;
   }
 
   /**
@@ -73,7 +101,7 @@ export function crud(userinfo:User): DAO {
    * That is, without specifying the sort key (entity_name), you could get multiple entries for the user across different entities.
    * @returns 
    */
-  const query = async () => {
+  const _query = async ():Promise<User[]> => {
     console.log(`Reading ${email}`);
     const params = {
       TableName: process.env.DYNAMODB_USER_TABLE_NAME,
@@ -83,7 +111,12 @@ export function crud(userinfo:User): DAO {
       KeyConditionExpression: `${UserFields.email} = :v1`
     };
     const command = new QueryCommand(params);
-    return sendCommand(command);
+    const retval = await sendCommand(command);
+    const users = [] as User[];
+    for(const item in retval.Items) {
+      users.push(await loadUser(retval.Items[item]));
+    }
+    return users as User[];
   }
 
   /**
@@ -92,11 +125,20 @@ export function crud(userinfo:User): DAO {
    * @returns 
    */
   const update = async () => {
+    if( ! email ) {
+      throw new Error(`User update error: email is missing.`);
+    }
+    else if( ! entity_name ) {
+      throw new Error(`User update error: entity name missing for ${email}`);
+    }
+    else if( Object.keys(userinfo).length == 2 ) {
+      throw new Error(`User update error: No fields to update for ${entity_name}: ${email}`);
+    }
     console.log(`Updating ${email} / ${entity_name}`);
     const builder:Builder = getBuilderInstance(userinfo, process.env.DYNAMODB_USER_TABLE_NAME || '');
-    const input = builder.buildUpdateItem();
+    const input:UpdateItemCommandInput = builder.buildUpdateItem();
     const command = new UpdateItemCommand(input);
-    return sendCommand(command);
+    return await sendCommand(command);
   }
 
   /**
@@ -105,8 +147,43 @@ export function crud(userinfo:User): DAO {
    * This is probably not a function you want to expose too publicly, favoring a deactivate method in client
    * code that calls the update function to toggle the active field to "N".
    */
-  const _delete = async () => {
+  const Delete = async () => {
+    if( ! email ) {
+      throw new Error(`User delete error: email is missing.`);
+    }
+    else if( ! entity_name ) {
+      throw new Error(`User update error: entity name missing for ${email}`);
+    }
+    const input = {
+      TableName: process.env.DYNAMODB_USER_TABLE_NAME,
+      Key: { 
+        [UserFields.email]: { S: email, },
+        [UserFields.entity_name]: { S: entity_name, },
+      }
+    };
 
+    if(hasSortKey()) {
+      // Add the sort key. Only one item will be deleted.
+      Object.defineProperty(input.Key, UserFields.entity_name, { S: entity_name } as AttributeValue);
+    }
+    const command = new DeleteItemCommand(input);
+    return await sendCommand(command);
+  }
+
+  const hasSortKey = () => { return userinfo.entity_name || false; }
+
+  const loadUser = async (user:any):Promise<User> => {
+    return new Promise( resolve => {
+      resolve({
+        [UserFields.email]: user[UserFields.email].S,
+        [UserFields.entity_name]: user[UserFields.entity_name].S,
+        [UserFields.role]: user[UserFields.role].S,
+        [UserFields.fullname]: user[UserFields.fullname].S,
+        [UserFields.active]: user[UserFields.active].S,
+        [UserFields.create_timestamp]: user[UserFields.create_timestamp].S,
+        [UserFields.update_timestamp]: user[UserFields.update_timestamp].S
+      } as User);
+    });
   }
 
   /**
@@ -125,12 +202,11 @@ export function crud(userinfo:User): DAO {
     return response;
   }
 
-  const test = () => {
-    // Not async ok?
-    read();
+  const test = async () => {
+    await read();
   }
   
   return {
-    create, read, update, _delete, query, test,
+    create, read, update, Delete, test,
   }
 }

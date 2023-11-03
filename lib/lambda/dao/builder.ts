@@ -32,10 +32,8 @@ export function getBuilderInstance(userinfo:User, TableName:string): Builder {
      * @param fldVal 
      */
     const addNameValuePair = (fldName:string, fldVal:string) => {
-      if(item.ExpressionAttributeNames) 
-        item.ExpressionAttributeNames[`#f${i}`] = fldName || '';
-      if(item.ExpressionAttributeValues) 
-        item.ExpressionAttributeValues[`:v${i}`] = { S: fldVal };
+      (item.ExpressionAttributeNames || {})[`#f${i}`] = fldName || '';
+      (item.ExpressionAttributeValues || {})[`:v${i}`] = { S: fldVal };
       item.UpdateExpression += `#f${i} = :v${i}, `;
     }
     

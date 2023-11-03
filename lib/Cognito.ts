@@ -1,34 +1,37 @@
 import { Construct } from 'constructs';
 import { IContext } from '../contexts/IContext';
-import { UserPool, UserPoolClient, UserPoolDomain, AccountRecovery, StringAttribute } from 'aws-cdk-lib/aws-cognito';
+import { UserPool, UserPoolDomain, AccountRecovery, StringAttribute } from 'aws-cdk-lib/aws-cognito';
 import { Duration, RemovalPolicy } from 'aws-cdk-lib';
-import { EttUserPoolClient } from './CognitoUserPoolClient';
-
-export interface CognitoProps { distribution: { domainName:string } };
+import { AbstractFunction } from './AbstractFunction';
+import { Runtime } from 'aws-cdk-lib/aws-lambda';
+import path = require('path');
 
 export class CognitoConstruct extends Construct {
 
   private constructId: string;
-  private scope: Construct;
   private context: IContext;
   private userPool: UserPool;
-  private userPoolClient: UserPoolClient;
   private userPoolDomain: UserPoolDomain;
-  private props: CognitoProps;
 
-  constructor(scope: Construct, constructId: string, props:CognitoProps) {
+  constructor(scope: Construct, constructId: string) {
 
     super(scope, constructId);
 
-    this.scope = scope;
     this.constructId = constructId;
     this.context = scope.node.getContext('stack-parms');
-    this.props = props;
-
     this.buildResources();
   }
 
   buildResources(): void {
+
+    const postSignupFunction = new AbstractFunction(this, 'PostSignupFunction', {
+      functionName: `${this.constructId}-userpool-lambda`,
+      runtime: Runtime.NODEJS_18_X,
+      handler: 'handler',
+      logRetention: 7,
+      cleanup: true,
+      entry: path.join(__dirname, `lambda/functions/cognito/PostSignup.ts`),
+    });
 
     this.userPool = new UserPool(this, 'UserPool', {
       removalPolicy: RemovalPolicy.DESTROY,
@@ -52,21 +55,14 @@ export class CognitoConstruct extends Construct {
       standardAttributes: {
         fullname: { required: true, mutable: true },
         nickname: { required: false, mutable: true }
+      },
+      lambdaTriggers: {
+        postConfirmation: postSignupFunction
       }
-    });
-
-    this.userPoolClient = EttUserPoolClient.buildCustomScopedClient(this.userPool, 'entity-admin', {
-      callbackDomainName: this.props.distribution.domainName,
     });
 
     this.userPoolDomain = new UserPoolDomain(this, 'Domain', {
       userPool: this.userPool,
-      cognitoDomain: {
-        domainPrefix: `${this.context.STACK_ID}-${this.context.TAGS.Landscape}`,
-      }
-    });
-
-    this.userPool.addDomain('Domain', {
       cognitoDomain: {
         domainPrefix: `${this.context.STACK_ID}-${this.context.TAGS.Landscape}`,
       }
