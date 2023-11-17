@@ -5,12 +5,12 @@ import { IContext, SCENARIO } from '../contexts/IContext';
 import { App, CfnOutput, StackProps } from 'aws-cdk-lib';
 import { AbstractStack } from '../lib/AbstractStack';
 import { StaticSiteConstruct } from '../lib/StaticSite';
-import { CloudfrontConstruct } from '../lib/Cloudfront';
+import { CloudfrontConstruct, CloudfrontConstructProps } from '../lib/Cloudfront';
 import { CognitoConstruct } from '../lib/Cognito';
 import { DynamoDbConstruct } from '../lib/DynamoDb';
-import { HelloWorldApi } from '../lib/role/HelloWorld';
-import { ReAdminUserApi, LambdaFunction } from '../lib/role/ReAdmin';
-import { StaticSiteCustomInConstruct } from '../lib/StaticSiteCustomIn';
+import { LambdaFunction } from '../lib/role/ReAdmin';
+import { StaticSiteCustomInConstruct, StaticSiteCustomInConstructParms } from '../lib/StaticSiteCustomIn';
+import { ApiConstruct, ApiParms } from '../lib/Api';
 import path = require('path');
 
 const context:IContext = <IContext>ctx;
@@ -42,46 +42,35 @@ const buildAll = () => {
   }(stack, 'EttStaticSiteBucket', {}).getBucket() ;
 
   // Set up the cloudfront distribution, origins, behaviors, and oac
-  const cloudfront = new CloudfrontConstruct(stack, 'EttCloudfront', { bucket });
+  const cloudfront = new CloudfrontConstruct(stack, 'EttCloudfront', { bucket } as CloudfrontConstructProps);
 
   // Set up the cognito userpool and userpool client
   const cognito = new CognitoConstruct(stack, 'EttCognito');
 
   // Set up the dynamodb table for users.
-  const dynamodb = new DynamoDbConstruct(stack, 'EttDynamodb', { });
+  const dynamodb = new DynamoDbConstruct(stack, 'EttDynamodb');
 
-  // Set up the api gateway resources.
-  const apiParms = {
+  // Set up each api
+  const api = new ApiConstruct(stack, 'Api', {
     userPool: cognito.getUserPool(),
-    cloudfrontDomain: cloudfront.getDistributionDomainName()
-  }
+    userPoolName: cognito.getUserPoolName(),
+    cloudfrontDomain: cloudfront.getDistributionDomainName(),
+    redirectPath: 'index.htm'
+  } as ApiParms);
 
-  // Set up the hello world api
-  const helloWorldApi = new HelloWorldApi(stack, 'HelloWorld', apiParms);
-
-  // Set up the api for registered entity administrators.
-  const reAdminApi = new ReAdminUserApi(stack, 'ReAdminUser', apiParms);
-
-  // Grant the reAdmin lambda function the ability to read and write from the dynamodb users table.
-  dynamodb.getUsersTable().grantReadWriteData(reAdminApi.getLambdaFunction());
-
-  // Grant the reAdmin lambda function the ability to read from the dynamodb users table
-  cognito.getUserPool().grant(reAdminApi.getLambdaFunction(), 
-    'cognito-identity:Describe*', 
-    'cognito-identity:Get*', 
-    'cognito-identity:List*'
-  );
+  // Grant the apis the necessary permissions (policy actions).
+  api.grantPermissions(dynamodb, cognito);
 
   // Set up the event, lambda and associated policies for modification of html files as they are uploaded to the bucket.
   const staticSite = new StaticSiteCustomInConstruct(stack, 'EttStaticSite', {
     bucket,
-    cognitoClientId: helloWorldApi.getUserPoolClientId(),
+    cognitoClientId: api.helloWorldApi.getUserPoolClientId(),
     cognitoDomain: cognito.getUserPoolDomain(),
     cognitoRedirectURI: `${cloudfront.getDistributionDomainName()}/index.htm`,
     cognitoUserpoolRegion: context.REGION,
     distributionId: cloudfront.getDistributionId(),
-    apiUris: [ { name: 'HELLO_WORLD_API_URI', value: helloWorldApi.getRestApiUrl() } ]
-  });  
+    apiUris: [ { name: 'HELLO_WORLD_API_URI', value: api.helloWorldApi.getRestApiUrl() } ]
+  } as StaticSiteCustomInConstructParms);  
 
   // Ensure that static html content is uploaded to the bucket that was created.
   staticSite.setIndexFileForUpload([ cloudfront, cognito ]);
@@ -96,13 +85,13 @@ const buildAll = () => {
     description: 'User pool provider URL'
   });    
   new CfnOutput(stack, 'HelloWorldApiUri', {
-    value: helloWorldApi.getRestApiUrl(),
+    value: api.helloWorldApi.getRestApiUrl(),
     description: 'Hello world api uri, just for testing access.'
   });  
 }
 
 const buildDynamoDb = (): DynamoDbConstruct => {
-  const db = new DynamoDbConstruct(stack, 'EttDynamodb', { });
+  const db = new DynamoDbConstruct(stack, 'EttDynamodb');
   const lambdaFunction = new LambdaFunction(stack, 'ReAdminUserLambda');
   db.getUsersTable().grantReadWriteData(lambdaFunction);
   return db;

@@ -11,6 +11,6 @@
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.438.0",
     "@aws-sdk/client-dynamodb": "^3.438.0",
-    "ett-dao": "file:../../dao"
+    "ett-dao": "file:../../_lib/dao"
   }
 }

@@ -6,7 +6,7 @@ import { Duration, RemovalPolicy } from "aws-cdk-lib";
 import { AccessLogFormat, CognitoUserPoolsAuthorizer, Cors, LambdaIntegration, LogGroupLogDestination, MethodLoggingLevel, RestApi } from "aws-cdk-lib/aws-apigateway";
 import { Function } from 'aws-cdk-lib/aws-lambda';
 import { EttUserPoolClient } from "../CognitoUserPoolClient";
-import { Role } from '../lambda/dao/entity';
+import { Role } from '../lambda/_lib/dao/entity';
 
 export interface ApiParms {
   userPool: UserPool, 
@@ -23,7 +23,7 @@ export interface ApiParms {
 /**
  * This class serves as a baseline for a role, upon which broad division for api access for the app is based -
  * that is, what kind of user is logged in through cognito (or a private super user). 
- * This class creates for the role an api, lambda function, user pool client, and oauth integration. 
+ * This class creates for the role an api(s), lambda function, user pool client, and oauth integration. 
  * All default settings can be overridden by subclasses.
  */
 export class AbstractRoleApi extends Construct {

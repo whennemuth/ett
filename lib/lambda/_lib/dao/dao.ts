@@ -1,5 +1,5 @@
 import { DynamoDBClient, PutItemCommand, GetItemCommand, QueryCommand, UpdateItemCommand, AttributeValue, UpdateItemCommandInput, DeleteItemCommand } from '@aws-sdk/client-dynamodb'
-import { User, UserFields, YN, Validator } from './entity';
+import { User, UserFields, YN, Validator, Entity, Invitation } from './entity';
 import { Builder, getBuilderInstance } from './builder'; 
 
 const dbclient = new DynamoDBClient({ region: process.env.REGION });
@@ -13,20 +13,35 @@ export type DAO = {
   test():Promise<any> 
 };
 
+export type FactoryParms = {
+  DAOType: 'user' | 'entity' | 'invitation',
+  Payload: any
+}
+
 export class DAOFactory {
   constructor() { }
   
-  public static getInstance(userinfo:any): DAO {
-    const { email, entity_name, role='', fullname='', active='' } = userinfo;
-    
-    if( role && ! validator.isRole(role)) {
-      throw new Error(`Invalid role specified: ${role}`);
-    }
-    if( active && ! validator.isYesNo(active)) {
-      throw new Error(`Invalid Y/N active field value specified: ${active}`);
-    }
+  public static getInstance(parms:FactoryParms): DAO {
 
-    return crud(userinfo);
+    switch(parms.DAOType) {
+      case 'user':
+        const { role='', active='' } = parms.Payload as User;
+        
+        if( role && ! validator.isRole(role)) {
+          throw new Error(`Invalid role specified: ${role}`);
+        }
+        if( active && ! validator.isYesNo(active)) {
+          throw new Error(`Invalid Y/N active field value specified: ${active}`);
+        }
+
+        return UserCrud(parms.Payload as User);
+      case 'entity':
+        
+        return EntityCrud(parms.Payload as Entity);
+      case 'invitation':
+
+        return InvitationCrud(parms.Payload as Invitation);
+    }
   }
 }
 
@@ -35,9 +50,9 @@ export class DAOFactory {
  * @param {*} userinfo 
  * @returns 
  */
-export function crud(userinfo:User): DAO {
+export function UserCrud(userinfo:User): DAO {
 
-  const { email, entity_name, role='', fullname='', active=YN.Yes } = userinfo;
+  const { email, entity_name, role='', sub='', fullname='', active=YN.Yes } = userinfo;
 
   /**
    * Create a new user.
@@ -58,6 +73,7 @@ export function crud(userinfo:User): DAO {
         [UserFields.email]: { S: email }, 
         [UserFields.entity_name]: { S: entity_name }, 
         [UserFields.fullname]: { S: fullname },
+        [UserFields.sub]: { S: sub },
         [UserFields.role]: { S: role },
         // https://aws.amazon.com/blogs/database/working-with-date-and-timestamp-data-types-in-amazon-dynamodb/
         [UserFields.create_timestamp]: { S: dte},
@@ -178,6 +194,7 @@ export function crud(userinfo:User): DAO {
         [UserFields.email]: user[UserFields.email].S,
         [UserFields.entity_name]: user[UserFields.entity_name].S,
         [UserFields.role]: user[UserFields.role].S,
+        [UserFields.sub]: user[UserFields.sub].S,
         [UserFields.fullname]: user[UserFields.fullname].S,
         [UserFields.active]: user[UserFields.active].S,
         [UserFields.create_timestamp]: user[UserFields.create_timestamp].S,
@@ -209,4 +226,12 @@ export function crud(userinfo:User): DAO {
   return {
     create, read, update, Delete, test,
   }
+}
+
+export function EntityCrud(entityInfo:Entity): DAO {
+  return {} as DAO;
+}
+
+export function InvitationCrud(entityInfo:Invitation): DAO {
+  return {} as DAO;
 }

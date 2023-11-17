@@ -1,14 +1,11 @@
 import { handler } from './PostSignup';
-import { Roles, User } from '../../dao/entity';
-import { DAO } from '../../dao/dao';
-import { PostSignupEventType } from './PostSignupEventType';
+import { Roles, User } from '../../_lib/dao/entity';
+import { DAO } from '../../_lib/dao/dao';
 import { mockClient } from 'aws-sdk-client-mock'
 import 'aws-sdk-client-mock-jest';
 import { 
   CognitoIdentityProviderClient, ListUserPoolClientsCommand, ListUserPoolClientsResponse
 } from '@aws-sdk/client-cognito-identity-provider';
-
-import { DynamoDBClient, PutItemCommand, PutItemCommandOutput } from '@aws-sdk/client-dynamodb'
 
 // ---------------------- EVENT DETAILS ----------------------
 const clientId = '6s4a2ilv9e5solo78f4d75hlp8';
@@ -25,7 +22,7 @@ const cognitoIdpClientMock = mockClient(CognitoIdentityProviderClient);
 
   // Create a mock that makes each dynamodb dao crud operation callable only, 
   // each doing nothing except returning immediately.
-jest.mock('../../dao/dao.ts', () => {
+jest.mock('../../_lib/dao/dao.ts', () => {
   const getMockPromise = () => {
     return new Promise((resolve, reject) => {
       resolve( {} as User|void);

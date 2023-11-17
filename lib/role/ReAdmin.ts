@@ -4,7 +4,7 @@ import { AbstractRoleApi } from "./AbstractRole";
 import { Function, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { AbstractFunction } from "../AbstractFunction";
 import { DynamoDbConstruct } from "../DynamoDb";
-import { Roles } from '../lambda/dao/entity';
+import { Roles } from '../lambda/_lib/dao/entity';
 
 export interface AdminUserParms {
   userPool: UserPool, 

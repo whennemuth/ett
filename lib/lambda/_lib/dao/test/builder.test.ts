@@ -1,6 +1,6 @@
 import { UpdateItemCommandInput } from '@aws-sdk/client-dynamodb';
 import { Builder, getBuilderInstance } from '../builder';
-import { User, UserFields, YN } from '../entity';
+import { User, UserFields } from '../entity';
 
 const testBuildUpdate = () => {
 
@@ -8,31 +8,34 @@ const testBuildUpdate = () => {
   const input:User = {
     email: 'somebody@gmail.com',
     entity_name: 'Boston University',
-    fullname: 'Daffy Duck'
+    fullname: 'Daffy Duck',
+    sub: 'daffy_sub_id'
   }
 
   const getExpectedOutput = () => {
     // Object properties can only be deleted if they are optional.
-    type OptionalValuesType = { ":v1"?: any, ":v2"?: any };
+    type OptionalValuesType = { ":v1"?: any, ":v2"?: any, ":v3"?:any };
     return {
       TableName,
       ExpressionAttributeNames: {
-        "#f1": UserFields.fullname,
-        "#f2": UserFields.update_timestamp
+        "#f1": UserFields.sub,
+        "#f2": UserFields.fullname,
+        "#f3": UserFields.update_timestamp
       },
       ExpressionAttributeValues: {
-        ":v1": { S: input.fullname },
+        ":v1": { S: input.sub },
+        ":v2": { S: input.fullname },
       } as OptionalValuesType,
       Key: { 
         [ UserFields.email ]: { S: input.email, },
         [ UserFields.entity_name ]: { S: input.entity_name }
       },
-      UpdateExpression: "SET #f1 = :v1, #f2 = :v2",
+      UpdateExpression: "SET #f1 = :v1, #f2 = :v2, #f3 = :v3",
     };
   }
 
   const expectedOutput = getExpectedOutput();
-  delete getExpectedOutput().ExpressionAttributeValues[':v2'];
+  delete getExpectedOutput().ExpressionAttributeValues[':v3'];
   const builder:Builder = getBuilderInstance(input, TableName);
  
   describe('buildUpdateItem', () => {
@@ -42,7 +45,7 @@ const testBuildUpdate = () => {
     it('Should return an object whose properties match predicted values, excluding update_timestamp.', () => {
       const output:UpdateItemCommandInput = builder.buildUpdateItem();
       expect(output).toMatchObject(expectedOutput); // Note: not using toEqual because excluding update_timestamp
-      isoTimestamp = Date.parse((output.ExpressionAttributeValues || {})[':v2'].S || '');
+      isoTimestamp = Date.parse((output.ExpressionAttributeValues || {})[':v3'].S || '');
     });
 
     it('Should return and update_timestamp for a time after the test began.', () => {

@@ -16,7 +16,8 @@
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
-        "${workspaceFolder}/lib/lambda/dao/test/dao-launcher.ts",
+        "${workspaceFolder}/lib/lambda/_lib/dao/test/dao-launcher.ts",
+        "user",
         "delete"
       ], 
       "env": {
@@ -35,7 +36,7 @@
       "args": [ 
         "--runTestsByPath", 
         "-i", 
-        "${workspaceFolder}/lib/lambda/dao/test/dao.test.ts" 
+        "${workspaceFolder}/lib/lambda/_lib/dao/test/dao.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
@@ -53,7 +54,7 @@
       "args": [ 
         "--runTestsByPath", 
         "-i", 
-        "${workspaceFolder}/lib/lambda/dao/test/builder.test.ts" 
+        "${workspaceFolder}/lib/lambda/_lib/dao/test/builder.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",

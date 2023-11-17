@@ -1,6 +1,6 @@
 import { Duration } from "aws-cdk-lib";
 import { OAuthScope, UserPool, UserPoolClient, UserPoolClientIdentityProvider, UserPoolClientProps } from "aws-cdk-lib/aws-cognito";
-import { Role } from './lambda/dao/entity';
+import { Role } from './lambda/_lib/dao/entity';
 
 export interface EttUserPoolClientProps { callbackDomainName:string, role:Role, customScopes?:OAuthScope[] }
 

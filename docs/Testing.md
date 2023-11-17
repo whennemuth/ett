@@ -3,6 +3,12 @@
 This project uses [jest](https://jestjs.io/) for unit testing.
 An attempt is made to follow test-driven development.
 
+### Run all Jest unit tests
+
+```
+npm test
+```
+
 ### ESM support
 
 In order to allow jest to test against [ECMAScript Modules](https://nodejs.org/api/esm.html#modules-ecmascript-modules), it is necessary to activate its experimental support for ESM.

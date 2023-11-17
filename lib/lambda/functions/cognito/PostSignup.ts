@@ -5,8 +5,8 @@ import {
   ListUserPoolClientsCommandOutput,
   UserPoolClientDescription
 } from '@aws-sdk/client-cognito-identity-provider';
-import { DAO, DAOFactory } from '../../dao/dao';
-import { Roles, Role, UserFields, User } from '../../dao/entity';
+import { DAO, DAOFactory } from '../../_lib/dao/dao';
+import { Roles, Role, UserFields, User } from '../../_lib/dao/entity';
 import { PostSignupEventType } from './PostSignupEventType';
 
 /**
@@ -44,7 +44,8 @@ export const handler = async (_event:any) => {
 
 /**
  * A cognito post signup confirmation event will indicate a specific user pool client ID. This client needs to
- * be looked up by that ID in order to get its name. A portion of that name will indicate a specific role.
+ * be looked up by that ID in order to get its name. A portion of that name will indicate a specific role as 
+ * part of a naming convention.
  * @param userPoolId 
  * @param clientId 
  * @returns 
@@ -120,9 +121,9 @@ const addUserToDynamodb = async (event:PostSignupEventType, role:Role):Promise<U
     [UserFields.email]: email,
     [UserFields.entity_name]: '__UNASSIGNED__',
     [UserFields.fullname]: name,
-    // RESUME NEXT: add sub
+    [UserFields.sub]: sub,
   }
-  const dao:DAO = DAOFactory.getInstance(user);
+  const dao:DAO = DAOFactory.getInstance({ DAOType: 'user', Payload: user });
   try {
     await dao.create();
   } catch (e) {

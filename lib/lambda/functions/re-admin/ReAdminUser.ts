@@ -1,5 +1,5 @@
 
-import { DAO, DAOFactory } from 'ett-dao/dao';
+import { DAO, DAOFactory } from '../../_lib/dao/dao';
 
 export const handler = async (event:any) => {
 
@@ -9,7 +9,11 @@ export const handler = async (event:any) => {
 
   const dir = Directory(email);
 
-  const dao:DAO = DAOFactory.getInstance({ email, entity_name, role, fullname });
+  const dao:DAO = DAOFactory.getInstance({ 
+    DAOType: 'user', 
+    Payload: { 
+      email, entity_name, role, fullname 
+  }});
 
   let user;
   let response;
@@ -51,15 +55,6 @@ export function User(directory:any, dao:DAO) {
 
 export function Directory(email:string) {
 
-  /**
-   * RESUME NEXT: 
-   * 1) Put all dao crud operations through test harness.
-   * 2) Figure out how to get user signup in cognito to trigger lambda dao crud create.
-   * The user pool client should indicate the role - would the lambda get passed the claims somehow?
-   * 3) Create a cognito lib (like dao.ts) that invites a user and then use dao.ts to update the 
-   * corresponding dynamodb item to reflect the fact of the invitation, and add to entity.ts so that the 
-   * data model also includes invitation members. 
-   */
   const sendInvitationToSignUp = async () => {
     console.log(`Sending userpool email invitation for ${email}`);
   }

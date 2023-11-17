@@ -1,0 +1,38 @@
+<html>
+  <body>
+    <head>
+      <style>
+        body { background: #555; }
+        div { float: initial; clear: both; padding: 20px; width: 500px; }
+         hr { height: 1px; background-color: black; margin-bottom:20px; margin-top: 20px; border: 0px; }
+        .content { max-width: 500px; margin: auto; }
+        .heading1 { font: 16px Georgia, serif; background-color: #ffd780; text-align: center; }
+        .entity1 { font: bold 18px Georgia, serif; color: crimson; }
+        .body1 { font: italic 14px Georgia, serif; background-color: #ffe7b3; text-align: justify;}
+        .direction1 { font: 16px Georgia, serif; background-color: #ffefcc; text-align: center; }
+      </style>
+    </head>
+    <div class="content">
+      <div class="heading1">
+        You are invited to register as ${role} in the Ethical Transparency Application for the following
+        organization: <br><br><span class="entity1">${entity_name}</span>
+      </div>
+      <div class="body1">
+        <hr>
+        ETT is designed to support AAU’s harassment prevention principles and the recommendations of 
+        NASEM’s June 2018 report on sexual harassment of women in academic science, engineering, and 
+        medicine by helping to create a norm of transparency about findings of misconduct against a 
+        person, across the higher-education and research ecosystem of societies, institutions of higher 
+        education, and other research organizations. This tool covers sexual, gender, and racial 
+        misconduct — as well as professional licensure, financial, and research misconduct to maximize 
+        its utility.
+        <br>
+        <hr>
+        The function of a ${role} is: ${function}
+      </div>
+      <div class="direction1">
+        Click <a href="${link}" style="font-weight: bold;">here</a> to register
+      </div></div>
+    </div>
+  </body>
+</html>

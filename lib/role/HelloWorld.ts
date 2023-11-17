@@ -5,7 +5,7 @@ import { Code, Runtime } from "aws-cdk-lib/aws-lambda";
 import { AbstractRoleApi } from "./AbstractRole";
 import { LogGroup } from "aws-cdk-lib/aws-logs";
 import { RemovalPolicy } from "aws-cdk-lib";
-import { Roles } from  '../lambda/dao/entity';
+import { Roles } from  '../lambda/_lib/dao/entity';
 
 export interface HelloWorldParms {
   userPool: UserPool, 

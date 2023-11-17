@@ -1,14 +1,14 @@
 {
-  "name": "ett-re-admin",
+  "name": "ett-invitation",
   "version": "1.0.0",
-  "description": "Actions available to an ETT registered entity administrator",
-  "main": "ReAdminUser.ts",
+  "description": "Email invitations to users with link for signup with ETT",
+  "main": "Invitation.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Warren Hennemuth",
   "license": "ISC",
   "dependencies": {
-    "ett-dao": "file:../../_lib/dao"
+    "@aws-sdk/client-sesv2": "^3.451.0"
   }
 }

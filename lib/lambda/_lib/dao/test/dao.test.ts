@@ -17,6 +17,7 @@ const singleReturnedUser = {
   [UserFields.email]: { S: 'somebody@gmail.com' },
   [UserFields.entity_name]: { S: 'Boston University' },
   [UserFields.role]: { S: Roles.RE_ADMIN },
+  [UserFields.sub]: { S: 'mm_sub_id' },
   [UserFields.fullname]: { S: 'Mickey Mouse' },
   [UserFields.active]: { S: YN.Yes },
   [UserFields.create_timestamp]: { S: dte },
@@ -29,40 +30,48 @@ const testPut = () => {
     it('Should error if invalid role specified', () => {
       expect(() => {
         const dao = DAOFactory.getInstance({
-          [UserFields.email]: 'somebody@gmail.com',
-          [UserFields.entity_name]: 'Boston University',
-          [UserFields.role]: 'bogus'
-        });
+          DAOType: 'user', Payload: {
+            [UserFields.email]: 'somebody@gmail.com',
+            [UserFields.entity_name]: 'Boston University',
+            [UserFields.role]: 'bogus',
+            [UserFields.sub]: 'somebody_sub_id',
+        }});
       }).toThrowError();      
     });
 
     it('Should error if invalid Y/N value specified', () => {
       expect(() => {
         const dao = DAOFactory.getInstance({
-          [UserFields.email]: 'somebody@gmail.com',
-          [UserFields.entity_name]: 'Boston University',
-          active: 'bogus'
-        });
+          DAOType: 'user', Payload: {
+            [UserFields.email]: 'somebody@gmail.com',
+            [UserFields.entity_name]: 'Boston University',
+            [UserFields.sub]: 'somebody_sub_id',
+            active: 'bogus'            
+        }});
       }).toThrowError();      
     });
 
     it('Should NOT error if role or active is spelled correctly, but has case that does not match enum', () => {
       expect(() => {
         const dao = DAOFactory.getInstance({
-          [UserFields.email]: 'somebody@gmail.com',
-          [UserFields.entity_name]: 'Boston University',
-          [UserFields.role]: Roles.RE_ADMIN.toLowerCase(),
-          [UserFields.active]: YN.Yes.toLocaleLowerCase()
-        });
+          DAOType: 'user', Payload: {
+            [UserFields.email]: 'somebody@gmail.com',
+            [UserFields.entity_name]: 'Boston University',
+            [UserFields.role]: Roles.RE_ADMIN.toLowerCase(),
+            [UserFields.sub]: 'somebody_sub_id',
+            [UserFields.active]: YN.Yes.toLocaleLowerCase()
+        }});
       }).not.toThrowError();
     });
 
     it('Should error attempting to create a user without a role specified', async() => {
       const dao = DAOFactory.getInstance({
-        [UserFields.email]: 'somebody@gmail.com',
-        [UserFields.entity_name]: 'Boston University',
-        [UserFields.fullname]: 'Mickey Mouse'
-      });
+        DAOType: 'user', Payload: {
+          [UserFields.email]: 'somebody@gmail.com',
+          [UserFields.entity_name]: 'Boston University',
+          [UserFields.sub]: 'mm_sub_id',
+          [UserFields.fullname]: 'Mickey Mouse'
+      }});
       expect(async () => {
         await dao.create();
       }).rejects.toThrowError();
@@ -70,10 +79,12 @@ const testPut = () => {
 
     it('Should error attempting to create a user without a fullname specified', async() => {
       const dao = DAOFactory.getInstance({
-        [UserFields.email]: 'somebody@gmail.com',
-        [UserFields.entity_name]: 'Boston University',
-        [UserFields.role]: Roles.RE_ADMIN.toLowerCase(),
-      });
+        DAOType: 'user', Payload: {
+          [UserFields.email]: 'somebody@gmail.com',
+          [UserFields.entity_name]: 'Boston University',
+          [UserFields.sub]: 'somebody_sub_id',
+          [UserFields.role]: Roles.RE_ADMIN.toLowerCase(),
+      }});
       expect(async () => {
         await dao.create();
       }).rejects.toThrowError();
@@ -88,11 +99,13 @@ const testPut = () => {
       };
       dbMockClient.on(PutItemCommand).resolves(expectedResponse);
       const dao = DAOFactory.getInstance({
-        [UserFields.email]: 'somebody@gmail.com',
-        [UserFields.entity_name]: 'Boston University',
-        [UserFields.role]: Roles.RE_ADMIN,
-        [UserFields.fullname]: 'Mickey Mouse'
-      });
+        DAOType: 'user', Payload: {
+          [UserFields.email]: 'somebody@gmail.com',
+          [UserFields.entity_name]: 'Boston University',
+          [UserFields.role]: Roles.RE_ADMIN,
+          [UserFields.sub]: 'somebody_sub_id',
+          [UserFields.fullname]: 'Mickey Mouse' 
+      }});
       const retval = await dao.create();
       expect(retval).toEqual(expectedResponse);
     });
@@ -104,8 +117,9 @@ const testRead = () => {
 
     it('Should error if both email and entity name are missing', async() => {
       const dao = DAOFactory.getInstance({
-        [UserFields.fullname]: 'Mickey Mouse'
-      });
+        DAOType: 'user', Payload: {
+          [UserFields.fullname]: 'Mickey Mouse'
+      }});
       expect(async () => {
         await dao.create();
       }).rejects.toThrowError();
@@ -117,9 +131,10 @@ const testRead = () => {
         Item: singleReturnedUser
       });
       const dao = DAOFactory.getInstance({
-        [UserFields.email]: 'somebody@gmail.com',
-        [UserFields.entity_name]: 'Boston University',
-      });
+        DAOType: 'user', Payload: {
+          [UserFields.email]: 'somebody@gmail.com',
+          [UserFields.entity_name]: 'Boston University',
+      }});
       const output = await dao.read();
       expect(dbMockClient).toHaveReceivedCommandTimes(GetItemCommand, 1);
       expect(output).toHaveProperty(UserFields.email);
@@ -134,8 +149,9 @@ const testRead = () => {
         Items: [ singleReturnedUser ]
       });
       const dao = DAOFactory.getInstance({
-        [UserFields.email]: 'somebody@gmail.com',
-      });
+        DAOType: 'user', Payload: {
+          [UserFields.email]: 'somebody@gmail.com',
+      }});
       const output = await dao.read();
       expect(dbMockClient).toHaveReceivedCommandTimes(QueryCommand, 1);
       expect(output).toBeInstanceOf(Array);
@@ -152,15 +168,17 @@ const testUpdate = () => {
     it('Should error if either email or entity name are missing (no bulk updates)', async() => {
       expect(async() => {
         const dao = DAOFactory.getInstance({
-          [UserFields.email]: 'somebody@gmail.com',
-        });
+          DAOType: 'user', Payload: {
+            [UserFields.email]: 'somebody@gmail.com',
+        }});
         await dao.update();
       }).rejects.toThrowError();
 
       expect(async() => {
         const dao = DAOFactory.getInstance({
-          [UserFields.entity_name]: 'Boston University',
-        });
+          DAOType: 'user', Payload: {
+            [UserFields.entity_name]: 'Boston University',
+        }});
         await dao.update();
       }).rejects.toThrowError();
     });
@@ -168,9 +186,10 @@ const testUpdate = () => {
     it('Should error if email and entity name are the only fields provided', async() => {
       expect(async() => {
         const dao = DAOFactory.getInstance({
-          [UserFields.email]: 'somebody@gmail.com',
-          [UserFields.entity_name]: 'Boston University',
-        });
+          DAOType: 'user', Payload: {
+            [UserFields.email]: 'somebody@gmail.com',
+            [UserFields.entity_name]: 'Boston University',
+        }});
         await dao.update();
       }).rejects.toThrowError();
     });
@@ -180,10 +199,11 @@ const testUpdate = () => {
         Attributes: singleReturnedUser
       });
       const dao = DAOFactory.getInstance({
-        [UserFields.email]: 'somebody@gmail.com',
-        [UserFields.entity_name]: 'Boston University',
-        [UserFields.fullname]: 'Daffy Duck',
-      });
+        DAOType: 'user', Payload: {
+          [UserFields.email]: 'somebody@gmail.com',
+          [UserFields.entity_name]: 'Boston University',
+          [UserFields.fullname]: 'Daffy Duck',
+      }});
       await dao.update();
       expect(dbMockClient).toHaveReceivedCommandTimes(UpdateItemCommand, 1);
     })
@@ -196,15 +216,17 @@ const testDelete = () => {
     it('Should error if either email or entity name are missing (no bulk updates)', async() => {
       expect(async() => {
         const dao = DAOFactory.getInstance({
-          [UserFields.email]: 'somebody@gmail.com',
-        });
+          DAOType: 'user', Payload: {
+            [UserFields.email]: 'somebody@gmail.com',
+        }});
         await dao.Delete();
       }).rejects.toThrowError();
 
       expect(async() => {
         const dao = DAOFactory.getInstance({
-          [UserFields.entity_name]: 'Boston University',
-        });
+          DAOType: 'user', Payload: {
+            [UserFields.entity_name]: 'Boston University',
+        }});
         await dao.update();
       }).rejects.toThrowError();
     });
@@ -218,9 +240,10 @@ const testDelete = () => {
         }      
       });
       const dao = DAOFactory.getInstance({
-        [UserFields.email]: 'somebody@gmail.com',
-        [UserFields.entity_name]: 'Boston University',
-      });
+        DAOType: 'user', Payload: {
+          [UserFields.email]: 'somebody@gmail.com',
+          [UserFields.entity_name]: 'Boston University',
+      }});
       await dao.Delete();
       expect(dbMockClient).toHaveReceivedCommandTimes(DeleteItemCommand, 1);
     });
@@ -234,11 +257,12 @@ const testDelete = () => {
         }      
       });
       const dao = DAOFactory.getInstance({
-        [UserFields.email]: 'somebody@gmail.com',
-        [UserFields.entity_name]: 'Boston University',
-        [UserFields.fullname]: 'Mickey Mouse',
-        [UserFields.role]: Roles.CONSENTING_PERSON
-      });
+        DAOType: 'user', Payload: {
+          [UserFields.email]: 'somebody@gmail.com',
+          [UserFields.entity_name]: 'Boston University',
+          [UserFields.fullname]: 'Mickey Mouse',
+          [UserFields.role]: Roles.CONSENTING_PERSON  
+      }});
       await dao.Delete();
       expect(dbMockClient).toHaveReceivedCommandTimes(DeleteItemCommand, 1);
     });

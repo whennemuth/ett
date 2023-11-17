@@ -1,8 +1,8 @@
 {
-  "name": "ett-re-admin",
+  "name": "ett-gatekeeper",
   "version": "1.0.0",
-  "description": "Actions available to an ETT registered entity administrator",
-  "main": "ReAdminUser.ts",
+  "description": "Actions available to an ETT gatekeeper",
+  "main": "GatekeeperUser.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

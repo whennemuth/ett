@@ -12,6 +12,7 @@ export class CognitoConstruct extends Construct {
   private context: IContext;
   private userPool: UserPool;
   private userPoolDomain: UserPoolDomain;
+  private userPoolName: string;
 
   constructor(scope: Construct, constructId: string) {
 
@@ -19,6 +20,7 @@ export class CognitoConstruct extends Construct {
 
     this.constructId = constructId;
     this.context = scope.node.getContext('stack-parms');
+    this.userPoolName = `${this.constructId}-userpool`;
     this.buildResources();
   }
 
@@ -35,7 +37,7 @@ export class CognitoConstruct extends Construct {
 
     this.userPool = new UserPool(this, 'UserPool', {
       removalPolicy: RemovalPolicy.DESTROY,
-      userPoolName: `${this.constructId}-userpool`,
+      userPoolName: this.userPoolName,
       accountRecovery: AccountRecovery.EMAIL_AND_PHONE_WITHOUT_MFA,
       selfSignUpEnabled: true,
       signInAliases: { email: true },
@@ -86,6 +88,10 @@ export class CognitoConstruct extends Construct {
     return this.userPool;
   }
 
+  public getUserPoolName(): string {
+    return this.userPoolName;
+  }
+  
   public getUserPoolDomain(): string {
     return this.userPoolDomain.baseUrl();
   }
