@@ -5,6 +5,8 @@ import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { AbstractFunction } from './AbstractFunction';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import path = require('path');
+import { AccountRootPrincipal, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { DynamoDbConstruct } from './DynamoDb';
 
 export class CognitoConstruct extends Construct {
 
@@ -28,11 +30,44 @@ export class CognitoConstruct extends Construct {
 
     const postSignupFunction = new AbstractFunction(this, 'PostSignupFunction', {
       functionName: `${this.constructId}-userpool-lambda`,
+      description: "Handles entry of a user into dynamodb directly after signing up in cognito.",
       runtime: Runtime.NODEJS_18_X,
       handler: 'handler',
       logRetention: 7,
       cleanup: true,
       entry: path.join(__dirname, `lambda/functions/cognito/PostSignup.ts`),
+      bundling: {
+        externalModules: [
+          '@aws-sdk/*',
+        ]
+      },
+      role: new Role(this, 'PostSignupFunctionRole', {
+        assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+        description: 'Grants access to write to dynamodb and read from cognito userpool clients',
+        inlinePolicies: {
+          'ListUserPoolClients': new PolicyDocument({
+            statements: [new PolicyStatement({
+              actions: [
+                'cognito-idp:ListUserPoolClients',
+              ],
+              resources: ['*'],
+            })],
+          }),
+          'WriteToDynamodb': new PolicyDocument({
+            statements: [new PolicyStatement({
+              actions: [
+                'dynamodb:PutItem',
+              ],
+              resources: [
+                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME}`
+              ],
+            })],
+          }),
+        }
+      }),
+      environment: {
+        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME
+      }
     });
 
     this.userPool = new UserPool(this, 'UserPool', {

@@ -10,8 +10,8 @@ import { CognitoConstruct } from '../lib/Cognito';
 import { DynamoDbConstruct } from '../lib/DynamoDb';
 import { LambdaFunction } from '../lib/role/ReAdmin';
 import { StaticSiteCustomInConstruct, StaticSiteCustomInConstructParms } from '../lib/StaticSiteCustomIn';
-import { ApiConstruct, ApiParms } from '../lib/Api';
-import path = require('path');
+import { ApiConstruct, ApiConstructParms } from '../lib/Api';
+import { Roles } from '../lib/lambda/_lib/dao/entity';
 
 const context:IContext = <IContext>ctx;
 
@@ -53,10 +53,10 @@ const buildAll = () => {
   // Set up each api
   const api = new ApiConstruct(stack, 'Api', {
     userPool: cognito.getUserPool(),
-    userPoolName: cognito.getUserPoolName(),
+    userPoolName: cognito.getUserPoolName(),    
     cloudfrontDomain: cloudfront.getDistributionDomainName(),
     redirectPath: 'index.htm'
-  } as ApiParms);
+  } as ApiConstructParms);
 
   // Grant the apis the necessary permissions (policy actions).
   api.grantPermissions(dynamodb, cognito);
@@ -64,12 +64,17 @@ const buildAll = () => {
   // Set up the event, lambda and associated policies for modification of html files as they are uploaded to the bucket.
   const staticSite = new StaticSiteCustomInConstruct(stack, 'EttStaticSite', {
     bucket,
-    cognitoClientId: api.helloWorldApi.getUserPoolClientId(),
-    cognitoDomain: cognito.getUserPoolDomain(),
-    cognitoRedirectURI: `${cloudfront.getDistributionDomainName()}/index.htm`,
-    cognitoUserpoolRegion: context.REGION,
     distributionId: cloudfront.getDistributionId(),
-    apiUris: [ { name: 'HELLO_WORLD_API_URI', value: api.helloWorldApi.getRestApiUrl() } ]
+    cloudfrontDomain: cloudfront.getDistributionDomainName(),
+    cognitoDomain: cognito.getUserPoolDomain(),
+    cognitoUserpoolRegion: context.REGION,
+    apis: [ 
+      api.helloWorldApi.getApi(), 
+      api.gatekeeperApi.getApi(), 
+      api.reAdminApi.getApi(), 
+      api.authIndApi.getApi(),
+      api.consentingPersonApi.getApi()
+    ]
   } as StaticSiteCustomInConstructParms);  
 
   // Ensure that static html content is uploaded to the bucket that was created.
@@ -84,10 +89,26 @@ const buildAll = () => {
     value: cognito.getUserPool().userPoolProviderUrl,
     description: 'User pool provider URL'
   });    
-  new CfnOutput(stack, 'HelloWorldApiUri', {
-    value: api.helloWorldApi.getRestApiUrl(),
+  new CfnOutput(stack, `${Roles.HELLO_WORLD}-api-uri`, {
+    value: api.helloWorldApi.getApi().getRestApiUrl(),
     description: 'Hello world api uri, just for testing access.'
   });  
+  new CfnOutput(stack, `${Roles.GATEKEEPER}-api-uri`, {
+    value: api.gatekeeperApi.getApi().getRestApiUrl(),
+    description: 'Gatekeeper api uri'
+  }); 
+  new CfnOutput(stack, `${Roles.RE_ADMIN}-api-uri`, {
+    value: api.reAdminApi.getApi().getRestApiUrl(),
+    description: 'Registered entity administrator api uri'
+  }); 
+  new CfnOutput(stack, `${Roles.RE_AUTH_IND}-api-uri`, {
+    value: api.authIndApi.getApi().getRestApiUrl(),
+    description: 'Authorized individual api uri'
+  });
+  new CfnOutput(stack, `${Roles.CONSENTING_PERSON}-api-uri`, {
+    value: api.consentingPersonApi.getApi().getRestApiUrl(),
+    description: 'Consenting person api uri'
+  });
 }
 
 const buildDynamoDb = (): DynamoDbConstruct => {

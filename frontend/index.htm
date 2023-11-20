@@ -67,9 +67,81 @@
         white-space: nowrap;
         -webkit-overflow-scrolling: touch;
       }
+
+      .containerRDO {
+        display: block;
+        position: relative;
+        padding-left: 35px;
+        margin-bottom: 12px;
+        cursor: pointer;
+        font-size: 22px;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+
+      /* Hide the browser's default radio button */
+      .containerRDO input {
+        position: absolute;
+        opacity: 0;
+        cursor: pointer;
+      }
+
+      /* Create a custom radio button */
+      .checkmark {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 25px;
+        width: 25px;
+        background-color: #eee;
+        border-radius: 50%;
+      }
+
+      /* On mouse-over, add a grey background color */
+      .containerRDO:hover input ~ .checkmark {
+        background-color: #ccc;
+      }
+
+      /* When the radio button is checked, add a blue background */
+      .containerRDO input:checked ~ .checkmark {
+        background-color: #2196F3;
+      }
+
+      /* Create the indicator (the dot/circle - hidden when not checked) */
+      .checkmark:after {
+        content: "";
+        position: absolute;
+        display: none;
+      }
+
+      /* Show the indicator (dot/circle) when checked */
+      .containerRDO input:checked ~ .checkmark:after {
+        display: block;
+      }
+
+      /* Style the indicator (dot/circle) */
+      .containerRDO .checkmark:after {
+        top: 9px;
+        left: 9px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: white;
+      }
+
+      .outerButtonContainer {
+        border:#ccc 1px solid; 
+        border-radius:15px; 
+        padding:15px; 
+        margin-top:30px; 
+        width:90%;
+        display:flex; 
+        justify-content: center;
+      }
     </style>
 
-An ETT Registered Entity’s Authorized Individuals and Administrator will have the ability to direct ETT to transmit the RE’s request for completion of a Disclosure Form to all the Affiliates/Consent Recipients/Disclosing Entities that an Individual listed on their full Exhibit Form. 
   </head>
   <body>
     
@@ -83,22 +155,53 @@ An ETT Registered Entity’s Authorized Individuals and Administrator will have 
         </header>
 
         <div class="p-5 mb-4 bg-light rounded-3">
+
           <div id="auth-section" class="container-fluid py-5">
             <h1 class="display-5 fw-bold" style="text-align:center">Welcome to the<br>Ethical Transparency Tool (ETT)</h1>
-            <p class="text-justify fs-4" style="text-align:justify">ETT is designed to support AAU’s harassment prevention principles and the recommendations of NASEM’s June 2018 report on sexual harassment of women in academic science, engineering, and medicine by helping to create a norm of transparency about findings of misconduct against a person, across the higher-education and research ecosystem of societies, institutions of higher education, and other research organizations. This tool covers sexual, gender, and racial misconduct — as well as professional licensure, financial, and research misconduct to maximize its utility.</p>
-            <center>
-              <button id="btnSignin" class="btn btn-primary btn-lg" type="button" onclick="signIn()">Login</button>
-              <button id="btnSignup" class="btn btn-primary btn-lg" type="button" onclick="signUp()">Signup</button>
-            </center>
+            <p class="text-justify fs-4" style="text-align:justify;">ETT is designed to support AAU’s harassment prevention principles and the recommendations of NASEM’s June 2018 report on sexual harassment of women in academic science, engineering, and medicine by helping to create a norm of transparency about findings of misconduct against a person, across the higher-education and research ecosystem of societies, institutions of higher education, and other research organizations. This tool covers sexual, gender, and racial misconduct — as well as professional licensure, financial, and research misconduct to maximize its utility.</p>
+            <div style="display:flex; justify-content: center;">
+              <div class="outerButtonContainer">
+                <div style="width:342px;">
+                  <form id="formRole">
+                    <label class="containerRDO">Hello World
+                      <input type="radio" name="rdoRole" value="HELLO_WORLD" checked="checked">
+                      <span class="checkmark"></span>
+                    </label>
+                    <label class="containerRDO">Gatekeeper
+                      <input type="radio" name="rdoRole" value="GATEKEEPER">
+                      <span class="checkmark"></span>
+                    </label>
+                    <label class="containerRDO">Registered Entity Administrator
+                      <input type="radio" name="rdoRole" value="RE_ADMIN">
+                      <span class="checkmark"></span>
+                    </label>
+                    <label class="containerRDO">Authorized Individual
+                      <input type="radio" name="rdoRole" value="RE_AUTH_IND">
+                      <span class="checkmark"></span>
+                    </label>
+                    <label class="containerRDO">Consenting Person
+                      <input type="radio" name="rdoRole" value="CONSENTING_PERSON">
+                      <span class="checkmark"></span>
+                    </label>
+                    <button id="btnSignin" class="btn btn-primary btn-lg" type="button" onclick="signIn()">Login</button>
+                    &nbsp;
+                    <button id="btnSignup" class="btn btn-primary btn-lg" type="button" onclick="signUp()">Signup</button>
+                  </form>
+                </div>
+              </div>
+            </div>
           </div>
+
           <div id="app-section" class="container-fluid py-5" style="display: none">
             <center>
               <p class="fs-4">Welcome, <span id="username"></span>!</p>
+              <p class="fs-4" id="apiDescription"></p>
               <p><button class="btn btn-primary btn-lg" type="button" onclick="callApi()">Call API</button></p>
               <p><span id="apiResponse"></span></p>
             </center>            
             <button type="button" class="btn btn-danger" onclick="signOut()">Sign out</button>
           </div>
+
         </div>
 
         <footer class="pt-3 mt-4 text-muted border-top">
@@ -109,11 +212,40 @@ An ETT Registered Entity’s Authorized Individuals and Administrator will have 
 
   <script>
 
-    const COGNITO_DOMAIN = 'COGNITO_DOMAIN_PLACEHOLDER';
-    const CLIENT_ID = 'CLIENT_ID_PLACEHOLDER';
-    const REDIRECT_URI = 'REDIRECT_URI_PLACEHOLDER';
-    const USER_POOL_REGION = 'USER_POOL_REGION_PLACEHOLDER';
-    const HELLO_WORLD_API_URI = 'HELLO_WORLD_API_URI_PLACEHOLDER';
+    // const COGNITO_DOMAIN = 'COGNITO_DOMAIN_PLACEHOLDER';
+    // const CLIENT_ID = 'CLIENT_ID_PLACEHOLDER';
+    // const REDIRECT_URI = 'REDIRECT_URI_PLACEHOLDER';
+    // const USER_POOL_REGION = 'USER_POOL_REGION_PLACEHOLDER';
+    // const HELLO_WORLD_API_URI = 'HELLO_WORLD_API_URI_PLACEHOLDER';
+
+    const STATIC_PARAMETERS = STATIC_PARAMETERS_PLACEHOLDER;
+    var selected_role;
+    const roleChange = () => {
+      selected_role = document.forms['formRole']['rdoRole'].value;
+      var desc = document.getElementById('apiDescription');
+      switch(selected_role) {
+        case 'HELLO_WORLD':
+          desc.innerHTML = 'Simple API to get a hello message'; break;
+        case 'GATEKEEPER':
+          desc.innerHTML = 'API to get a list of registered entities'; break;
+        case 'RE_ADMIN':
+          desc.innerHTML = 'API to the names of all registered entity staff'; break;
+        case 'RE_AUTH_IND':
+          desc.innerHTML = 'API to view any consenting persons who signed up with the registered entity'; break;
+        case 'CONSENTING_PERSON':
+          desc.innerHTML = 'API to fill out a consent form'; break;
+      }
+    }
+    roleChange();
+
+    const rdoRoles = document.getElementsByName('rdoRole');
+    rdoRoles.forEach(rdoRole => {
+      rdoRole.addEventListener('change', roleChange);
+    });
+
+    const clientId = () => { return STATIC_PARAMETERS.ROLES[selected_role].CLIENT_ID; }
+    const redirectUri = () => { return STATIC_PARAMETERS.ROLES[selected_role].REDIRECT_URI; }
+    const apiUri = () => { return STATIC_PARAMETERS.ROLES[selected_role].API_URI; }
 
     /**
      * Generate a code verifier
@@ -173,15 +305,15 @@ An ETT Registered Entity’s Authorized Individuals and Administrator will have 
     function initiateAuthorizationRequest(codeChallenge, state) {
       const params = {
         response_type: 'code',
-        client_id: CLIENT_ID,
-        redirect_uri: `https://${REDIRECT_URI}?action=login`,
+        client_id: clientId(),
+        redirect_uri: `https://${redirectUri()}?action=login`,
         state: state,
         code_challenge: codeChallenge,
         code_challenge_method: 'S256'
       };
       
       const queryString = Object.keys(params).map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`).join('&');
-      const authorizationUrl = `${COGNITO_DOMAIN}/oauth2/authorize?${queryString}`;
+      const authorizationUrl = `${STATIC_PARAMETERS.COGNITO_DOMAIN}/oauth2/authorize?${queryString}`;
       
       window.location.href = authorizationUrl;
     }
@@ -209,8 +341,8 @@ An ETT Registered Entity’s Authorized Individuals and Administrator will have 
       const codeVerifier = window.sessionStorage.getItem("code_verifier");
       const params = {
         grant_type: 'authorization_code',
-        client_id: CLIENT_ID,
-        redirect_uri: `https://${REDIRECT_URI}?action=login`,
+        client_id: clientId(),
+        redirect_uri: `https://${redirectUri()}?action=login`,
         state: savedState,
         code: authorizationCode,
         code_verifier: codeVerifier
@@ -218,7 +350,7 @@ An ETT Registered Entity’s Authorized Individuals and Administrator will have 
 
       const formData = Object.keys(params).map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`).join('&');
 
-      fetch(`${COGNITO_DOMAIN}/oauth2/token`, {
+      fetch(`${STATIC_PARAMETERS.COGNITO_DOMAIN}/oauth2/token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
@@ -240,14 +372,14 @@ An ETT Registered Entity’s Authorized Individuals and Administrator will have 
     function signUp() {
 
       const params = {
-        client_id: CLIENT_ID,
+        client_id: clientId(),
         response_type: 'code',
         scope: 'email+openid+phone',
-        redirect_uri: encodeURIComponent(`https://${REDIRECT_URI}?action=signedup`)
+        redirect_uri: encodeURIComponent(`https://${redirectUri()}?action=signedup`)
       };
 
       const queryString = Object.keys(params).map(key => `${key}=${params[key]}`).join('&');
-      const signUpUrl = `${COGNITO_DOMAIN}/signup?${queryString}`;
+      const signUpUrl = `${STATIC_PARAMETERS.COGNITO_DOMAIN}/signup?${queryString}`;
       window.location.href = signUpUrl;
     }
 
@@ -272,11 +404,11 @@ An ETT Registered Entity’s Authorized Individuals and Administrator will have 
 
     function signOut() {
       const params = {
-        client_id: CLIENT_ID,
-        logout_uri: encodeURIComponent(`https://${REDIRECT_URI}?action=logout`)
+        client_id: clientId(),
+        logout_uri: encodeURIComponent(`https://${redirectUri()}?action=logout`)
       };
       const queryString = Object.keys(params).map(key => `${key}=${params[key]}`).join('&');
-      const signOutUrl = `${COGNITO_DOMAIN}/logout?${queryString}`;
+      const signOutUrl = `${STATIC_PARAMETERS.COGNITO_DOMAIN}/logout?${queryString}`;
 
       window.location.href = signOutUrl;
     }
@@ -284,7 +416,7 @@ An ETT Registered Entity’s Authorized Individuals and Administrator will have 
     // https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-the-access-token.html
     // https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-integrate-with-cognito.html
     function callApi() {
-      fetch(HELLO_WORLD_API_URI, {
+      fetch(apiUri(), {
         method: 'GET',
         mode: "cors",
         credentials: 'include',

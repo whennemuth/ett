@@ -1,0 +1,11 @@
+{
+  "name": "ett-consenting-person",
+  "version": "1.0.0",
+  "description": "Actions available to an ETT consenting person",
+  "main": "ConsentingPerson.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Warren Hennemuth",
+  "license": "ISC"
+}

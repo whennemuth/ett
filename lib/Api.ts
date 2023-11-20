@@ -3,12 +3,15 @@ import { UserPool } from "aws-cdk-lib/aws-cognito";
 import { HelloWorldApi } from "./role/HelloWorld";
 import { GatekeeperApi } from "./role/Gatekeeper";
 import { ReAdminUserApi } from "./role/ReAdmin";
+import { AuthorizedIndividualApi } from "./role/AuthorizedIndividual";
+import { ConsentingPersonApi } from "./role/ConsentingPerson";
 import { DynamoDbConstruct } from "./DynamoDb";
 import { CognitoConstruct } from "./Cognito";
 
-export type ApiParms = {
+export type ApiConstructParms = {
   userPool: UserPool,
   userPoolName: string,
+  userPoolDomain: string,
   cloudfrontDomain: string,
   redirectPath: string,
 }
@@ -20,15 +23,21 @@ export class ApiConstruct extends Construct {
   private _helloWorldApi: HelloWorldApi;
   private _gatekeeperApi: GatekeeperApi;
   private _reAdminApi: ReAdminUserApi;
+  private _authIndApi: AuthorizedIndividualApi;
+  private _consentPersonApi: ConsentingPersonApi;
 
-  constructor(scope: Construct, constructId: string, apiParms:ApiParms) {
+  constructor(scope: Construct, constructId: string, apiParms:ApiConstructParms) {
     super(scope, constructId);
 
     this._helloWorldApi = new HelloWorldApi(this, 'HelloWorld', apiParms);
 
+    this._gatekeeperApi = new GatekeeperApi(this, 'GatekeeperUser', apiParms);
+
     this._reAdminApi = new ReAdminUserApi(this, 'ReAdminUser', apiParms);
 
-    this._gatekeeperApi = new GatekeeperApi(this, 'GatekeeperUser', apiParms);
+    this._authIndApi = new AuthorizedIndividualApi(this, 'AuthIndUser', apiParms);
+
+    this._consentPersonApi = new ConsentingPersonApi(this, 'ConsentPersonUser', apiParms);
   }
 
   public grantPermissions = (dynamodb:DynamoDbConstruct, cognito:CognitoConstruct) => {
@@ -45,6 +54,8 @@ export class ApiConstruct extends Construct {
       'cognito-identity:Get*', 
       'cognito-identity:List*'
     );
+
+    // TODO: Grant the appropriate iam policies to the auth ind and consenting persons lambdas
   }
 
   public get helloWorldApi(): HelloWorldApi {
@@ -55,5 +66,11 @@ export class ApiConstruct extends Construct {
   }
   public get reAdminApi(): ReAdminUserApi {
     return this._reAdminApi;
+  }
+  public get authIndApi(): AuthorizedIndividualApi {
+    return this._authIndApi;
+  }
+  public get consentingPersonApi(): ConsentingPersonApi {
+    return this._consentPersonApi;
   }
 }

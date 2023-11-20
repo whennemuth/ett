@@ -16,44 +16,47 @@ export class SignupLink {
 
   public getLinkForRole = async (role:Role):Promise<string|undefined> => {
 
-    const userPoolId = await lookupUserPoolId(this.userPoolName);
-    if( ! userPoolId ) {
-      console.error('Could not determine userpool ID for signin link');
-      return;
-    }
+    try {
+      const userPoolId = await lookupUserPoolId(this.userPoolName);
+      if( ! userPoolId ) {
+        console.log('Could not determine userpool ID for signin link');
+        return;
+      }
+  
+      const userPoolClientId = await lookupUserPoolClientId(userPoolId, role);
+      if( ! userPoolClientId ) {
+        console.log('Could not determine userpool client ID for signin link');
+        return;
+      }
 
-    const userPoolClientId = await lookupUserPoolClientId(userPoolId, role);
-    if( ! userPoolClientId ) {
-      console.error('Could not determine userpool client ID for signin link');
-      return;
-    }
-
-    const cognitoDomain = process.env.COGNITO_DOMAIN;
-    if( ! cognitoDomain ) {
-      console.error('Could not determine cognito domain for signin link');
-      return;
-    }
-
-    const redirectPath = process.env.REDIRECT_PATH;
-    if( ! redirectPath ) {
-      console.error('Could not determine redirect URI for signin link');
-      return;
-    }
-
-    const redirectURI = `${cognitoDomain}/${redirectPath}`;
-
-    const params = {
-      client_id: userPoolClientId,
-      response_type: 'code',
-      scope: 'email+openid+phone',
-      redirect_uri: encodeURIComponent(`https://${redirectURI}?action=signedup`)
-    } as any;
-
-    const queryString = Object.keys(params).map(key => `${key}=${params[key]}`).join('&');
-    const signUpUrl = `${cognitoDomain}/signup?${queryString}`;
-    return signUpUrl;
+      const cognitoDomain = process.env.COGNITO_DOMAIN;
+      if( ! cognitoDomain ) {
+        console.log('Could not determine cognito domain for signin link');
+        return;
+      }      
+  
+      const redirectURI = process.env.REDIRECT_URI;
+      if( ! redirectURI ) {
+        console.log('Could not determine redirect URI for signin link');
+        return;
+      }
+  
+      const params = {
+        client_id: userPoolClientId,
+        response_type: 'code',
+        scope: 'email+openid+phone',
+        redirect_uri: encodeURIComponent(`https://${redirectURI}?action=signedup`)
+      } as any;
+  
+      const queryString = Object.keys(params).map(key => `${key}=${params[key]}`).join('&');
+      const signUpUrl = `https://${cognitoDomain}/signup?${queryString}`;
+      return signUpUrl;  
+    } 
+    catch (e) {
+      console.log(e);
+      return undefined;
+    }  
   }
-
 }  
 
 /**

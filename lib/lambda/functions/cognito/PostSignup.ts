@@ -16,16 +16,16 @@ import { PostSignupEventType } from './PostSignupEventType';
  * @returns 
  */
 export const handler = async (_event:any) => {
-  // console.log(JSON.stringify(_event, null, 2)); 
+  console.log(JSON.stringify(_event, null, 2)); 
   
   const event = _event as PostSignupEventType;
-  const { userPoolId } = event;
+  const { userPoolId, region } = event;
   let newUser:User|undefined;
   if( event?.callerContext) {
     const { clientId } = event?.callerContext;
 
     // Determined what role applies to the newly confirmed cognito user.
-    const role:Role|undefined = await lookupRole(userPoolId, clientId);
+    const role:Role|undefined = await lookupRole(userPoolId, clientId, region);
 
     if(role) {
       // Make a corresponding new user entry in dynamodb.
@@ -50,12 +50,12 @@ export const handler = async (_event:any) => {
  * @param clientId 
  * @returns 
  */
-const lookupRole = async (userPoolId:string, clientId:string):Promise<Role|undefined> => {
+export const lookupRole = async (userPoolId:string, clientId:string, region:string):Promise<Role|undefined> => {
   try {
     let roleStr = '';
     let role:Role | undefined;
     if(userPoolId && clientId) {
-      const client = new CognitoIdentityProviderClient();
+      const client = new CognitoIdentityProviderClient({ region });
       const input:ListUserPoolClientsRequest = {
         UserPoolId: userPoolId,
         MaxResults: 10,
@@ -66,7 +66,7 @@ const lookupRole = async (userPoolId:string, clientId:string):Promise<Role|undef
       // Iterate over the user pool clients and look for one that matches the one in the event.
       for(var i=0; i<clients.length; i++ ) {
         const client:UserPoolClientDescription = clients[i];
-        if(client.UserPoolId == userPoolId) {
+        if(client.UserPoolId == userPoolId && client.ClientId == clientId) {
           // By convention, the userpool client is named such that the value is prepended with the role.
           roleStr = client.ClientName?.split('-')[0] || '';
           var matched = Object.keys(Roles).find(s => {
@@ -87,7 +87,7 @@ const lookupRole = async (userPoolId:string, clientId:string):Promise<Role|undef
   }
 }
 
-const addUserToDynamodb = async (event:PostSignupEventType, role:Role):Promise<User|undefined> => {
+export const addUserToDynamodb = async (event:PostSignupEventType, role:Role):Promise<User|undefined> => {
   
   if( ! event?.request?.userAttributes ) {
     console.log('ERROR: Attributes are missing from the event');
@@ -122,6 +122,7 @@ const addUserToDynamodb = async (event:PostSignupEventType, role:Role):Promise<U
     [UserFields.entity_name]: '__UNASSIGNED__',
     [UserFields.fullname]: name,
     [UserFields.sub]: sub,
+    [UserFields.role]: role
   }
   const dao:DAO = DAOFactory.getInstance({ DAOType: 'user', Payload: user });
   try {
@@ -139,9 +140,9 @@ const addUserToDynamodb = async (event:PostSignupEventType, role:Role):Promise<U
  * a confirmed cognito user with no matching dynamodb entry, so remove the cognito entry.
  * @param sub 
  */
-const undoCognitoLogin = async (event:PostSignupEventType):Promise<void> => {
+export const undoCognitoLogin = async (event:PostSignupEventType):Promise<void> => {
   if(event?.request?.userAttributes?.sub) {
     const { sub } = event.request.userAttributes;
   }  
-  console.log('RESUME NEXT: Write this function, and then assert it gets called in the unit tests.');
+  console.log('TODO: Write this function, and then assert it gets called in the unit tests.');
 }

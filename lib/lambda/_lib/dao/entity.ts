@@ -15,7 +15,7 @@ export type Y_or_N = YN.Yes | YN.No
 /**
  * RESUME NEXT
  * 
- * 1) Finish Gatekeeper functionality and test entity creation and invitations.
+ * 1) Gatekeeper can be signed up for and dynamodb entry created, but cannot seem to signin on index.htm - fix this.
  * 
  * 2) Add a presignup lambda trigger for cognito that looks in the invitations table for the email of the
  * signing up user and compare the role found there to the new role determined by lookupRole function (borrow
@@ -24,7 +24,6 @@ export type Y_or_N = YN.Yes | YN.No
  * signups (re-admin, auth-ind)
  * 
  * 3) Deploy the current changes and see if public user signup triggers automatic dynamodb user creation.
- * 
  * 
  */
 export enum UserFields {

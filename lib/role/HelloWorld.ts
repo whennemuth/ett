@@ -2,7 +2,7 @@ import { ResourceServerScope, UserPool } from "aws-cdk-lib/aws-cognito";
 import { Function } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from "constructs";
 import { Code, Runtime } from "aws-cdk-lib/aws-lambda";
-import { AbstractRoleApi } from "./AbstractRole";
+import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
 import { LogGroup } from "aws-cdk-lib/aws-logs";
 import { RemovalPolicy } from "aws-cdk-lib";
 import { Roles } from  '../lambda/_lib/dao/entity';
@@ -12,7 +12,7 @@ export interface HelloWorldParms {
   cloudfrontDomain: string
 }
 
-export class HelloWorldApi extends Construct {
+export class HelloWorldApi extends AbstractRole {
 
   private api: AbstractRoleApi;
 
@@ -25,7 +25,7 @@ export class HelloWorldApi extends Construct {
     const lambdaFunction = new Function(scope, `${constructId}Lambda`, {
       runtime: Runtime.NODEJS_18_X,
       handler: 'index.handler',
-      functionName: `${constructId}Lambda`,
+      functionName: `Ett${constructId}Lambda`,
       description: 'Just a simple lambda for testing cognito authorization',
       code: Code.fromInline(`
       exports.handler = async (event) => {
@@ -62,7 +62,7 @@ export class HelloWorldApi extends Construct {
       role: Roles.HELLO_WORLD,
       description: 'Simple hello world api for initial proving of authentication and scopes',
       bannerImage: 'client-hello-world.png',
-      resourceId: 'greeting',
+      resourceId: Roles.HELLO_WORLD,
       methods: [ 'POST', 'GET' ],
       scopes: [
         new ResourceServerScope({ scopeName: 'read', scopeDescription: 'Read-only access' }),
@@ -71,12 +71,8 @@ export class HelloWorldApi extends Construct {
     });
   }
 
-  public getRestApiUrl(): string {
-    return this.api.getRestApiUrl();
-  }
-
-  public getUserPoolClientId(): string {
-    return this.api.getUserPoolClientId();
+  public getApi(): AbstractRoleApi {
+    return this.api;
   }
 
   public getLambdaFunction(): Function {

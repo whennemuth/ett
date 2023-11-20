@@ -1,15 +1,16 @@
 import { Construct } from "constructs";
 import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
-import { ResourceServerScope } from "aws-cdk-lib/aws-cognito";
+import { ApiConstructParms } from "../Api";
 import { AbstractFunction } from "../AbstractFunction";
 import { Function, Runtime } from "aws-cdk-lib/aws-lambda";
 import { DynamoDbConstruct } from "../DynamoDb";
-import { Roles } from '../lambda/_lib/dao/entity';
-import { ApiConstructParms } from "../Api";
+import { Roles } from "../lambda/_lib/dao/entity";
+import { ResourceServerScope } from "aws-cdk-lib/aws-cognito";
 
-export class GatekeeperApi extends AbstractRole {
-  private api: AbstractRoleApi;
-  
+
+export class AuthorizedIndividualApi extends AbstractRole {
+  private api: AbstractRoleApi
+
   constructor(scope: Construct, constructId: string, parms: ApiConstructParms) {
 
     super(scope, constructId);
@@ -21,19 +22,19 @@ export class GatekeeperApi extends AbstractRole {
       cloudfrontDomain,
       lambdaFunction,
       userPool,
-      role: Roles.GATEKEEPER,
-      description: 'Api for all operations that are open to a gatekeeper',
-      bannerImage: 'client-gatekeeper.png',
-      resourceId: 'gatekeeper',
+      role: Roles.RE_AUTH_IND,
+      description: 'Api for all operations that are open to an authorized individual',
+      bannerImage: 'client-auth-ind.png',
+      resourceId: Roles.RE_AUTH_IND,
       methods: [ 'POST', 'GET' ],
       scopes: [
         new ResourceServerScope({ 
-          scopeName: 'entity-administration', 
-          scopeDescription: 'Access to create/modify the registered entity listing'
+          scopeName: 'manage-applicants', 
+          scopeDescription: 'Access to inspect and correspond with consenting individuals'
         }),
         new ResourceServerScope({
-          scopeName: 'invitations',
-          scopeDescription: 'Access to invite non-public users for ETT signup'
+          scopeName: 'manage-affiliates',
+          scopeDescription: 'Access to inspect and correspond with affliates'
         })
       ]
     });
@@ -53,13 +54,12 @@ export class GatekeeperApi extends AbstractRole {
  */
 export class LambdaFunction extends AbstractFunction {
   constructor(scope: Construct, constructId: string, parms:ApiConstructParms) {
-    const redirectURI = `${parms.cloudfrontDomain}/${parms.redirectPath}`.replace('//', '/');
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
-      entry: 'lib/lambda/functions/gatekeeper/GatekeeperUser.ts',
+      entry: 'lib/lambda/functions/authorized-individual/AuthorizedIndividual.ts',
       // handler: 'handler',
       functionName: `Ett${constructId}`,
-      description: 'Function for all gatekeeper user activity.',
+      description: 'Function for all authorized individual activity.',
       cleanup: true,
       bundling: {
         externalModules: [
@@ -71,10 +71,6 @@ export class LambdaFunction extends AbstractFunction {
         DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME,
         DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_ENTITY_TABLE_NAME,
         DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_INVITATION_TABLE_NAME,
-        USERPOOL_NAME: parms.userPoolName,
-        COGNITO_DOMAIN: parms.userPoolDomain,
-        CLOUDFRONT_DOMAIN: parms.cloudfrontDomain,
-        REDIRECT_URI: redirectURI
       }
     });
   }

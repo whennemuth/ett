@@ -1,6 +1,6 @@
 import { ResourceServerScope, UserPool } from "aws-cdk-lib/aws-cognito";
 import { Construct } from "constructs";
-import { AbstractRoleApi } from "./AbstractRole";
+import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
 import { Function, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { AbstractFunction } from "../AbstractFunction";
 import { DynamoDbConstruct } from "../DynamoDb";
@@ -11,7 +11,7 @@ export interface AdminUserParms {
   cloudfrontDomain: string,
 }
 
-export class ReAdminUserApi extends Construct {
+export class ReAdminUserApi extends AbstractRole {
   private api: AbstractRoleApi;
 
   constructor(scope: Construct, constructId: string, parms: AdminUserParms) {
@@ -28,7 +28,7 @@ export class ReAdminUserApi extends Construct {
       role: Roles.RE_ADMIN,
       description: 'Api for all operations that are open to a registered entity administrator',
       bannerImage: 'client-admin.png',
-      resourceId: 'admin',
+      resourceId: Roles.RE_ADMIN,
       methods: [ 'POST', 'GET' ],
       scopes: [
         new ResourceServerScope({ 
@@ -43,12 +43,8 @@ export class ReAdminUserApi extends Construct {
     });
   }
 
-  public getRestApiUrl(): string {
-    return this.api.getRestApiUrl();
-  }
-
-  public getUserPoolClientId(): string {
-    return this.api.getUserPoolClientId();
+  public getApi(): AbstractRoleApi {
+    return this.api;
   }
 
   public getLambdaFunction(): Function {
@@ -65,7 +61,7 @@ export class LambdaFunction extends AbstractFunction {
       runtime: Runtime.NODEJS_18_X,
       entry: 'lib/lambda/functions/re-admin/ReAdminUser.ts',
       // handler: 'handler',
-      functionName: constructId,
+      functionName: `Ett${constructId}`,
       description: 'Function for all re admin user activity.',
       cleanup: true,
       bundling: {

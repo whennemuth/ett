@@ -24,7 +24,21 @@
         "AWS_PROFILE": "bu",
         "DYNAMODB_USER_TABLE_NAME": "ett-users",
         "REGION": "us-east-2"
-      }   
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Cognito post signup handler",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/cognito/runner.ts",
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      }, 
     },
 
     // JEST TESTS
@@ -95,7 +109,22 @@
       "internalConsoleOptions": "neverOpen",
       "env": { 
         "DYNAMODB_USER_TABLE_NAME": "ett-users",
+        "TASK": "lookup-role"
       }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Signup Link",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "-i", 
+        "${workspaceFolder}/lib/lambda/_lib/signupLinks/SignupLink.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
     }
   ]
 }

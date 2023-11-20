@@ -6,7 +6,9 @@ import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import { S3EventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { EventType } from 'aws-cdk-lib/aws-s3';
 import { Effect, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { AbstractRoleApi } from './role/AbstractRole';
 import path = require('path');
+import { Roles } from './lambda/_lib/dao/entity';
 
 
 export interface NameValuePair {
@@ -15,13 +17,34 @@ export interface NameValuePair {
 
 export interface StaticSiteCustomInConstructParms {
   bucket: Bucket,
-  cognitoClientId: string,
-  cognitoDomain: string,
-  cognitoRedirectURI: string
-  cognitoUserpoolRegion: string,
   distributionId: string,
-  apiUris: NameValuePair[]
-};
+  cloudfrontDomain: string,
+  cognitoDomain: string,
+  cognitoUserpoolRegion: string,
+  apis: AbstractRoleApi[]
+}
+
+/**
+ * The lambda function will receive all environment variable info through one environment
+ * variable set with a json object as the value.
+ * @param parms 
+ * @returns 
+ */
+const buildJsonEnvVar = (parms: StaticSiteCustomInConstructParms) => {
+  let jsonObj = {
+    COGNITO_DOMAIN: parms.cognitoDomain,
+    USER_POOL_REGION: parms.cognitoUserpoolRegion,
+    ROLES: { } as any
+  };
+  parms.apis.forEach((api:AbstractRoleApi) => {
+    jsonObj.ROLES[api.getRole()] = {
+      CLIENT_ID: api.getUserPoolClientId(),
+      REDIRECT_URI: `${parms.cloudfrontDomain}/index.htm`,
+      API_URI: api.getRestApiUrl()
+    }
+  });
+  return JSON.stringify(jsonObj, null, 2);
+}
 
 export class StaticSiteCustomInConstruct extends StaticSiteConstruct {
 
@@ -32,8 +55,11 @@ export class StaticSiteCustomInConstruct extends StaticSiteConstruct {
   public customize(): void {
     const inProps = (<StaticSiteCustomInConstructParms>this.props);
     const functionName = `${this.constructId}-injection-function`;
+    const staticParms = buildJsonEnvVar(inProps);
     const conversionFunction = new AbstractFunction(this, 'TextConverterFunction', {
       functionName,
+      description: 'Function for modifying content being loaded into the static website bucket so that \
+        certain placeholders are replaced with resource attribute values, like cognito userpool client attributes.',
       runtime: Runtime.NODEJS_18_X,
       // handler: 'Injector.handler',
       handler: 'handler',
@@ -42,15 +68,8 @@ export class StaticSiteCustomInConstruct extends StaticSiteConstruct {
       entry: path.join(__dirname, `lambda/functions/injector-event/injector.mjs`),
       // code: Code.fromAsset(path.join(__dirname, `lambda/functions/injector-event`)),
       environment: {
-        COGNITO_DOMAIN: inProps.cognitoDomain,
-        CLIENT_ID: inProps.cognitoClientId,
-        REDIRECT_URI: inProps.cognitoRedirectURI,
-        USER_POOL_REGION: inProps.cognitoUserpoolRegion
+        STATIC_PARAMETERS: staticParms
       }
-    });
-
-    inProps.apiUris.forEach(item => {
-      conversionFunction.addEnvironment(item.name, item.value);
     });
 
     // Grant the Lambda function permissions to access the S3 bucket

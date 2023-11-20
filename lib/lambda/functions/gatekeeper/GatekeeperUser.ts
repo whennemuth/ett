@@ -78,7 +78,6 @@ const getSigninLink = async (parms:any):Promise<string|undefined> => {
 const inviteUser = async (parms:any) => {
   const { email, entity_name, role } = parms;
   const link = await getSigninLink(parms);
-  const userPoolName = process.env.USERPOOL_NAME;
   if(link) {    
     const emailInvite = new InvitationEmail({ email, entity_name, role, link });
     if( await emailInvite.send()) {

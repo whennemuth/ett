@@ -31,6 +31,7 @@ export class AbstractRoleApi extends Construct {
   private restApiUrl: string;
   private userPoolClient: UserPoolClient;
   private lambdaFunction: Function;
+  private role: Role;
   
   constructor(scope: Construct, constructId: string, parms: ApiParms) {
 
@@ -39,6 +40,7 @@ export class AbstractRoleApi extends Construct {
     const context: IContext = scope.node.getContext('stack-parms');
     const stageName = context.TAGS.Landscape;
     const { userPool, cloudfrontDomain, lambdaFunction, role, role:resourceServerId, description, bannerImage, resourceId, scopes, methods } = parms;
+    this.role = role;
     this.lambdaFunction = lambdaFunction;
 
     // Create a log group for the api gateway to log to.
@@ -148,4 +150,13 @@ export class AbstractRoleApi extends Construct {
   public getLambdaFunction(): Function {
     return this.lambdaFunction;
   }
+
+  public getRole(): Role {
+    return this.role;
+  }
+}
+
+export abstract class AbstractRole extends Construct {
+  public abstract getApi(): AbstractRoleApi;
+  public abstract getLambdaFunction(): Function;
 }

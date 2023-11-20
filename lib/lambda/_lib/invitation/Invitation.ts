@@ -116,6 +116,6 @@ export class InvitationEmail {
   }
 
   public accept = () => {
-    // RESUME NEXT: write this function
+    // TODO: write this function
   }
 }
