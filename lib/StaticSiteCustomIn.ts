@@ -34,6 +34,7 @@ const buildJsonEnvVar = (parms: StaticSiteCustomInConstructParms) => {
   let jsonObj = {
     COGNITO_DOMAIN: parms.cognitoDomain,
     USER_POOL_REGION: parms.cognitoUserpoolRegion,
+    PAYLOAD_HEADER: AbstractRoleApi.ETTPayloadHeader,
     ROLES: { } as any
   };
   parms.apis.forEach((api:AbstractRoleApi) => {

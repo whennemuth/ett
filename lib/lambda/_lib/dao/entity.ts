@@ -17,13 +17,15 @@ export type Y_or_N = YN.Yes | YN.No
  * 
  * 1) Gatekeeper can be signed up for and dynamodb entry created, but cannot seem to signin on index.htm - fix this.
  * 
- * 2) Add a presignup lambda trigger for cognito that looks in the invitations table for the email of the
+ * 2) Address outstanding "TODO" items.
+ * 
+ * 3) Add a presignup lambda trigger for cognito that looks in the invitations table for the email of the
  * signing up user and compare the role found there to the new role determined by lookupRole function (borrow
  * this from PostSignup.ts). If the user is found in the invitations table and the role matches, only then 
  * let the signup process continue, otherwise reject it there. This should be the flow for all "non-public"
  * signups (re-admin, auth-ind)
  * 
- * 3) Deploy the current changes and see if public user signup triggers automatic dynamodb user creation.
+ * 4) Deploy the current changes and see if public user signup triggers automatic dynamodb user creation.
  * 
  */
 export enum UserFields {

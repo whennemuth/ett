@@ -9,7 +9,7 @@ An attempt is made to follow test-driven development.
 npm test
 ```
 
-### ESM support
+### ESM support for unit tests
 
 In order to allow jest to test against [ECMAScript Modules](https://nodejs.org/api/esm.html#modules-ecmascript-modules), it is necessary to activate its experimental support for ESM.
 The following [jest documentation](https://jestjs.io/docs/ecmascript-modules) was followed in order to do this, but a few things are worth pointing out that were encountered while getting this to work:
@@ -61,7 +61,7 @@ The following [jest documentation](https://jestjs.io/docs/ecmascript-modules) wa
   With this launch configuration, you can place a breakpoint inside your tests, or the file under test and step through the code.
   *NOTE: If on windows, the `--runTestsByPath` jest argument is necessary*
 
-### Launch configurations:
+### Mocking for unit tests:
 
 Part of testing includes mocking for lambda functions. In particular, it is helpful in typescript to have the [event object](https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-concepts.html#gettingstarted-concepts-event) mocked.
 The AWS article ["Using types for the event object"](https://docs.aws.amazon.com/lambda/latest/dg/typescript-handler.html#event-types) explains how to do this, but here are the relevant steps:

@@ -24,7 +24,7 @@ export class GatekeeperApi extends AbstractRole {
       role: Roles.GATEKEEPER,
       description: 'Api for all operations that are open to a gatekeeper',
       bannerImage: 'client-gatekeeper.png',
-      resourceId: 'gatekeeper',
+      resourceId: Roles.GATEKEEPER,
       methods: [ 'POST', 'GET' ],
       scopes: [
         new ResourceServerScope({ 

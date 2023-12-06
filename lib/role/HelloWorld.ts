@@ -32,6 +32,7 @@ export class HelloWorldApi extends AbstractRole {
         console.log(JSON.stringify(event, null, 2));
 
         // https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-output-format
+        // https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-cors.html#apigateway-enable-cors-proxy
         const response = {
           isBase64Encoded: false,
           statusCode: 200,
@@ -41,7 +42,7 @@ export class HelloWorldApi extends AbstractRole {
               "Access-Control-Allow-Methods": "OPTIONS,POST,GET",
               "Access-Control-Allow-Credentials": "true"
           },
-          body: JSON.stringify('Hello from lambda function!'),
+          body: JSON.stringify({ message: 'Ping!' }),
         };
   
         return response;

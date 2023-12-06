@@ -49,6 +49,7 @@
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
         "--runTestsByPath", 
+        "--silent",
         "-i", 
         "${workspaceFolder}/lib/lambda/_lib/dao/test/dao.test.ts" 
       ],
@@ -67,6 +68,7 @@
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
         "--runTestsByPath", 
+        "--silent",
         "-i", 
         "${workspaceFolder}/lib/lambda/_lib/dao/test/builder.test.ts" 
       ],
@@ -80,27 +82,11 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest RE-Admin Lambda",
-      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
-      "args": [ 
-        "--runTestsByPath", 
-        "-i", 
-        "${workspaceFolder}/lib/lambda/functions/re-admin/ReAdminUser.test.ts" 
-      ],
-      "runtimeArgs": [ "--experimental-vm-modules" ],
-      "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "env": {
-        "DYNAMODB_USER_TABLE_NAME": "ett-users"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
       "name": "Jest PostSignup Lambda",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
         "--runTestsByPath", 
+        "--silent",
         "-i", 
         "${workspaceFolder}/lib/lambda/functions/cognito/PostSignup.test.ts" 
       ],
@@ -119,12 +105,46 @@
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
         "--runTestsByPath", 
+        "--silent",
         "-i", 
         "${workspaceFolder}/lib/lambda/_lib/signupLinks/SignupLink.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Lambda Gatekeeper",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/functions/gatekeeper/GatekeeperUser.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Lambda RE-Admin",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/functions/re-admin/ReAdminUser.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "env": {
+        "DYNAMODB_USER_TABLE_NAME": "ett-users"
+      }
     }
   ]
 }

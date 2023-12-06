@@ -1,3 +1,4 @@
+import { AbstractRoleApi } from '../../../role/AbstractRole';
 import { DAO, DAOFactory } from '../../_lib/dao/dao';
 import { YN } from '../../_lib/dao/entity';
 import { InvitationEmail } from '../../_lib/invitation'
@@ -13,28 +14,94 @@ export enum Task {
   CREATE_ENTITY = 'create_entity',
   UPDATE_ENTITY = 'update_entity',
   DEACTIVATE_ENTITY = 'deactivate_entity',
-  INVITE_USER = 'invite_user'
+  INVITE_USER = 'invite_user',
+  PING = 'ping'
 }
-export const handler = async (event:any) => {
-  console.log(JSON.stringify(event, null, 2)); 
+ 
+export type IncomingPayload = {
+  task:Task,
+  parameters: any
+}
+export type OutgoingPayload = {
+  statusCode:number;
+  statusDescription:string,
+  message:string,
+  payload:any
+}
+export type Response = {
+  isBase64Encoded?:boolean,
+  statusCode:number,
+  statusDescription?:string,
+  headers?:any,
+  body?:string
+}
 
-  const { ApiParameters: parms } = event.headers;
-  const { task } = parms;
+export const handler = async (event:any):Promise<Response> => {
+  let statusCode = 200;
+  let outgoingPayload = {} as OutgoingPayload;
+  try {
+    console.log(JSON.stringify(event, null, 2)); 
 
-  switch(task as Task) {
-    case Task.CREATE_ENTITY:
-      await createEntity(parms);
-      break;
-    case Task.UPDATE_ENTITY:
-      await updateEntity(parms);
-      break;
-    case Task.DEACTIVATE_ENTITY:
-      await deactivateEntity(parms);
-      break;
-    case Task.INVITE_USER:
-      await inviteUser(parms);
-      break;
-  } 
+    const payloadJson = event.headers[AbstractRoleApi.ETTPayloadHeader];
+    const payload = payloadJson ? JSON.parse(payloadJson) as IncomingPayload : null;
+    let { task, parameters } = payload || {};
+
+    if( ! Object.values<string>(Task).includes(task || '')) {
+      statusCode = 400;
+      outgoingPayload = {
+        statusCode: 400,
+        statusDescription: 'Bad Request',
+        message: `Invalid/Missing task parameter: ${task}`,
+        payload: { error: true }
+      }
+    }
+    else {
+      console.log(`Performing task: ${task}`);
+      switch(task as Task) {
+        case Task.CREATE_ENTITY:
+          await createEntity(parameters);
+          break;
+        case Task.UPDATE_ENTITY:
+          await updateEntity(parameters);
+          break;
+        case Task.DEACTIVATE_ENTITY:
+          await deactivateEntity(parameters);
+          break;
+        case Task.INVITE_USER:
+          await inviteUser(parameters);
+          break;
+        case Task.PING:
+          statusCode = 200;
+          outgoingPayload = { statusCode: 200, statusDescription: 'OK', message: 'Ping!', payload: parameters }
+          break;
+      } 
+    }
+  }
+  catch(e:any) {
+    console.error(e);
+    statusCode = 500;
+    outgoingPayload = {
+      statusCode: 500,
+      statusDescription: 'Internal Server Error',
+      message: e.message || 'unknown error',
+      payload: e
+    };
+  }
+
+  const response = { 
+    isBase64Encoded: false,
+    statusCode, 
+    headers: {
+      'Access-Control-Allow-Headers' : 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent',
+      'Access-Control-Allow-Origin': `https://${process.env.CLOUDFRONT_DOMAIN}`,
+      'Access-Control-Allow-Methods': 'OPTIONS,POST,GET',
+      'Access-Control-Allow-Credentials': 'true'
+    },
+    body: JSON.stringify(outgoingPayload, null, 2),
+ };
+
+ console.log(`Response: ${JSON.stringify(response, null, 2)}`);
+ return response;
 }
 
 const createEntity = async (parms:any) => {

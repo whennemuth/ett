@@ -32,6 +32,12 @@ export class AbstractRoleApi extends Construct {
   private userPoolClient: UserPoolClient;
   private lambdaFunction: Function;
   private role: Role;
+
+  /** Name of the header in incoming api call requests for task specific parameters. 
+   * NOTE: Must be lowercase, because api gateway will convert it to lowercase and any lambda function
+   * event object will access it that way.
+   */
+  public static ETTPayloadHeader = 'ettpayload';
   
   constructor(scope: Construct, constructId: string, parms: ApiParms) {
 
@@ -63,7 +69,7 @@ export class AbstractRoleApi extends Construct {
       },      
       defaultCorsPreflightOptions: {
         allowOrigins: [ `https://${cloudfrontDomain}` ],
-        allowHeaders: Cors.DEFAULT_HEADERS,
+        allowHeaders: Cors.DEFAULT_HEADERS.concat([AbstractRoleApi.ETTPayloadHeader]),
         allowMethods: [ 'POST', 'GET', 'OPTIONS' ],
         maxAge: Duration.minutes(10),
         allowCredentials: true

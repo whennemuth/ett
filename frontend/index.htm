@@ -196,7 +196,7 @@
             <center>
               <p class="fs-4">Welcome, <span id="username"></span>!</p>
               <p class="fs-4" id="apiDescription"></p>
-              <p><button class="btn btn-primary btn-lg" type="button" onclick="callApi()">Call API</button></p>
+              <p><button class="btn btn-primary btn-lg" type="button" onclick="pingApi()">Ping the API</button></p>
               <p><span id="apiResponse"></span></p>
             </center>            
             <button type="button" class="btn btn-danger" onclick="signOut()">Sign out</button>
@@ -212,14 +212,7 @@
 
   <script>
 
-    // const COGNITO_DOMAIN = 'COGNITO_DOMAIN_PLACEHOLDER';
-    // const CLIENT_ID = 'CLIENT_ID_PLACEHOLDER';
-    // const REDIRECT_URI = 'REDIRECT_URI_PLACEHOLDER';
-    // const USER_POOL_REGION = 'USER_POOL_REGION_PLACEHOLDER';
-    // const HELLO_WORLD_API_URI = 'HELLO_WORLD_API_URI_PLACEHOLDER';
-
     const STATIC_PARAMETERS = STATIC_PARAMETERS_PLACEHOLDER;
-    var selected_role;
     const roleChange = () => {
       selected_role = document.forms['formRole']['rdoRole'].value;
       var desc = document.getElementById('apiDescription');
@@ -235,6 +228,10 @@
         case 'CONSENTING_PERSON':
           desc.innerHTML = 'API to fill out a consent form'; break;
       }
+    }
+    const qsrole = new URL(document.location.href).searchParams.get('selected_role');
+    if(qsrole) {
+      document.forms['formRole']['rdoRole'].value = qsrole;
     }
     roleChange();
 
@@ -306,7 +303,7 @@
       const params = {
         response_type: 'code',
         client_id: clientId(),
-        redirect_uri: `https://${redirectUri()}?action=login`,
+        redirect_uri: `https://${redirectUri()}?action=login&selected_role=${selected_role}`,
         state: state,
         code_challenge: codeChallenge,
         code_challenge_method: 'S256'
@@ -342,7 +339,7 @@
       const params = {
         grant_type: 'authorization_code',
         client_id: clientId(),
-        redirect_uri: `https://${redirectUri()}?action=login`,
+        redirect_uri: `https://${redirectUri()}?action=login&selected_role=${selected_role}`,
         state: savedState,
         code: authorizationCode,
         code_verifier: codeVerifier
@@ -365,12 +362,16 @@
         callback();       
       })
       .catch(error => {
+        // TODO: Seeing error: Authorization error: TypeError: Cannot read properties of null (reading 'expires_in')
+        // Happens when trying to signin as gatekeeper. Fix this.
         console.error(`Authorization error: ${error}`);
       });
     }
 
+    /**
+     * Signup for a cognito userpool account.
+     */
     function signUp() {
-
       const params = {
         client_id: clientId(),
         response_type: 'code',
@@ -415,14 +416,15 @@
 
     // https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-the-access-token.html
     // https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-integrate-with-cognito.html
-    function callApi() {
+    function pingApi() {
       fetch(apiUri(), {
         method: 'GET',
         mode: "cors",
         credentials: 'include',
         headers: {
           'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          [STATIC_PARAMETERS.PAYLOAD_HEADER]: '{ "task": "ping" }'
         }
       })
       .then((response) => {

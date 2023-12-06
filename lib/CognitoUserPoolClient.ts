@@ -1,6 +1,6 @@
 import { Duration } from "aws-cdk-lib";
 import { OAuthScope, UserPool, UserPoolClient, UserPoolClientIdentityProvider, UserPoolClientProps } from "aws-cdk-lib/aws-cognito";
-import { Role } from './lambda/_lib/dao/entity';
+import { Role, Roles } from './lambda/_lib/dao/entity';
 
 export interface EttUserPoolClientProps { callbackDomainName:string, role:Role, customScopes?:OAuthScope[] }
 
@@ -39,7 +39,7 @@ export class EttUserPoolClient extends UserPoolClient {
         scopes,
         callbackUrls: [
           `https://${callbackDomainName}/index.htm`,
-          `https://${callbackDomainName}/index.htm?action=login`,
+          `https://${callbackDomainName}/index.htm?action=login&selected_role=${role}`,
           `https://${callbackDomainName}/index.htm?action=signedup`,
         ],
         logoutUrls: [
