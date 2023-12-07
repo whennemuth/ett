@@ -1,0 +1,23 @@
+{
+  "version": "1",
+  "region": "us-east-2",
+  "userPoolId": "us-east-2_pAHqeZF0m",
+  "userName": "6ac2ef08-8f87-46cb-9331-57c798883328",
+  "callerContext": {
+      "awsSdkVersion": "aws-sdk-unknown-unknown",
+      "clientId": "a96cuimvv5gksicplhashkkce"
+  },
+  "triggerSource": "PreAuthentication_Authentication",
+  "request": {
+      "userAttributes": {
+          "sub": "6ac2ef08-8f87-46cb-9331-57c798883328",
+          "cognito:email_alias": "daffyduck@warnerbros.com",
+          "cognito:user_status": "CONFIRMED",
+          "email_verified": "true",
+          "name": "Daffy Duck",
+          "email": "daffyduck@warnerbros.com"
+      },
+      "validationData": null
+  },
+  "response": {}
+}

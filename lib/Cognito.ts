@@ -5,7 +5,7 @@ import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { AbstractFunction } from './AbstractFunction';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import path = require('path');
-import { AccountRootPrincipal, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { DynamoDbConstruct } from './DynamoDb';
 
 export class CognitoConstruct extends Construct {
@@ -29,8 +29,8 @@ export class CognitoConstruct extends Construct {
   buildResources(): void {
 
     const postSignupFunction = new AbstractFunction(this, 'PostSignupFunction', {
-      functionName: `${this.constructId}-userpool-lambda`,
-      description: "Handles entry of a user into dynamodb directly after signing up in cognito.",
+      functionName: `${this.constructId}-post-signup`,
+      description: 'Handles entry of a user into dynamodb directly after signing up in cognito.',
       runtime: Runtime.NODEJS_18_X,
       handler: 'handler',
       logRetention: 7,
@@ -70,6 +70,48 @@ export class CognitoConstruct extends Construct {
       }
     });
 
+    const preAuthenticationFunction = new AbstractFunction(this, 'PreAuthenticationFunction', {
+      functionName: `${this.constructId}-pre-authentication`,
+      description: 'Cancels login attempt if user is does not have the role they selected to sign in with',
+      runtime: Runtime.NODEJS_18_X,
+      handler: 'handler',
+      logRetention: 7,
+      cleanup: true,
+      entry: path.join(__dirname, `lambda/functions/cognito/PreAuthentication.ts`),
+      bundling: {
+        externalModules: [
+          '@aws-sdk/*',
+        ]
+      },
+      role: new Role(this, 'PreAuthenticationFunctionRole', {
+        assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+        description: 'Grants access to read from dynamodb cognito userpool clients',
+        inlinePolicies: {
+          'ListUserPoolClients': new PolicyDocument({
+            statements: [new PolicyStatement({
+              actions: [
+                'cognito-idp:ListUserPoolClients',
+              ],
+              resources: ['*'],
+            })],
+          }),
+          'ReadFromDynamodb': new PolicyDocument({
+            statements: [new PolicyStatement({
+              actions: [
+                'dynamodb:Get*', 'dynamodb:List*', 'dynamodb:Query'
+              ],
+              resources: [
+                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME}`
+              ],
+            })],
+          }),
+        }
+      }),
+      environment: {
+        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME
+      }
+    });
+
     this.userPool = new UserPool(this, 'UserPool', {
       removalPolicy: RemovalPolicy.DESTROY,
       userPoolName: this.userPoolName,
@@ -94,7 +136,8 @@ export class CognitoConstruct extends Construct {
         nickname: { required: false, mutable: true }
       },
       lambdaTriggers: {
-        postConfirmation: postSignupFunction
+        preAuthentication: preAuthenticationFunction,
+        postConfirmation: postSignupFunction,
       }
     });
 

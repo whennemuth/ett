@@ -1,10 +1,10 @@
-import { handler, lookupRole } from './PostSignup';
+import { handler } from './PostSignup';
 import { Roles, User } from '../../_lib/dao/entity';
 import { DAO } from '../../_lib/dao/dao';
 import { mockClient } from 'aws-sdk-client-mock'
 import 'aws-sdk-client-mock-jest';
 import { 
-  CognitoIdentityProviderClient, ListUserPoolClientsCommand, ListUserPoolClientsResponse, ResourceNotFoundException, UserPoolClientDescription
+  CognitoIdentityProviderClient, ListUserPoolClientsCommand, ListUserPoolClientsResponse
 } from '@aws-sdk/client-cognito-identity-provider';
 
 // ---------------------- EVENT DETAILS ----------------------
@@ -54,7 +54,7 @@ const testHandler = () => {
       cognitoIdpClientMock.on(ListUserPoolClientsCommand).resolves({});
       expect(async () => {
         await handler({});
-      }).rejects.toThrowError();    
+      }).rejects.toThrow();    
       expect(cognitoIdpClientMock).toHaveReceivedCommandTimes(ListUserPoolClientsCommand, 0);
       expect(crud_operation_attempts).toEqual(0);
       cognitoIdpClientMock.resetHistory();
@@ -66,7 +66,7 @@ const testHandler = () => {
         await handler({
           userPoolId: 'us-east-2_J9AbymKIz',
         });
-      }).rejects.toThrowError();    
+      }).rejects.toThrow();    
       expect(cognitoIdpClientMock).toHaveReceivedCommandTimes(ListUserPoolClientsCommand, 0);
       expect(crud_operation_attempts).toEqual(0);
       cognitoIdpClientMock.resetHistory();
@@ -77,7 +77,7 @@ const testHandler = () => {
       cognitoIdpClientMock.on(ListUserPoolClientsCommand).resolves({});
       expect(async () => {
         await handler({ userPoolId, callerContext: { clientId }});
-      }).rejects.toThrowError();    
+      }).rejects.toThrow();    
       expect(cognitoIdpClientMock).toHaveReceivedCommandTimes(ListUserPoolClientsCommand, 1);
       expect(crud_operation_attempts).toEqual(0);
       cognitoIdpClientMock.resetHistory();
@@ -92,7 +92,7 @@ const testHandler = () => {
       } as ListUserPoolClientsResponse);
       expect(async () => {
         await handler({ userPoolId, callerContext: { clientId }});
-      }).rejects.toThrowError();    
+      }).rejects.toThrow();    
       expect(cognitoIdpClientMock).toHaveReceivedCommandTimes(ListUserPoolClientsCommand, 1);
       expect(crud_operation_attempts).toEqual(0);
       cognitoIdpClientMock.resetHistory();
@@ -109,7 +109,7 @@ const testHandler = () => {
       } as ListUserPoolClientsResponse);
       expect(async () => {
         await handler({ userPoolId, callerContext: { clientId }});
-      }).rejects.toThrowError();    
+      }).rejects.toThrow();    
       expect(cognitoIdpClientMock).toHaveReceivedCommandTimes(ListUserPoolClientsCommand, 1);
       expect(crud_operation_attempts).toEqual(0);
       cognitoIdpClientMock.resetHistory();
@@ -130,7 +130,7 @@ const testHandler = () => {
           userPoolId, 
           callerContext: { clientId }
         });
-      }).rejects.toThrowError();    
+      }).rejects.toThrow();    
       expect(cognitoIdpClientMock).toHaveReceivedCommandTimes(ListUserPoolClientsCommand, 1);
       expect(crud_operation_attempts).toEqual(0);
       cognitoIdpClientMock.resetHistory();
@@ -147,7 +147,7 @@ const testHandler = () => {
             }
           }
         });
-      }).rejects.toThrowError();    
+      }).rejects.toThrow();    
       expect(cognitoIdpClientMock).toHaveReceivedCommandTimes(ListUserPoolClientsCommand, 1);
       expect(crud_operation_attempts).toEqual(0);
       cognitoIdpClientMock.resetHistory();
@@ -171,69 +171,6 @@ const testHandler = () => {
       expect(crud_operation_attempts).toEqual(1);
     });
 
-  });
-}
-
-const testLookupRole = () => {
-    // Mock the cognito idp client
-  const cognitoIdpClientMock = mockClient(CognitoIdentityProviderClient);
-
-  describe('Post signup lambda trigger: lookupRole', () => {
-
-    const region = 'us-east-2';
-    
-    it('Should return undefined if there is no such userpool', async () => {
-      cognitoIdpClientMock.on(ListUserPoolClientsCommand).rejects(new ResourceNotFoundException({
-        $metadata: {}, message: 'Userpool not found'
-      }));
-      const role = await lookupRole(userPoolId, clientId, region);
-      expect(role).toBeUndefined();
-    });
-
-    it('Should return undefined if there are no userpool clients', async () => {
-      cognitoIdpClientMock.on(ListUserPoolClientsCommand).resolves({
-        UserPoolClients: []
-      });
-      const role = await lookupRole(userPoolId, clientId, region);
-      expect(role).toBeUndefined();
-    });
-
-    it('Should return undefined if there is no matching userpool client', async () => {
-      cognitoIdpClientMock.on(ListUserPoolClientsCommand).resolves({
-        UserPoolClients: [
-          { UserPoolId: userPoolId, ClientId: 'bogus-id1', ClientName: 'bogus-name1' },
-          { UserPoolId: userPoolId, ClientId: 'bogusId2', ClientName: 'bogusName2' },
-          { UserPoolId: userPoolId, ClientId: 'bogus_id3', ClientName: 'bogus_name3' },
-        ]
-      });
-      const role = await lookupRole(userPoolId, clientId, region);
-      expect(role).toBeUndefined();
-    });
-
-    it('Should return undefined if the clientId is matched, but no valid role is recognized in the client name', async () => {
-      cognitoIdpClientMock.on(ListUserPoolClientsCommand).resolves({
-        UserPoolClients: [
-          { UserPoolId: userPoolId, ClientId: 'bogus-id1', ClientName: 'bogus-name1' },
-          { UserPoolId: userPoolId, ClientId: clientId, ClientName: 'bogusName2' },
-          { UserPoolId: userPoolId, ClientId: clientId, ClientName: 'bogus_role-name3' },
-          { UserPoolId: userPoolId, ClientId: 'bogus_id3', ClientName: 'bogus_name4' },
-        ]
-      });
-      const role = await lookupRole(userPoolId, clientId, region);
-      expect(role).toBeUndefined();
-    });
-
-    it('Should return the expected role if the clientId is matched and the clientName contains the matching role value', async () => {
-      cognitoIdpClientMock.on(ListUserPoolClientsCommand).resolves({
-        UserPoolClients: [
-          { UserPoolId: userPoolId, ClientId: 'bogus-id1', ClientName: 'bogus-name1' },
-          { UserPoolId: userPoolId, ClientId: clientId, ClientName: `${Roles.RE_ADMIN}-name2` },
-          { UserPoolId: userPoolId, ClientId: 'bogus_id3', ClientName: 'bogus_name3' },
-        ]
-      });
-      const role = await lookupRole(userPoolId, clientId, region);
-      expect(role).toEqual(Roles.RE_ADMIN);
-    })
   });
 }
 
@@ -264,9 +201,6 @@ switch(`${process.env.TASK}`) {
   case 'handler':
     testHandler();
     break;
-  case 'lookup-role':
-    testLookupRole();
-    break;
   case 'add-user':
     testAddUser();
     break;
@@ -275,7 +209,6 @@ switch(`${process.env.TASK}`) {
     break;
   default:
     testHandler();
-    testLookupRole();
     testAddUser();
     testUndoLogin();
     break;

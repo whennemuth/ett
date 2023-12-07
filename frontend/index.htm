@@ -362,8 +362,6 @@
         callback();       
       })
       .catch(error => {
-        // TODO: Seeing error: Authorization error: TypeError: Cannot read properties of null (reading 'expires_in')
-        // Happens when trying to signin as gatekeeper. Fix this.
         console.error(`Authorization error: ${error}`);
       });
     }

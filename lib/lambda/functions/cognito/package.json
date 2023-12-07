@@ -9,7 +9,7 @@
   "author": "Warren Hennemuth",
   "license": "ISC",
   "dependencies": {
-    "@aws-sdk/client-cognito-identity-provider": "^3.438.0",
+    "@aws-sdk/client-cognito-identity-provider": "^3.468.0",
     "@aws-sdk/client-dynamodb": "^3.438.0",
     "ett-dao": "file:../../_lib/dao"
   }

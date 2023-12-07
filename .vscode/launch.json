@@ -36,6 +36,7 @@
         "${workspaceFolder}/lib/lambda/functions/cognito/runner.ts",
       ], 
       "env": {
+        "TODO": "Merge this into PostSignup.test.ts and run unmocked with jest.",
         "AWS_PROFILE": "bu",
         "REGION": "us-east-2"
       }, 
@@ -82,25 +83,6 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest PostSignup Lambda",
-      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
-      "args": [ 
-        "--runTestsByPath", 
-        "--silent",
-        "-i", 
-        "${workspaceFolder}/lib/lambda/functions/cognito/PostSignup.test.ts" 
-      ],
-      "runtimeArgs": [ "--experimental-vm-modules" ],
-      "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "env": { 
-        "DYNAMODB_USER_TABLE_NAME": "ett-users",
-        "TASK": "lookup-role"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
       "name": "Jest Signup Link",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
@@ -116,7 +98,62 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest Lambda Gatekeeper",
+      "name": "Jest Cognito Role Lookup",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/functions/cognito/RoleLookup.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "env": { 
+        "DYNAMODB_USER_TABLE_NAME": "ett-users"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Lambda Cognito PreAuthentication",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/functions/cognito/PreAuthentication.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "env": { 
+        "DYNAMODB_USER_TABLE_NAME": "ett-users"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Lambda Cognito PostSignup",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/functions/cognito/PostSignup.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "env": { 
+        "DYNAMODB_USER_TABLE_NAME": "ett-users",
+        "TASK": "add-user"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Lambda Role Gatekeeper",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
         "--runTestsByPath", 
@@ -131,7 +168,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest Lambda RE-Admin",
+      "name": "Jest Lambda Role RE-Admin",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
         "--runTestsByPath", 
