@@ -1,5 +1,5 @@
 
-import { DAO, DAOFactory } from '../../_lib/dao/dao';
+import { DAOUser, DAOFactory } from '../../_lib/dao/dao';
 
 export const handler = async (event:any) => {
 
@@ -9,7 +9,7 @@ export const handler = async (event:any) => {
 
   const dir = Directory(email);
 
-  const dao:DAO = DAOFactory.getInstance({ 
+  const dao:DAOUser = DAOFactory.getInstance({ 
     DAOType: 'user', 
     Payload: { 
       email, entity_name, role, fullname 
@@ -42,7 +42,7 @@ export const handler = async (event:any) => {
  * @param {*} dao 
  * @returns 
  */
-export function User(directory:any, dao:DAO) {
+export function User(directory:any, dao:DAOUser) {
   return {
     create: async () => {
       return await dao.create();

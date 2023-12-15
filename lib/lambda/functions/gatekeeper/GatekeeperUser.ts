@@ -1,5 +1,5 @@
-import { AbstractRoleApi } from '../../../role/AbstractRole';
-import { DAO, DAOFactory } from '../../_lib/dao/dao';
+import { AbstractRoleApi, IncomingPayload, OutgoingPayload, LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
+import { DAOUser, DAOFactory, DAOEntity } from '../../_lib/dao/dao';
 import { YN } from '../../_lib/dao/entity';
 import { InvitationEmail } from '../../_lib/invitation'
 import { SignupLink } from '../../_lib/signupLinks/SignupLink';
@@ -17,26 +17,8 @@ export enum Task {
   INVITE_USER = 'invite_user',
   PING = 'ping'
 }
- 
-export type IncomingPayload = {
-  task:Task,
-  parameters: any
-}
-export type OutgoingPayload = {
-  statusCode:number;
-  statusDescription:string,
-  message:string,
-  payload:any
-}
-export type Response = {
-  isBase64Encoded?:boolean,
-  statusCode:number,
-  statusDescription?:string,
-  headers?:any,
-  body?:string
-}
 
-export const handler = async (event:any):Promise<Response> => {
+export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse> => {
   let statusCode = 200;
   let outgoingPayload = {} as OutgoingPayload;
   try {
@@ -106,12 +88,12 @@ export const handler = async (event:any):Promise<Response> => {
 
 const createEntity = async (parms:any) => {
   const { entity_name, description } = parms;
-  const dao:DAO = DAOFactory.getInstance({ DAOType: 'entity', Payload: { entity_name, description }});
+  const dao:DAOEntity = DAOFactory.getInstance({ DAOType: 'entity', Payload: { entity_name, description }}) as DAOEntity;
 }
 
 const updateEntity = async (parms:any) => {
   const { entity_name, description, active } = parms;
-  const dao:DAO = DAOFactory.getInstance({ DAOType: 'entity', Payload: {  entity_name, description, active }});
+  const dao:DAOEntity = DAOFactory.getInstance({ DAOType: 'entity', Payload: {  entity_name, description, active }}) as DAOEntity;
 }
 
 const deactivateEntity = async (parms:any) => {
@@ -121,7 +103,7 @@ const deactivateEntity = async (parms:any) => {
 
 /**
  * The cognito userpool client signup link can either have been passed in via the api call as a member
- * of the "ApiParameters" header, else it can be constructed by looking up userpool details via the 
+ * of the AbstractRoleApi.ETTPayloadHeader header, else it can be constructed by looking up userpool details via the 
  * userpool name.
  * @param parms 
  * @returns 
@@ -144,6 +126,9 @@ const getSigninLink = async (parms:any):Promise<string|undefined> => {
  */
 const inviteUser = async (parms:any) => {
   const { email, entity_name, role } = parms;
+  // RESUME NEXT 4: Put in a check here that prevents an invitation from being sent to an email for a particular
+  // role & entity, if any pending inviations exist for the same email, but for a different entity.
+  // Make sure this has a unit test.
   const link = await getSigninLink(parms);
   if(link) {    
     const emailInvite = new InvitationEmail({ email, entity_name, role, link });

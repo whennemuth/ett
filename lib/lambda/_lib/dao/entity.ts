@@ -1,3 +1,4 @@
+// RESUME NEXT 7: Create a new role RE_CONTACT, and add the api, userpool client, lambda function, etc.
 export enum Roles {
   GATEKEEPER = 'GATEKEEPER',
   RE_ADMIN = 'RE_ADMIN',
@@ -12,20 +13,6 @@ export type Role = Roles.GATEKEEPER | Roles.RE_ADMIN | Roles.RE_AUTH_IND | Roles
 
 export type Y_or_N = YN.Yes | YN.No
 
-/**
- * RESUME NEXT
- *  
- * 1) Address outstanding "TODO" items.
- * 
- * 2) Add a presignup lambda trigger for cognito that looks in the invitations table for the email of the
- * signing up user and compare the role found there to the new role determined by lookupRole function (borrow
- * this from PostSignup.ts). If the user is found in the invitations table and the role matches, only then 
- * let the signup process continue, otherwise reject it there. This should be the flow for all "non-public"
- * signups (re-admin, auth-ind)
- * 
- * 3) Deploy the current changes and see if public user signup triggers automatic dynamodb user creation.
- * 
- */
 export enum UserFields {
   email = 'email',
   entity_name = 'entity_name',
@@ -65,22 +52,31 @@ export type Entity = {
 export enum InvitationFields {
   email = 'email',
   entity_name = 'entity_name',
+  attempts = 'attempts',
+}
+export enum InvitationAttemptFields {
   role = 'role',
   link = 'link',
-  create_timestamp = 'create_timestamp',
+  sent_timestamp = 'sent_timestamp',
   accepted_timestamp = 'update_timestamp',
+  retracted_timestamp = 'retracted_timestamp',
+}
+export type InvitationAttempt = {
+  role: Role,
+  link: string,
+  sent_timestamp?: string,
+  accepted_timestamp?: string,
+  retracted_timestamp?: string,
 }
 export type Invitation = {
   email: string,
   entity_name: string,
-  role: Role,
-  link: string,
-  create_timestamp?: string,
-  accepted_timestamp?: string,
+  attempts: InvitationAttempt[]
 }
 
 export function Validator() {
-  const isRole = (role:string) => {
+  const isRole = (role:string|undefined|null) => {
+    if( ! role) return false;
     return Object.values<string>(Roles).includes((role || '').toUpperCase());
   }
   const isYesNo = (yn:string) => {

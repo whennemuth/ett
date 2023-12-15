@@ -1,8 +1,16 @@
-import { AbstractRoleApi } from '../../../role/AbstractRole';
+import { AbstractRoleApi, IncomingPayload } from '../../../role/AbstractRole';
+
+const mockPayload = {
+    task: 'ping',
+    parameters: {
+      ping: true
+    }
+} as IncomingPayload;
+
 export const mockEvent = {
   "resource": "/GATEKEEPER",
   "path": "/GATEKEEPER",
-  "httpMethod": "GET",
+  "httpMethod": "GET", 
   "headers": {
       "Accept": "*/*",
       "Accept-Encoding": "gzip, deflate, br",
@@ -34,7 +42,7 @@ export const mockEvent = {
       "X-Forwarded-For": "73.234.17.9, 15.158.52.112",
       "X-Forwarded-Port": "443",
       "X-Forwarded-Proto": "https",
-      [AbstractRoleApi.ETTPayloadHeader]: "{ \"task\": \"ping\", \"parameters\": { \"ping\": true}}"
+      [AbstractRoleApi.ETTPayloadHeader]: JSON.stringify(mockPayload)
   },
   "multiValueHeaders": {
       "Accept": [

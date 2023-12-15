@@ -1,6 +1,6 @@
 import { handler } from './PostSignup';
 import { Roles, User } from '../../_lib/dao/entity';
-import { DAO } from '../../_lib/dao/dao';
+import { DAOUser } from '../../_lib/dao/dao';
 import { mockClient } from 'aws-sdk-client-mock'
 import 'aws-sdk-client-mock-jest';
 import { 
@@ -30,7 +30,7 @@ const testHandler = () => {
     return {
       __esModule: true,
       DAOFactory: {
-        getInstance: (userinfo:any):DAO => {
+        getInstance: (userinfo:any):DAOUser => {
           return {
             create: async ():Promise<any> => { 
               return new Promise((resolve, reject) => {

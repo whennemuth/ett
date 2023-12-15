@@ -1,8 +1,8 @@
 import { mockClient } from 'aws-sdk-client-mock'
 import 'aws-sdk-client-mock-jest';
-import { DAOFactory } from '../dao';
+import { DAOFactory } from './dao';
 import { DeleteItemCommand, DynamoDBClient, GetItemCommand, PutItemCommand, QueryCommand, UpdateItemCommand } from '@aws-sdk/client-dynamodb'
-import { User, Roles, UserFields, YN } from '../entity';
+import { User, Roles, UserFields, YN } from './entity';
 
 const action = process.env.ACTION_TO_TEST?.toLocaleLowerCase() || '';
 
@@ -22,10 +22,10 @@ const singleReturnedUser = {
   [UserFields.active]: { S: YN.Yes },
   [UserFields.create_timestamp]: { S: dte },
   [UserFields.update_timestamp]: { S: dte },
-}
+};
 
 const testPut = () => {  
-  describe('Dao create', () => {    
+  describe('Dao user create', () => {    
 
     it('Should error if invalid role specified', () => {
       expect(() => {
@@ -36,7 +36,7 @@ const testPut = () => {
             [UserFields.role]: 'bogus',
             [UserFields.sub]: 'somebody_sub_id',
         }});
-      }).toThrowError();      
+      }).toThrow();      
     });
 
     it('Should error if invalid Y/N value specified', () => {
@@ -48,7 +48,7 @@ const testPut = () => {
             [UserFields.sub]: 'somebody_sub_id',
             active: 'bogus'            
         }});
-      }).toThrowError();      
+      }).toThrow();      
     });
 
     it('Should NOT error if role or active is spelled correctly, but has case that does not match enum', () => {
@@ -61,7 +61,7 @@ const testPut = () => {
             [UserFields.sub]: 'somebody_sub_id',
             [UserFields.active]: YN.Yes.toLocaleLowerCase()
         }});
-      }).not.toThrowError();
+      }).not.toThrow();
     });
 
     it('Should error attempting to create a user without a role specified', async() => {
@@ -74,7 +74,7 @@ const testPut = () => {
       }});
       expect(async () => {
         await dao.create();
-      }).rejects.toThrowError();
+      }).rejects.toThrow(/^User create error: Missing role in/);
     });
 
     it('Should error attempting to create a user without a fullname specified', async() => {
@@ -87,7 +87,20 @@ const testPut = () => {
       }});
       expect(async () => {
         await dao.create();
-      }).rejects.toThrowError();
+      }).rejects.toThrow(/^User create error: Missing fullname in/);
+    });
+
+    it('Should error attempting to create a user without a sub specified', async() => {
+      const dao = DAOFactory.getInstance({
+        DAOType: 'user', Payload: {
+          [UserFields.email]: 'somebody@gmail.com',
+          [UserFields.entity_name]: 'Boston University',
+          [UserFields.fullname]: 'Mickey Mouse',
+          [UserFields.role]: Roles.RE_ADMIN.toLowerCase(),
+      }});
+      expect(async () => {
+        await dao.create();
+      }).rejects.toThrow(/^User create error: Missing sub in/);
     });
 
     it('Should return a response', async() => {
@@ -113,16 +126,15 @@ const testPut = () => {
 }
 
 const testRead = () => {
-  describe('Dao read', () => {
+  describe('Dao user read', () => {
 
     it('Should error if both email and entity name are missing', async() => {
-      const dao = DAOFactory.getInstance({
-        DAOType: 'user', Payload: {
-          [UserFields.fullname]: 'Mickey Mouse'
-      }});
       expect(async () => {
-        await dao.create();
-      }).rejects.toThrowError();
+        const dao = DAOFactory.getInstance({
+          DAOType: 'user', Payload: {
+            [UserFields.fullname]: 'Mickey Mouse'
+        }});
+      }).rejects.toThrow(/^User crud error: Missing email in/);
     });
 
     it('Should return an object of type User if both email and entity name were provided', async() => {
@@ -163,7 +175,7 @@ const testRead = () => {
 }
 
 const testUpdate = () => {
-  describe('Dao update', () => {
+  describe('Dao user update', () => {
 
     it('Should error if either email or entity name are missing (no bulk updates)', async() => {
       expect(async() => {
@@ -172,7 +184,7 @@ const testUpdate = () => {
             [UserFields.email]: 'somebody@gmail.com',
         }});
         await dao.update();
-      }).rejects.toThrowError();
+      }).rejects.toThrow(/^User update error: Missing entity_name in/);
 
       expect(async() => {
         const dao = DAOFactory.getInstance({
@@ -180,7 +192,7 @@ const testUpdate = () => {
             [UserFields.entity_name]: 'Boston University',
         }});
         await dao.update();
-      }).rejects.toThrowError();
+      }).rejects.toThrow(/^User crud error: Missing email in/);
     });
 
     it('Should error if email and entity name are the only fields provided', async() => {
@@ -191,7 +203,7 @@ const testUpdate = () => {
             [UserFields.entity_name]: 'Boston University',
         }});
         await dao.update();
-      }).rejects.toThrowError();
+      }).rejects.toThrow(/^User update error: No fields to update for/);
     });
 
     it('Should NOT error if a field to update has been supplied', async() => {
@@ -211,16 +223,16 @@ const testUpdate = () => {
 }
 
 const testDelete = () => {
-  describe('Dao delete', () => {
+  describe('Dao user delete', () => {
 
-    it('Should error if either email or entity name are missing (no bulk updates)', async() => {
+    it('Should error if either email or entity name are missing (no bulk deletes)', async() => {
       expect(async() => {
         const dao = DAOFactory.getInstance({
           DAOType: 'user', Payload: {
             [UserFields.email]: 'somebody@gmail.com',
         }});
         await dao.Delete();
-      }).rejects.toThrowError();
+      }).rejects.toThrow(/^User delete error: Missing entity_name in/);
 
       expect(async() => {
         const dao = DAOFactory.getInstance({
@@ -228,7 +240,7 @@ const testDelete = () => {
             [UserFields.entity_name]: 'Boston University',
         }});
         await dao.update();
-      }).rejects.toThrowError();
+      }).rejects.toThrow(/^User crud error: Missing email in/);
     });
 
     it('Should accept just partition and sort keys', async() => {

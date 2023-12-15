@@ -66,7 +66,7 @@ const testLookup = () => {
 
     it('Should return the expected signup link', async () => {
       const signupLink = new SignupLink(userPoolName); 
-      const expectedRedirectParm = encodeURIComponent(`https://${redirectURI}?action=signedup`);
+      const expectedRedirectParm = encodeURIComponent(`https://${redirectURI}?action=signedup&selected_role=${Roles.RE_ADMIN}`);
       const expectedLink = `https://${domain}/signup?client_id=${clientId1}&response_type=code&scope=email+openid+phone&redirect_uri=${expectedRedirectParm}`;
       const link = await signupLink.getLinkForRole(Roles.RE_ADMIN);
       expect(link).toEqual(expectedLink);

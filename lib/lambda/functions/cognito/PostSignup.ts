@@ -1,5 +1,5 @@
 import { lookupRole } from './RoleLookup';
-import { DAO, DAOFactory } from '../../_lib/dao/dao';
+import { DAOUser, DAOFactory } from '../../_lib/dao/dao';
 import { Role, UserFields, User } from '../../_lib/dao/entity';
 import { PostSignupEventType } from './PostSignupEventType';
 
@@ -24,7 +24,7 @@ export const handler = async (_event:any) => {
   if( event?.callerContext) {
     const { clientId } = event?.callerContext;
 
-    // Determined what role applies to the newly confirmed cognito user.
+    // Determined what role applies to the "doorway" (userpool client), the newly confirmed cognito user entered through.
     const role:Role|undefined = await lookupRole(userPoolId, clientId, region);
 
     if(role) {
@@ -79,7 +79,7 @@ export const addUserToDynamodb = async (event:PostSignupEventType, role:Role):Pr
     [UserFields.sub]: sub,
     [UserFields.role]: role
   }
-  const dao:DAO = DAOFactory.getInstance({ DAOType: 'user', Payload: user });
+  const dao = DAOFactory.getInstance({ DAOType: 'user', Payload: user }) as DAOUser;
   try {
     await dao.create();
   } catch (e) {

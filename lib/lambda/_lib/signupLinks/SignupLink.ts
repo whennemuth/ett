@@ -45,7 +45,7 @@ export class SignupLink {
         client_id: userPoolClientId,
         response_type: 'code',
         scope: 'email+openid+phone',
-        redirect_uri: encodeURIComponent(`https://${redirectURI}?action=signedup`)
+        redirect_uri: encodeURIComponent(`https://${redirectURI}?action=signedup&selected_role=${role}`)
       } as any;
   
       const queryString = Object.keys(params).map(key => `${key}=${params[key]}`).join('&');

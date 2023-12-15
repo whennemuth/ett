@@ -16,7 +16,7 @@
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
-        "${workspaceFolder}/lib/lambda/_lib/dao/test/dao-launcher.ts",
+        "${workspaceFolder}/lib/lambda/_lib/dao/_runner.ts",
         "user",
         "delete"
       ], 
@@ -33,7 +33,8 @@
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
-        "${workspaceFolder}/lib/lambda/functions/cognito/runner.ts",
+        "${workspaceFolder}/lib/lambda/functions/cognito/_runner.ts",
+        "postsignup"
       ], 
       "env": {
         "TODO": "Merge this into PostSignup.test.ts and run unmocked with jest.",
@@ -41,18 +42,30 @@
         "REGION": "us-east-2"
       }, 
     },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "DB Object Builder",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/dao/db-object-builder.test.ts",
+        "non-jest",
+        "restore"
+      ],
+    },
 
     // JEST TESTS
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest DAO crud",
+      "name": "Jest DAO user crud",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
         "--runTestsByPath", 
         "--silent",
         "-i", 
-        "${workspaceFolder}/lib/lambda/_lib/dao/test/dao.test.ts" 
+        "${workspaceFolder}/lib/lambda/_lib/dao/dao-user.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
@@ -65,13 +78,50 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest DAO builder",
+      "name": "Jest DAO invitation crud",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
         "--runTestsByPath", 
         "--silent",
         "-i", 
-        "${workspaceFolder}/lib/lambda/_lib/dao/test/builder.test.ts" 
+        "${workspaceFolder}/lib/lambda/_lib/dao/dao-invitation.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "env": {
+        "DYNAMODB_INVITATION_TABLE_NAME": "ett-invitations",
+        "ACTION_TO_TEST": ""
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest DAO db-object-builder",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/_lib/dao/db-object-builder.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "env": { 
+        "DYNAMODB_USER_TABLE_NAME": "ett-users"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest DAO db-update-builder",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/_lib/dao/db-update-builder.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
@@ -90,6 +140,21 @@
         "--silent",
         "-i", 
         "${workspaceFolder}/lib/lambda/_lib/signupLinks/SignupLink.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Invitation",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/_lib/invitation/Invitation.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",

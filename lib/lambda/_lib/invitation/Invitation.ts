@@ -1,6 +1,15 @@
-import { Invitation, Role, Roles } from '../dao/entity' 
-import { DAO, DAOFactory } from '../dao/dao'
-import { SESv2Client, SendEmailCommand, SendEmailResponse } from '@aws-sdk/client-sesv2';
+import { InvitationAttempt, Role, Roles } from '../dao/entity';
+import { DAOInvitation, DAOFactory } from '../dao/dao';
+import { SESv2Client, SendEmailCommand, SendEmailCommandInput, SendEmailResponse } from '@aws-sdk/client-sesv2';
+import { UpdateOutput } from '../dao/dao-invitation';
+
+export type InvitationEmailParameters = {
+  email: string,
+  entity_name: string,
+  role: Role,
+  link: string,
+  sent_timestamp?: string
+};
 
 /**
  * An invitation email is one sent with a link in it to a public signin url (cognito userpool client hosted UI).
@@ -11,16 +20,16 @@ import { SESv2Client, SendEmailCommand, SendEmailResponse } from '@aws-sdk/clien
  */
 export class InvitationEmail {
 
-  private invitation:Invitation;
+  private parms:InvitationEmailParameters;
 
-  constructor(invitation:Invitation) {
-    this.invitation = invitation;
+  constructor(invitation:InvitationEmailParameters) {
+    this.parms = invitation;
   }
 
   public send = async ():Promise<boolean> => {
 
     // Destructure the invitation and get a description of the role invited for.
-    const { email, entity_name, role, link } = this.invitation;
+    const { entity_name, role, link } = this.parms;
     let role_description = '';
     switch(role as Role) {
       case Roles.RE_ADMIN:
@@ -39,11 +48,14 @@ export class InvitationEmail {
     // Send the invitation email
     const client = new SESv2Client();
     const command = new SendEmailCommand({
+      Destination: {
+        ToAddresses: [ this.parms.email ]
+      },
       Content: {
         Simple: {
           Subject: {
             Charset: 'utf-8',
-            Data: 'INVITATION: Ethical Transparency Application',
+            Data: 'INVITATION: Ethical Transparency Tool (ETT)',
           },
           Body: {
             Html: {
@@ -91,7 +103,7 @@ export class InvitationEmail {
           }
         }
       }
-    });
+    } as SendEmailCommandInput);
 
     let msgId;
     try {
@@ -105,17 +117,50 @@ export class InvitationEmail {
     return msgId ? true : false;
   }
 
-  public persist = async () => {
-    const { email, entity_name, role } = this.invitation;
+  /**
+   * Adding a new invitation attempt to the database to reflect the email that would have just got sent.
+   * @returns 
+   */
+  public persist = async ():Promise<boolean> => {
+    try {
+      const { email, entity_name, role, link } = this.parms;
 
-    const dao:DAO = DAOFactory.getInstance({ DAOType: 'invitation', Payload: {
-      email, entity_name, role
-    }});
+      const dao = DAOFactory.getInstance({ DAOType: 'invitation', Payload: {
+        email, entity_name, attempts: [{
+          role, link
+        } as InvitationAttempt ]
+      }}) as DAOInvitation;
 
-    await dao.create();
+      await dao.create();
+      return true;
+    }
+    catch (e:any) {
+      console.log(e);
+      return false;      
+    }
   }
 
-  public accept = () => {
-    // TODO: write this function
+  /**
+   * An invitation exists in the database with a sent_timestamp value and no accepted_timestamp value.
+   * Update that invitation attempt so that the accepted_timestamp value reflects the current time.
+   * @returns 
+   */
+  public accept = async ():Promise<boolean> => {
+    try {
+      const { email, entity_name, role, link, sent_timestamp } = this.parms;
+
+      const dao = DAOFactory.getInstance({ DAOType: 'invitation', Payload: {
+        email, entity_name, attempts: [{
+          role, link, sent_timestamp, accepted_timestamp: new Date().toISOString()
+        } as InvitationAttempt ]
+      }}) as DAOInvitation;
+
+      const output:UpdateOutput = await dao.update();
+      return output.update.length > 0;
+    }
+    catch (e:any) {
+      console.log(e);
+      return false;      
+    }
   }
 }

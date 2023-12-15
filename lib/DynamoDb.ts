@@ -55,7 +55,7 @@ export class DynamoDbConstruct extends Construct {
       deletionProtection: this.context.TAGS.Landscape == 'prod',
     });
 
-    // Create a table for invitations sent to admin and auth-ind users.
+    // Create a table for invitations sent to users.
     this.invitationsTable = new TableV2(this, 'DbInvitations', {
       tableName: DynamoDbConstruct.DYNAMODB_TABLES_INVITATION_TABLE_NAME,
       partitionKey: { name: InvitationFields.email, type: AttributeType.STRING },

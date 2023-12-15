@@ -21,6 +21,35 @@ export interface ApiParms {
 }
 
 /**
+ * This is the type expected by lambda functions for incoming api calls, where the ETTPayloadHeader 
+ * contains a json object that, when parsed, will produce an object that reflects this type.
+ */
+export type IncomingPayload = {
+  task:string,
+  parameters: any
+}
+/**
+ * This is the type expected by api clients for json returned in the body of all api calls.
+ */
+export type OutgoingPayload = {
+  statusCode:number;
+  statusDescription:string,
+  message:string,
+  payload:any
+}
+/**
+ * This is the type that brings api responses into compliance with lambda proxy integration.
+ * SEE: https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-integration-settings-integration-response.html
+ */
+export type LambdaProxyIntegrationResponse = {
+  isBase64Encoded?:boolean,
+  statusCode:number,
+  statusDescription?:string,
+  headers?:any,
+  body?:string
+}
+
+/**
  * This class serves as a baseline for a role, upon which broad division for api access for the app is based -
  * that is, what kind of user is logged in through cognito (or a private super user). 
  * This class creates for the role an api(s), lambda function, user pool client, and oauth integration. 
