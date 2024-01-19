@@ -1,11 +1,11 @@
 import { AbstractRoleApi, IncomingPayload, OutgoingPayload, LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
 import { DAOUser, DAOFactory, DAOEntity } from '../../_lib/dao/dao';
 import { YN } from '../../_lib/dao/entity';
-import { InvitationEmail } from '../../_lib/invitation'
+import { InvitationEmail } from '../../_lib/invitation/Invitation'
 import { SignupLink } from '../../_lib/signupLinks/SignupLink';
 
 /**
- * This function performs all actions a gatekeeper can take to create/modify entities and 
+ * This function performs all actions a system administrator can take to create/modify entities and 
  * invite "non-public" users (admins, authorized individuals)
  * @param _event 
  * @returns 

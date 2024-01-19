@@ -1,5 +1,5 @@
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
-import { handler } from './GatekeeperUser';
+import { handler } from './SysAdminUser';
 import { mockEvent } from './MockEvent';
 
 const setPayloadHeader = (payload:string|IncomingPayload) => {
@@ -12,7 +12,7 @@ const setPayloadHeader = (payload:string|IncomingPayload) => {
   }
 }
 
-describe('GatekeeperUser lambda trigger: handler', () => {
+describe('SysAdminUser lambda trigger: handler', () => {
 
   it('Should handle a simple ping test as expected', async () => {
     const mockPayload = {

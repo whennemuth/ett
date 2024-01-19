@@ -44,7 +44,7 @@ export class DynamoDbConstruct extends Construct {
       ]    
     });
 
-    // Create a table for ALL registerend entities, to be managed by gatekeeper.
+    // Create a table for ALL registerend entities, to be managed by system administrator.
     this.entitiesTable = new TableV2(this, 'DbEntities', {
       tableName: DynamoDbConstruct.DYNAMODB_TABLES_ENTITY_TABLE_NAME,
       partitionKey: { name: EntityFields.entity_name, type: AttributeType.STRING },

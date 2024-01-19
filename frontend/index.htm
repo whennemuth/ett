@@ -167,8 +167,8 @@
                       <input type="radio" name="rdoRole" value="HELLO_WORLD" checked="checked">
                       <span class="checkmark"></span>
                     </label>
-                    <label class="containerRDO">Gatekeeper
-                      <input type="radio" name="rdoRole" value="GATEKEEPER">
+                    <label class="containerRDO">System Administrator
+                      <input type="radio" name="rdoRole" value="SYS_ADMIN">
                       <span class="checkmark"></span>
                     </label>
                     <label class="containerRDO">Registered Entity Administrator
@@ -219,7 +219,7 @@
       switch(selected_role) {
         case 'HELLO_WORLD':
           desc.innerHTML = 'Simple API to get a hello message'; break;
-        case 'GATEKEEPER':
+        case 'SYS_ADMIN':
           desc.innerHTML = 'API to get a list of registered entities'; break;
         case 'RE_ADMIN':
           desc.innerHTML = 'API to the names of all registered entity staff'; break;

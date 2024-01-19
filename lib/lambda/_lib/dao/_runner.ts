@@ -12,10 +12,10 @@ const launch = async () => {
         case 'create':
           var dao = DAOFactory.getInstance({
             DAOType: 'user', Payload: {
-              [UserFields.email]: 'gatekeeper@bu.edu', 
+              [UserFields.email]: 'sysadmin@bu.edu', 
               [UserFields.entity_name]: 'Boston University', 
-              [UserFields.role]: Roles.GATEKEEPER, 
-              [UserFields.fullname]: 'Gate Keeper',
+              [UserFields.role]: Roles.SYS_ADMIN, 
+              [UserFields.fullname]: 'System administrator',
               [UserFields.sub]: 'gkp_sub_id',
           }}) as DAOUser;
           var response = await dao.create();

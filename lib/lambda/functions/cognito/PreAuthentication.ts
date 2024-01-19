@@ -21,7 +21,7 @@ const debugLog = (entry:String) => {
 
 /**
  * Intercept all login attempts and turn away any that indicate the user is using a userpool client that
- * corresponds to a role they do not have. For example a CONSENTING_PERSON cannot sign in as a GATEKEEPER.
+ * corresponds to a role they do not have. For example a CONSENTING_PERSON cannot sign in as a SYS_ADMIN.
  * @param event 
  * @returns 
  */

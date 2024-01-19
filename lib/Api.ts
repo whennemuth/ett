@@ -1,7 +1,7 @@
 import { Construct } from "constructs";
 import { UserPool } from "aws-cdk-lib/aws-cognito";
 import { HelloWorldApi } from "./role/HelloWorld";
-import { GatekeeperApi } from "./role/Gatekeeper";
+import { SysAdminApi } from "./role/SysAdmin";
 import { ReAdminUserApi } from "./role/ReAdmin";
 import { AuthorizedIndividualApi } from "./role/AuthorizedIndividual";
 import { ConsentingPersonApi } from "./role/ConsentingPerson";
@@ -21,7 +21,7 @@ export type ApiConstructParms = {
  */
 export class ApiConstruct extends Construct {
   private _helloWorldApi: HelloWorldApi;
-  private _gatekeeperApi: GatekeeperApi;
+  private _sysAdminApi: SysAdminApi;
   private _reAdminApi: ReAdminUserApi;
   private _authIndApi: AuthorizedIndividualApi;
   private _consentPersonApi: ConsentingPersonApi;
@@ -31,7 +31,7 @@ export class ApiConstruct extends Construct {
 
     this._helloWorldApi = new HelloWorldApi(this, 'HelloWorld', apiParms);
 
-    this._gatekeeperApi = new GatekeeperApi(this, 'GatekeeperUser', apiParms);
+    this._sysAdminApi = new SysAdminApi(this, 'SysAdminUser', apiParms);
 
     this._reAdminApi = new ReAdminUserApi(this, 'ReAdminUser', apiParms);
 
@@ -42,9 +42,9 @@ export class ApiConstruct extends Construct {
 
   public grantPermissions = (dynamodb:DynamoDbConstruct, cognito:CognitoConstruct) => {
 
-    // Grant the gatekeeper api the permissions to read/write from the users table
-    dynamodb.getEntitiesTable().grantReadWriteData(this.gatekeeperApi.getLambdaFunction());
-    dynamodb.getInvitationsTable().grantReadWriteData(this.gatekeeperApi.getLambdaFunction());
+    // Grant the sysadmin api the permissions to read/write from the users table
+    dynamodb.getEntitiesTable().grantReadWriteData(this.sysAdminApi.getLambdaFunction());
+    dynamodb.getInvitationsTable().grantReadWriteData(this.sysAdminApi.getLambdaFunction());
 
     // Grant the re administrator api permissions to read/write from the users table
     dynamodb.getUsersTable().grantReadWriteData(this.reAdminApi.getLambdaFunction());
@@ -61,8 +61,8 @@ export class ApiConstruct extends Construct {
   public get helloWorldApi(): HelloWorldApi {
     return this._helloWorldApi;
   }
-  public get gatekeeperApi(): GatekeeperApi {
-    return this._gatekeeperApi;
+  public get sysAdminApi(): SysAdminApi {
+    return this._sysAdminApi;
   }
   public get reAdminApi(): ReAdminUserApi {
     return this._reAdminApi;

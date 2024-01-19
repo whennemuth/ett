@@ -1,6 +1,5 @@
-// RESUME NEXT 7: Create a new role RE_CONTACT, and add the api, userpool client, lambda function, etc.
 export enum Roles {
-  GATEKEEPER = 'GATEKEEPER',
+  SYS_ADMIN = 'SYS_ADMIN',
   RE_ADMIN = 'RE_ADMIN',
   RE_AUTH_IND = 'RE_AUTH_IND',
   CONSENTING_PERSON = 'CONSENTING_PERSON',
@@ -9,7 +8,7 @@ export enum Roles {
 };
 export enum YN { Yes = 'Y', No = 'N' };
 
-export type Role = Roles.GATEKEEPER | Roles.RE_ADMIN | Roles.RE_AUTH_IND | Roles.CONSENTING_PERSON | Roles.HELLO_WORLD
+export type Role = Roles.SYS_ADMIN | Roles.RE_ADMIN | Roles.RE_AUTH_IND | Roles.CONSENTING_PERSON | Roles.HELLO_WORLD
 
 export type Y_or_N = YN.Yes | YN.No
 

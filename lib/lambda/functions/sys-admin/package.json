@@ -1,8 +1,8 @@
 {
-  "name": "ett-gatekeeper",
+  "name": "ett-sysadmin",
   "version": "1.0.0",
-  "description": "Actions available to an ETT gatekeeper",
-  "main": "GatekeeperUser.ts",
+  "description": "Actions available to an ETT system administrator",
+  "main": "SysAdminUser.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

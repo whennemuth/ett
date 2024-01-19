@@ -8,8 +8,8 @@ const mockPayload = {
 } as IncomingPayload;
 
 export const mockEvent = {
-  "resource": "/GATEKEEPER",
-  "path": "/GATEKEEPER",
+  "resource": "/SYS_ADMIN",
+  "path": "/SYS_ADMIN",
   "httpMethod": "GET", 
   "headers": {
       "Accept": "*/*",
@@ -151,7 +151,7 @@ export const mockEvent = {
               "origin_jti": "4c131864-ea16-460a-a20b-fee6c24429ad",
               "event_id": "b6a906fa-cba2-4856-8bc2-34029ce114bb",
               "token_use": "access",
-              "scope": "GATEKEEPER/invitations phone openid profile GATEKEEPER/entity-administration email",
+              "scope": "SYS_ADMIN/invitations phone openid profile SYS_ADMIN/entity-administration email",
               "auth_time": "1701796972",
               "exp": "Wed Dec 06 17:22:52 UTC 2023",
               "iat": "Tue Dec 05 17:22:52 UTC 2023",
@@ -159,11 +159,11 @@ export const mockEvent = {
               "username": "6ac2ef08-8f87-46cb-9331-57c798883328"
           }
       },
-      "resourcePath": "/GATEKEEPER",
+      "resourcePath": "/SYS_ADMIN",
       "httpMethod": "GET",
       "extendedRequestId": "PewsJEtXiYcEk3Q=",
       "requestTime": "05/Dec/2023:17:44:32 +0000",
-      "path": "/dev/GATEKEEPER",
+      "path": "/dev/SYS_ADMIN",
       "accountId": "037860335094",
       "protocol": "HTTP/1.1",
       "stage": "dev",

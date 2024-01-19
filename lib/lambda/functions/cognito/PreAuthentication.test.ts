@@ -7,7 +7,7 @@ const mockUser1:User = {
   entity_name: '',
   sub: '',
   active: YN.No,
-  role: Roles.GATEKEEPER,
+  role: Roles.SYS_ADMIN,
 };
 const mockUser2:User = {
   email: '',
@@ -65,7 +65,7 @@ describe('Pre-authentication lambda trigger: handler', () => {
   });
 
   it('Should throw anticipated error if account is not enabled', async () => {
-    role = Roles.GATEKEEPER;
+    role = Roles.SYS_ADMIN;
     event.request.userAttributes['cognito:user_status'] = 'UNCONFIRMED';
     expect(async () => {
       await handler(event);
@@ -73,7 +73,7 @@ describe('Pre-authentication lambda trigger: handler', () => {
   });
 
   it('Should throw anticipated error if email is NOT verified', async () => {
-    role = Roles.GATEKEEPER;
+    role = Roles.SYS_ADMIN;
     event.request.userAttributes['cognito:user_status'] = 'CONFIRMED';
     event.request.userAttributes.email_verified = 'false';
     expect(async () => {
@@ -82,7 +82,7 @@ describe('Pre-authentication lambda trigger: handler', () => {
   });
 
   it('Should throw anticipated error if email lookup fails', async () => {
-    role = Roles.GATEKEEPER;
+    role = Roles.SYS_ADMIN;
     event.request.userAttributes['cognito:user_status'] = 'CONFIRMED';
     event.request.userAttributes.email_verified = 'true';
     event.request.userAttributes.email = '';
@@ -92,7 +92,7 @@ describe('Pre-authentication lambda trigger: handler', () => {
   });
 
   it('Should throw anticipated error if user is deactivated', async () => {
-    role = Roles.GATEKEEPER;
+    role = Roles.SYS_ADMIN;
     event.request.userAttributes['cognito:user_status'] = 'CONFIRMED';
     event.request.userAttributes.email_verified = 'true';
     event.request.userAttributes.email = 'daffyduck@warnerbros.com';
@@ -104,7 +104,7 @@ describe('Pre-authentication lambda trigger: handler', () => {
   });
 
   it('Should throw anticipated error if user is unauthorized', async () => {
-    role = Roles.GATEKEEPER;
+    role = Roles.SYS_ADMIN;
     event.request.userAttributes['cognito:user_status'] = 'CONFIRMED';
     event.request.userAttributes.email_verified = 'true';
     event.request.userAttributes.email = 'daffyduck@warnerbros.com';
@@ -122,12 +122,12 @@ describe('Pre-authentication lambda trigger: handler', () => {
   });
 
   it('Should return the original event if the user is authorized', async () => {
-    role = Roles.GATEKEEPER;
+    role = Roles.SYS_ADMIN;
     event.request.userAttributes['cognito:user_status'] = 'CONFIRMED';
     event.request.userAttributes.email_verified = 'true';
     event.request.userAttributes.email = 'daffyduck@warnerbros.com';
     mockUser1.active = YN.Yes;
-    mockUser1.role = Roles.GATEKEEPER;
+    mockUser1.role = Roles.SYS_ADMIN;
     mockUsers = [ mockUser1 ];
     let retval = await handler(event);
     expect(retval).toBe(event);

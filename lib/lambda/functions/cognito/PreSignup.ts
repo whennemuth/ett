@@ -26,7 +26,7 @@ const debugLog = (entry:String) => {
  * entries for the same email & role for different entities, the invite user api should prevent this state
  * by requiring an email recipient can only be invited to one entity at a time - that is, one must accept an 
  * inviation through the signup process for one entity before they can be invited to another entity. This 
- * does not apply to GATEKEEPERs as they are entity-agnostic. What this allows for is that it releases this
+ * does not apply to SYS_ADMINs as they are entity-agnostic. What this allows for is that it releases this
  * lambda function from having to "know" what entity is associated with the invitation for the email & role 
  * being accepted - information that cannot be passed in through the signup process - and making it safe to
  * accept ALL unaccepted invitation attempts because, if there is more than one, they should all be for the 

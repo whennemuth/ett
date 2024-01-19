@@ -70,7 +70,7 @@ const buildAll = () => {
     cognitoUserpoolRegion: context.REGION,
     apis: [ 
       api.helloWorldApi.getApi(), 
-      api.gatekeeperApi.getApi(), 
+      api.sysAdminApi.getApi(), 
       api.reAdminApi.getApi(), 
       api.authIndApi.getApi(),
       api.consentingPersonApi.getApi()
@@ -93,9 +93,9 @@ const buildAll = () => {
     value: api.helloWorldApi.getApi().getRestApiUrl(),
     description: 'Hello world api uri, just for testing access.'
   });  
-  new CfnOutput(stack, `${Roles.GATEKEEPER}-api-uri`, {
-    value: api.gatekeeperApi.getApi().getRestApiUrl(),
-    description: 'Gatekeeper api uri'
+  new CfnOutput(stack, `${Roles.SYS_ADMIN}-api-uri`, {
+    value: api.sysAdminApi.getApi().getRestApiUrl(),
+    description: 'System Administrator api uri'
   }); 
   new CfnOutput(stack, `${Roles.RE_ADMIN}-api-uri`, {
     value: api.reAdminApi.getApi().getRestApiUrl(),

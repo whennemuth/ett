@@ -7,7 +7,7 @@ import { DynamoDbConstruct } from "../DynamoDb";
 import { Roles } from '../lambda/_lib/dao/entity';
 import { ApiConstructParms } from "../Api";
 
-export class GatekeeperApi extends AbstractRole {
+export class SysAdminApi extends AbstractRole {
   private api: AbstractRoleApi;
   
   constructor(scope: Construct, constructId: string, parms: ApiConstructParms) {
@@ -21,10 +21,10 @@ export class GatekeeperApi extends AbstractRole {
       cloudfrontDomain,
       lambdaFunction,
       userPool,
-      role: Roles.GATEKEEPER,
-      description: 'Api for all operations that are open to a gatekeeper',
-      bannerImage: 'client-gatekeeper.png',
-      resourceId: Roles.GATEKEEPER,
+      role: Roles.SYS_ADMIN,
+      description: 'Api for all operations that are open to a system admin',
+      bannerImage: 'client-sysadmin.png',
+      resourceId: Roles.SYS_ADMIN,
       methods: [ 'POST', 'GET' ],
       scopes: [
         new ResourceServerScope({ 
@@ -56,10 +56,10 @@ export class LambdaFunction extends AbstractFunction {
     const redirectURI = `${parms.cloudfrontDomain}/${parms.redirectPath}`.replace('//', '/');
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
-      entry: 'lib/lambda/functions/gatekeeper/GatekeeperUser.ts',
+      entry: 'lib/lambda/functions/sys-admin/SysAdminUser.ts',
       // handler: 'handler',
       functionName: `Ett${constructId}`,
-      description: 'Function for all gatekeeper user activity.',
+      description: 'Function for all sys admin user activity.',
       cleanup: true,
       bundling: {
         externalModules: [

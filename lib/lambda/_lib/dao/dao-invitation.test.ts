@@ -25,7 +25,7 @@ const getSingleAttemptMockInvitation = (withSentDate?:boolean): any => {
     [InvitationFields.attempts]: { L: [
       { M: 
         {
-          [InvitationAttemptFields.role]: { S: Roles.GATEKEEPER },
+          [InvitationAttemptFields.role]: { S: Roles.SYS_ADMIN },
           [InvitationAttemptFields.link]: { S: 'https://path/and?querystring' },
         }
       }
@@ -84,7 +84,7 @@ const getMockedDAOInstanceForUpdates = (parms:MockDAOInstanceParms):DAOInvitatio
     newSent = new Date(Date.parse(newSent) + DAY).toISOString();
   }
   if(updateRole === 'different') {
-    newRole = newRole == Roles.GATEKEEPER ? Roles.RE_ADMIN : Roles.GATEKEEPER;
+    newRole = newRole == Roles.SYS_ADMIN ? Roles.RE_ADMIN : Roles.SYS_ADMIN;
   }
 
   // Mock the database read output for invitation lookup with invitation mock.
@@ -274,7 +274,7 @@ const testUpdate = () => {
       const dao = getMockedDAOInstanceForUpdates({
         existingAttempts: [
           'default', 
-          { role: Roles.GATEKEEPER, link: 'https://path/and?querystring' }, 
+          { role: Roles.SYS_ADMIN, link: 'https://path/and?querystring' }, 
           { role: Roles.RE_AUTH_IND, link: 'https://path/and?querystring'}
         ],
         updateRole: 'same',

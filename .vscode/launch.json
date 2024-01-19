@@ -218,13 +218,13 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest Lambda Role Gatekeeper",
+      "name": "Jest Lambda Role SysAdmin",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
         "--runTestsByPath", 
         "--silent",
         "-i", 
-        "${workspaceFolder}/lib/lambda/functions/gatekeeper/GatekeeperUser.test.ts" 
+        "${workspaceFolder}/lib/lambda/functions/sys-admin/SysAdminrUser.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
