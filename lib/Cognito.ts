@@ -127,13 +127,10 @@ export class CognitoConstruct extends Construct {
         requireSymbols: true,
         tempPasswordValidity: Duration.days(7)
       },
-      customAttributes: {
-        email: new StringAttribute(),
-        phone: new StringAttribute({ mutable: true })
-      },
       standardAttributes: {
-        fullname: { required: true, mutable: true },
-        nickname: { required: false, mutable: true }
+        email: { required:true, mutable:false },
+        phoneNumber: { required:true, mutable:true },
+        address: { required:true, mutable:true }
       },
       lambdaTriggers: {
         preAuthentication: preAuthenticationFunction,
