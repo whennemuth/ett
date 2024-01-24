@@ -90,6 +90,14 @@ Build the entire application and AWS infrastructure from scratch.
 6. Run the [CDK deploy command](https://docs.aws.amazon.com/cdk/v2/guide/cli.html#cli-deploy) to create the stack:
 
    ```
-   cdk deploy --no-rollback --require-approval never
+   npm run deploy
    ```
+   
+   or to completely tear down and replace a stack without prompts use:
+   
+   ```
+   npm run redeploy
+   ```
+   
+   
 

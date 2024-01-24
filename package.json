@@ -11,7 +11,11 @@
     "build": "tsc",
     "watch": "tsc -w",
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
-    "cdk": "cdk"
+    "cdk": "cdk",
+    "deploy": "cdk deploy --no-rollback --require-approval never",
+    "redeploy": "cdk destroy -f && npm run deploy",
+    "synth": "cdk synth 2>&1 | tee cdk.out/ett.template.yaml",
+    "clearcache": "sh bin/clearcache.sh"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.352.0",
