@@ -2,7 +2,7 @@
 import 'source-map-support/register';
 import * as ctx from '../contexts/context.json';
 import { IContext, SCENARIO } from '../contexts/IContext';
-import { App, CfnOutput, StackProps } from 'aws-cdk-lib';
+import { App, CfnOutput, StackProps, Tags } from 'aws-cdk-lib';
 import { AbstractStack } from '../lib/AbstractStack';
 import { StaticSiteConstruct } from '../lib/StaticSite';
 import { CloudfrontConstruct, CloudfrontConstructProps } from '../lib/Cloudfront';
@@ -34,6 +34,11 @@ const stackProps: StackProps = {
 }
 
 const stack:AbstractStack = new AbstractStack(app, stackName, stackProps);
+
+// Adding tags into the stackProps does not seem to work - have to apply tags using aspects:
+Tags.of(stack).add('Service', context.TAGS.Service);
+Tags.of(stack).add('Function', context.TAGS.Function);
+Tags.of(stack).add('Landscape', context.TAGS.Landscape);
 
 const buildAll = () => {
   // Set up the bucket only.
