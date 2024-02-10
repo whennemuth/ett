@@ -4,21 +4,19 @@ import { DAOFactory } from './dao';
 import { DeleteItemCommand, DynamoDBClient, GetItemCommand, PutItemCommand, QueryCommand, UpdateItemCommand } from '@aws-sdk/client-dynamodb'
 import { User, Roles, UserFields, YN } from './entity';
 
-const action = process.env.ACTION_TO_TEST?.toLocaleLowerCase() || '';
-
-const ignoreMe = (atn: string) => {
-  return action.length > 0 && action != atn;
-}
-
 const dbMockClient = mockClient(DynamoDBClient);
 
 const dte = new Date().toISOString();
-const singleReturnedUser = {
-  [UserFields.email]: { S: 'somebody@gmail.com' },
-  [UserFields.entity_name]: { S: 'Boston University' },
+const email = 'somebody@gmail.com';
+const entity_id = 'abc123';
+const sub = 'mm_sub_id';
+const fullname = 'Mickey Mouse';
+const dynamodbItem = {
+  [UserFields.email]: { S: email },
+  [UserFields.entity_id]: { S: entity_id },
   [UserFields.role]: { S: Roles.RE_ADMIN },
-  [UserFields.sub]: { S: 'mm_sub_id' },
-  [UserFields.fullname]: { S: 'Mickey Mouse' },
+  [UserFields.sub]: { S: sub },
+  [UserFields.fullname]: { S: fullname },
   [UserFields.active]: { S: YN.Yes },
   [UserFields.create_timestamp]: { S: dte },
   [UserFields.update_timestamp]: { S: dte },
@@ -31,8 +29,8 @@ const testPut = () => {
       expect(() => {
         const dao = DAOFactory.getInstance({
           DAOType: 'user', Payload: {
-            [UserFields.email]: 'somebody@gmail.com',
-            [UserFields.entity_name]: 'Boston University',
+            [UserFields.email]: email,
+            [UserFields.entity_id]: entity_id,
             [UserFields.role]: 'bogus',
             [UserFields.sub]: 'somebody_sub_id',
         }});
@@ -43,8 +41,8 @@ const testPut = () => {
       expect(() => {
         const dao = DAOFactory.getInstance({
           DAOType: 'user', Payload: {
-            [UserFields.email]: 'somebody@gmail.com',
-            [UserFields.entity_name]: 'Boston University',
+            [UserFields.email]: email,
+            [UserFields.entity_id]: entity_id,
             [UserFields.sub]: 'somebody_sub_id',
             active: 'bogus'            
         }});
@@ -55,8 +53,8 @@ const testPut = () => {
       expect(() => {
         const dao = DAOFactory.getInstance({
           DAOType: 'user', Payload: {
-            [UserFields.email]: 'somebody@gmail.com',
-            [UserFields.entity_name]: 'Boston University',
+            [UserFields.email]: email,
+            [UserFields.entity_id]: entity_id,
             [UserFields.role]: Roles.RE_ADMIN.toLowerCase(),
             [UserFields.sub]: 'somebody_sub_id',
             [UserFields.active]: YN.Yes.toLocaleLowerCase()
@@ -67,10 +65,10 @@ const testPut = () => {
     it('Should error attempting to create a user without a role specified', async() => {
       const dao = DAOFactory.getInstance({
         DAOType: 'user', Payload: {
-          [UserFields.email]: 'somebody@gmail.com',
-          [UserFields.entity_name]: 'Boston University',
-          [UserFields.sub]: 'mm_sub_id',
-          [UserFields.fullname]: 'Mickey Mouse'
+          [UserFields.email]: email,
+          [UserFields.entity_id]: entity_id,
+          [UserFields.sub]: sub,
+          [UserFields.fullname]: fullname
       }});
       expect(async () => {
         await dao.create();
@@ -80,8 +78,8 @@ const testPut = () => {
     it('Should error attempting to create a user without a fullname specified', async() => {
       const dao = DAOFactory.getInstance({
         DAOType: 'user', Payload: {
-          [UserFields.email]: 'somebody@gmail.com',
-          [UserFields.entity_name]: 'Boston University',
+          [UserFields.email]: email,
+          [UserFields.entity_id]: entity_id,
           [UserFields.sub]: 'somebody_sub_id',
           [UserFields.role]: Roles.RE_ADMIN.toLowerCase(),
       }});
@@ -93,9 +91,9 @@ const testPut = () => {
     it('Should error attempting to create a user without a sub specified', async() => {
       const dao = DAOFactory.getInstance({
         DAOType: 'user', Payload: {
-          [UserFields.email]: 'somebody@gmail.com',
-          [UserFields.entity_name]: 'Boston University',
-          [UserFields.fullname]: 'Mickey Mouse',
+          [UserFields.email]: email,
+          [UserFields.entity_id]: entity_id,
+          [UserFields.fullname]: fullname,
           [UserFields.role]: Roles.RE_ADMIN.toLowerCase(),
       }});
       expect(async () => {
@@ -113,11 +111,11 @@ const testPut = () => {
       dbMockClient.on(PutItemCommand).resolves(expectedResponse);
       const dao = DAOFactory.getInstance({
         DAOType: 'user', Payload: {
-          [UserFields.email]: 'somebody@gmail.com',
-          [UserFields.entity_name]: 'Boston University',
+          [UserFields.email]: email,
+          [UserFields.entity_id]: entity_id,
           [UserFields.role]: Roles.RE_ADMIN,
           [UserFields.sub]: 'somebody_sub_id',
-          [UserFields.fullname]: 'Mickey Mouse' 
+          [UserFields.fullname]: fullname 
       }});
       const retval = await dao.create();
       expect(retval).toEqual(expectedResponse);
@@ -128,48 +126,48 @@ const testPut = () => {
 const testRead = () => {
   describe('Dao user read', () => {
 
-    it('Should error if both email and entity name are missing', async() => {
+    it('Should error if both email and entity_id are missing', async() => {
       expect(async () => {
         const dao = DAOFactory.getInstance({
           DAOType: 'user', Payload: {
-            [UserFields.fullname]: 'Mickey Mouse'
+            [UserFields.fullname]: fullname
         }});
       }).rejects.toThrow(/^User crud error: Missing email in/);
     });
 
-    it('Should return an object of type User if both email and entity name were provided', async() => {
+    it('Should return an object of type User if both email and entity_id were provided', async() => {
       dbMockClient.on(GetItemCommand).resolves({
         ConsumedCapacity: {},
-        Item: singleReturnedUser
+        Item: dynamodbItem
       });
       const dao = DAOFactory.getInstance({
         DAOType: 'user', Payload: {
-          [UserFields.email]: 'somebody@gmail.com',
-          [UserFields.entity_name]: 'Boston University',
+          [UserFields.email]: email,
+          [UserFields.entity_id]: entity_id,
       }});
       const output = await dao.read();
       expect(dbMockClient).toHaveReceivedCommandTimes(GetItemCommand, 1);
       expect(output).toHaveProperty(UserFields.email);
       const user:User = output as User;
-      expect(user[UserFields.email]).toEqual('somebody@gmail.com');
+      expect(user[UserFields.email]).toEqual(email);
     });
 
     it('Should return an array of type user if only email was provided', async() => {
       dbMockClient.on(QueryCommand).resolves({
         ConsumedCapacity: {},
         Count: 1, ScannedCount: 1,
-        Items: [ singleReturnedUser ]
+        Items: [ dynamodbItem ]
       });
       const dao = DAOFactory.getInstance({
         DAOType: 'user', Payload: {
-          [UserFields.email]: 'somebody@gmail.com',
+          [UserFields.email]: email,
       }});
       const output = await dao.read();
       expect(dbMockClient).toHaveReceivedCommandTimes(QueryCommand, 1);
       expect(output).toBeInstanceOf(Array);
-      const users:User[] = output as User[];
+      const users = output as User[];
       expect(users[0]).toHaveProperty(UserFields.email);
-      expect(users[0][UserFields.email]).toEqual('somebody@gmail.com');
+      expect(users[0][UserFields.email]).toEqual(email);
     });
   });
 }
@@ -177,30 +175,30 @@ const testRead = () => {
 const testUpdate = () => {
   describe('Dao user update', () => {
 
-    it('Should error if either email or entity name are missing (no bulk updates)', async() => {
+    it('Should error if either email or entity_id are missing (no bulk updates)', async() => {
       expect(async() => {
         const dao = DAOFactory.getInstance({
           DAOType: 'user', Payload: {
-            [UserFields.email]: 'somebody@gmail.com',
+            [UserFields.email]: email,
         }});
         await dao.update();
-      }).rejects.toThrow(/^User update error: Missing entity_name in/);
+      }).rejects.toThrow(/^User update error: Missing entity_id in/);
 
       expect(async() => {
         const dao = DAOFactory.getInstance({
           DAOType: 'user', Payload: {
-            [UserFields.entity_name]: 'Boston University',
+            [UserFields.entity_id]: entity_id,
         }});
         await dao.update();
       }).rejects.toThrow(/^User crud error: Missing email in/);
     });
 
-    it('Should error if email and entity name are the only fields provided', async() => {
+    it('Should error if email and entity_id are the only fields provided', async() => {
       expect(async() => {
         const dao = DAOFactory.getInstance({
           DAOType: 'user', Payload: {
-            [UserFields.email]: 'somebody@gmail.com',
-            [UserFields.entity_name]: 'Boston University',
+            [UserFields.email]: email,
+            [UserFields.entity_id]: entity_id,
         }});
         await dao.update();
       }).rejects.toThrow(/^User update error: No fields to update for/);
@@ -208,12 +206,12 @@ const testUpdate = () => {
 
     it('Should NOT error if a field to update has been supplied', async() => {
       dbMockClient.on(UpdateItemCommand).resolves({
-        Attributes: singleReturnedUser
+        Attributes: dynamodbItem
       });
       const dao = DAOFactory.getInstance({
         DAOType: 'user', Payload: {
-          [UserFields.email]: 'somebody@gmail.com',
-          [UserFields.entity_name]: 'Boston University',
+          [UserFields.email]: email,
+          [UserFields.entity_id]: entity_id,
           [UserFields.fullname]: 'Daffy Duck',
       }});
       await dao.update();
@@ -225,19 +223,19 @@ const testUpdate = () => {
 const testDelete = () => {
   describe('Dao user delete', () => {
 
-    it('Should error if either email or entity name are missing (no bulk deletes)', async() => {
+    it('Should error if either email or entity_id are missing (no bulk deletes)', async() => {
       expect(async() => {
         const dao = DAOFactory.getInstance({
           DAOType: 'user', Payload: {
-            [UserFields.email]: 'somebody@gmail.com',
+            [UserFields.email]: email,
         }});
         await dao.Delete();
-      }).rejects.toThrow(/^User delete error: Missing entity_name in/);
+      }).rejects.toThrow(/^User delete error: Missing entity_id in/);
 
       expect(async() => {
         const dao = DAOFactory.getInstance({
           DAOType: 'user', Payload: {
-            [UserFields.entity_name]: 'Boston University',
+            [UserFields.entity_id]: entity_id,
         }});
         await dao.update();
       }).rejects.toThrow(/^User crud error: Missing email in/);
@@ -253,8 +251,8 @@ const testDelete = () => {
       });
       const dao = DAOFactory.getInstance({
         DAOType: 'user', Payload: {
-          [UserFields.email]: 'somebody@gmail.com',
-          [UserFields.entity_name]: 'Boston University',
+          [UserFields.email]: email,
+          [UserFields.entity_id]: entity_id,
       }});
       await dao.Delete();
       expect(dbMockClient).toHaveReceivedCommandTimes(DeleteItemCommand, 1);
@@ -270,9 +268,9 @@ const testDelete = () => {
       });
       const dao = DAOFactory.getInstance({
         DAOType: 'user', Payload: {
-          [UserFields.email]: 'somebody@gmail.com',
-          [UserFields.entity_name]: 'Boston University',
-          [UserFields.fullname]: 'Mickey Mouse',
+          [UserFields.email]: email,
+          [UserFields.entity_id]: entity_id,
+          [UserFields.fullname]: fullname,
           [UserFields.role]: Roles.CONSENTING_PERSON  
       }});
       await dao.Delete();
@@ -282,20 +280,13 @@ const testDelete = () => {
 
 }
 
-if( ! ignoreMe('create')) {
-  testPut();
-}
+testPut();
 
-if( ! ignoreMe('read')) {
-  testRead();
-}
+testRead();
 
-if( ! ignoreMe('update')) {
-  testUpdate();
-}
+testUpdate();
 
-if( ! ignoreMe('delete')) {
-  testDelete();
-}
+testDelete();
+
 
 

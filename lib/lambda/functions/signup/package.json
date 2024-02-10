@@ -1,0 +1,14 @@
+{
+  "name": "signup",
+  "version": "1.0.0",
+  "description": "Functionality triggered when an api call to indicate the user has acknowledged the ETT privacy policy is made",
+  "main": "Acknowledgement.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Warren Hennemuth",
+  "license": "ISC",
+  "dependencies": {
+    "ett-dao": "file:../../_lib/dao"
+  }
+}

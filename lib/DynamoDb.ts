@@ -26,7 +26,7 @@ export class DynamoDbConstruct extends Construct {
     this.usersTable = new TableV2(this, 'DbUsers', {
       tableName: DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME,
       partitionKey: { name: UserFields.email, type: AttributeType.STRING },
-      sortKey: { name: UserFields.entity_name, type: AttributeType.STRING },
+      sortKey: { name: UserFields.entity_id, type: AttributeType.STRING },
       billing: Billing.onDemand(),
       tableClass: TableClass.STANDARD_INFREQUENT_ACCESS,
       removalPolicy: RemovalPolicy.DESTROY,
@@ -35,7 +35,7 @@ export class DynamoDbConstruct extends Construct {
       globalSecondaryIndexes: [
         {
           indexName: 'EntityIndex',
-          partitionKey: { name: UserFields.entity_name, type: AttributeType.STRING },
+          partitionKey: { name: UserFields.entity_id, type: AttributeType.STRING },
           sortKey: { name: UserFields.email, type: AttributeType.STRING },
           projectionType: ProjectionType.KEYS_ONLY,
           // projectionType: ProjectionType.INCLUDE,
@@ -47,7 +47,7 @@ export class DynamoDbConstruct extends Construct {
     // Create a table for ALL registerend entities, to be managed by system administrator.
     this.entitiesTable = new TableV2(this, 'DbEntities', {
       tableName: DynamoDbConstruct.DYNAMODB_TABLES_ENTITY_TABLE_NAME,
-      partitionKey: { name: EntityFields.entity_name, type: AttributeType.STRING },
+      partitionKey: { name: EntityFields.entity_id, type: AttributeType.STRING },
       billing: Billing.onDemand(),
       tableClass: TableClass.STANDARD_INFREQUENT_ACCESS,
       removalPolicy: RemovalPolicy.DESTROY,
@@ -58,8 +58,7 @@ export class DynamoDbConstruct extends Construct {
     // Create a table for invitations sent to users.
     this.invitationsTable = new TableV2(this, 'DbInvitations', {
       tableName: DynamoDbConstruct.DYNAMODB_TABLES_INVITATION_TABLE_NAME,
-      partitionKey: { name: InvitationFields.email, type: AttributeType.STRING },
-      sortKey: { name: InvitationFields.entity_name, type: AttributeType.STRING },
+      partitionKey: { name: InvitationFields.code, type: AttributeType.STRING },
       billing: Billing.onDemand(),
       tableClass: TableClass.STANDARD_INFREQUENT_ACCESS,
       removalPolicy: RemovalPolicy.DESTROY,
@@ -67,12 +66,18 @@ export class DynamoDbConstruct extends Construct {
       deletionProtection: this.context.TAGS.Landscape == 'prod', 
       globalSecondaryIndexes: [
         {
+          indexName: 'EmailIndex',
+          partitionKey: { name: InvitationFields.email, type: AttributeType.STRING },
+          sortKey: { name: InvitationFields.entity_id, type: AttributeType.STRING },
+          projectionType: ProjectionType.ALL,
+        },
+        {
           indexName: 'EntityIndex',
-          partitionKey: { name: InvitationFields.entity_name, type: AttributeType.STRING },
+          partitionKey: { name: InvitationFields.entity_id, type: AttributeType.STRING },
           sortKey: { name: InvitationFields.email, type: AttributeType.STRING },
-          projectionType: ProjectionType.KEYS_ONLY
+          projectionType:ProjectionType.KEYS_ONLY
         }
-      ]    
+      ]  
     })
   }
 

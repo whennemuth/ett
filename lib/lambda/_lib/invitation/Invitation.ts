@@ -1,35 +1,52 @@
-import { InvitationAttempt, Role, Roles } from '../dao/entity';
+import { Invitation, Role, Roles } from '../dao/entity';
 import { DAOInvitation, DAOFactory } from '../dao/dao';
 import { SESv2Client, SendEmailCommand, SendEmailCommandInput, SendEmailResponse } from '@aws-sdk/client-sesv2';
-import { UpdateOutput } from '../dao/dao-invitation';
-
-export type InvitationEmailParameters = {
-  email: string,
-  entity_name: string,
-  role: Role,
-  link: string,
-  sent_timestamp?: string
-};
+import { v4 as uuidv4 } from 'uuid';
+import { ENTITY_WAITING_ROOM } from '../dao/dao-entity';
 
 /**
- * An invitation email is one sent with a link in it to a public signin url (cognito userpool client hosted UI).
- * This invitation is logged into the backend database and anyone accepting the invitation and attempting to
- * signup through the cognito userpool client "doorway" the link targets will trigger a screening lambda function
- * that will lookup the email in the database for pending invitations before letting the user through. 
- * Any random visitor to the signup url will be turned away if they are "uninvited".
+ * An invitation email is one sent with a link in it to the ETT privacy policy acknowledgement webpage as the
+ * starting point for their account signup. The link has a special code in it that has also been logged into 
+ * the backend database, and so anyone accepting the invitation by following the link will arrive at the 
+ * registration form for the website. They will only be able to progress through the registration process if the
+ * code is detected and passed along with each registration step to the backend where screening lambda functions
+ * lookup the code in the database for a match as a precondition to carrying out that registration step. 
+ * Any random visitor to the registration form (with no valid code) will be turned away as "uninvited".
  */
-export class InvitationEmail {
+export class UserInvitation {
 
-  private parms:InvitationEmailParameters;
+  private invitation:Invitation;
+  private _code:string;
+  private link:string;
+  private entity_name:string;
+  private messageId:string|undefined;
 
-  constructor(invitation:InvitationEmailParameters) {
-    this.parms = invitation;
+  /**
+   * The invitation email is to be sent and an entry created in the database.
+   * @param invitation 
+   * @param link 
+   */
+  constructor(invitation:Invitation, link:string, entity_name:string) {
+    if( ! link) {
+      throw new Error('Missing invitation link for invitation email!');
+    }
+    this.invitation = invitation as Invitation;
+    this.entity_name = entity_name;
+    this.link = link;
+
+    // If an invitation code is not provided, generate one.
+    let { code } = invitation;
+    if( ! code) code = uuidv4();
+    this._code = code;
   }
 
+  /**
+   * Send the invitation email.
+   * @returns 
+   */
   public send = async ():Promise<boolean> => {
-
     // Destructure the invitation and get a description of the role invited for.
-    const { entity_name, role, link } = this.parms;
+    let { role, email } = this.invitation;
     let role_description = '';
     switch(role as Role) {
       case Roles.RE_ADMIN:
@@ -44,12 +61,18 @@ export class InvitationEmail {
           registered entity. Each registered entity has two Authorized Individuals'
         break;
     }
+
+    let heading:string = `You are invited to register as an ${role} in the Ethical Transparency Application`;
+    if(this.entity_name != ENTITY_WAITING_ROOM) {
+    // if(this.entity_name && this.entity_name != ENTITY_WAITING_ROOM) {
+        heading = `${heading} for the following organization: <br><br><span class="entity1">${this.entity_name}</span>`;
+    }
     
     // Send the invitation email
     const client = new SESv2Client();
     const command = new SendEmailCommand({
       Destination: {
-        ToAddresses: [ this.parms.email ]
+        ToAddresses: [ email ]
       },
       Content: {
         Simple: {
@@ -76,10 +99,7 @@ export class InvitationEmail {
                     </style>
                   </head>
                   <div class="content">
-                    <div class="heading1">
-                      You are invited to register as ${role} in the Ethical Transparency Application for the following
-                      organization: <br><br><span class="entity1">${entity_name}</span>
-                    </div>
+                    <div class="heading1">${heading}</div>
                     <div class="body1">
                       <hr>
                       ETT is designed to support AAU’s harassment prevention principles and the recommendations of 
@@ -94,7 +114,7 @@ export class InvitationEmail {
                       A ${role} is: ${role_description}
                     </div>
                     <div class="direction1">
-                      Click <a href="${link}" style="font-weight: bold;">here</a> to register
+                      Click <a href="${this.link}&code=${this._code}" style="font-weight: bold;">here</a> to register
                     </div></div>
                   </div>
                 </body>
@@ -105,62 +125,52 @@ export class InvitationEmail {
       }
     } as SendEmailCommandInput);
 
-    let msgId;
     try {
       const response:SendEmailResponse = await client.send(command);
-      msgId = response?.MessageId
+      this.messageId = response?.MessageId;
+      if(this.messageId) {
+        await this.persist();
+      }
     } 
     catch (e:any) {
       console.log(e);
       return false;
     }
-    return msgId ? true : false;
+    return this.messageId ? true : false;
   }
 
   /**
-   * Adding a new invitation attempt to the database to reflect the email that would have just got sent.
+   * Registering the invitation to the database to reflect the email that would have just got sent.
+   * NOTE: The email address itself is NOT saved (cannot do this until acknowledgement and consent have occurred.)
    * @returns 
    */
-  public persist = async ():Promise<boolean> => {
+  private persist = async ():Promise<any> => {
     try {
-      const { email, entity_name, role, link } = this.parms;
+      let { entity_id, role, sent_timestamp } = this.invitation;
 
+      if( ! sent_timestamp) {
+        sent_timestamp = new Date().toISOString();
+      }
+
+      // Make sure email is NOT assigned the actual value, but the code value instead.
       const dao = DAOFactory.getInstance({ DAOType: 'invitation', Payload: {
-        email, entity_name, attempts: [{
-          role, link
-        } as InvitationAttempt ]
-      }}) as DAOInvitation;
+        code: this._code, 
+        email: this._code,
+        entity_id, 
+        role, 
+        message_id: this.messageId,
+        sent_timestamp
+      } as Invitation}) as DAOInvitation;
 
-      await dao.create();
-      return true;
+      return await dao.create();
     }
     catch (e:any) {
       console.log(e);
-      return false;      
+      return null;      
     }
   }
 
-  /**
-   * An invitation exists in the database with a sent_timestamp value and no accepted_timestamp value.
-   * Update that invitation attempt so that the accepted_timestamp value reflects the current time.
-   * @returns 
-   */
-  public accept = async ():Promise<boolean> => {
-    try {
-      const { email, entity_name, role, link, sent_timestamp } = this.parms;
-
-      const dao = DAOFactory.getInstance({ DAOType: 'invitation', Payload: {
-        email, entity_name, attempts: [{
-          role, link, sent_timestamp, accepted_timestamp: new Date().toISOString()
-        } as InvitationAttempt ]
-      }}) as DAOInvitation;
-
-      const output:UpdateOutput = await dao.update();
-      return output.update.length > 0;
-    }
-    catch (e:any) {
-      console.log(e);
-      return false;      
-    }
+  public get code():string {
+    return this._code;
   }
 }

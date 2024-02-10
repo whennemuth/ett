@@ -1,18 +1,104 @@
-// RESUME NEXT 1: Write these tests.
+import { Invitation, Role, Roles } from '../../_lib/dao/entity';
+import { Messages, handler } from './PreSignup';
+import * as event from './PreSignupEventMock.json'
 
-import {} from './PreSignup';
+let invitationLookupResults = [] as Invitation[];
+jest.mock('../../_lib/dao/dao.ts', () => {
+  return {
+    __esModule: true,
+    DAOFactory: {
+      getInstance: jest.fn().mockImplementation(() => {
+        return {
+          read: async ():Promise<(Invitation|null)|Invitation[]> => {
+            return invitationLookupResults;
+          }
+        }
+      })
+    }
+  }
+});
+
+let role:Role|undefined;
+/**
+ * Define a partial mock for the cognito Lookup.ts module
+ */
+jest.mock('../../_lib/cognito/Lookup.ts', () => {
+  const originalModule = jest.requireActual('../../_lib/cognito/Lookup');
+  return {
+    __esModule: true,
+    ...originalModule,
+    lookupRole: async (userPoolId:string, clientId:string, region:string):Promise<Role|undefined> => {
+      return role;
+    }
+  }
+});
 
 describe('Pre signup lambda trigger: handler', () => {
 
-  it('Should error out if there are no pending invitations');
+  it('Should throw anticipated error if role lookup fails', async () => {
+    role = undefined;
+    expect(async () => {
+      await handler(event);
+    }).rejects.toThrow(new Error(Messages.ROLE_LOOKUP_FAILURE));
+  });
 
-  it('Should error out if there are pending invitations, but none that match by role');
+  it('Should return without error if the role is for consenting person', async () => {
+    role = Roles.CONSENTING_PERSON;
+    const retval = await handler(event);
+    expect(retval).toEqual(event);
+  });
 
-  it('Should error out if only invitation attempts that match by role, but are already accepted');
+  it('Should error out if there are no matching consented invitations', async () => {
+    role = Roles.RE_ADMIN;
+    invitationLookupResults = [] as Invitation[];
+    expect(async () => {
+      await handler(event);
+    }).rejects.toThrow(new Error(Messages.UNINVITED + role));
+  });
 
-  it('Should error out if only invitation attempts that match by role, but are retracted');
+  it('Should error out if there are matching consented invitations, but none that match by role', async () => {
+    role = Roles.RE_ADMIN;
+    const dte = new Date().toISOString();
+    invitationLookupResults = [
+      { role: Roles.SYS_ADMIN, acknowledged_timestamp: dte, consented_timestamp: dte },
+      { role: Roles.RE_AUTH_IND, acknowledged_timestamp: dte, consented_timestamp: dte },      
+    ] as Invitation[];
+    expect(async () => {
+      await handler(event);
+    }).rejects.toThrow(new Error(Messages.UNINVITED + role));
+  });
 
-  it('Should try to accept a single pending invitation attempt that matches by role');
+  it('Should return without error if only invitation attempts that match by role, but are retracted', async () => {
+    role = Roles.RE_ADMIN;
+    const dte = new Date().toISOString();
+    invitationLookupResults = [
+      { 
+        role: Roles.RE_ADMIN, 
+        acknowledged_timestamp: dte, 
+        consented_timestamp: dte, 
+        retracted_timestamp: dte 
+      },      
+    ] as Invitation[];
+    expect(async () => {
+      await handler(event);
+    }).rejects.toThrow(new Error(Messages.RETRACTED + role));
+  });
 
-  it('Should try to accept all of multiple pending invitation attempts that match by role');
+  it('Should return gracefully if finds one or more consented invitation attempts that match by role', async () => {
+    role = Roles.RE_ADMIN;
+    const dte = new Date().toISOString();
+    
+    invitationLookupResults = [
+      { role: Roles.RE_ADMIN, acknowledged_timestamp: dte, consented_timestamp: dte },      
+    ] as Invitation[];
+    let retval = await handler(event);
+    expect(retval).toEqual(event);
+    
+    invitationLookupResults = [
+      { role: Roles.RE_ADMIN, acknowledged_timestamp: dte, consented_timestamp: dte },      
+      { role: Roles.RE_ADMIN, acknowledged_timestamp: dte, consented_timestamp: dte }   
+    ] as Invitation[];
+    retval = await handler(event);
+    expect(retval).toEqual(event);
+  });
 });

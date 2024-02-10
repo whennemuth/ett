@@ -1,4 +1,4 @@
-import { DynamoDBClient, PutItemCommand, GetItemCommand, QueryCommand, UpdateItemCommand, AttributeValue, UpdateItemCommandInput, DeleteItemCommand } from '@aws-sdk/client-dynamodb'
+import { DynamoDBClient, PutItemCommand, GetItemCommand, QueryCommand, UpdateItemCommand, AttributeValue, UpdateItemCommandInput, DeleteItemCommand, GetItemCommandInput, GetItemCommandOutput, UpdateItemCommandOutput, DeleteItemCommandInput, DeleteItemCommandOutput, QueryCommandInput, PutItemCommandOutput } from '@aws-sdk/client-dynamodb'
 import { User, UserFields, YN } from './entity';
 import { Builder, getUpdateCommandBuilderInstance } from './db-update-builder'; 
 import { convertFromApiObject } from './db-object-builder';
@@ -13,7 +13,7 @@ const dbclient = new DynamoDBClient({ region: process.env.REGION });
  */
 export function UserCrud(userinfo:User): DAOUser {
 
-  const { email, entity_name, role='', sub='', fullname='', active=YN.Yes } = userinfo;
+  let { email, entity_id, role, sub, fullname='', active=YN.Yes, create_timestamp } = userinfo;
 
   const throwMissingError = (task:string, fld:string) => {
     throw new Error(`User ${task} error: Missing ${fld} in ${JSON.stringify(userinfo, null, 2)}`)
@@ -23,28 +23,31 @@ export function UserCrud(userinfo:User): DAOUser {
    * Create a new user.
    * @returns 
    */
-  const create = async () => {
+  const create = async (): Promise<PutItemCommandOutput> => {
     console.log(`Creating ${role}: ${fullname}`);
 
     // Handle missing field validation
-    if( ! entity_name) throwMissingError('create', UserFields.entity_name);
+    if( ! entity_id) throwMissingError('create', UserFields.entity_id);
     if( ! role) throwMissingError('create', UserFields.role);
     if( ! fullname ) throwMissingError('create', UserFields.fullname);
     if( ! sub ) throwMissingError('create', UserFields.sub);
 
     // Send the command
-    const dte = new Date().toISOString();
+    if( ! create_timestamp) {
+      create_timestamp = new Date().toISOString();
+      userinfo.create_timestamp = create_timestamp;
+    }
     const params = {
       TableName: process.env.DYNAMODB_USER_TABLE_NAME,
       Item: { 
         [UserFields.email]: { S: email }, 
-        [UserFields.entity_name]: { S: entity_name }, 
+        [UserFields.entity_id]: { S: entity_id }, 
         [UserFields.fullname]: { S: fullname },
         [UserFields.sub]: { S: sub },
         [UserFields.role]: { S: role },
         // https://aws.amazon.com/blogs/database/working-with-date-and-timestamp-data-types-in-amazon-dynamodb/
-        [UserFields.create_timestamp]: { S: dte},
-        [UserFields.update_timestamp]: { S: dte},
+        [UserFields.create_timestamp]: { S: create_timestamp},
+        [UserFields.update_timestamp]: { S: create_timestamp},
         [UserFields.active]: { S: active },
       }
     };
@@ -52,12 +55,18 @@ export function UserCrud(userinfo:User): DAOUser {
     return await sendCommand(command);
   }
 
-  const read = async ():Promise<User|User[]> => {
-    if(entity_name) {
+  const read = async ():Promise<(User|null)|User[]> => {
+    if(email && entity_id) {
       return await _read() as User;
     }
+    else if( ! email && ! entity_id) {
+      return await _read() as User;
+    }
+    else if(email) {
+      return await _query({ v1: email, index: null } as IdxParms) as User[];
+    }
     else {
-      return await _query() as User[];
+      return await _query({ v1: entity_id, index: 'EntityIndex' } as IdxParms) as User[];
     }
   }
 
@@ -65,34 +74,44 @@ export function UserCrud(userinfo:User): DAOUser {
    * Get a single record for a user in association with a specific registered entity.
    * @returns 
    */
-  const _read = async ():Promise<User> => {
-    console.log(`Reading ${email} / ${entity_name}`);
+  const _read = async ():Promise<User|null> => {
+    console.log(`Reading ${email} / ${entity_id}`);
     const params = {
       TableName: process.env.DYNAMODB_USER_TABLE_NAME,
+      ConsistentRead: true,
       Key: { 
         [UserFields.email]: { S: email, },
-        [UserFields.entity_name]: { S: entity_name }
+        [UserFields.entity_id]: { S: entity_id }
       }
-    };
+    } as GetItemCommandInput;
     const command = new GetItemCommand(params);
-    const retval = await sendCommand(command);
+    const retval:GetItemCommandOutput = await sendCommand(command);
     return await loadUser(retval.Item) as User;
   }
 
   /**
-   * Retrieve potentially more than one record for a user by email address.
-   * That is, without specifying the sort key (entity_name), you could get multiple entries for the user across different entities.
+   * Retrieve potentially:
+   *   1) Multiple instances of a specific user across multiple entities 
+   *   or...
+   *   2) Multiple instances of the different users within a single entity.
    * @returns 
    */
-  const _query = async ():Promise<User[]> => {
-    console.log(`Reading ${email}`);
+  type IdxParms = { v1:string; index:string|null }
+  const _query = async (idxParms:IdxParms):Promise<User[]> => {
+    const { v1, index } = idxParms;
+    console.log(`Reading users for ${v1}`);
     const params = {
       TableName: process.env.DYNAMODB_USER_TABLE_NAME,
+      ConsistentRead: true,
       ExpressionAttributeValues: {
-        ':v1': { S: email }
+        ':v1': { S: v1 }
       },
       KeyConditionExpression: `${UserFields.email} = :v1`
-    };
+    } as QueryCommandInput;
+
+    if(index) {
+      params.IndexName = index;
+    }
     const command = new QueryCommand(params);
     const retval = await sendCommand(command);
     const users = [] as User[];
@@ -107,15 +126,15 @@ export function UserCrud(userinfo:User): DAOUser {
    * NOTE: Only those fields that are not undefined from the destructuring of userinfo will be updated.
    * @returns 
    */
-  const update = async ():Promise<any> => {    
+  const update = async ():Promise<UpdateItemCommandOutput> => {    
     // Handle field validation
-    if( ! entity_name) {
-      throwMissingError('update', UserFields.entity_name);
+    if( ! entity_id) {
+      throwMissingError('update', UserFields.entity_id);
     }
-    else if( Object.keys(userinfo).length == 2 ) {
-      throw new Error(`User update error: No fields to update for ${entity_name}: ${email}`);
+    if( Object.keys(userinfo).length == 2 ) {
+      throw new Error(`User update error: No fields to update for ${entity_id}: ${email}`);
     }
-    console.log(`Updating user: ${email} / ${entity_name}`);
+    console.log(`Updating user: ${email} / ${entity_id}`);
     const builder:Builder = getUpdateCommandBuilderInstance(userinfo, process.env.DYNAMODB_USER_TABLE_NAME || '');
     const input:UpdateItemCommandInput = builder.buildUpdateItem();
     const command = new UpdateItemCommand(input);
@@ -124,32 +143,31 @@ export function UserCrud(userinfo:User): DAOUser {
 
   /**
    * Delete the user from the dynamodb table.
-   * NOTE: If the sort key (entity_name) is undefined, ALL records with email will be deleted.
+   * NOTE: If the sort key (entity_id) is undefined, ALL records with email will be deleted.
    * This is probably not a function you want to expose too publicly, favoring a deactivate method in client
    * code that calls the update function to toggle the active field to "N".
    */
-  const Delete = async () => {
+  const Delete = async ():Promise<DeleteItemCommandOutput> => {
 
     // Handle missing field validation
-    if( ! entity_name) throwMissingError('delete', UserFields.entity_name);
+    if( ! entity_id) throwMissingError('delete', UserFields.entity_id);
 
     const input = {
       TableName: process.env.DYNAMODB_USER_TABLE_NAME,
       Key: { 
         [UserFields.email]: { S: email, },
-        [UserFields.entity_name]: { S: entity_name, },
-      }
-    };
+      } as Record<string, AttributeValue>
+    } as DeleteItemCommandInput;
 
-    if(hasSortKey()) {
+    if(hasSortKey() && input.Key) {
       // Add the sort key. Only one item will be deleted.
-      Object.defineProperty(input.Key, UserFields.entity_name, { S: entity_name } as AttributeValue);
+      input.Key[UserFields.entity_id] = { S: entity_id };
     }
     const command = new DeleteItemCommand(input);
     return await sendCommand(command);
   }
 
-  const hasSortKey = () => { return userinfo.entity_name || false; }
+  const hasSortKey = () => { return userinfo.entity_id || false; }
 
   const loadUser = async (user:any):Promise<User> => {
     return new Promise( resolve => {

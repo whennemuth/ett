@@ -22,14 +22,14 @@ export class CognitoConstruct extends Construct {
 
     this.constructId = constructId;
     this.context = scope.node.getContext('stack-parms');
-    this.userPoolName = `${this.constructId}-userpool`;
+    this.userPoolName = `ett-${this.constructId.toLowerCase()}-userpool`;
     this.buildResources();
   }
 
   buildResources(): void {
 
     const postSignupFunction = new AbstractFunction(this, 'PostSignupFunction', {
-      functionName: `${this.constructId}-post-signup`,
+      functionName: `ett-${this.constructId.toLowerCase()}-post-signup`,
       description: 'Handles entry of a user into dynamodb directly after signing up in cognito.',
       runtime: Runtime.NODEJS_18_X,
       handler: 'handler',
@@ -71,7 +71,7 @@ export class CognitoConstruct extends Construct {
     });
 
     const preAuthenticationFunction = new AbstractFunction(this, 'PreAuthenticationFunction', {
-      functionName: `${this.constructId}-pre-authentication`,
+      functionName: `ett-${this.constructId.toLowerCase()}-pre-authentication`,
       description: 'Cancels login attempt if user is does not have the role they selected to sign in with',
       runtime: Runtime.NODEJS_18_X,
       handler: 'handler',
@@ -117,7 +117,7 @@ export class CognitoConstruct extends Construct {
       userPoolName: this.userPoolName,
       accountRecovery: AccountRecovery.EMAIL_AND_PHONE_WITHOUT_MFA,
       selfSignUpEnabled: true,
-      signInAliases: { email: true },
+      signInAliases: { email: true, phone: true },
       autoVerify: { email: true },
       passwordPolicy: {
         minLength: 8,
@@ -130,7 +130,6 @@ export class CognitoConstruct extends Construct {
       standardAttributes: {
         email: { required:true, mutable:false },
         phoneNumber: { required:true, mutable:true },
-        address: { required:true, mutable:true }
       },
       lambdaTriggers: {
         preAuthentication: preAuthenticationFunction,
@@ -150,7 +149,7 @@ export class CognitoConstruct extends Construct {
     // https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-app-ui-customization.html
     // const uiAttachment = new CfnUserPoolUICustomizationAttachment(
     //   this,
-    //   `${this.constructId}-ui-attachment`,
+    //   `ett-${this.constructId.toLowerCase()}-ui-attachment`,
     //   {
     //     clientId: this.userPoolClient.userPoolClientId,
     //     userPoolId: this.userPool.userPoolId,

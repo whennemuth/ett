@@ -14,12 +14,12 @@ export interface AdminUserParms {
 export class ReAdminUserApi extends AbstractRole {
   private api: AbstractRoleApi;
 
-  constructor(scope: Construct, constructId: string, parms: AdminUserParms) {
+  constructor(scope:Construct, constructId:string, parms:AdminUserParms) {
 
     super(scope, constructId);
 
     const { userPool, cloudfrontDomain } = parms;
-    const lambdaFunction = new LambdaFunction(scope, `${constructId}Lambda`);
+    const lambdaFunction = new LambdaFunction(scope, `${constructId}Lambda`, cloudfrontDomain, userPool.userPoolId);
 
     this.api = new AbstractRoleApi(scope, `${constructId}Api`, {
       cloudfrontDomain,
@@ -56,7 +56,7 @@ export class ReAdminUserApi extends AbstractRole {
  * Just the lambda function without the api gateway and cognito scoping resources.
  */
 export class LambdaFunction extends AbstractFunction {
-  constructor(scope: Construct, constructId: string) {
+  constructor(scope:Construct, constructId:string, cloudfrontDomain:string, userpoolId:string) {
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
       entry: 'lib/lambda/functions/re-admin/ReAdminUser.ts',
@@ -71,7 +71,9 @@ export class LambdaFunction extends AbstractFunction {
       },
       environment: {
         REGION: scope.node.getContext('stack-parms').REGION,
-        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME
+        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME,
+        INVITATION_LINK: `https://${cloudfrontDomain}/index.htm?action=acknowledge`,
+        USERPOOL_ID: userpoolId
       }
     });
   }

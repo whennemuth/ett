@@ -1,176 +1,268 @@
-import { handler } from './PostSignup';
-import { Roles, User } from '../../_lib/dao/entity';
-import { DAOUser } from '../../_lib/dao/dao';
-import { mockClient } from 'aws-sdk-client-mock'
 import 'aws-sdk-client-mock-jest';
-import { 
-  CognitoIdentityProviderClient, ListUserPoolClientsCommand, ListUserPoolClientsResponse
-} from '@aws-sdk/client-cognito-identity-provider';
+import { DAOInvitation, DAOUser } from '../../_lib/dao/dao';
+import { Invitation, Role, Roles, User } from '../../_lib/dao/entity';
+import { handler } from './PostSignup';
+import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
 
 // ---------------------- EVENT DETAILS ----------------------
 const clientId = '6s4a2ilv9e5solo78f4d75hlp8';
-const ClientId = clientId;
 const userPoolId = 'us-east-2_J9AbymKIz'
-const UserPoolId = userPoolId;
-let crud_operation_attempts = 0;
+let create_user_attempts = 0;
+let role_lookup_attempts = 0;
+let invitation_lookup_attempts = 0;
+let invitationRole:Role = Roles.RE_ADMIN;
+let invitationScenario = 'match';
+
+/**
+ * Define a partial mock for the cognito Lookup.ts module
+ */
+jest.mock('../../_lib/cognito/Lookup.ts', () => {
+  const originalModule = jest.requireActual('../../_lib/cognito/Lookup');
+  return {
+    __esModule: true,
+    ...originalModule,
+    lookupRole: async (userPoolId:string, clientId:string, region:string):Promise<Role|undefined> => {
+      role_lookup_attempts++;
+      switch(clientId) {
+        case 'clientIdForRoleLookupFailure':
+          return undefined;
+        default:
+          return invitationRole
+      }
+    }
+  }
+});
+
+/**
+ * Define a partial mock for the dao.ts module
+ */
+jest.mock('../../_lib/dao/dao.ts', () => {
+  return {
+    __esModule: true,
+    DAOFactory: {
+      getInstance: jest.fn().mockImplementation(() => {
+        return {
+          create: async ():Promise<any> => { 
+            create_user_attempts++;
+            return {} as User|void;
+          }, 
+          read: async ():Promise<Invitation|Invitation[]> => {
+            invitation_lookup_attempts++;
+            const dte = new Date().toISOString();
+            const basicMatch = { 
+              entity_id: ENTITY_WAITING_ROOM,
+              email: 'bugsbunny@warnerbros.com', 
+              acknowledged_timestamp: dte, 
+              consented_timestamp: dte 
+            } as Invitation
+            switch(invitationRole) {
+              case Roles.RE_ADMIN:
+                var match = Object.assign({}, basicMatch);
+                match.role = Roles.RE_ADMIN;
+                var roleMismatch = Object.assign({}, match);
+                roleMismatch.role = Roles.SYS_ADMIN;
+                var acknowledgeMismatch = Object.assign({}, match);
+                acknowledgeMismatch.acknowledged_timestamp = undefined;
+                var consentMismatch = Object.assign({}, match);
+                consentMismatch.consented_timestamp = undefined;
+                var entityMismatch = Object.assign({}, match);
+                entityMismatch.entity_id = 'abc123';
+                var retval = [ roleMismatch, acknowledgeMismatch, consentMismatch, entityMismatch ] as Invitation[];
+                if(invitationScenario == 'match') {
+                  retval.push(match);
+                }
+                return retval;
+              case Roles.SYS_ADMIN:
+                var match = Object.assign({}, basicMatch);
+                match.role = Roles.SYS_ADMIN;
+                var entityMismatch = Object.assign({}, match);
+                entityMismatch.entity_id = 'abc123';
+                var retval = [ entityMismatch ] as Invitation[];
+                if(invitationScenario == 'match') {
+                  retval.push(match);
+                }
+                return retval;
+              case Roles.RE_AUTH_IND:
+                var match = Object.assign({}, basicMatch);
+                match.role = Roles.RE_AUTH_IND;
+                match.entity_id = 'not_the_waiting_room';
+                var entityMismatch = Object.assign({}, match);
+                entityMismatch.entity_id = ENTITY_WAITING_ROOM;
+                var retval = [ entityMismatch ] as Invitation[];
+                if(invitationScenario == 'match') {
+                  retval.push(match);
+                }
+                return retval;
+            }
+            return [] as Invitation[];
+          }
+        } as DAOInvitation|DAOUser
+      })
+    }
+  }
+});
 
 const testHandler = () => {
 
-    // Mock the cognito idp client
-  const cognitoIdpClientMock = mockClient(CognitoIdentityProviderClient);
-
-    // Create a mock that makes each dynamodb dao crud operation callable only, 
-    // each doing nothing except returning immediately.
-  jest.mock('../../_lib/dao/dao.ts', () => {
-    const getMockPromise = () => {
-      return new Promise((resolve, reject) => {
-        resolve( {} as User|void);
-      });
-    }
-    return {
-      __esModule: true,
-      DAOFactory: {
-        getInstance: (userinfo:any):DAOUser => {
-          return {
-            create: async ():Promise<any> => { 
-              return new Promise((resolve, reject) => {
-                crud_operation_attempts++;
-                resolve({} as User|void);
-              }); 
-            },
-            Delete: async ():Promise<any> => { return getMockPromise(); },
-            read: async ():Promise<User|User[]> => { return getMockPromise() as Promise<User>; },
-            update: async ():Promise<any> => { return getMockPromise(); },
-            test: async ():Promise<any> => { return getMockPromise(); },
-          }
-        }
-      }
-    }
-  });
-
   describe('Post signup lambda trigger: handler', () => {
+    const resetMockCounters = () => {
+      role_lookup_attempts = 0;
+      create_user_attempts = 0;
+      invitation_lookup_attempts = 0;
+    }
 
     it('Should skip all SDK use if the event has no userpoolId, and throw error.', async () => {
-      cognitoIdpClientMock.on(ListUserPoolClientsCommand).resolves({});
-      expect(async () => {
+      await expect(async () => {
         await handler({});
       }).rejects.toThrow();    
-      expect(cognitoIdpClientMock).toHaveReceivedCommandTimes(ListUserPoolClientsCommand, 0);
-      expect(crud_operation_attempts).toEqual(0);
-      cognitoIdpClientMock.resetHistory();
+      expect(role_lookup_attempts).toEqual(0);
+      expect(invitation_lookup_attempts).toEqual(0);
+      expect(create_user_attempts).toEqual(0);
+      resetMockCounters();
     });
 
     it('Should skip all SDK use if the event has no clientId, and throw error.' , async () => {
-      cognitoIdpClientMock.on(ListUserPoolClientsCommand).resolves({});
-      expect(async () => {
+      await expect(async () => {
         await handler({
           userPoolId: 'us-east-2_J9AbymKIz',
         });
       }).rejects.toThrow();    
-      expect(cognitoIdpClientMock).toHaveReceivedCommandTimes(ListUserPoolClientsCommand, 0);
-      expect(crud_operation_attempts).toEqual(0);
-      cognitoIdpClientMock.resetHistory();
+      expect(role_lookup_attempts).toEqual(0);
+      expect(invitation_lookup_attempts).toEqual(0);
+      expect(create_user_attempts).toEqual(0);
+      resetMockCounters();
     });
 
-    it('Should error if the user pool clients lookup does not return a match.', () => {
-      // No userpool clients at all.
-      cognitoIdpClientMock.on(ListUserPoolClientsCommand).resolves({});
-      expect(async () => {
-        await handler({ userPoolId, callerContext: { clientId }});
+    it('Should NOT attempt to make a dynamodb entry for the user if lookupRole fails', async () => {
+      await expect(async () => {
+        await handler({ userPoolId, callerContext: { clientId: 'clientIdForRoleLookupFailure' }});
       }).rejects.toThrow();    
-      expect(cognitoIdpClientMock).toHaveReceivedCommandTimes(ListUserPoolClientsCommand, 1);
-      expect(crud_operation_attempts).toEqual(0);
-      cognitoIdpClientMock.resetHistory();
-
-      // No userpool clients that match.
-      cognitoIdpClientMock.on(ListUserPoolClientsCommand).resolves({
-        UserPoolClients: [
-          { ClientId: 'mismatching_id_1', ClientName: 'some_name_1', UserPoolId },
-          { ClientId: 'mismatching_id_2', ClientName: 'some_name_2', UserPoolId },
-          { ClientId: 'mismatching_id_3', ClientName: 'some_name_3', UserPoolId },
-        ]
-      } as ListUserPoolClientsResponse);
-      expect(async () => {
-        await handler({ userPoolId, callerContext: { clientId }});
-      }).rejects.toThrow();    
-      expect(cognitoIdpClientMock).toHaveReceivedCommandTimes(ListUserPoolClientsCommand, 1);
-      expect(crud_operation_attempts).toEqual(0);
-      cognitoIdpClientMock.resetHistory();
+      expect(role_lookup_attempts).toEqual(1);
+      expect(invitation_lookup_attempts).toEqual(0);
+      expect(create_user_attempts).toEqual(0);
+      resetMockCounters();
     });
 
     it('Should NOT attempt to make a dynamodb entry for the user if client lookup found a match, \
-    but a role cannot be ascertained from its name.', () => {
-      cognitoIdpClientMock.on(ListUserPoolClientsCommand).resolves({
-        UserPoolClients: [
-          { ClientId: 'mismatching_id_1', ClientName: 'some_name_1', UserPoolId },
-          { ClientId, ClientName: 'BOGUS_ROLE-some_name_2', UserPoolId },
-          { ClientId: 'mismatching_id_3', ClientName: 'some_name_3', UserPoolId },
-        ]
-      } as ListUserPoolClientsResponse);
-      expect(async () => {
-        await handler({ userPoolId, callerContext: { clientId }});
-      }).rejects.toThrow();    
-      expect(cognitoIdpClientMock).toHaveReceivedCommandTimes(ListUserPoolClientsCommand, 1);
-      expect(crud_operation_attempts).toEqual(0);
-      cognitoIdpClientMock.resetHistory();
-    });
-
-    it('Should NOT attempt to make a dynamodb entry for the user if client lookup found a match, \
-    and a role could be ascertained, but insufficient attributes available in event.', () => {
-      cognitoIdpClientMock.on(ListUserPoolClientsCommand).resolves({
-        UserPoolClients: [
-          { ClientId: 'mismatching_id_1', ClientName: 'some_name_1', UserPoolId },
-          { ClientId, ClientName: `${Roles.RE_AUTH_IND}-some_name_2`, UserPoolId },
-          { ClientId: 'mismatching_id_3', ClientName: 'some_name_3', UserPoolId },
-        ]
-      } as ListUserPoolClientsResponse);
-      
-      expect(async () => {
+    and a role could be ascertained, but insufficient attributes available in event.', async () => {
+      await expect(async () => {
         await handler({ 
           userPoolId, 
           callerContext: { clientId }
         });
       }).rejects.toThrow();    
-      expect(cognitoIdpClientMock).toHaveReceivedCommandTimes(ListUserPoolClientsCommand, 1);
-      expect(crud_operation_attempts).toEqual(0);
-      cognitoIdpClientMock.resetHistory();
+      expect(role_lookup_attempts).toEqual(1);
+      expect(invitation_lookup_attempts).toEqual(0);
+      expect(create_user_attempts).toEqual(0);
+      resetMockCounters();
       
-      expect(async () => {
+      await expect(async () => {
         await handler({ 
           userPoolId, 
           callerContext: { clientId },
           request: {
             userAttributes: {
               sub: 'asdgsgsfdgsdfg',
-              name: 'Daffy Duck',
+              phone_number: '+6175558888'
               // email will be missing
+              // email_verified will be false/null
             }
           }
         });
       }).rejects.toThrow();    
-      expect(cognitoIdpClientMock).toHaveReceivedCommandTimes(ListUserPoolClientsCommand, 1);
-      expect(crud_operation_attempts).toEqual(0);
-      cognitoIdpClientMock.resetHistory();
+      expect(role_lookup_attempts).toEqual(1);
+      expect(invitation_lookup_attempts).toEqual(0);
+      expect(create_user_attempts).toEqual(0);
+      resetMockCounters();
     });
 
-    it('Should attempt to make a dynamodb entry for the user if role lookup succeeds and \
-    sufficient attributes came with the event', async () => {
-      await handler({ 
+    it('Should make it as far as the invitation lookup if role lookup succeeds and \
+    sufficient attributes came with the event, but still no user creation if invitation lookup fails', async () => {
+      const event = { 
         userPoolId, 
         callerContext: { clientId },
         request: {
           userAttributes: {
             sub: 'asdgsgsfdgsdfg',
-            name: 'Daffy Duck',
-            email: 'daffy@warnerbros.com',
-            email_verified: 'true'
+            email: 'daffyduck@warnerbros.com',
+            email_verified: 'true',
+            phone_number: '+6175558888',
+            ['cognito:user_status']: 'CONFIRMED'
           }
         }
-      });     
-      expect(cognitoIdpClientMock).toHaveReceivedCommandTimes(ListUserPoolClientsCommand, 1);
-      expect(crud_operation_attempts).toEqual(1);
+      };
+
+      invitationRole = Roles.RE_ADMIN;
+      invitationScenario = 'lookup_failure';
+      await expect(async () => {
+        await handler(event);     
+      }).rejects.toThrow();
+      expect(role_lookup_attempts).toEqual(1);
+      expect(invitation_lookup_attempts).toEqual(1);
+      expect(create_user_attempts).toEqual(0);
+      resetMockCounters();
+
+      invitationRole = Roles.SYS_ADMIN;
+      invitationScenario = 'lookup_failure';
+      await expect(async () => {
+        await handler(event);     
+      }).rejects.toThrow();
+      expect(role_lookup_attempts).toEqual(1);
+      expect(invitation_lookup_attempts).toEqual(1);
+      expect(create_user_attempts).toEqual(0);
+      resetMockCounters();
+
+      invitationRole = Roles.RE_AUTH_IND;
+      invitationScenario = 'lookup_failure';
+      await expect(async () => {
+        await handler(event);     
+      }).rejects.toThrow();
+      expect(role_lookup_attempts).toEqual(1);
+      expect(invitation_lookup_attempts).toEqual(1);
+      expect(create_user_attempts).toEqual(0);
+      resetMockCounters();
     });
 
+    it('Should carry out user creation if both role and invitation lookups succeed and sufficient \
+    attributes came with the event', async () => {
+      const event = { 
+        userPoolId, 
+        callerContext: { clientId },
+        request: {
+          userAttributes: {
+            sub: 'asdgsgsfdgsdfg',
+            email: 'daffyduck@warnerbros.com',
+            email_verified: 'true',
+            phone_number: '+6175558888',
+            ['cognito:user_status']: 'CONFIRMED'
+          }
+        }
+      };
+
+      invitationRole = Roles.RE_ADMIN;
+      invitationScenario = 'match';
+      await handler(event);     
+      expect(role_lookup_attempts).toEqual(1);
+      expect(invitation_lookup_attempts).toEqual(1);
+      expect(create_user_attempts).toEqual(1);
+      resetMockCounters();
+
+      invitationRole = Roles.SYS_ADMIN;
+      invitationScenario = 'match';
+      await handler(event);     
+      expect(role_lookup_attempts).toEqual(1);
+      expect(invitation_lookup_attempts).toEqual(1);
+      expect(create_user_attempts).toEqual(1);
+      resetMockCounters();
+
+      invitationRole = Roles.RE_AUTH_IND;
+      invitationScenario = 'match';
+      await handler(event);     
+      expect(role_lookup_attempts).toEqual(1);
+      expect(invitation_lookup_attempts).toEqual(1);
+      expect(create_user_attempts).toEqual(1);
+      resetMockCounters();
+    });
   });
 }
 
@@ -197,19 +289,8 @@ const testUndoLogin = () => {
 
 }
 
-switch(`${process.env.TASK}`) {
-  case 'handler':
-    testHandler();
-    break;
-  case 'add-user':
-    testAddUser();
-    break;
-  case 'undo-login':
-    testUndoLogin();
-    break;
-  default:
-    testHandler();
-    testAddUser();
-    testUndoLogin();
-    break;
-}
+testHandler();
+
+testAddUser();
+
+testUndoLogin();

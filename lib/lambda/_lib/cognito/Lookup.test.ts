@@ -3,15 +3,15 @@ import 'aws-sdk-client-mock-jest';
 import { 
   CognitoIdentityProviderClient, ListUserPoolClientsCommand, ResourceNotFoundException
 } from '@aws-sdk/client-cognito-identity-provider';
-import { lookupRole } from './RoleLookup';
-import { Roles } from '../../_lib/dao/entity';
+import { lookupRole } from './Lookup';
+import { Roles } from '../dao/entity';
 
 
 const clientId = '6s4a2ilv9e5solo78f4d75hlp8';
-const userPoolId = 'us-east-2_J9AbymKIz'
+const userPoolId = 'us-east-2_Pty3GzLm8'
 const cognitoIdpClientMock = mockClient(CognitoIdentityProviderClient);
 
-describe('Post signup lambda trigger: lookupRole', () => {
+describe('Cognito Lookup: lookupRole', () => {
 
   const region = 'us-east-2';
   

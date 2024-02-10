@@ -1,5 +1,5 @@
 import { UpdateItemCommandInput } from "@aws-sdk/client-dynamodb";
-import { Entity, Invitation, InvitationAttemptFields, InvitationFields, User, UserFields } from "./entity";
+import { Entity, Invitation, InvitationFields, User, UserFields } from "./entity";
 import { convertToApiObject } from './db-object-builder';
 
 /**
@@ -15,7 +15,7 @@ let item: UpdateItemCommandInput;
  * not changed as it is impractical to perform updates to fields that and would result in no change.
  * https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/dynamodb/command/UpdateItemCommand/
  */
-export function getUpdateCommandBuilderInstance(info:User|Invitation|Entity, TableName:string, task?:'create'|'update'|'append'): Builder {
+export function getUpdateCommandBuilderInstance(info:User|Invitation|Entity, TableName:string): Builder {
   item = {
     TableName,
     ExpressionAttributeNames: {},
@@ -27,28 +27,13 @@ export function getUpdateCommandBuilderInstance(info:User|Invitation|Entity, Tab
   if((info as User).sub !== undefined) {
     builder = userUpdate(info as User, [ 
       UserFields.email, 
-      UserFields.entity_name 
+      UserFields.entity_id 
     ]);
   }
-  else if((info as Invitation).attempts !== undefined) {
-    switch(task) {
-      case 'create':
-        builder = invitationAppend(info as Invitation);
-        break;
-      case 'append':
-        builder = invitationAppend(info as Invitation, [ 
-          InvitationFields.email, 
-          InvitationFields.entity_name 
-        ]);
-        break;
-      case 'update':
-        builder = invitationUpdate(info as Invitation, [ 
-          InvitationAttemptFields.role, 
-          InvitationAttemptFields.link, 
-          InvitationAttemptFields.sent_timestamp
-        ]);
-        break;
-    }
+  else if((info as Invitation).code !== undefined) {
+    builder = invitationUpdate(info as Invitation, [ 
+      InvitationFields.code, 
+    ]);
   }
   else {
     builder = entityUpdate(info as Entity);
@@ -93,7 +78,7 @@ const userUpdate = (user:User, excludeFields?:string[]):Builder => {
   const buildUpdateItem = () => {
     item.Key = { 
       [ UserFields.email ]: { S: user.email },
-      [ UserFields.entity_name ]: { S: user.entity_name }
+      [ UserFields.entity_id ]: { S: user.entity_id }
     }
     const fieldset = [] as any[];
     if( ! user.update_timestamp) {
@@ -111,55 +96,19 @@ const userUpdate = (user:User, excludeFields?:string[]):Builder => {
   return { buildUpdateItem };
 };
 
-/**
- * Create the command to either add a new invitation to the target table, or append a new invitation
- * attempt into an existing table item - both will work using an UpdateItemCommand even though one of 
- * them is technically a create. 
- * @param invitation 
- * @param excludeFields 
- * @returns 
- */
-const invitationAppend = (invitation:Invitation, excludeFields?:string[]):Builder => {
+const invitationUpdate = (invitation:Invitation, excludeFields?:string[]):Builder => {
   const buildUpdateItem = () => {
     item.Key = { 
-      [ InvitationFields.email ]: { S: invitation.email },
-      [ InvitationFields.entity_name ]: { S: invitation.entity_name }
+      [ InvitationFields.code ]: { S: invitation.code },
     }
     const fieldset = [] as any[];
-    if( ! invitation.attempts[0].sent_timestamp) {
-      invitation.attempts[0].sent_timestamp = new Date().toISOString();
-    }
     let fld: keyof typeof InvitationFields;
     for(fld in InvitationFields) {
       if(excludeFields && excludeFields.includes(fld)) continue;
       if( ! invitation[fld]) continue;
       fieldset.push(convertToApiObject({ [fld]: invitation[fld] }));
     }
-    const getFldSetStatementFunc = (fld:any):Function => { 
-      const key = Object.keys(fld)[0];
-      if(key === InvitationFields.attempts) return getFldAppendStatement;
-      return getFldSetStatement
-    }
-    item.UpdateExpression = `SET ${fieldset.map((o:any) => { return getFldSetStatementFunc(o)(o); }).join(', ')}`
-    return item;
-  }  
-  return { buildUpdateItem };
-};
-
-const invitationUpdate = (invitation:Invitation, excludeFields?:string[]):Builder => {
-  const buildUpdateItem = (index:number) => {
-    item.Key = { 
-      [ InvitationFields.email ]: { S: invitation.email },
-      [ InvitationFields.entity_name ]: { S: invitation.entity_name }
-    }
-    const fieldset = [] as any[];
-    let fld: keyof typeof InvitationAttemptFields;
-    for(fld in InvitationAttemptFields) {
-      if(excludeFields && excludeFields.includes(fld)) continue;
-      if( ! invitation.attempts[0][fld]) continue;
-      fieldset.push(convertToApiObject({ [fld]: invitation.attempts[0][fld] }));
-    }
-    item.UpdateExpression = `SET ${InvitationFields.attempts}[${index}].${fieldset.map((o:any) => { return getFldSetStatement(o); }).join(', ')}`
+    item.UpdateExpression = `SET ${fieldset.map((o:any) => { return getFldSetStatement(o); }).join(', ')}`
     return item;
   }  
   return { buildUpdateItem };

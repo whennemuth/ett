@@ -90,8 +90,25 @@
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "env": {
-        "DYNAMODB_INVITATION_TABLE_NAME": "ett-invitations",
-        "ACTION_TO_TEST": ""
+        "DYNAMODB_INVITATION_TABLE_NAME": "ett-invitations"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest DAO entity crud",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/_lib/dao/dao-entity.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "env": {
+        "DYNAMODB_ENTITY_TABLE_NAME": "ett-entities"
       }
     },
     {
@@ -133,21 +150,6 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest Signup Link",
-      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
-      "args": [ 
-        "--runTestsByPath", 
-        "--silent",
-        "-i", 
-        "${workspaceFolder}/lib/lambda/_lib/signupLinks/SignupLink.test.ts" 
-      ],
-      "runtimeArgs": [ "--experimental-vm-modules" ],
-      "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-    },
-    {
-      "type": "node",
-      "request": "launch",
       "name": "Jest Invitation",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
@@ -163,20 +165,66 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest Cognito Role Lookup",
+      "name": "Jest Cognito Lookup",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
         "--runTestsByPath", 
         "--silent",
         "-i", 
-        "${workspaceFolder}/lib/lambda/functions/cognito/RoleLookup.test.ts" 
+        "${workspaceFolder}/lib/lambda/_lib/cognito/Lookup.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "env": { 
-        "DYNAMODB_USER_TABLE_NAME": "ett-users"
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"        
       }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Registration",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/_lib/invitation/Registration.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Lambda Acknowledgement",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/functions/signup/Acknowledgement.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Lambda Consent",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/functions/signup/Consent.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
     },
     {
       "type": "node",
@@ -212,7 +260,24 @@
       "internalConsoleOptions": "neverOpen",
       "env": { 
         "DYNAMODB_USER_TABLE_NAME": "ett-users",
-        "TASK": "add-user"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Lambda Cognito PreSignup",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/functions/cognito/PreSignup.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "env": { 
+        "DYNAMODB_USER_TABLE_NAME": "ett-users",
       }
     },
     {
@@ -224,7 +289,7 @@
         "--runTestsByPath", 
         "--silent",
         "-i", 
-        "${workspaceFolder}/lib/lambda/functions/sys-admin/SysAdminrUser.test.ts" 
+        "${workspaceFolder}/lib/lambda/functions/sys-admin/SysAdminUser.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",

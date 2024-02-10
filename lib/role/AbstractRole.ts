@@ -28,15 +28,12 @@ export type IncomingPayload = {
   task:string,
   parameters: any
 }
-/**
- * This is the type expected by api clients for json returned in the body of all api calls.
- */
-export type OutgoingPayload = {
-  statusCode:number;
-  statusDescription:string,
+
+export type OutgoingBody = {
   message:string,
-  payload:any
+  payload?:any
 }
+
 /**
  * This is the type that brings api responses into compliance with lambda proxy integration.
  * SEE: https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-integration-settings-integration-response.html
@@ -87,7 +84,7 @@ export class AbstractRoleApi extends Construct {
     // Create the api gateway REST api.
     const api = new RestApi(this, `LambdaRestApi`, {
       description,
-      restApiName: `${role}-rest-api-${stageName}`,
+      restApiName: `Ett-${role}-rest-api-${stageName}`,
       deployOptions: { 
         stageName,
         accessLogDestination: new LogGroupLogDestination(log_group),

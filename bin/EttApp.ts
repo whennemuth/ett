@@ -8,10 +8,11 @@ import { StaticSiteConstruct } from '../lib/StaticSite';
 import { CloudfrontConstruct, CloudfrontConstructProps } from '../lib/Cloudfront';
 import { CognitoConstruct } from '../lib/Cognito';
 import { DynamoDbConstruct } from '../lib/DynamoDb';
-import { LambdaFunction } from '../lib/role/ReAdmin';
+import { LambdaFunction as ReAdminLambdaFunction } from '../lib/role/ReAdmin';
 import { StaticSiteCustomInConstruct, StaticSiteCustomInConstructParms } from '../lib/StaticSiteCustomIn';
 import { ApiConstruct, ApiConstructParms } from '../lib/Api';
 import { Roles } from '../lib/lambda/_lib/dao/entity';
+import { SignupApiConstruct } from '../lib/SignupApi';
 
 const context:IContext = <IContext>ctx;
 
@@ -44,18 +45,21 @@ const buildAll = () => {
   // Set up the bucket only.
   const bucket = new class extends StaticSiteConstruct{
     public customize(): void { console.log('No customization'); }
-  }(stack, 'EttStaticSiteBucket', {}).getBucket() ;
+  }(stack, 'StaticSiteBucket', {}).getBucket() ;
 
   // Set up the cloudfront distribution, origins, behaviors, and oac
-  const cloudfront = new CloudfrontConstruct(stack, 'EttCloudfront', { bucket } as CloudfrontConstructProps);
+  const cloudfront = new CloudfrontConstruct(stack, 'Cloudfront', { bucket } as CloudfrontConstructProps);
 
   // Set up the cognito userpool and userpool client
-  const cognito = new CognitoConstruct(stack, 'EttCognito');
+  const cognito = new CognitoConstruct(stack, 'Cognito');
 
   // Set up the dynamodb table for users.
-  const dynamodb = new DynamoDbConstruct(stack, 'EttDynamodb');
+  const dynamodb = new DynamoDbConstruct(stack, 'Dynamodb');
 
-  // Set up each api
+  // Set up the public api endpoints (acknowledgement & consent) for "pre-signup" that are called before any cognito signup occurs.
+  const signupApi = new SignupApiConstruct(stack, 'SignupApi', cloudfront.getDistributionDomainName());
+
+  // Set up an api for every role with cognito as the authorizer and oauth as the flow.
   const api = new ApiConstruct(stack, 'Api', {
     userPool: cognito.getUserPool(),
     userPoolName: cognito.getUserPoolName(),    
@@ -67,12 +71,14 @@ const buildAll = () => {
   api.grantPermissions(dynamodb, cognito);
 
   // Set up the event, lambda and associated policies for modification of html files as they are uploaded to the bucket.
-  const staticSite = new StaticSiteCustomInConstruct(stack, 'EttStaticSite', {
+  const staticSite = new StaticSiteCustomInConstruct(stack, 'StaticSite', {
     bucket,
     distributionId: cloudfront.getDistributionId(),
     cloudfrontDomain: cloudfront.getDistributionDomainName(),
     cognitoDomain: cognito.getUserPoolDomain(),
     cognitoUserpoolRegion: context.REGION,
+    acknowledgementApiUri: signupApi.acknowledgementApiUri,
+    consentApiUri: signupApi.consentApiUri,
     apis: [ 
       api.helloWorldApi.getApi(), 
       api.sysAdminApi.getApi(), 
@@ -117,8 +123,8 @@ const buildAll = () => {
 }
 
 const buildDynamoDb = (): DynamoDbConstruct => {
-  const db = new DynamoDbConstruct(stack, 'EttDynamodb');
-  const lambdaFunction = new LambdaFunction(stack, 'ReAdminUserLambda');
+  const db = new DynamoDbConstruct(stack, 'Dynamodb');
+  const lambdaFunction = new ReAdminLambdaFunction(stack, 'ReAdminUserLambda', process.env.CLOUDFRONT_DOMAIN || '');
   db.getUsersTable().grantReadWriteData(lambdaFunction);
   return db;
 }

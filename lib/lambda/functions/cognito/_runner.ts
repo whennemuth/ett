@@ -20,7 +20,8 @@ const event = {
           "cognito:user_status": "CONFIRMED",
           "cognito:email_alias": "wrh@bu.edu",
           "name": "Warren Hennemuth",
-          "email": "wrh@bu.edu"
+          "email": "wrh@bu.edu",
+          "phone_number": "+6175558888"
       }
   },
   "response": {},

@@ -3,9 +3,13 @@ import {
   ListUserPoolClientsCommand, 
   ListUserPoolClientsRequest, 
   ListUserPoolClientsCommandOutput,
-  UserPoolClientDescription
+  UserPoolClientDescription,
+  AdminGetUserCommand,
+  AdminGetUserRequest,
+  AdminGetUserCommandOutput,
+  AttributeType
 } from '@aws-sdk/client-cognito-identity-provider';
-import { Role, Roles } from '../../_lib/dao/entity';
+import { Role, Roles } from '../dao/entity';
 
 /**
  * A cognito post signup confirmation event will indicate a specific user pool client ID. This client needs to
@@ -50,4 +54,46 @@ export const lookupRole = async (userPoolId:string, clientId:string, region:stri
     console.log(e);
     return;
   }
+}
+
+/**
+ * From the username (sub) attribute of a cognito user, lookup that user and obtain the value of the specified attribute.
+ * @param UserPoolId 
+ * @param Username 
+ * @param attributeName 
+ * @param region 
+ * @returns 
+ */
+const lookupAttribute = async (UserPoolId:string, Username:string, attributeName:string, region:string):Promise<string|undefined> => {
+  const client = new CognitoIdentityProviderClient({ region });
+  const input = { UserPoolId, Username } as AdminGetUserRequest;
+  const command = new AdminGetUserCommand(input);
+  const response = await client.send(command) as AdminGetUserCommandOutput;
+  const emailAttribute = response?.UserAttributes?.find((a:AttributeType) => {
+    return a.Name == attributeName;
+  });
+  return emailAttribute?.Value;
+
+}
+
+/**
+ * From the username (sub) attribute of a cognito user, lookup that user and obtain its email attribute.
+ * @param UserPoolId 
+ * @param Username 
+ * @param region 
+ * @returns 
+ */
+export const lookupEmail = async (UserPoolId:string, Username:string, region:string):Promise<string|undefined> => {
+  return await lookupAttribute(UserPoolId, Username, 'email', region);
+}
+
+/**
+ * From the username (sub) attribute of a cognito user, lookup that user and obtain its email attribute.
+ * @param UserPoolId 
+ * @param Username 
+ * @param region 
+ * @returns 
+ */
+export const lookupPhoneNumber = async (UserPoolId:string, Username:string, region:string):Promise<string|undefined> => {
+  return await lookupAttribute(UserPoolId, Username, 'phone_number', region);
 }

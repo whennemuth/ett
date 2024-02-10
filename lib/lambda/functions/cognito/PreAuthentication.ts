@@ -1,7 +1,7 @@
 import { Role, User, UserFields, YN } from "../../_lib/dao/entity";
 import { DAOUser, DAOFactory } from '../../_lib/dao/dao';
 import { PreAuthenticationEventType } from "./PreAuthenticationEventType";
-import { lookupRole } from './RoleLookup';
+import { lookupRole } from '../../_lib/cognito/Lookup';
 
 export enum Messages {
   ACCOUNT_UNCONFIRMED = 'Your account has not attained confirmation status',
@@ -82,9 +82,7 @@ export const handler = async (_event:any) => {
     throw new Error(Messages.UNAUTHORIZED + role);
   }
   catch(e) {
-    const errTime = new Date().toISOString();
-    console.log(`Error at: ${errTime}`);
     console.error(e);
-    throw new Error(Messages.SERVER_ERROR + errTime);
+    throw e;
   }
 }
