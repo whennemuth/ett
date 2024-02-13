@@ -632,6 +632,8 @@
       const action = queryParams.get('action');
       if(action === 'acknowledge') {
         showSection('acknowledge');
+        const invitationCode = queryParams.get('code');
+        lookupRegistrationProgress(invitationCode);
       }
       else if(action === 'consent') {
         showSection('consent');

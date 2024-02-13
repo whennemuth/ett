@@ -45,7 +45,7 @@ const buildAll = () => {
   // Set up the bucket only.
   const bucket = new class extends StaticSiteConstruct{
     public customize(): void { console.log('No customization'); }
-  }(stack, 'StaticSiteBucket', {}).getBucket() ;
+  }(stack, 'StaticSiteBucket', {}).getBucket();
 
   // Set up the cloudfront distribution, origins, behaviors, and oac
   const cloudfront = new CloudfrontConstruct(stack, 'Cloudfront', { bucket } as CloudfrontConstructProps);
@@ -68,7 +68,8 @@ const buildAll = () => {
   } as ApiConstructParms);
 
   // Grant the apis the necessary permissions (policy actions).
-  api.grantPermissions(dynamodb, cognito);
+  api.grantPermissionsTo(dynamodb, cognito);
+  signupApi.grantPermissionsTo(dynamodb);
 
   // Set up the event, lambda and associated policies for modification of html files as they are uploaded to the bucket.
   const staticSite = new StaticSiteCustomInConstruct(stack, 'StaticSite', {
@@ -124,8 +125,6 @@ const buildAll = () => {
 
 const buildDynamoDb = (): DynamoDbConstruct => {
   const db = new DynamoDbConstruct(stack, 'Dynamodb');
-  const lambdaFunction = new ReAdminLambdaFunction(stack, 'ReAdminUserLambda', process.env.CLOUDFRONT_DOMAIN || '');
-  db.getUsersTable().grantReadWriteData(lambdaFunction);
   return db;
 }
 

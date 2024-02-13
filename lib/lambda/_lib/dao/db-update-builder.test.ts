@@ -1,4 +1,4 @@
-import { UpdateItemCommandInput } from '@aws-sdk/client-dynamodb';
+import { AttributeValue, UpdateItemCommandInput } from '@aws-sdk/client-dynamodb';
 import { getUpdateCommandBuilderInstance } from './db-update-builder';
 import { Invitation, InvitationFields, Roles, User, UserFields } from './entity';
 
@@ -20,14 +20,24 @@ describe('getCommandInputBuilderForUserUpdate', () => {
         [UserFields.email]: { S: user.email },
         [UserFields.entity_id]: { S: user.entity_id }
       },
-      ExpressionAttributeNames: {},
-      ExpressionAttributeValues: {},
+      ExpressionAttributeNames: {
+        ['#sub']: 'sub',
+        ['#role']: 'role', 
+        ['#fullname']: 'fullname', 
+        ['#update_timestamp']: 'update_timestamp', 
+      },
+      ExpressionAttributeValues: {
+        [':sub']: { S: 'mm_sub_id' },
+        [':role']: { S: 'CONSENTING_PERSON' }, 
+        [':fullname']: { S: 'Mickey Mouse' }, 
+        [':update_timestamp']: { S: isoString }, 
+      },
       // NOTE: fields will be set in the same order as they appear in the entity.UserFields
-      UpdateExpression: `SET sub = {"S":"mm_sub_id"}, role = {"S":"CONSENTING_PERSON"}, fullname = {"S":"Mickey Mouse"}, update_timestamp = {"S":"${isoString}"}`
+      UpdateExpression: 'SET #sub = :sub, #role = :role, #fullname = :fullname, #update_timestamp = :update_timestamp'
     } as UpdateItemCommandInput;
 
     Date.prototype.toISOString = () => { return isoString; }
-    const command:UpdateItemCommandInput = getUpdateCommandBuilderInstance(user, 'ett-user').buildUpdateItem();
+    const command:UpdateItemCommandInput = getUpdateCommandBuilderInstance(user, 'user', 'ett-user').buildUpdateItem();
     expect(command).toEqual(expectedOutput);
   })
 });
@@ -48,14 +58,22 @@ describe('getCommandInputBuilderForInvitationUpdate', () => {
       Key: {
         [InvitationFields.code]: { S: invitation.code }
       },
-      ExpressionAttributeNames: {},
-      ExpressionAttributeValues: {},
+      ExpressionAttributeNames: {
+        ['#role']: 'role',
+        ['#email']: 'email',
+        ['#entity_id']: 'entity_id',
+      },
+      ExpressionAttributeValues: {
+        [':role']: { S: Roles.CONSENTING_PERSON },
+        [':email']: { S: 'mickey-mouse@gmail.com' },
+        [':entity_id']: { S: 'abc123' },
+      },
       // NOTE: fields will be set in the same order as they appear in the entity.InvitationFields
-      UpdateExpression: `SET role = {"S":"CONSENTING_PERSON"}, email = {"S":"mickey-mouse@gmail.com"}, entity_id = {"S":"abc123"}`
+      UpdateExpression: `SET #role = :role, #email = :email, #entity_id = :entity_id`
     } as UpdateItemCommandInput;
 
     Date.prototype.toISOString = () => { return isoString; }
-    const command:UpdateItemCommandInput = getUpdateCommandBuilderInstance(invitation, 'ett-invitation').buildUpdateItem();
+    const command:UpdateItemCommandInput = getUpdateCommandBuilderInstance(invitation, 'invitation', 'ett-invitation').buildUpdateItem();
     expect(command).toEqual(expectedOutput);    
   });
 });

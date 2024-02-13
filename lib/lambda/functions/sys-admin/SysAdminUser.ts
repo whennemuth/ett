@@ -66,3 +66,44 @@ export const replaceAdmin = async (parms:any):Promise<LambdaProxyIntegrationResp
   console.log('Not implemented yet.');
   return errorResponse('Not implemented yet');
 }
+
+
+/**
+ * RUN MANUALLY: Modify the cloudfront domain, email, role, and 
+ */
+const { argv:args } = process;
+if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
+
+  process.env.DYNAMODB_INVITATION_TABLE_NAME = 'ett-invitations';
+  process.env.DYNAMODB_USER_TABLE_NAME = 'ett-users';
+  process.env.DYNAMODB_ENTITY_TABLE_NAME = 'ett-entities'
+  process.env.CLOUDFRONT_DOMAIN = 'd2ccz25lye7ni0.cloudfront.net';
+  process.env.REGION = 'us-east-2'
+  process.env.DEBUG = 'true';
+
+  const payload = {
+    task: ReAdminTasks.INVITE_USER,
+    parameters: {
+      email: 'wrh@bu.edu',
+      role: Roles.SYS_ADMIN
+    }
+  } as IncomingPayload;
+
+  const _event = {
+    headers: {
+      [AbstractRoleApi.ETTPayloadHeader]: JSON.stringify(payload)
+    }
+  }
+
+  new Promise<void>((resolve, reject) => {
+    try {
+      handler(_event);
+      resolve();
+    }
+    catch (e) {
+      reject(e);
+    }
+  });
+
+
+}

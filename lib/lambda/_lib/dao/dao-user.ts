@@ -13,7 +13,8 @@ const dbclient = new DynamoDBClient({ region: process.env.REGION });
  */
 export function UserCrud(userinfo:User): DAOUser {
 
-  let { email, entity_id, role, sub, fullname='', active=YN.Yes, create_timestamp } = userinfo;
+  let { email, entity_id, role, sub, active=YN.Yes, create_timestamp=(new Date().toDateString()), 
+    fullname, phone_number, title } = userinfo;
 
   const throwMissingError = (task:string, fld:string) => {
     throw new Error(`User ${task} error: Missing ${fld} in ${JSON.stringify(userinfo, null, 2)}`)
@@ -26,32 +27,36 @@ export function UserCrud(userinfo:User): DAOUser {
   const create = async (): Promise<PutItemCommandOutput> => {
     console.log(`Creating ${role}: ${fullname}`);
 
-    // Handle missing field validation
+    // Handle required field validation
     if( ! entity_id) throwMissingError('create', UserFields.entity_id);
     if( ! role) throwMissingError('create', UserFields.role);
     if( ! fullname ) throwMissingError('create', UserFields.fullname);
     if( ! sub ) throwMissingError('create', UserFields.sub);
 
+    // Make sure the original userinfo object gets a create_timestamp value if a default value is invoked.
+    if( ! userinfo.create_timestamp) userinfo.create_timestamp = create_timestamp;
+    
+    const ItemToCreate = {
+      [UserFields.email]: { S: email }, 
+      [UserFields.entity_id]: { S: entity_id }, 
+      [UserFields.sub]: { S: sub },
+      [UserFields.role]: { S: role },
+      // https://aws.amazon.com/blogs/database/working-with-date-and-timestamp-data-types-in-amazon-dynamodb/
+      [UserFields.create_timestamp]: { S: create_timestamp},
+      [UserFields.update_timestamp]: { S: create_timestamp},
+      [UserFields.active]: { S: active },
+    } as any
+
+    // Add non-required fields
+    if(fullname) ItemToCreate[UserFields.fullname] = { S: fullname };
+    if(title) ItemToCreate[UserFields.title] = { S: title };
+    if(phone_number) ItemToCreate[UserFields.phone_number] = { S: phone_number };
+
     // Send the command
-    if( ! create_timestamp) {
-      create_timestamp = new Date().toISOString();
-      userinfo.create_timestamp = create_timestamp;
-    }
-    const params = {
+    const command = new PutItemCommand({
       TableName: process.env.DYNAMODB_USER_TABLE_NAME,
-      Item: { 
-        [UserFields.email]: { S: email }, 
-        [UserFields.entity_id]: { S: entity_id }, 
-        [UserFields.fullname]: { S: fullname },
-        [UserFields.sub]: { S: sub },
-        [UserFields.role]: { S: role },
-        // https://aws.amazon.com/blogs/database/working-with-date-and-timestamp-data-types-in-amazon-dynamodb/
-        [UserFields.create_timestamp]: { S: create_timestamp},
-        [UserFields.update_timestamp]: { S: create_timestamp},
-        [UserFields.active]: { S: active },
-      }
-    };
-    const command = new PutItemCommand(params);
+      Item: ItemToCreate
+    });
     return await sendCommand(command);
   }
 
@@ -135,7 +140,7 @@ export function UserCrud(userinfo:User): DAOUser {
       throw new Error(`User update error: No fields to update for ${entity_id}: ${email}`);
     }
     console.log(`Updating user: ${email} / ${entity_id}`);
-    const builder:Builder = getUpdateCommandBuilderInstance(userinfo, process.env.DYNAMODB_USER_TABLE_NAME || '');
+    const builder:Builder = getUpdateCommandBuilderInstance(userinfo, 'user', process.env.DYNAMODB_USER_TABLE_NAME || '');
     const input:UpdateItemCommandInput = builder.buildUpdateItem();
     const command = new UpdateItemCommand(input);
     return await sendCommand(command);

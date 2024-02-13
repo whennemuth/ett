@@ -150,7 +150,7 @@ export const inviteUser = async (parms:any, inviterRole:Role, inviterCognitoUser
   const { email, entity_id, role } = parms;
   const cloudfrontDomain = process.env.CLOUDFRONT_DOMAIN;
   if(cloudfrontDomain) {
-    let link = `https://${cloudfrontDomain}?action=consent`;
+    let link = `https://${cloudfrontDomain}?action=acknowledge`;
     if(entity_id) {
       link = `${link}&entity_id=${entity_id}`
     }

@@ -1,7 +1,7 @@
 import { OutgoingBody } from '../../../role/AbstractRole';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
 import { Invitation, Roles } from '../../_lib/dao/entity';
-import { handler } from './Acknowledgement';
+import { Task, handler } from './Acknowledgement';
 import * as event from './AcknowledgementEventMock.json';
 
 let goodCode:string;
@@ -43,10 +43,26 @@ jest.mock('../../_lib/invitation/Registration', () => {
 
 describe('Acknowledgement lambda trigger: handler', () => {
 
-  it('Should return unauthorized status code and message if no invitation code is included', async () => {
+  it('Should return invalid status code and message if no task is included', async () => {
     let noCodeEvent = {} as any;
     Object.assign(noCodeEvent, event);
     noCodeEvent.pathParameters = {};
+    const response = await handler(noCodeEvent);
+    expect(response.statusCode).toEqual(400);
+    expect(response.body).toBeDefined()
+    const body = JSON.parse(response.body);
+    expect(body).toEqual({ 
+      message: 'Bad Request: task not specified (lookup-invitation|register)', 
+      payload: { invalid:true } 
+    } as OutgoingBody );
+  });
+  
+  it('Should return unauthorized status code and message if no invitation code is included', async () => {
+    let noCodeEvent = {} as any;
+    Object.assign(noCodeEvent, event);
+    noCodeEvent.pathParameters = {
+      task: Task.REGISTER
+    };
     const response = await handler(noCodeEvent);
     expect(response.statusCode).toEqual(401);
     expect(response.body).toBeDefined()

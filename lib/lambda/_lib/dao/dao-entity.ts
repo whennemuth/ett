@@ -42,7 +42,7 @@ export function EntityCrud(entityInfo:Entity): DAOEntity {
       entityInfo.update_timestamp = update_timestamp;
     }
     
-    const builder:Builder = getUpdateCommandBuilderInstance(entityInfo, process.env.DYNAMODB_ENTITY_TABLE_NAME || '');
+    const builder:Builder = getUpdateCommandBuilderInstance(entityInfo, 'entity', process.env.DYNAMODB_ENTITY_TABLE_NAME || '');
     const input:UpdateItemCommandInput = builder.buildUpdateItem();
     const command = new UpdateItemCommand(input);
     return await sendCommand(command);
@@ -83,7 +83,7 @@ export function EntityCrud(entityInfo:Entity): DAOEntity {
       throw new Error(`Entity update error: No fields to update for ${entity_id}`);
     }
     console.log(`Updating entity: ${entity_id}`);
-    const builder:Builder = getUpdateCommandBuilderInstance(entityInfo, process.env.DYNAMODB_ENTITY_TABLE_NAME || '');
+    const builder:Builder = getUpdateCommandBuilderInstance(entityInfo, 'entity', process.env.DYNAMODB_ENTITY_TABLE_NAME || '');
     const input:UpdateItemCommandInput = builder.buildUpdateItem();
     const command = new UpdateItemCommand(input);
     return await sendCommand(command);

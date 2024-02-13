@@ -3,7 +3,7 @@ import { Construct } from "constructs";
 import { IContext } from "../../contexts/IContext";
 import { LogGroup } from "aws-cdk-lib/aws-logs";
 import { Duration, RemovalPolicy } from "aws-cdk-lib";
-import { AccessLogFormat, CognitoUserPoolsAuthorizer, Cors, LambdaIntegration, LogGroupLogDestination, MethodLoggingLevel, RestApi } from "aws-cdk-lib/aws-apigateway";
+import { AccessLogFormat, CognitoUserPoolsAuthorizer, Cors, LambdaIntegration, LogGroupLogDestination, MethodLoggingLevel, RestApi, RestApiProps } from "aws-cdk-lib/aws-apigateway";
 import { Function } from 'aws-cdk-lib/aws-lambda';
 import { EttUserPoolClient } from "../CognitoUserPoolClient";
 import { Role } from '../lambda/_lib/dao/entity';
@@ -100,7 +100,7 @@ export class AbstractRoleApi extends Construct {
         maxAge: Duration.minutes(10),
         allowCredentials: true
       }
-    });
+    } as RestApiProps);
     
     // Add a resource. This will be the resource "path" portion of the api. Example:
     // https://ud8xqc84ha.execute-api.us-east-2.amazonaws.com/[stage]/[path]

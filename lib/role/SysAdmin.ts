@@ -1,3 +1,4 @@
+import { IContext } from '../../contexts/IContext';
 import { Construct } from "constructs";
 import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
 import { ResourceServerScope } from "aws-cdk-lib/aws-cognito";
@@ -6,6 +7,7 @@ import { Function, Runtime } from "aws-cdk-lib/aws-lambda";
 import { DynamoDbConstruct } from "../DynamoDb";
 import { Roles } from '../lambda/_lib/dao/entity';
 import { ApiConstructParms } from "../Api";
+import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 
 export class SysAdminApi extends AbstractRole {
   private api: AbstractRoleApi;
@@ -53,6 +55,7 @@ export class SysAdminApi extends AbstractRole {
  */
 export class LambdaFunction extends AbstractFunction {
   constructor(scope: Construct, constructId: string, parms:ApiConstructParms) {
+    const context:IContext = scope.node.getContext('stack-parms');
     const redirectURI = `${parms.cloudfrontDomain}/${parms.redirectPath}`.replace('//', '/');
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
@@ -66,11 +69,26 @@ export class LambdaFunction extends AbstractFunction {
           '@aws-sdk/*',
         ]
       },
+      role: new Role(scope, 'SysAdminRole', {
+        assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+        description: 'Grants access to SES for invitations',
+        inlinePolicies: {
+          'SendEmails': new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'ses:Send*', 'ses:Get*' ],
+                resources: [ `arn:aws:ses:${context.REGION}:${context.ACCOUNT}:identity/${context.SES_IDENTITY}` ],
+                effect: Effect.ALLOW
+              })
+            ]
+          })
+        }
+      }),
       environment: {
-        REGION: scope.node.getContext('stack-parms').REGION,
-        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME,
-        DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_ENTITY_TABLE_NAME,
-        DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_INVITATION_TABLE_NAME,
+        REGION: context.REGION,
+        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
+        DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME,
+        DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
         USERPOOL_NAME: parms.userPoolName,
         COGNITO_DOMAIN: parms.userPoolDomain,
         CLOUDFRONT_DOMAIN: parms.cloudfrontDomain,

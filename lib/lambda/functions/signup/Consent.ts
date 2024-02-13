@@ -43,7 +43,7 @@ export const handler = async(event:any) => {
       case Task.LOOKUP_ENTITY:
         let entity_id:string|undefined;
         if(event.queryStringParameters) {
-          entity_id = event.queryStringParameters;
+          entity_id = event.queryStringParameters.entity_id;
         }
         if(entity_id ) {
           const dao = DAOFactory.getInstance({
@@ -55,10 +55,10 @@ export const handler = async(event:any) => {
           users = users.filter((user) => { return user.active == YN.Yes; })
           return okResponse('Ok', { users });
         }
-        return invalidResponse('Bad Request: Missing entity_id');
+        return invalidResponse('Bad Request: Missing/Invalid entity_id');
 
       // Officially set the invitation as consented, replace its dummy email with the true value, and set its fullname.
-      // The PostSignup trigger lambda will come by later and "scrape" these out of the invitation for its own use.
+      // The PostSignup trigger lambda will come by later and "scrape" these out of the invitation for its own needs.
       case Task.REGISTER:
         if( ! event.queryStringParameters) {
           return invalidResponse('Bad Request: Missing querystring parameters');
@@ -99,4 +99,41 @@ export const handler = async(event:any) => {
     console.log(e);
     return errorResponse(e.message);
   }
+}
+
+
+/**
+ * RUN MANUALLY: Modify the task, cloudfront domain, region, invitation-code, and queryStringParameters.
+ */
+const { argv:args } = process;
+if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
+  
+  process.env.DYNAMODB_INVITATION_TABLE_NAME = 'ett-invitations';
+  process.env.DYNAMODB_USER_TABLE_NAME = 'ett-users';
+  process.env.DYNAMODB_ENTITY_TABLE_NAME = 'ett-entities'
+  process.env.CLOUDFRONT_DOMAIN = 'd2ccz25lye7ni0.cloudfront.net';
+  process.env.REGION = 'us-east-2'
+  process.env.DEBUG = 'true';
+
+  const _event = {
+    pathParameters: {
+      task: Task.REGISTER,
+      ['invitation-code']: '4c738e91-08ba-437b-93ed-e9dd73ff64f5'
+    },
+    queryStringParameters: {
+      email: "wrh@bu.edu",
+      fullname: "Warren Hennemuth",
+      title: "ETT developer/architect"  
+    }
+  }
+
+  new Promise<void>((resolve, reject) => {
+    try {
+      handler(_event);
+      resolve();
+    }
+    catch (e) {
+      reject(e);
+    }
+  });
 }

@@ -12,17 +12,64 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Admin user CRUD",
+      "name": "Admin dynamodb CRUD",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
         "${workspaceFolder}/lib/lambda/_lib/dao/_runner.ts",
         "user",
-        "delete"
+        "update"
       ], 
       "env": {
         "AWS_PROFILE": "bu",
         "DYNAMODB_USER_TABLE_NAME": "ett-users",
+        "DYNAMODB_INVITATION_TABLE_NAME": "ett-invitations",
+        "DYNAMODB_ENTITY_TABLE_NAME": "ett-entities",
+        "REGION": "us-east-2"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "SysAdmin",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/sys-admin/SysAdminUser.ts",
+        "RUN_MANUALLY",
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Acknowledge",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/signup/Acknowledgement.ts",
+        "RUN_MANUALLY",
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Consent",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/signup/Consent.ts",
+        "RUN_MANUALLY",
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
         "REGION": "us-east-2"
       }, 
     },

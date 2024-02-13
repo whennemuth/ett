@@ -18,6 +18,8 @@ export class SignupApiConstruct extends Construct {
   private stageName:string;
   private _acknowledgementApiUri:string;
   private _consentApiUri:string;
+  private acknowledgeLambda:AbstractFunction;
+  private consentLambda:AbstractFunction;
 
   constructor(scope:Construct, constructId:string, cloudfrontDomain:string) {
     super(scope, constructId);
@@ -38,7 +40,7 @@ export class SignupApiConstruct extends Construct {
     const description = 'for checking invitation code and registering a new user has acknowledged privacy policy';
 
     // Create the lambda function
-    const lambda = new class extends AbstractFunction { }(this, basename, {
+    this.acknowledgeLambda = new class extends AbstractFunction { }(this, basename, {
       runtime: Runtime.NODEJS_18_X,
       entry: 'lib/lambda/functions/signup/Acknowledgement.ts',
       // handler: 'handler',
@@ -52,7 +54,7 @@ export class SignupApiConstruct extends Construct {
       },
       environment: {
         REGION: this.outerScope.node.getContext('stack-parms').REGION,
-        DYNAMODB_TABLES_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_INVITATION_TABLE_NAME,
+        DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
         CLOUDFRONT_DOMAIN: this.cloudfrontDomain
       }
     });
@@ -64,15 +66,17 @@ export class SignupApiConstruct extends Construct {
         stageName: this.stageName
       },
       restApiName: `Ett-${basename}-rest-api`,
-      handler: lambda,
-      proxy: true
+      handler: this.acknowledgeLambda,
+      proxy: false
     });
 
     // Add the root resource path element of "acknowledge"
     const acknowledgePath = api.root.addResource('acknowledge');
     // Add the task path element
-    const invitationCodePath = acknowledgePath.addResource('{invitation-code}');
-    invitationCodePath.addMethod('GET');   // GET /acknowledge/{invitation-code}
+    const taskPath = acknowledgePath.addResource('{task}')
+    // Add the "invitation-code" parameter as the last path element.
+    const invitationCodePath = taskPath.addResource('{invitation-code}');
+    invitationCodePath.addMethod('GET');   // GET /acknowledge/task/{invitation-code}
     invitationCodePath.addMethod('POST');
     invitationCodePath.addCorsPreflight({
       allowOrigins: [ `https://${this.cloudfrontDomain}` ],
@@ -90,7 +94,7 @@ export class SignupApiConstruct extends Construct {
     const description = 'for checking invitation code and registering a new user has signed and consented';
 
     // Create the lambda function
-    const lambda = new class extends AbstractFunction { }(this, basename, {
+    this.consentLambda = new class extends AbstractFunction { }(this, basename, {
       runtime: Runtime.NODEJS_18_X,
       entry: 'lib/lambda/functions/signup/Consent.ts',
       // handler: 'handler',
@@ -104,7 +108,7 @@ export class SignupApiConstruct extends Construct {
       },
       environment: {
         REGION: this.outerScope.node.getContext('stack-parms').REGION,
-        DYNAMODB_TABLES_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_INVITATION_TABLE_NAME,
+        DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
         CLOUDFRONT_DOMAIN: this.cloudfrontDomain
       }
     });
@@ -116,8 +120,8 @@ export class SignupApiConstruct extends Construct {
         stageName: this.stageName
       },
       restApiName: `Ett-${basename}-rest-api`,
-      handler: lambda,
-      proxy: true
+      handler: this.consentLambda,
+      proxy: false
     });
 
     // Add the root resource path element of "acknowledge"
@@ -126,7 +130,7 @@ export class SignupApiConstruct extends Construct {
     const taskPath = consentPath.addResource('{task}')
     // Add the "invitation-code" parameter as the last path element.
     const invitationCodePath = taskPath.addResource('{invitation_code}');
-    invitationCodePath.addMethod('GET');   // GET /acknowledge/{invitation-code}
+    invitationCodePath.addMethod('GET');   // GET /consent/task/{invitation-code}
     invitationCodePath.addMethod('POST');
     invitationCodePath.addCorsPreflight({
       allowOrigins: [ `https://${this.cloudfrontDomain}` ],
@@ -137,6 +141,12 @@ export class SignupApiConstruct extends Construct {
     });
 
     this._consentApiUri = api.urlForPath('/consent');
+  }
+
+  public grantPermissionsTo = (dynamodb:DynamoDbConstruct) => {
+    dynamodb.getInvitationsTable().grantReadWriteData(this.acknowledgeLambda);
+    dynamodb.getInvitationsTable().grantReadWriteData(this.consentLambda);
+    dynamodb.getEntitiesTable().grantReadWriteData(this.consentLambda);
   }
 
   public get acknowledgementApiUri() {

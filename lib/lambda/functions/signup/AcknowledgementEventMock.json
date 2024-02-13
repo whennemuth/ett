@@ -121,6 +121,7 @@
   "queryStringParameters": null,
   "multiValueQueryStringParameters": null,
   "pathParameters": {
+      "task": "register",
       "invitation-code": "my_invitation_code2"
   },
   "stageVariables": null,

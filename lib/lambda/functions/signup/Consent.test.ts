@@ -222,7 +222,7 @@ describe(`Consent lambda trigger: handler ${Task.LOOKUP_ENTITY}`, () => {
       expectedResponse: {
         statusCode: 400,
         outgoingBody: {
-          message: `Bad Request: Missing entity_id`,
+          message: `Bad Request: Missing/Invalid entity_id`,
           payload: { invalid: true }
         } as OutgoingBody
       }

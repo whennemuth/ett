@@ -4,6 +4,7 @@
   "ACCOUNT": "037860335094",
   "REGION": "us-east-2",
   "BUCKET_NAME": "ett-static-site-content",
+  "SES_IDENTITY": "wrh@bu.edu",
   "TAGS": {
     "Service": "client",
     "Function": "ett",

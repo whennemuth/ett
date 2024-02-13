@@ -1,14 +1,25 @@
 import { Invitation } from "../../_lib/dao/entity";
 import { Registration } from "../../_lib/invitation/Registration";
-import { debugLog, errorResponse, okResponse, unauthorizedResponse } from "../Utils";
+import { debugLog, errorResponse, invalidResponse, okResponse, unauthorizedResponse } from "../Utils";
+
+export enum Task {
+  LOOKUP_INVITATION = 'lookup-invitation',
+  REGISTER = 'register'
+}
 
 export const handler = async(event:any) => {
 
   try {
     debugLog(event);
 
-    const { 'invitation-code':code } = event.pathParameters;
+    const { task, 'invitation-code':code } = event.pathParameters;
 
+    if( ! task ) {
+      return invalidResponse(`Bad Request: task not specified (${Object.values(Task).join('|')})`);
+    }
+    if( ! Object.values<string>(Task).includes(task || '')) {
+      return invalidResponse(`Bad Request: invalid task specified (${Object.values(Task).join('|')})`);
+    }
     if( ! code ) {
       return unauthorizedResponse('Unauthorized: Invitation code missing');
     }
@@ -21,16 +32,23 @@ export const handler = async(event:any) => {
       return unauthorizedResponse(`Unauthorized: Unknown invitation code ${code}`);
     }
 
-    const { acknowledged_timestamp: timestamp } = invitation;
-    if(timestamp) {
-      return okResponse(`Ok: Already acknowledged at ${timestamp}`);
-    }
+    switch(task) {
+  
+      // Just want the entity, probably to know its acknowledge and consent statuses.
+      case Task.LOOKUP_INVITATION:
+        return okResponse('Ok', invitation);
 
-    if( await registration.registerAcknowledgement()) {
-      return okResponse(`Ok: Acknowledgement registered for ${code}`);
+      case Task.REGISTER:
+        const { acknowledged_timestamp: timestamp } = invitation;
+        if(timestamp) {
+          return okResponse(`Ok: Already acknowledged at ${timestamp}`);
+        }
+        if( await registration.registerAcknowledgement()) {
+          return okResponse(`Ok: Acknowledgement registered for ${code}`);
+        }
+        break;
     }
-
-    return errorResponse('Error: Acknowledgement failed!');
+    return errorResponse('Error: Acknowledgement failed!');    
   }
   catch(e:any) {
     console.log(e);
@@ -38,3 +56,33 @@ export const handler = async(event:any) => {
   }
 }
 
+
+/**
+ * RUN MANUALLY: Modify the cloudfront domain, invitation-code, and region 
+ */
+const { argv:args } = process;
+if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
+  
+  process.env.DYNAMODB_INVITATION_TABLE_NAME = 'ett-invitations';
+  process.env.DYNAMODB_USER_TABLE_NAME = 'ett-users';
+  process.env.DYNAMODB_ENTITY_TABLE_NAME = 'ett-entities'
+  process.env.CLOUDFRONT_DOMAIN = 'd2ccz25lye7ni0.cloudfront.net';
+  process.env.REGION = 'us-east-2'
+  process.env.DEBUG = 'true';
+
+  const _event = {
+    pathParameters: {
+      ['invitation-code']: '4c738e91-08ba-437b-93ed-e9dd73ff64f5'
+    }
+  }
+
+  new Promise<void>((resolve, reject) => {
+    try {
+      handler(_event);
+      resolve();
+    }
+    catch (e) {
+      reject(e);
+    }
+  });
+}

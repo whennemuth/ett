@@ -5,7 +5,7 @@ import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { AbstractFunction } from './AbstractFunction';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import path = require('path');
-import { PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { DynamoDbConstruct } from './DynamoDb';
 
 export class CognitoConstruct extends Construct {
@@ -27,6 +27,52 @@ export class CognitoConstruct extends Construct {
   }
 
   buildResources(): void {
+
+    const preSignupFunction = new AbstractFunction(this, 'PreSignupFunction', {
+      functionName: `ett-${this.constructId.toLowerCase()}-pre-signup`,
+      description: 'Intercepts cognito account creation to ensure proper registration pre-requisites have been met first.',
+      handler: 'handler',
+      logRetention: 7,
+      cleanup: true,
+      entry: path.join(__dirname, `lambda/functions/cognito/PreSignup.ts`),
+      bundling: {
+        externalModules: [
+          '@aws-sdk/*',
+        ]
+      },
+      role: new Role(this, 'PreSignupFunctionRole', {
+        assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+        description: 'Grants access to write to dynamodb and read from cognito userpool clients',
+        inlinePolicies: {
+          'ListUserPoolClients': new PolicyDocument({
+            statements: [new PolicyStatement({
+              actions: [
+                'cognito-idp:ListUserPoolClients',
+              ],
+              resources: ['*'],
+              effect: Effect.ALLOW
+            })],
+          }),
+          'ReadWriteToDynamodb': new PolicyDocument({
+            statements: [new PolicyStatement({
+              actions: [
+                'dynamodb:*'
+              ],
+              resources: [
+                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME}`,
+                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME}`,
+                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME}`
+              ],
+              effect: Effect.ALLOW
+            })],
+          }),
+        }
+      }),
+      environment: {
+        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
+        DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME
+      }
+    });
 
     const postSignupFunction = new AbstractFunction(this, 'PostSignupFunction', {
       functionName: `ett-${this.constructId.toLowerCase()}-post-signup`,
@@ -51,22 +97,26 @@ export class CognitoConstruct extends Construct {
                 'cognito-idp:ListUserPoolClients',
               ],
               resources: ['*'],
+              effect: Effect.ALLOW
             })],
           }),
           'WriteToDynamodb': new PolicyDocument({
             statements: [new PolicyStatement({
               actions: [
-                'dynamodb:PutItem',
+                'dynamodb:*'
               ],
               resources: [
-                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME}`
+                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME}`,
+                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME}`,
+                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME}`
               ],
+              effect: Effect.ALLOW
             })],
           }),
         }
       }),
       environment: {
-        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME
+        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME
       }
     });
 
@@ -93,22 +143,26 @@ export class CognitoConstruct extends Construct {
                 'cognito-idp:ListUserPoolClients',
               ],
               resources: ['*'],
+              effect: Effect.ALLOW
             })],
           }),
           'ReadFromDynamodb': new PolicyDocument({
             statements: [new PolicyStatement({
               actions: [
-                'dynamodb:Get*', 'dynamodb:List*', 'dynamodb:Query'
+                'dynamodb:*'
               ],
               resources: [
-                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME}`
+                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME}`,
+                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME}`,
+                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME}`
               ],
+              effect: Effect.ALLOW
             })],
           }),
         }
       }),
       environment: {
-        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME
+        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME
       }
     });
 
@@ -133,6 +187,7 @@ export class CognitoConstruct extends Construct {
       },
       lambdaTriggers: {
         preAuthentication: preAuthenticationFunction,
+        preSignUp: preSignupFunction,
         postConfirmation: postSignupFunction,
       }
     });

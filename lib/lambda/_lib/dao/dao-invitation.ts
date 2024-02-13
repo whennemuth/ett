@@ -33,8 +33,8 @@ export function InvitationCrud(invitationInfo:Invitation): DAOInvitation {
       invitationInfo.code = _code;
     }
 
-    console.log(`Creating invitation to ${entity_id || 'unspecified'} for: ${role}`);
-    const builder:Builder = getUpdateCommandBuilderInstance(invitationInfo, process.env.DYNAMODB_INVITATION_TABLE_NAME || '');
+    console.log(`Creating invitation ${entity_id ? `to ${entity_id} ` : ''}for: ${role}`);
+    const builder:Builder = getUpdateCommandBuilderInstance(invitationInfo, 'invitation', process.env.DYNAMODB_INVITATION_TABLE_NAME || '');
     const input:UpdateItemCommandInput = builder.buildUpdateItem();
     const command = new UpdateItemCommand(input);
     return await sendCommand(command);
@@ -66,7 +66,7 @@ export function InvitationCrud(invitationInfo:Invitation): DAOInvitation {
 
     console.log(`Reading ${_code}`);
     const params = {
-      TableName: process.env.DYNAMODB_USER_TABLE_NAME,
+      TableName: process.env.DYNAMODB_INVITATION_TABLE_NAME,
       Key: { 
         [InvitationFields.code]: { S: _code },
       }
@@ -134,7 +134,7 @@ export function InvitationCrud(invitationInfo:Invitation): DAOInvitation {
     }
     
     console.log(`Updating existing invitation in: ${_code}/${entity_id}`);
-    const builder:Builder = getUpdateCommandBuilderInstance(invitationInfo, process.env.DYNAMODB_INVITATION_TABLE_NAME || '');
+    const builder:Builder = getUpdateCommandBuilderInstance(invitationInfo, 'invitation', process.env.DYNAMODB_INVITATION_TABLE_NAME || '');
     const input:UpdateItemCommandInput = builder.buildUpdateItem();
     const command = new UpdateItemCommand(input);
     return await sendCommand(command);

@@ -48,77 +48,84 @@ export class UserInvitation {
     // Destructure the invitation and get a description of the role invited for.
     let { role, email } = this.invitation;
     let role_description = '';
+    let role_fullname = '';
     switch(role as Role) {
+      case Roles.SYS_ADMIN:
+        role_fullname = 'System Administrator';
+        role_description = 'A system administrator for the entire ETT plaform. Actions that can be taken \
+          by a system adminstrator are not entity-specific and involve, among other functions, the \
+          invitation of registered entity administrators to the platform to register and create their entities. '
+        break;
       case Roles.RE_ADMIN:
+        role_fullname = 'Registered Entity Administrator';
         role_description = 'A person who directly works with one or both of the RE Authorized Individuals \
           and can assist them in interacting with the ETT technology—and who can manage the registered entities \
           involvement in the ETT, including by making requests for Individuals to complete Consent or Affiliate \
           Exhibit Forms.'
         break;
       case Roles.RE_AUTH_IND:
+        role_fullname = 'Registered Entity Authorized Individual';
         role_description = 'A person in a senior role(s) within a registered entity that deals with \
           sensitive information, who will directly view the completed Disclosure Form on behalf of the \
           registered entity. Each registered entity has two Authorized Individuals'
         break;
     }
 
-    let heading:string = `You are invited to register as an ${role} in the Ethical Transparency Application`;
+    let heading:string = `You are invited to register as a ${role_fullname} in the Ethical Transparency Application`;
     if(this.entity_name != ENTITY_WAITING_ROOM) {
     // if(this.entity_name && this.entity_name != ENTITY_WAITING_ROOM) {
         heading = `${heading} for the following organization: <br><br><span class="entity1">${this.entity_name}</span>`;
     }
     
     // Send the invitation email
-    const client = new SESv2Client();
+    const client = new SESv2Client({
+      region: process.env.REGION
+    });
+    
     const command = new SendEmailCommand({
       Destination: {
         ToAddresses: [ email ]
       },
+      FromEmailAddress: email,
       Content: {
         Simple: {
           Subject: {
             Charset: 'utf-8',
             Data: 'INVITATION: Ethical Transparency Tool (ETT)',
-          },
+          },          
           Body: {
+            // Text: { Charset: 'utf-8', Data: 'This is a test' },
             Html: {
               Charset: 'utf-8',
               Data: `
-                <html>
-                <body>
-                  <head>
-                    <style>
-                      body { background: #555; }
-                      div { float: initial; clear: both; padding: 20px; width: 500px; }
-                      hr { height: 1px; background-color: black; margin-bottom:20px; margin-top: 20px; border: 0px; }
-                      .content { max-width: 500px; margin: auto; }
-                      .heading1 { font: 16px Georgia, serif; background-color: #ffd780; text-align: center; }
-                      .entity1 { font: bold 18px Georgia, serif; color: crimson; }
-                      .body1 { font: italic 14px Georgia, serif; background-color: #ffe7b3; text-align: justify;}
-                      .direction1 { font: 16px Georgia, serif; background-color: #ffefcc; text-align: center; }
-                    </style>
-                  </head>
-                  <div class="content">
-                    <div class="heading1">${heading}</div>
-                    <div class="body1">
-                      <hr>
-                      ETT is designed to support AAU’s harassment prevention principles and the recommendations of 
-                      NASEM’s June 2018 report on sexual harassment of women in academic science, engineering, and 
-                      medicine by helping to create a norm of transparency about findings of misconduct against a 
-                      person, across the higher-education and research ecosystem of societies, institutions of higher 
-                      education, and other research organizations. This tool covers sexual, gender, and racial 
-                      misconduct — as well as professional licensure, financial, and research misconduct to maximize 
-                      its utility.
-                      <br>
-                      <hr>
-                      A ${role} is: ${role_description}
-                    </div>
-                    <div class="direction1">
-                      Click <a href="${this.link}&code=${this._code}" style="font-weight: bold;">here</a> to register
-                    </div></div>
+                <style>
+                  div { float: initial; clear: both; padding: 20px; width: 500px; }
+                  hr { height: 1px; background-color: black; margin-bottom:20px; margin-top: 20px; border: 0px; }
+                  .content { max-width: 500px; margin: auto; }
+                  .heading1 { font: 16px Georgia, serif; background-color: #ffd780; text-align: center; }
+                  .entity1 { font: bold 18px Georgia, serif; color: crimson; }
+                  .body1 { font: italic 14px Georgia, serif; background-color: #ffe7b3; text-align: justify;}
+                  .direction1 { font: 16px Georgia, serif; background-color: #ffefcc; text-align: center; }
+                </style>
+                <div class="content">
+                  <div class="heading1">${heading}</div>
+                  <div class="body1" style="padding:20px;">
+                    <hr>
+                    ETT is designed to support AAU’s harassment prevention principles and the recommendations of 
+                    NASEM’s June 2018 report on sexual harassment of women in academic science, engineering, and 
+                    medicine by helping to create a norm of transparency about findings of misconduct against a 
+                    person, across the higher-education and research ecosystem of societies, institutions of higher 
+                    education, and other research organizations. This tool covers sexual, gender, and racial 
+                    misconduct — as well as professional licensure, financial, and research misconduct to maximize 
+                    its utility.
+                    <br>
+                    <hr>
+                    A ${role_fullname} is: ${role_description}
                   </div>
-                </body>
-              </html>`,
+                  <div class="direction1">
+                    Click <a href="${this.link}&code=${this._code}" style="font-weight: bold;">here</a> to register
+                  </div></div>
+                </div>`,
             }
           }
         }

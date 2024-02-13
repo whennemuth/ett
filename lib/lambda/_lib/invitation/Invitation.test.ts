@@ -88,7 +88,7 @@ describe('Send', () => {
     expect(sesInput.Content?.Simple?.Subject?.Data).toEqual('INVITATION: Ethical Transparency Tool (ETT)');
     const html:string|undefined = sesInput.Content?.Simple?.Body?.Html?.Data;
     expect(html).toContain(entity_name);
-    expect(html).toContain(role);
+    expect(html).toContain('Registered Entity Authorized Individual');
     expect(html).toContain(`${link}&code=${invitation.code}`);
     expect(daoInviteAttempts).toEqual(3);
   });  

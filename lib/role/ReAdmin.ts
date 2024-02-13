@@ -1,10 +1,12 @@
+import { IContext } from '../../contexts/IContext';
 import { ResourceServerScope, UserPool } from "aws-cdk-lib/aws-cognito";
-import { Construct } from "constructs";
-import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
+import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { Function, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { Construct } from "constructs";
 import { AbstractFunction } from "../AbstractFunction";
 import { DynamoDbConstruct } from "../DynamoDb";
 import { Roles } from '../lambda/_lib/dao/entity';
+import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
 
 export interface AdminUserParms {
   userPool: UserPool, 
@@ -57,6 +59,7 @@ export class ReAdminUserApi extends AbstractRole {
  */
 export class LambdaFunction extends AbstractFunction {
   constructor(scope:Construct, constructId:string, cloudfrontDomain:string, userpoolId:string) {
+    const context:IContext = scope.node.getContext('stack-parms');
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
       entry: 'lib/lambda/functions/re-admin/ReAdminUser.ts',
@@ -69,10 +72,27 @@ export class LambdaFunction extends AbstractFunction {
           '@aws-sdk/*',
         ]
       },
+      role: new Role(scope, 'ReAdminRole', {
+        assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+        description: 'Grants access to SES for invitations',
+        inlinePolicies: {
+          'SendEmails': new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'ses:Send*', 'ses:Get*' ],
+                resources: [ `arn:aws:ses:${context.REGION}:${context.ACCOUNT}:identity/${context.SES_IDENTITY}` ],
+                effect: Effect.ALLOW
+              })
+            ]
+          })
+        }
+      }),
       environment: {
-        REGION: scope.node.getContext('stack-parms').REGION,
-        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME,
-        INVITATION_LINK: `https://${cloudfrontDomain}/index.htm?action=acknowledge`,
+        REGION: context.REGION,
+        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
+        DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
+        DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME,
+        CLOUDFRONT_DOMAIN: cloudfrontDomain,
         USERPOOL_ID: userpoolId
       }
     });

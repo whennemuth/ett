@@ -56,7 +56,7 @@ switch(process.argv[2].toLocaleLowerCase()) {
     // including multiple pending invitations to the same entity for the same role and email
     new Promise<void>((resolve, reject) => {
       try {
-        process.env.DYNAMODB_INVITATION_TABLE_NAME = DynamoDbConstruct.DYNAMODB_TABLES_INVITATION_TABLE_NAME;
+        process.env.DYNAMODB_INVITATION_TABLE_NAME = DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME;
         event.triggerSource = 'PreSignUp_SignUp';
         preSignupHandler(event);
         resolve();
@@ -71,7 +71,7 @@ switch(process.argv[2].toLocaleLowerCase()) {
     // RESUME NEXT 6: Run this and confirm expected results.
     new Promise<void>((resolve, reject) => {
       try {
-        process.env.DYNAMODB_USER_TABLE_NAME = DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME;
+        process.env.DYNAMODB_USER_TABLE_NAME = DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME;
         event.triggerSource = 'PostConfirmation_ConfirmSignUp';
         postSignupHandler(event);
         resolve();
@@ -85,7 +85,7 @@ switch(process.argv[2].toLocaleLowerCase()) {
   case 'preauthentication':    
     new Promise<void>((resolve, reject) => {
       try {
-        process.env.DYNAMODB_INVITATION_TABLE_NAME = DynamoDbConstruct.DYNAMODB_TABLES_INVITATION_TABLE_NAME;
+        process.env.DYNAMODB_INVITATION_TABLE_NAME = DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME;
         event.triggerSource = 'PreAuthentication_Authentication';
         preAuthHandler(event);
         resolve();

@@ -6,9 +6,9 @@ import { EntityFields, UserFields, InvitationFields } from "./lambda/_lib/dao/en
 
 export class DynamoDbConstruct extends Construct {
   
-  static DYNAMODB_TABLES_USERS_TABLE_NAME: string = 'ett-users';
-  static DYNAMODB_TABLES_ENTITY_TABLE_NAME: string = 'ett-entities';
-  static DYNAMODB_TABLES_INVITATION_TABLE_NAME: string = 'ett-invitations';
+  static DYNAMODB_USER_TABLE_NAME: string = 'ett-users';
+  static DYNAMODB_ENTITY_TABLE_NAME: string = 'ett-entities';
+  static DYNAMODB_INVITATION_TABLE_NAME: string = 'ett-invitations';
 
   context: IContext;
 
@@ -24,7 +24,7 @@ export class DynamoDbConstruct extends Construct {
 
     // Create a table for ALL users of any role.
     this.usersTable = new TableV2(this, 'DbUsers', {
-      tableName: DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME,
+      tableName: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
       partitionKey: { name: UserFields.email, type: AttributeType.STRING },
       sortKey: { name: UserFields.entity_id, type: AttributeType.STRING },
       billing: Billing.onDemand(),
@@ -46,7 +46,7 @@ export class DynamoDbConstruct extends Construct {
 
     // Create a table for ALL registerend entities, to be managed by system administrator.
     this.entitiesTable = new TableV2(this, 'DbEntities', {
-      tableName: DynamoDbConstruct.DYNAMODB_TABLES_ENTITY_TABLE_NAME,
+      tableName: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME,
       partitionKey: { name: EntityFields.entity_id, type: AttributeType.STRING },
       billing: Billing.onDemand(),
       tableClass: TableClass.STANDARD_INFREQUENT_ACCESS,
@@ -57,7 +57,7 @@ export class DynamoDbConstruct extends Construct {
 
     // Create a table for invitations sent to users.
     this.invitationsTable = new TableV2(this, 'DbInvitations', {
-      tableName: DynamoDbConstruct.DYNAMODB_TABLES_INVITATION_TABLE_NAME,
+      tableName: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
       partitionKey: { name: InvitationFields.code, type: AttributeType.STRING },
       billing: Billing.onDemand(),
       tableClass: TableClass.STANDARD_INFREQUENT_ACCESS,
