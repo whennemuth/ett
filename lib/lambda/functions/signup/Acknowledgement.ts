@@ -1,6 +1,6 @@
 import { Invitation } from "../../_lib/dao/entity";
 import { Registration } from "../../_lib/invitation/Registration";
-import { debugLog, errorResponse, invalidResponse, okResponse, unauthorizedResponse } from "../Utils";
+import { debugLog, errorResponse, invalidResponse, lookupCloudfrontDomain, okResponse, unauthorizedResponse } from "../Utils";
 
 export enum Task {
   LOOKUP_INVITATION = 'lookup-invitation',
@@ -58,31 +58,37 @@ export const handler = async(event:any) => {
 
 
 /**
- * RUN MANUALLY: Modify the cloudfront domain, invitation-code, and region 
+ * RUN MANUALLY: Modify the task, landscape, invitation-code, and region as needed.
  */
 const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
   
-  process.env.DYNAMODB_INVITATION_TABLE_NAME = 'ett-invitations';
-  process.env.DYNAMODB_USER_TABLE_NAME = 'ett-users';
-  process.env.DYNAMODB_ENTITY_TABLE_NAME = 'ett-entities'
-  process.env.CLOUDFRONT_DOMAIN = 'd2ccz25lye7ni0.cloudfront.net';
-  process.env.REGION = 'us-east-2'
-  process.env.DEBUG = 'true';
+  const task = Task.REGISTER;
+  const landscape = 'dev';
+ 
+  lookupCloudfrontDomain(landscape).then((cloudfrontDomain) => {
+    if( ! cloudfrontDomain) {
+      throw('Cloudfront domain lookup failure');
+    }
+    process.env.DYNAMODB_INVITATION_TABLE_NAME = 'ett-invitations';
+    process.env.DYNAMODB_USER_TABLE_NAME = 'ett-users';
+    process.env.DYNAMODB_ENTITY_TABLE_NAME = 'ett-entities'
+    process.env.CLOUDFRONT_DOMAIN = 'd2ccz25lye7ni0.cloudfront.net';
+    process.env.REGION = 'us-east-2'
+    process.env.DEBUG = 'true';
 
-  const _event = {
-    pathParameters: {
-      ['invitation-code']: '4c738e91-08ba-437b-93ed-e9dd73ff64f5'
+    const _event = {
+      pathParameters: {
+        ['invitation-code']: '4c738e91-08ba-437b-93ed-e9dd73ff64f5'
+      }
     }
-  }
 
-  new Promise<void>((resolve, reject) => {
-    try {
-      handler(_event);
-      resolve();
-    }
-    catch (e) {
-      reject(e);
-    }
-  });
+    return handler(_event);
+
+  }).then(() => {
+    console.log(`${task} complete.`)
+  }).catch((reason) => {
+    console.error(reason);
+  });  
+
 }

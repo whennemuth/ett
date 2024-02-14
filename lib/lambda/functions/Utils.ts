@@ -1,5 +1,6 @@
 import { DAOEntity, DAOFactory, DAOInvitation, DAOUser } from "../_lib/dao/dao";
 import { Entity, Invitation, Role, User } from "../_lib/dao/entity";
+import { CloudFrontClient, DistributionSummary, ListDistributionsCommand, ListDistributionsResult } from "@aws-sdk/client-cloudfront";
 
 export type LambdaProxyIntegrationResponse<T extends string = string> = {
   isBase64Encoded: boolean;
@@ -170,6 +171,19 @@ export const lookupPendingInvitations = async (entity_id?:string|null):Promise<I
     Payload: { entity_id } as Invitation
   }) as DAOInvitation;
   return await dao.read() as Invitation[];
+}
+
+export const lookupCloudfrontDomain = async (landscape:string):Promise<string|undefined> => {
+  const client = new CloudFrontClient({});
+  const command = new ListDistributionsCommand({});
+  const response = await client.send(command) as ListDistributionsResult;
+  const distributions = response.DistributionList?.Items?.filter((ds:DistributionSummary) => {
+    return ds.Comment && ds.Comment == `ett-${landscape}-distribution`;
+  }) as DistributionSummary[]
+  if(distributions!.length > 0) {
+    return distributions[0]!.DomainName;
+  }
+  return undefined;
 }
 
 export const debugLog = (o:any) => {

@@ -29,6 +29,7 @@ export class CloudfrontConstruct extends Construct {
 
     this.distribution = new Distribution(this, 'Distribution', {
       defaultBehavior,
+      comment: `ett-${this.context.TAGS.Landscape}-distribution`,
       defaultRootObject: 'index.htm',
       logBucket: new Bucket(this, 'DistributionLogsBucket', {
         removalPolicy: RemovalPolicy.DESTROY,    

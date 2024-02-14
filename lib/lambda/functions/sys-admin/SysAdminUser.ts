@@ -1,6 +1,6 @@
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
 import { Roles } from '../../_lib/dao/entity';
-import { debugLog, errorResponse, invalidResponse, log, okResponse } from "../Utils";
+import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../Utils";
 import { Task as ReAdminTasks, createEntity, deactivateEntity, inviteUser, updateEntity } from '../re-admin/ReAdminUser';
 
 export enum Task {
@@ -69,41 +69,46 @@ export const replaceAdmin = async (parms:any):Promise<LambdaProxyIntegrationResp
 
 
 /**
- * RUN MANUALLY: Modify the cloudfront domain, email, role, and 
+ * RUN MANUALLY: Modify the task, landscape, email & role as needed.
  */
 const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
 
-  process.env.DYNAMODB_INVITATION_TABLE_NAME = 'ett-invitations';
-  process.env.DYNAMODB_USER_TABLE_NAME = 'ett-users';
-  process.env.DYNAMODB_ENTITY_TABLE_NAME = 'ett-entities'
-  process.env.CLOUDFRONT_DOMAIN = 'd2ccz25lye7ni0.cloudfront.net';
-  process.env.REGION = 'us-east-2'
-  process.env.DEBUG = 'true';
+  const task = ReAdminTasks.INVITE_USER;
+  const landscape = 'dev';
 
-  const payload = {
-    task: ReAdminTasks.INVITE_USER,
-    parameters: {
-      email: 'wrh@bu.edu',
-      role: Roles.SYS_ADMIN
-    }
-  } as IncomingPayload;
+  lookupCloudfrontDomain(landscape).then((cloudfrontDomain) => {
 
-  const _event = {
-    headers: {
-      [AbstractRoleApi.ETTPayloadHeader]: JSON.stringify(payload)
+    if( ! cloudfrontDomain) {
+      throw('Cloudfront domain lookup failure');
     }
-  }
+    process.env.DYNAMODB_INVITATION_TABLE_NAME = 'ett-invitations';
+    process.env.DYNAMODB_USER_TABLE_NAME = 'ett-users';
+    process.env.DYNAMODB_ENTITY_TABLE_NAME = 'ett-entities'
+    process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
+    process.env.REGION = 'us-east-2'
+    process.env.DEBUG = 'true';
 
-  new Promise<void>((resolve, reject) => {
-    try {
-      handler(_event);
-      resolve();
+    const payload = {
+      task,
+      parameters: {
+        email: 'wrh@bu.edu',
+        role: Roles.SYS_ADMIN
+      }
+    } as IncomingPayload;
+
+    const _event = {
+      headers: {
+        [AbstractRoleApi.ETTPayloadHeader]: JSON.stringify(payload)
+      }
     }
-    catch (e) {
-      reject(e);
-    }
+
+    return handler(_event);
+
+  }).then(() => {
+    console.log(`${task} complete.`)
+  }).catch((reason) => {
+    console.error(reason);
   });
-
-
+ 
 }

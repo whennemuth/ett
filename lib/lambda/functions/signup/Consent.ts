@@ -1,7 +1,7 @@
 import { DAOFactory } from "../../_lib/dao/dao";
 import { Invitation, User, YN } from "../../_lib/dao/entity";
 import { Registration } from "../../_lib/invitation/Registration";
-import { debugLog, errorResponse, invalidResponse, okResponse, unauthorizedResponse } from "../Utils";
+import { debugLog, errorResponse, invalidResponse, lookupCloudfrontDomain, okResponse, unauthorizedResponse } from "../Utils";
 
 export enum Task {
   LOOKUP_INVITATION = 'lookup-invitation',
@@ -108,32 +108,38 @@ export const handler = async(event:any) => {
 const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
   
-  process.env.DYNAMODB_INVITATION_TABLE_NAME = 'ett-invitations';
-  process.env.DYNAMODB_USER_TABLE_NAME = 'ett-users';
-  process.env.DYNAMODB_ENTITY_TABLE_NAME = 'ett-entities'
-  process.env.CLOUDFRONT_DOMAIN = 'd2ccz25lye7ni0.cloudfront.net';
-  process.env.REGION = 'us-east-2'
-  process.env.DEBUG = 'true';
+  const task = Task.REGISTER;
+  const landscape = 'dev';
 
-  const _event = {
-    pathParameters: {
-      task: Task.REGISTER,
-      ['invitation-code']: '4c738e91-08ba-437b-93ed-e9dd73ff64f5'
-    },
-    queryStringParameters: {
-      email: "wrh@bu.edu",
-      fullname: "Warren Hennemuth",
-      title: "ETT developer/architect"  
+  lookupCloudfrontDomain(landscape).then((cloudfrontDomain) => {
+    if( ! cloudfrontDomain) {
+      throw('Cloudfront domain lookup failure');
     }
-  }
+    process.env.DYNAMODB_INVITATION_TABLE_NAME = 'ett-invitations';
+    process.env.DYNAMODB_USER_TABLE_NAME = 'ett-users';
+    process.env.DYNAMODB_ENTITY_TABLE_NAME = 'ett-entities'
+    process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
+    process.env.REGION = 'us-east-2'
+    process.env.DEBUG = 'true';
 
-  new Promise<void>((resolve, reject) => {
-    try {
-      handler(_event);
-      resolve();
+    const _event = {
+      pathParameters: {
+        task,
+        ['invitation-code']: '4c738e91-08ba-437b-93ed-e9dd73ff64f5'
+      },
+      queryStringParameters: {
+        email: "wrh@bu.edu",
+        fullname: "Warren Hennemuth",
+        title: "ETT developer/architect"  
+      }
     }
-    catch (e) {
-      reject(e);
-    }
+
+    return handler(_event);
+
+  }).then(() => {
+    console.log(`${task} complete.`)
+  }).catch((reason) => {
+    console.error(reason);
   });
+
 }

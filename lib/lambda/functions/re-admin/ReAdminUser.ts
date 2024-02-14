@@ -4,7 +4,7 @@ import { DAOEntity, DAOFactory, DAOInvitation } from '../../_lib/dao/dao';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
 import { Entity, Invitation, Role, Roles, User, YN } from '../../_lib/dao/entity';
 import { UserInvitation } from '../../_lib/invitation/Invitation';
-import { debugLog, errorResponse, invalidResponse, log, lookupPendingInvitations, lookupSingleEntity, lookupSingleUser, lookupUser, okResponse } from "../Utils";
+import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, lookupPendingInvitations, lookupSingleEntity, lookupSingleUser, lookupUser, okResponse } from "../Utils";
 
 export enum Task {
   CREATE_ENTITY = 'create_entity',
@@ -234,4 +234,50 @@ export const inviteUser = async (parms:any, inviterRole:Role, inviterCognitoUser
   else {
     return errorResponse(`Unable to determine the url for ${role} signup`);
   }
+}
+
+
+/**
+ * RUN MANUALLY: Modify the task, landscape, email, role, & entity_id as needed.
+ */
+const { argv:args } = process;
+if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
+
+  const task = Task.INVITE_USER;
+  const landscape = 'dev';
+
+  lookupCloudfrontDomain(landscape).then((cloudfrontDomain) => {
+    if( ! cloudfrontDomain) {
+      throw('Cloudfront domain lookup failure');
+    }
+    process.env.DYNAMODB_INVITATION_TABLE_NAME = 'ett-invitations';
+    process.env.DYNAMODB_USER_TABLE_NAME = 'ett-users';
+    process.env.DYNAMODB_ENTITY_TABLE_NAME = 'ett-entities'
+    process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
+    process.env.REGION = 'us-east-2'
+    process.env.DEBUG = 'true';
+
+    const payload = {
+      task,
+      parameters: {
+        email: 'wrh@bu.edu',
+        role: Roles.RE_AUTH_IND,
+        entity_id: ''
+      }
+    } as IncomingPayload;
+
+    const _event = {
+      headers: {
+        [AbstractRoleApi.ETTPayloadHeader]: JSON.stringify(payload)
+      }
+    }
+
+    return handler(_event);
+
+  }).then(() => {
+    console.log(`${task} complete.`)
+  }).catch((reason) => {
+    console.error(reason);
+  });
+ 
 }
