@@ -44,7 +44,8 @@ const buildJsonEnvVar = (parms: StaticSiteCustomInConstructParms) => {
     jsonObj.ROLES[api.getRole()] = {
       CLIENT_ID: api.getUserPoolClientId(),
       REDIRECT_URI: `${parms.cloudfrontDomain}/index.htm`,
-      API_URI: api.getRestApiUrl()
+      API_URI: api.getRestApiUrl(),
+      FULLNAME: api.getRoleFullName()
     }
   });
   return JSON.stringify(jsonObj, null, 2);

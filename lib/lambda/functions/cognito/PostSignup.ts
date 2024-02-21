@@ -1,4 +1,4 @@
-import { lookupRole } from '../../_lib/cognito/Lookup';
+import { lookupRole, removeUserFromUserpool } from '../../_lib/cognito/Lookup';
 import { DAOUser, DAOFactory } from '../../_lib/dao/dao';
 import { Role, UserFields, User, Invitation, Roles } from '../../_lib/dao/entity';
 import { PostSignupEventType } from './PostSignupEventType';
@@ -35,9 +35,16 @@ export const handler = async (_event:any) => {
   }
 
   // If any of this failed (no new dynamodb entry made), erase the users presence in cognito.
-  if( ! newUser ) {
-    await undoCognitoLogin(event);
-    throw new Error('Post cognito signup confirmation error.');
+  if( ! newUser) {
+    const errmsg = 'Post cognito signup confirmation error.'
+    if(event.request && event.request.userAttributes) {
+      const { email } = event.request.userAttributes;
+      if(email) {
+        await removeUserFromUserpool(userPoolId, email, region);
+        throw new Error(`${errmsg} User rolled back from userpool: ${email}`);
+      }
+    }
+    throw new Error(errmsg);
   }
 
   return event;
@@ -149,16 +156,4 @@ const scrapeUserValuesFromInvitation = async (email:string, role:Role):Promise<I
   // There should be only one result, but multiple results just means a SYS_ADMIN sent a subsequent invitation
   // to the same person before that person had a chance to consent to and setup an account against the first invitation.
   return invitations[0];
-}
-
-/**
- * Making an entry to dynamodb for the user failed for one reason or another. It is invalid state to have 
- * a confirmed cognito user with no matching dynamodb entry, so remove the cognito entry.
- * @param sub 
- */
-const undoCognitoLogin = async (event:PostSignupEventType):Promise<void> => {
-  if(event?.request?.userAttributes?.sub) {
-    const { sub } = event.request.userAttributes;
-  }  
-  console.log('TODO: Write this function, and then assert it gets called in the unit tests.');
 }

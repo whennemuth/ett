@@ -140,7 +140,11 @@ export const lookupSingleUser = async (email:string, entity_id?:string|null):Pro
     DAOType: 'user',
     Payload: { email, entity_id } as User
   }) as DAOUser;
-  return await dao.read() as User|null;
+  let user = await dao.read() as User|null;
+  if(user && Object.keys(user).length === 0) {
+    user = null;
+  }
+  return user;
 }
 
 /**

@@ -1,4 +1,4 @@
-import { CognitoLookupMock, InvitationMock, ParameterValidationTests, UserInvitationTests, UtilsMock } from './ReAdminUser.mocks';
+import { CognitoLookupMock, InvitationMock, ParameterValidationTests, SignupLinkMock, UserInvitationTests, UtilsMock } from './ReAdminUser.mocks';
 
 process.env.CLOUDFRONT_DOMAIN = 'dnkkwr06vb9yr.cloudfront.net';
 
@@ -11,6 +11,12 @@ jest.mock('../Utils.ts', () => {
 // Create the mock for the es6 UserInvitation class
 jest.mock('../../_lib/invitation/Invitation', () => {
   return InvitationMock();
+});
+
+// Create the mock for the SignupLink.ts module
+jest.mock('../../_lib/invitation/SignupLink.ts', () => {
+  const originalModule = jest.requireActual('../../_lib/invitation/SignupLink.ts');
+  return SignupLinkMock();
 });
 
 // Create the mock for the cognito Lookup.ts module

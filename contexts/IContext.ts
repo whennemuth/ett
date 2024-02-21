@@ -7,7 +7,7 @@ export interface IContext {
   BUCKET_OLAP?: boolean;
   CLOUDFRONT_DOMAIN: string;
   CLOUDFRONT_CERTIFICATE: string;
-  SES_IDENTITY: string;
+  SES_IDENTITIES: string[];
   TAGS:     Tags;
 }
 

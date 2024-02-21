@@ -13,6 +13,7 @@ export interface ApiParms {
   cloudfrontDomain: string,
   lambdaFunction: Function,
   role: Role,
+  roleFullName: string,
   description: string,
   bannerImage: string,
   resourceId: string,
@@ -58,6 +59,7 @@ export class AbstractRoleApi extends Construct {
   private userPoolClient: UserPoolClient;
   private lambdaFunction: Function;
   private role: Role;
+  private roleFullName: string;
 
   /** Name of the header in incoming api call requests for task specific parameters. 
    * NOTE: Must be lowercase, because api gateway will convert it to lowercase and any lambda function
@@ -71,8 +73,9 @@ export class AbstractRoleApi extends Construct {
     
     const context: IContext = scope.node.getContext('stack-parms');
     const stageName = context.TAGS.Landscape;
-    const { userPool, cloudfrontDomain, lambdaFunction, role, role:resourceServerId, description, bannerImage, resourceId, scopes, methods } = parms;
+    const { userPool, cloudfrontDomain, lambdaFunction, role, role:resourceServerId, roleFullName, description, bannerImage, resourceId, scopes, methods } = parms;
     this.role = role;
+    this.roleFullName = roleFullName;
     this.lambdaFunction = lambdaFunction;
 
     // Create a log group for the api gateway to log to.
@@ -185,6 +188,10 @@ export class AbstractRoleApi extends Construct {
 
   public getRole(): Role {
     return this.role;
+  }
+
+  public getRoleFullName(): string {
+    return this.roleFullName;
   }
 }
 

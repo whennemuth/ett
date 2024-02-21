@@ -31,6 +31,7 @@ export class CognitoConstruct extends Construct {
     const preSignupFunction = new AbstractFunction(this, 'PreSignupFunction', {
       functionName: `ett-${this.constructId.toLowerCase()}-pre-signup`,
       description: 'Intercepts cognito account creation to ensure proper registration pre-requisites have been met first.',
+      runtime: Runtime.NODEJS_18_X,
       handler: 'handler',
       logRetention: 7,
       cleanup: true,
@@ -47,7 +48,7 @@ export class CognitoConstruct extends Construct {
           'ListUserPoolClients': new PolicyDocument({
             statements: [new PolicyStatement({
               actions: [
-                'cognito-idp:ListUserPoolClients',
+                'cognito-idp:ListUserPoolClients'
               ],
               resources: ['*'],
               effect: Effect.ALLOW
@@ -60,8 +61,11 @@ export class CognitoConstruct extends Construct {
               ],
               resources: [
                 `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME}`,
+                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME}/*`,
                 `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME}`,
-                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME}`
+                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME}/*`,
+                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME}`,
+                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME}/*`
               ],
               effect: Effect.ALLOW
             })],
@@ -70,7 +74,8 @@ export class CognitoConstruct extends Construct {
       }),
       environment: {
         DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
-        DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME
+        DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
+        DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME
       }
     });
 
@@ -100,6 +105,15 @@ export class CognitoConstruct extends Construct {
               effect: Effect.ALLOW
             })],
           }),
+          'DeleteUserFromPool': new PolicyDocument({
+            statements: [ new PolicyStatement({
+              actions: [
+                'cognito-idp:AdminDeleteUser',
+              ],
+              resources: [ `arn:aws:cognito-idp:${this.context.REGION}:${this.context.ACCOUNT}:userpool/${this.context.REGION}_*` ],
+              effect: Effect.ALLOW
+            })]
+          }),
           'WriteToDynamodb': new PolicyDocument({
             statements: [new PolicyStatement({
               actions: [
@@ -107,8 +121,11 @@ export class CognitoConstruct extends Construct {
               ],
               resources: [
                 `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME}`,
+                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME}/*`,
                 `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME}`,
-                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME}`
+                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME}/*`,
+                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME}`,
+                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME}/*`
               ],
               effect: Effect.ALLOW
             })],
@@ -116,7 +133,9 @@ export class CognitoConstruct extends Construct {
         }
       }),
       environment: {
-        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME
+        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
+        DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
+        DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME
       }
     });
 
@@ -153,8 +172,11 @@ export class CognitoConstruct extends Construct {
               ],
               resources: [
                 `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME}`,
+                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME}/*`,
                 `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME}`,
-                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME}`
+                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME}/*`,
+                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME}`,
+                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME}/*`
               ],
               effect: Effect.ALLOW
             })],
@@ -162,7 +184,9 @@ export class CognitoConstruct extends Construct {
         }
       }),
       environment: {
-        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME
+        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
+        DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
+        DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME
       }
     });
 
@@ -171,7 +195,7 @@ export class CognitoConstruct extends Construct {
       userPoolName: this.userPoolName,
       accountRecovery: AccountRecovery.EMAIL_AND_PHONE_WITHOUT_MFA,
       selfSignUpEnabled: true,
-      signInAliases: { email: true, phone: true },
+      signInAliases: { email: true },
       autoVerify: { email: true },
       passwordPolicy: {
         minLength: 8,

@@ -22,6 +22,7 @@ export class ConsentingPersonApi extends AbstractRole {
       lambdaFunction,
       userPool,
       role: Roles.CONSENTING_PERSON,
+      roleFullName: 'Consenting Person',
       description: 'Api for all operations that are open to a consenting person',
       bannerImage: 'client-consenting.png',
       resourceId: Roles.CONSENTING_PERSON,

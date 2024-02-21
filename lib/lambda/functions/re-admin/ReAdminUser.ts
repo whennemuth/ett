@@ -2,14 +2,17 @@ import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from
 import { lookupEmail } from '../../_lib/cognito/Lookup';
 import { DAOEntity, DAOFactory, DAOInvitation } from '../../_lib/dao/dao';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
-import { Entity, Invitation, Role, Roles, User, YN } from '../../_lib/dao/entity';
+import { Entity, Invitation, Role, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
 import { UserInvitation } from '../../_lib/invitation/Invitation';
+import { SignupLink } from '../../_lib/invitation/SignupLink';
 import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, lookupPendingInvitations, lookupSingleEntity, lookupSingleUser, lookupUser, okResponse } from "../Utils";
 
+// TODO: Change underscores to dashes and rebuild stack.
 export enum Task {
   CREATE_ENTITY = 'create_entity',
   UPDATE_ENTITY = 'update_entity',
   DEACTIVATE_ENTITY = 'deactivate_entity',
+  LOOKUP_USER_CONTEXT = 'lookup_user_context',
   INVITE_USER = 'invite_user',
   PING = 'ping'
 }
@@ -40,6 +43,9 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
       const callerUsername = event?.requestContext?.authorizer?.claims?.username;
       const callerSub = callerUsername || event?.requestContext?.authorizer?.claims?.sub;
       switch(task as Task) {
+        case Task.LOOKUP_USER_CONTEXT:
+          const { email, role } = parameters;
+          return await lookupEntity(email, role);
         case Task.CREATE_ENTITY:
           return await createEntity(parameters, { sub:callerSub, role:Roles.RE_ADMIN } as User);
         case Task.UPDATE_ENTITY:
@@ -47,7 +53,9 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
         case Task.DEACTIVATE_ENTITY:
           return await deactivateEntity(parameters);
         case Task.INVITE_USER:
-          return await inviteUser(parameters, Roles.RE_ADMIN, callerSub);
+          return await inviteUser(parameters, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
+            return await new SignupLink().getRegistrationLink(entity_id);
+          }, callerSub);
         case Task.PING:
           return okResponse('Ping!', parameters)
       } 
@@ -57,6 +65,71 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
     return errorResponse(`Internal server error: ${e.message}`);
   }
 }
+
+/**
+ * Get the users information, including the entity details, as well as the other users in the entity.
+ * 
+ * RESUME NEXT: Create a unit test for this function and also test through the frontend.
+ * 
+ * TODO: Replace the filtering (ie: user.active, user.role, etc) with filters applied by the dynamodb query itself.
+ * This would entail modifying the _read and _query functions so that extra attributes supplied in the User object
+ * payload parameter that are neither the Partition Key or Sort Key get applied as the equivalent of a 
+ * "where clause" (research how to do this in dynamodb). This will become more necessary as CONSENTING_PERSON
+ * users start to pile up in the entity and it becomes inefficient to filter them all off with javascript if the
+ * use case doesn't even call for including them in the lookup.
+ * @param email 
+ * @param role 
+ * @returns 
+ */
+export const lookupEntity = async (email:string, role:Role):Promise<LambdaProxyIntegrationResponse> => {
+
+  const userinfo = [ ] as any[];
+
+  // Should return just one user unless the same email has taken the same role at another entity (edge case).
+  const getUser = async ():Promise<User[]> => {
+    const dao = DAOFactory.getInstance({ DAOType:'user', Payload: { email }});
+    let users = await dao.read() as User[];
+    users = users.filter(user => user.active == YN.Yes && user.role == role);
+    return users;
+  }
+
+  // Should return all the other users in the same entity as the current user.
+  const getOtherUsers = async (entity_id:string):Promise<User[]> => {
+    const dao = DAOFactory.getInstance({ DAOType:'user', Payload: { entity_id }});
+    let users = await dao.read() as User[];
+    users = users.filter(user => user.active == YN.Yes && user.email != email);
+    return users;
+  }
+
+  // Should return the entity details.
+  const getEntity = async (entity_id:string):Promise<Entity|null> => {
+    const dao = DAOFactory.getInstance({ DAOType:'entity', Payload: { entity_id }});
+    return await dao.read() as Entity;
+  }
+
+  // 1) Get the user specified by the email.
+  const users = await getUser();
+
+  // 2) Gather all the information about the entity and the other users in it.
+  for(var i=0; i<users.length; i++) {
+    var usr = Object.assign({} as any, users[i]);
+    delete usr[UserFields.entity_id];
+    if(users[i].entity_id == ENTITY_WAITING_ROOM) {
+      usr.entity = {};
+      continue;
+    }
+    usr.entity = await getEntity(users[i].entity_id) as any;
+    usr.entity.users = await getOtherUsers(users[i].entity_id);
+    userinfo.push(usr);
+  }
+
+  // 3) Consolidate the information, and return it in the response payload
+  let user = {};
+  if(userinfo.length == 1) user = userinfo[0];
+  if(userinfo.length > 1) user = userinfo;
+  return okResponse('Ok', { user }) 
+}
+
 
 export const createEntity = async (parms:any, reAdmin?:User):Promise<LambdaProxyIntegrationResponse> => {
   const { entity_name, description } = parms;
@@ -146,14 +219,12 @@ export const deactivateEntity = async (parms:any):Promise<LambdaProxyIntegration
  * Invite the user via email and log a corresponding tracking entry in the database if successful.
  * @param parms 
  */
-export const inviteUser = async (parms:any, inviterRole:Role, inviterCognitoUserName?:string): Promise<LambdaProxyIntegrationResponse> => {
-  const { email, entity_id, role } = parms;
+export const inviteUser = async (parms:any, inviterRole:Role, linkGenerator:Function, inviterCognitoUserName?:string): Promise<LambdaProxyIntegrationResponse> => {
+  const { email, entity_id=ENTITY_WAITING_ROOM, role } = parms;
   const cloudfrontDomain = process.env.CLOUDFRONT_DOMAIN;
   if(cloudfrontDomain) {
-    let link = `https://${cloudfrontDomain}?action=acknowledge`;
-    if(entity_id) {
-      link = `${link}&entity_id=${entity_id}`
-    }
+
+    const link = await linkGenerator(entity_id, role);
 
     // Prevent RE_ADMIN from inviting any other role than AUTH_IND
     if(inviterRole == Roles.RE_ADMIN && role != Roles.RE_AUTH_IND) {
@@ -223,7 +294,7 @@ export const inviteUser = async (parms:any, inviterRole:Role, inviterCognitoUser
     if( await emailInvite.send()) {
       const msg = `Invitation successfully sent: ${emailInvite.code}`
       log(msg);
-      return okResponse(msg, { invitation_code: emailInvite.code });
+      return okResponse(msg, { invitation_code: emailInvite.code, invitation_link: emailInvite.link });
     }
     else {
       const msg = `Invitation failure: ${emailInvite.code}`;

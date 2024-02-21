@@ -1,7 +1,7 @@
 import { DAOFactory } from "../../_lib/dao/dao";
 import { Invitation, User, YN } from "../../_lib/dao/entity";
 import { Registration } from "../../_lib/invitation/Registration";
-import { debugLog, errorResponse, invalidResponse, lookupCloudfrontDomain, okResponse, unauthorizedResponse } from "../Utils";
+import { debugLog, errorResponse, invalidResponse, lookupCloudfrontDomain, lookupSingleEntity, okResponse, unauthorizedResponse } from "../Utils";
 
 export enum Task {
   LOOKUP_INVITATION = 'lookup-invitation',
@@ -15,6 +15,7 @@ export const handler = async(event:any) => {
     debugLog(event);
     
     const { task, 'invitation-code':code } = event.pathParameters;
+
     if( ! task ) {
       return invalidResponse(`Bad Request: task not specified (${Object.values(Task).join('|')})`);
     }
@@ -35,7 +36,7 @@ export const handler = async(event:any) => {
 
     switch(task) {
 
-      // Just want the entity, probably to know its acknowledge and consent statuses.
+      // Just want the invitation, probably to know its acknowledge and consent statuses.
       case Task.LOOKUP_INVITATION:
         return okResponse('Ok', invitation);
 
@@ -52,10 +53,11 @@ export const handler = async(event:any) => {
           })
           let users = await dao.read() as User[];
           // Filter off inactive users.
-          users = users.filter((user) => { return user.active == YN.Yes; })
-          return okResponse('Ok', { users });
+          users = users.filter((user) => { return user.active == YN.Yes; });
+          let entity = await lookupSingleEntity(entity_id);
+          return okResponse('Ok', { entity:(entity||null), users, invitation });
         }
-        return invalidResponse('Bad Request: Missing/Invalid entity_id');
+        return okResponse('Ok', { entity:null, users:[], invitation });
 
       // Officially set the invitation as consented, replace its dummy email with the true value, and set its fullname.
       // The PostSignup trigger lambda will come by later and "scrape" these out of the invitation for its own needs.
@@ -103,7 +105,7 @@ export const handler = async(event:any) => {
 
 
 /**
- * RUN MANUALLY: Modify the task, cloudfront domain, region, invitation-code, and queryStringParameters.
+ * RUN MANUALLY: Modify the task, landscape, region, invitation-code, and queryStringParameters as needed.
  */
 const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY') {

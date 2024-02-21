@@ -3,11 +3,13 @@ import { DAOInvitation, DAOUser } from '../../_lib/dao/dao';
 import { Invitation, Role, Roles, User } from '../../_lib/dao/entity';
 import { handler } from './PostSignup';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
+import { AdminDeleteUserCommandOutput } from '@aws-sdk/client-cognito-identity-provider';
 
 // ---------------------- EVENT DETAILS ----------------------
 const clientId = '6s4a2ilv9e5solo78f4d75hlp8';
 const userPoolId = 'us-east-2_J9AbymKIz'
 let create_user_attempts = 0;
+let remove_user_attempts = 0;
 let role_lookup_attempts = 0;
 let invitation_lookup_attempts = 0;
 let invitationRole:Role = Roles.RE_ADMIN;
@@ -29,6 +31,10 @@ jest.mock('../../_lib/cognito/Lookup.ts', () => {
         default:
           return invitationRole
       }
+    },
+    removeUserFromUserpool: async (UserPoolId:string, Username:string, region:string):Promise<AdminDeleteUserCommandOutput> => {
+      remove_user_attempts++;
+      return {} as AdminDeleteUserCommandOutput;
     }
   }
 });
@@ -102,195 +108,170 @@ jest.mock('../../_lib/dao/dao.ts', () => {
   }
 });
 
-const testHandler = () => {
-
-  describe('Post signup lambda trigger: handler', () => {
-    const resetMockCounters = () => {
-      role_lookup_attempts = 0;
-      create_user_attempts = 0;
-      invitation_lookup_attempts = 0;
+describe('Post signup lambda trigger: handler', () => {
+  const request = {
+    userAttributes: {
+      sub: 'asdgsgsfdgsdfg',
+      email: 'daffyduck@warnerbros.com',
+      email_verified: 'true',
+      phone_number: '+6175558888',
+      ['cognito:user_status']: 'CONFIRMED'
     }
+  }
 
-    it('Should skip all SDK use if the event has no userpoolId, and throw error.', async () => {
-      await expect(async () => {
-        await handler({});
-      }).rejects.toThrow();    
-      expect(role_lookup_attempts).toEqual(0);
-      expect(invitation_lookup_attempts).toEqual(0);
-      expect(create_user_attempts).toEqual(0);
-      resetMockCounters();
-    });
+  const resetMockCounters = () => {
+    role_lookup_attempts = 0;
+    create_user_attempts = 0;
+    remove_user_attempts = 0;
+    invitation_lookup_attempts = 0;
+  }
 
-    it('Should skip all SDK use if the event has no clientId, and throw error.' , async () => {
-      await expect(async () => {
-        await handler({
-          userPoolId: 'us-east-2_J9AbymKIz',
-        });
-      }).rejects.toThrow();    
-      expect(role_lookup_attempts).toEqual(0);
-      expect(invitation_lookup_attempts).toEqual(0);
-      expect(create_user_attempts).toEqual(0);
-      resetMockCounters();
-    });
+  it('Should skip all SDK use if the event has no userpoolId, and throw error.', async () => {
+    await expect(async () => {
+      await handler({});
+    }).rejects.toThrow();    
+    expect(role_lookup_attempts).toEqual(0);
+    expect(invitation_lookup_attempts).toEqual(0);
+    expect(create_user_attempts).toEqual(0);
+    expect(remove_user_attempts).toEqual(0);
+    resetMockCounters();
+  });
 
-    it('Should NOT attempt to make a dynamodb entry for the user if lookupRole fails', async () => {
-      await expect(async () => {
-        await handler({ userPoolId, callerContext: { clientId: 'clientIdForRoleLookupFailure' }});
-      }).rejects.toThrow();    
-      expect(role_lookup_attempts).toEqual(1);
-      expect(invitation_lookup_attempts).toEqual(0);
-      expect(create_user_attempts).toEqual(0);
-      resetMockCounters();
-    });
+  it('Should skip all SDK use if the event has no clientId, and throw error.' , async () => {
+    await expect(async () => {
+      await handler({
+        userPoolId: 'us-east-2_J9AbymKIz',
+        request
+      });
+    }).rejects.toThrow();    
+    expect(role_lookup_attempts).toEqual(0);
+    expect(invitation_lookup_attempts).toEqual(0);
+    expect(create_user_attempts).toEqual(0);
+    expect(remove_user_attempts).toEqual(1);
+    resetMockCounters();
+  });
 
-    it('Should NOT attempt to make a dynamodb entry for the user if client lookup found a match, \
-    and a role could be ascertained, but insufficient attributes available in event.', async () => {
-      await expect(async () => {
-        await handler({ 
-          userPoolId, 
-          callerContext: { clientId }
-        });
-      }).rejects.toThrow();    
-      expect(role_lookup_attempts).toEqual(1);
-      expect(invitation_lookup_attempts).toEqual(0);
-      expect(create_user_attempts).toEqual(0);
-      resetMockCounters();
-      
-      await expect(async () => {
-        await handler({ 
-          userPoolId, 
-          callerContext: { clientId },
-          request: {
-            userAttributes: {
-              sub: 'asdgsgsfdgsdfg',
-              phone_number: '+6175558888'
-              // email will be missing
-              // email_verified will be false/null
-            }
-          }
-        });
-      }).rejects.toThrow();    
-      expect(role_lookup_attempts).toEqual(1);
-      expect(invitation_lookup_attempts).toEqual(0);
-      expect(create_user_attempts).toEqual(0);
-      resetMockCounters();
-    });
+  it('Should NOT attempt to make a dynamodb entry for the user if lookupRole fails', async () => {
+    await expect(async () => {
+      await handler({ userPoolId, request, callerContext: { clientId: 'clientIdForRoleLookupFailure' }});
+    }).rejects.toThrow();    
+    expect(role_lookup_attempts).toEqual(1);
+    expect(invitation_lookup_attempts).toEqual(0);
+    expect(create_user_attempts).toEqual(0);
+    expect(remove_user_attempts).toEqual(1);
+    resetMockCounters();
+  });
 
-    it('Should make it as far as the invitation lookup if role lookup succeeds and \
-    sufficient attributes came with the event, but still no user creation if invitation lookup fails', async () => {
-      const event = { 
+  it('Should NOT attempt to make a dynamodb entry for the user if client lookup found a match, \
+  and a role could be ascertained, but insufficient attributes available in event.', async () => {
+    await expect(async () => {
+      await handler({ 
+        userPoolId, 
+        callerContext: { clientId }
+      });
+    }).rejects.toThrow();    
+    expect(role_lookup_attempts).toEqual(1);
+    expect(invitation_lookup_attempts).toEqual(0);
+    expect(create_user_attempts).toEqual(0);
+    expect(remove_user_attempts).toEqual(0);
+    resetMockCounters();
+    
+    await expect(async () => {
+      await handler({ 
         userPoolId, 
         callerContext: { clientId },
         request: {
           userAttributes: {
             sub: 'asdgsgsfdgsdfg',
-            email: 'daffyduck@warnerbros.com',
-            email_verified: 'true',
-            phone_number: '+6175558888',
-            ['cognito:user_status']: 'CONFIRMED'
+            phone_number: '+6175558888'
+            // email will be missing
+            // email_verified will be false/null
           }
         }
-      };
-
-      invitationRole = Roles.RE_ADMIN;
-      invitationScenario = 'lookup_failure';
-      await expect(async () => {
-        await handler(event);     
-      }).rejects.toThrow();
-      expect(role_lookup_attempts).toEqual(1);
-      expect(invitation_lookup_attempts).toEqual(1);
-      expect(create_user_attempts).toEqual(0);
-      resetMockCounters();
-
-      invitationRole = Roles.SYS_ADMIN;
-      invitationScenario = 'lookup_failure';
-      await expect(async () => {
-        await handler(event);     
-      }).rejects.toThrow();
-      expect(role_lookup_attempts).toEqual(1);
-      expect(invitation_lookup_attempts).toEqual(1);
-      expect(create_user_attempts).toEqual(0);
-      resetMockCounters();
-
-      invitationRole = Roles.RE_AUTH_IND;
-      invitationScenario = 'lookup_failure';
-      await expect(async () => {
-        await handler(event);     
-      }).rejects.toThrow();
-      expect(role_lookup_attempts).toEqual(1);
-      expect(invitation_lookup_attempts).toEqual(1);
-      expect(create_user_attempts).toEqual(0);
-      resetMockCounters();
-    });
-
-    it('Should carry out user creation if both role and invitation lookups succeed and sufficient \
-    attributes came with the event', async () => {
-      const event = { 
-        userPoolId, 
-        callerContext: { clientId },
-        request: {
-          userAttributes: {
-            sub: 'asdgsgsfdgsdfg',
-            email: 'daffyduck@warnerbros.com',
-            email_verified: 'true',
-            phone_number: '+6175558888',
-            ['cognito:user_status']: 'CONFIRMED'
-          }
-        }
-      };
-
-      invitationRole = Roles.RE_ADMIN;
-      invitationScenario = 'match';
-      await handler(event);     
-      expect(role_lookup_attempts).toEqual(1);
-      expect(invitation_lookup_attempts).toEqual(1);
-      expect(create_user_attempts).toEqual(1);
-      resetMockCounters();
-
-      invitationRole = Roles.SYS_ADMIN;
-      invitationScenario = 'match';
-      await handler(event);     
-      expect(role_lookup_attempts).toEqual(1);
-      expect(invitation_lookup_attempts).toEqual(1);
-      expect(create_user_attempts).toEqual(1);
-      resetMockCounters();
-
-      invitationRole = Roles.RE_AUTH_IND;
-      invitationScenario = 'match';
-      await handler(event);     
-      expect(role_lookup_attempts).toEqual(1);
-      expect(invitation_lookup_attempts).toEqual(1);
-      expect(create_user_attempts).toEqual(1);
-      resetMockCounters();
-    });
-  });
-}
-
-const testAddUser = () => {
-  describe('Post signup lambda trigger: addUserToDynamodb', () => {
-    it('TODO: create this test', async () => {
-      await new Promise<void>(resolve => {
-        console.log('addUserToDynamodb');
-        resolve();
       });
-    })
-  });
-}
-
-const testUndoLogin = () => {
-  describe('Post signup lambda trigger: undoCognitoLogin', () => {
-    it('TODO: create this test', async () => {
-      await new Promise<void>(resolve => {
-        console.log('undoCognitoLogin');
-        resolve();
-      });
-    })
+    }).rejects.toThrow();    
+    expect(role_lookup_attempts).toEqual(1);
+    expect(invitation_lookup_attempts).toEqual(0);
+    expect(create_user_attempts).toEqual(0);
+    resetMockCounters();
   });
 
-}
+  it('Should make it as far as the invitation lookup if role lookup succeeds and \
+  sufficient attributes came with the event, but still no user creation if invitation lookup fails', async () => {
+    const event = { 
+      userPoolId, 
+      callerContext: { clientId },
+      request
+    };
 
-testHandler();
+    invitationRole = Roles.RE_ADMIN;
+    invitationScenario = 'lookup_failure';
+    await expect(async () => {
+      await handler(event);     
+    }).rejects.toThrow();
+    expect(role_lookup_attempts).toEqual(1);
+    expect(invitation_lookup_attempts).toEqual(1);
+    expect(create_user_attempts).toEqual(0);
+    expect(remove_user_attempts).toEqual(1);
+    resetMockCounters();
 
-testAddUser();
+    invitationRole = Roles.SYS_ADMIN;
+    invitationScenario = 'lookup_failure';
+    await expect(async () => {
+      await handler(event);     
+    }).rejects.toThrow();
+    expect(role_lookup_attempts).toEqual(1);
+    expect(invitation_lookup_attempts).toEqual(1);
+    expect(create_user_attempts).toEqual(0);
+    expect(remove_user_attempts).toEqual(1);
+    resetMockCounters();
 
-testUndoLogin();
+    invitationRole = Roles.RE_AUTH_IND;
+    invitationScenario = 'lookup_failure';
+    await expect(async () => {
+      await handler(event);     
+    }).rejects.toThrow();
+    expect(role_lookup_attempts).toEqual(1);
+    expect(invitation_lookup_attempts).toEqual(1);
+    expect(create_user_attempts).toEqual(0);
+    expect(remove_user_attempts).toEqual(1);
+    resetMockCounters();
+  });
+
+  it('Should carry out user creation if both role and invitation lookups succeed and sufficient \
+  attributes came with the event', async () => {
+    const event = { 
+      userPoolId, 
+      callerContext: { clientId },
+      request
+    };
+
+    invitationRole = Roles.RE_ADMIN;
+    invitationScenario = 'match';
+    await handler(event);     
+    expect(role_lookup_attempts).toEqual(1);
+    expect(invitation_lookup_attempts).toEqual(1);
+    expect(create_user_attempts).toEqual(1);
+    expect(remove_user_attempts).toEqual(0);
+    resetMockCounters();
+
+    invitationRole = Roles.SYS_ADMIN;
+    invitationScenario = 'match';
+    await handler(event);     
+    expect(role_lookup_attempts).toEqual(1);
+    expect(invitation_lookup_attempts).toEqual(1);
+    expect(create_user_attempts).toEqual(1);
+    expect(remove_user_attempts).toEqual(0);
+    resetMockCounters();
+
+    invitationRole = Roles.RE_AUTH_IND;
+    invitationScenario = 'match';
+    await handler(event);     
+    expect(role_lookup_attempts).toEqual(1);
+    expect(invitation_lookup_attempts).toEqual(1);
+    expect(create_user_attempts).toEqual(1);
+    expect(remove_user_attempts).toEqual(0);
+    resetMockCounters();
+  });
+});
+

@@ -17,7 +17,7 @@ export class UserInvitation {
 
   private invitation:Invitation;
   private _code:string;
-  private link:string;
+  private _link:string;
   private entity_name:string;
   private messageId:string|undefined;
 
@@ -32,12 +32,13 @@ export class UserInvitation {
     }
     this.invitation = invitation as Invitation;
     this.entity_name = entity_name;
-    this.link = link;
+    this._link = link;
 
     // If an invitation code is not provided, generate one.
     let { code } = invitation;
     if( ! code) code = uuidv4();
     this._code = code;
+    this._link = `${this._link}&code=${this._code}`
   }
 
   /**
@@ -123,7 +124,7 @@ export class UserInvitation {
                     A ${role_fullname} is: ${role_description}
                   </div>
                   <div class="direction1">
-                    Click <a href="${this.link}&code=${this._code}" style="font-weight: bold;">here</a> to register
+                    Click <a href="${this._link}" style="font-weight: bold;">here</a> to register
                   </div></div>
                 </div>`,
             }
@@ -153,21 +154,30 @@ export class UserInvitation {
    */
   private persist = async ():Promise<any> => {
     try {
-      let { entity_id, role, sent_timestamp } = this.invitation;
+      let { email, entity_id, role, sent_timestamp } = this.invitation;
 
       if( ! sent_timestamp) {
         sent_timestamp = new Date().toISOString();
       }
 
-      // Make sure email is NOT assigned the actual value, but the code value instead.
-      const dao = DAOFactory.getInstance({ DAOType: 'invitation', Payload: {
+      const Payload = {
         code: this._code, 
         email: this._code,
         entity_id, 
         role, 
         message_id: this.messageId,
         sent_timestamp
-      } as Invitation}) as DAOInvitation;
+      } as Invitation;
+
+      // A SYS_ADMIN should only have to go through the cognito stage of the registration process.
+      if(role == Roles.SYS_ADMIN) {
+        Payload.email = email;
+        Payload.acknowledged_timestamp = sent_timestamp,
+        Payload.consented_timestamp = sent_timestamp
+      }
+
+      // Make sure email is NOT assigned the actual value, but the code value instead.
+      const dao = DAOFactory.getInstance({ DAOType: 'invitation', Payload }) as DAOInvitation;
 
       return await dao.create();
     }
@@ -179,5 +189,9 @@ export class UserInvitation {
 
   public get code():string {
     return this._code;
+  }
+
+  public get link():string {
+    return this._link;
   }
 }

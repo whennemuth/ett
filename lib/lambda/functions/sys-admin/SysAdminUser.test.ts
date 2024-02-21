@@ -1,6 +1,7 @@
-import { CognitoLookupMock, InvitationMock, ParameterValidationTests, UserInvitationTests, UtilsMock } from '../re-admin/ReAdminUser.mocks';
+import { CognitoLookupMock, InvitationMock, ParameterValidationTests, SignupLinkMock, UserInvitationTests, UtilsMock } from '../re-admin/ReAdminUser.mocks';
 
 process.env.CLOUDFRONT_DOMAIN = 'dnkkwr06vb9yr.cloudfront.net';
+process.env.COGNITO_DOMAIN = 'ett-dev.auth.us-east-2.amazoncognito.com';
 
 // Create the partial mock for Utils.ts module
 jest.mock('../Utils.ts', () => {
@@ -11,6 +12,12 @@ jest.mock('../Utils.ts', () => {
 // Create the mock es6 class for UserInvitation
 jest.mock('../../_lib/invitation/Invitation', () => {
   return InvitationMock();
+});
+
+// Create the mock for the SignupLink.ts module
+jest.mock('../../_lib/invitation/SignupLink.ts', () => {
+  const originalModule = jest.requireActual('../../_lib/invitation/SignupLink.ts');
+  return SignupLinkMock();
 });
 
 // Create the mock for the cognito Lookup.ts module
@@ -56,8 +63,11 @@ describe('SysAdminUser lambda trigger: inviteUser', () => {
   });
   it('Should return 200 if an invitation exists for the same entity and role, but it is retracted', async () => {
     await UserInvitationTests.retractedSameRole(handler, mockEvent, ReAdminTask.INVITE_USER);
-  })
+  });
   it('Should return 200 if all validity criterion are met', async () => {
     await UserInvitationTests.send200(handler, mockEvent, ReAdminTask.INVITE_USER);
+  });
+  it('Should send an email with a link that specifies sysadmin in as the querystring action parameter', async () => {
+    await UserInvitationTests.send200SysAdmin(handler, mockEvent, ReAdminTask.INVITE_USER);
   });
 });

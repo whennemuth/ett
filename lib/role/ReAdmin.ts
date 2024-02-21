@@ -21,13 +21,14 @@ export class ReAdminUserApi extends AbstractRole {
     super(scope, constructId);
 
     const { userPool, cloudfrontDomain } = parms;
-    const lambdaFunction = new LambdaFunction(scope, `${constructId}Lambda`, cloudfrontDomain, userPool.userPoolId);
+    const lambdaFunction = new LambdaFunction(scope, `${constructId}Lambda`, parms);
 
     this.api = new AbstractRoleApi(scope, `${constructId}Api`, {
       cloudfrontDomain,
       lambdaFunction,
       userPool,
       role: Roles.RE_ADMIN,
+      roleFullName: 'Registered Entity Administrator',
       description: 'Api for all operations that are open to a registered entity administrator',
       bannerImage: 'client-admin.png',
       resourceId: Roles.RE_ADMIN,
@@ -58,8 +59,11 @@ export class ReAdminUserApi extends AbstractRole {
  * Just the lambda function without the api gateway and cognito scoping resources.
  */
 export class LambdaFunction extends AbstractFunction {
-  constructor(scope:Construct, constructId:string, cloudfrontDomain:string, userpoolId:string) {
+  constructor(scope:Construct, constructId:string, parms:AdminUserParms) {
     const context:IContext = scope.node.getContext('stack-parms');
+    const { userPool, cloudfrontDomain } = parms;
+    const { userPoolArn, userPoolId } = userPool;
+    
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
       entry: 'lib/lambda/functions/re-admin/ReAdminUser.ts',
@@ -80,7 +84,23 @@ export class LambdaFunction extends AbstractFunction {
             statements: [
               new PolicyStatement({
                 actions: [ 'ses:Send*', 'ses:Get*' ],
-                resources: [ `arn:aws:ses:${context.REGION}:${context.ACCOUNT}:identity/${context.SES_IDENTITY}` ],
+                resources: context.SES_IDENTITIES.map((identity:string) => {
+                  return `arn:aws:ses:${context.REGION}:${context.ACCOUNT}:identity/${identity}`
+                }),
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
+          'QueryCognito': new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [  'cognito-idp:List*'  ],
+                resources: [ '*' ],
+                effect: Effect.ALLOW
+              }),
+              new PolicyStatement({
+                actions: [  'cognito-idp:AdminGet*', 'cognito-idp:AdminDeleteUser' ],
+                resources: [ userPoolArn ],
                 effect: Effect.ALLOW
               })
             ]
@@ -93,7 +113,7 @@ export class LambdaFunction extends AbstractFunction {
         DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
         DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
-        USERPOOL_ID: userpoolId
+        USERPOOL_ID: userPoolId
       }
     });
   }

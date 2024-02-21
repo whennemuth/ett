@@ -14,11 +14,16 @@ const entity_name = 'Boston University';
 const link = 'https://some/path/to/index.htm?action=acknowledge';
 
 let daoInviteAttempts = 0;
+let acknowledged:boolean = false;
+let consented = false;
+let preRegistered = ():boolean => acknowledged && consented;
 jest.mock('../../_lib/dao/dao.ts', () => {
   return {
     __esModule: true,
     DAOFactory: {
-      getInstance: jest.fn().mockImplementation(() => {
+      getInstance: jest.fn().mockImplementation((parms:any) => {
+        acknowledged = parms?.Payload?.acknowledged_timestamp ? true : false;
+        consented = parms?.Payload?.consented_timestamp ? true : false;
         return {
           create: async ():Promise<any> => {
             daoInviteAttempts++;
@@ -77,7 +82,19 @@ describe('Send', () => {
     expect(daoInviteAttempts).toEqual(2);
     expect(invitation.code).toBeDefined();
     expect(invitation.code).toMatch(/^[^\s]+$/);
+    expect(preRegistered()).toBe(false);
   });
+
+  it('Should pre-register a system administrator', async () => {
+    const sysAdminInvParms = Object.assign({}, invitationParms);
+    sysAdminInvParms.role = Roles.SYS_ADMIN;
+    const invitation = new UserInvitation(sysAdminInvParms, link, entity_name);
+    expect(await invitation.send()).toBe(true);
+    expect(daoInviteAttempts).toEqual(3);
+    expect(invitation.code).toBeDefined();
+    expect(invitation.code).toMatch(/^[^\s]+$/);
+    expect(preRegistered()).toBe(true);
+  })
 
   it('Should configure the ses email as expected', async () => {
     const { email, role } = invitationParms;
@@ -90,7 +107,7 @@ describe('Send', () => {
     expect(html).toContain(entity_name);
     expect(html).toContain('Registered Entity Authorized Individual');
     expect(html).toContain(`${link}&code=${invitation.code}`);
-    expect(daoInviteAttempts).toEqual(3);
+    expect(daoInviteAttempts).toEqual(4);
   });  
 });
 

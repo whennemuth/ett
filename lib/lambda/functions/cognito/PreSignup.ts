@@ -1,7 +1,7 @@
 import { DAOFactory, DAOInvitation } from "../../_lib/dao/dao";
 import { Invitation, Role, Roles } from "../../_lib/dao/entity";
 import { PreSignupEventType } from "./PreSignupEventType";
-import { lookupRole } from "../../_lib/cognito/Lookup";
+import { lookupRole, lookupUserPoolClientId, lookupUserPoolId } from "../../_lib/cognito/Lookup";
 
 export enum Messages {
   UNINVITED = 'You are not on the invite list for signup as ',
@@ -104,4 +104,42 @@ export const handler = async (_event:any) => {
     console.error(e);
     throw e;
   }
+}
+
+/**
+ * RUN MANUALLY: Modify the role, region, etc. as needed.
+ */
+const { argv:args } = process;
+if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
+
+  const role:Role = Roles.SYS_ADMIN;
+  const userpoolName:string = 'ett-cognito-userpool';
+  const region = 'us-east-2';
+  const email = 'wrh@bu.edu';
+  let userPoolId:string|undefined;
+
+  process.env.DYNAMODB_INVITATION_TABLE_NAME = 'ett-invitations';
+  process.env.DYNAMODB_USER_TABLE_NAME = 'ett-users';
+
+  lookupUserPoolId(userpoolName, region)
+  .then((id:string|undefined) => {
+    userPoolId = id;
+    return lookupUserPoolClientId(userPoolId||'', role, region);
+  })
+  .then((clientId:string|undefined) => {
+    const _event = {
+      region, userPoolId,
+      callerContext: { clientId },
+      request: {
+        userAttributes: { email }
+      }
+    } as PreSignupEventType;
+
+    return handler(_event);
+  })
+  .then(() => {
+    console.log('Presignup check complete.');
+  }).catch((reason) => {
+    console.error(reason);
+  });
 }

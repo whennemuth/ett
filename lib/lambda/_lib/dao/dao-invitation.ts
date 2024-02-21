@@ -102,7 +102,12 @@ export function InvitationCrud(invitationInfo:Invitation): DAOInvitation {
     }
     if(entity_id) {
       vals[':v2'] = { S: entity_id };
-      if(cdns) cdns = `${cdns} AND ${InvitationFields.entity_id} = :v2`;
+      if(cdns) {
+        cdns = `${cdns} AND ${InvitationFields.entity_id} = :v2`;
+      }
+      else {
+        cdns = `${InvitationFields.entity_id} = :v2`;
+      }
       if( ! email) index = 'EntityIndex';
     }
 

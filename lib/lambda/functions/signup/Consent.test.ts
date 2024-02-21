@@ -214,20 +214,20 @@ describe(`Consent lambda trigger: handler ${Task.LOOKUP_INVITATION}`, () => {
 
 describe(`Consent lambda trigger: handler ${Task.LOOKUP_ENTITY}`, () => {
 
-  it('Should return 400 response with message if entity_id querystring parameter is missing', async () => {
-    goodCode = code;
-    await invokeAndAssert({
-      _handler:handler, code, task: Task.LOOKUP_ENTITY,
-      queryStringParameters: {},
-      expectedResponse: {
-        statusCode: 400,
-        outgoingBody: {
-          message: `Bad Request: Missing/Invalid entity_id`,
-          payload: { invalid: true }
-        } as OutgoingBody
-      }
-    });
-  });
+  // it('Should return 400 response with message if entity_id querystring parameter is missing', async () => {
+  //   goodCode = code;
+  //   await invokeAndAssert({
+  //     _handler:handler, code, task: Task.LOOKUP_ENTITY,
+  //     queryStringParameters: {},
+  //     expectedResponse: {
+  //       statusCode: 400,
+  //       outgoingBody: {
+  //         message: `Bad Request: Missing/Invalid entity_id`,
+  //         payload: { invalid: true }
+  //       } as OutgoingBody
+  //     }
+  //   });
+  // });
 
   it('Should return 200 response with payload if entity_id querystring parameter is provided', async () => {
     goodCode = code;

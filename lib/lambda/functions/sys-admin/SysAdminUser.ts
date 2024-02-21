@@ -1,7 +1,8 @@
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
-import { Roles } from '../../_lib/dao/entity';
+import { Role, Roles } from '../../_lib/dao/entity';
+import { SignupLink } from '../../_lib/invitation/SignupLink';
 import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../Utils";
-import { Task as ReAdminTasks, createEntity, deactivateEntity, inviteUser, updateEntity } from '../re-admin/ReAdminUser';
+import { Task as ReAdminTasks, lookupEntity, createEntity, deactivateEntity, inviteUser, updateEntity } from '../re-admin/ReAdminUser';
 
 export enum Task {
   REPLACE_RE_ADMIN = 'replace_re_admin'
@@ -38,6 +39,9 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
     else {
       log(`Performing task: ${task}`);
       switch(task as ReAdminTasks|Task) {
+        case ReAdminTasks.LOOKUP_USER_CONTEXT:
+          const { email, role } = parameters;
+          return await lookupEntity(email, role);
         case ReAdminTasks.CREATE_ENTITY:
           return await createEntity(parameters);
         case ReAdminTasks.UPDATE_ENTITY:
@@ -45,7 +49,12 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
         case ReAdminTasks.DEACTIVATE_ENTITY:
           return await deactivateEntity(parameters);
         case ReAdminTasks.INVITE_USER:
-          return await inviteUser(parameters, Roles.SYS_ADMIN);
+          return await inviteUser(parameters, Roles.SYS_ADMIN, async (entity_id:string, role:Role) => {
+            if(role == Roles.SYS_ADMIN) {
+              return await new SignupLink().getCognitoLinkForRole(role);
+            }
+            return await new SignupLink().getRegistrationLink(entity_id);
+          });
         case ReAdminTasks.PING:
           return okResponse('Ping!', parameters);
         case Task.REPLACE_RE_ADMIN:
@@ -76,18 +85,20 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
 
   const task = ReAdminTasks.INVITE_USER;
   const landscape = 'dev';
+  process.env.DYNAMODB_INVITATION_TABLE_NAME = 'ett-invitations';
+  process.env.DYNAMODB_USER_TABLE_NAME = 'ett-users';
+  process.env.DYNAMODB_ENTITY_TABLE_NAME = 'ett-entities';
+  process.env.USERPOOL_NAME = 'ett-cognito-userpool'; 
+  process.env.COGNITO_DOMAIN = 'ett-dev.auth.us-east-2.amazoncognito.com'; //  `${this.context.STACK_ID}-${this.context.TAGS.Landscape}.${REGION}.amazoncognito.com`
+  process.env.REGION = 'us-east-2';
+  process.env.DEBUG = 'true';
 
   lookupCloudfrontDomain(landscape).then((cloudfrontDomain) => {
-
     if( ! cloudfrontDomain) {
       throw('Cloudfront domain lookup failure');
     }
-    process.env.DYNAMODB_INVITATION_TABLE_NAME = 'ett-invitations';
-    process.env.DYNAMODB_USER_TABLE_NAME = 'ett-users';
-    process.env.DYNAMODB_ENTITY_TABLE_NAME = 'ett-entities'
     process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
-    process.env.REGION = 'us-east-2'
-    process.env.DEBUG = 'true';
+    process.env.REDIRECT_URI = `${cloudfrontDomain}/index.htm`;
 
     const payload = {
       task,

@@ -34,7 +34,7 @@ export const handler = async(event:any) => {
 
     switch(task) {
   
-      // Just want the entity, probably to know its acknowledge and consent statuses.
+      // Just want the invitation, probably to know its acknowledge and consent statuses.
       case Task.LOOKUP_INVITATION:
         return okResponse('Ok', invitation);
 

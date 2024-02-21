@@ -61,6 +61,7 @@ export class HelloWorldApi extends AbstractRole {
       lambdaFunction,
       userPool,
       role: Roles.HELLO_WORLD,
+      roleFullName: 'Hello World Tester',
       description: 'Simple hello world api for initial proving of authentication and scopes',
       bannerImage: 'client-hello-world.png',
       resourceId: Roles.HELLO_WORLD,
@@ -79,4 +80,5 @@ export class HelloWorldApi extends AbstractRole {
   public getLambdaFunction(): Function {
     return this.api.getLambdaFunction();
   }
+
 }

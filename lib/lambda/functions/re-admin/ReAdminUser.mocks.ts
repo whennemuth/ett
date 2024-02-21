@@ -1,7 +1,7 @@
 // TODO: Move this module out into a more generic location
 
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse, OutgoingBody } from "../../../role/AbstractRole";
-import { Entity, Invitation, Roles, User, YN } from "../../_lib/dao/entity";
+import { Entity, Invitation, Role, Roles, User, YN } from "../../_lib/dao/entity";
 
 /**
  * Define a partial mock for Utils.ts module
@@ -114,10 +114,30 @@ export function InvitationMock() {
         send: async () => {
           return invitation.entity_id != 'explode';
         },
-        code: 'abc123'
+        code: 'abc123',
+        link
       };
     })
   };
+}
+
+/**
+ * Define a mock for the es6 SignupLink class
+ * @returns 
+ */
+export function SignupLinkMock() {
+  return {
+    SignupLink: jest.fn().mockImplementation((userPoolName?:string) => {
+      return {
+        getCognitoLinkForRole: async (role:Role): Promise<string|undefined> => {
+          return 'sysadmin-signup-link';
+        },
+        getRegistrationLink: async (entity_id?:string):Promise<string|undefined> => {
+          return 'non-sysadmin-signup-link'
+        }
+      }
+    })
+  }
 }
 
 type Expected = { statusCode:number, outgoingBody:OutgoingBody };
@@ -283,7 +303,7 @@ export const UserInvitationTests = {
         task: taskName,
         parameters: {
           email: "alreadyInvitedAuthInd@gmail.com", 
-          entity_id: "id_for_entity_with_pending_invitation_for_auth_ind", 
+          entity_id: 'id_for_entity_with_pending_invitation_for_auth_ind', 
           role: Roles.RE_AUTH_IND
         }
       },
@@ -291,7 +311,7 @@ export const UserInvitationTests = {
         statusCode: 200,
         outgoingBody: { 
           message: `Invitation successfully sent: abc123`,
-          payload: { ok: true, invitation_code: 'abc123'  }
+          payload: { ok: true, invitation_code: 'abc123', invitation_link: 'non-sysadmin-signup-link'  }
         }
       }
     });
@@ -372,7 +392,7 @@ export const UserInvitationTests = {
         statusCode: 200,
         outgoingBody: { 
           message: `Invitation successfully sent: abc123`,
-          payload: { ok: true, invitation_code: 'abc123' }
+          payload: { ok: true, invitation_code: 'abc123', invitation_link: 'non-sysadmin-signup-link' }
         }
       },
       inviterCognitoSub: 're_admin_same_entity_sub'
@@ -405,7 +425,7 @@ export const UserInvitationTests = {
         task: taskName,
         parameters: {
           email: "invitedPeer@gmail.com", 
-          entity_id: "id_for_entity_with_peer_invitation_for_auth_ind", 
+          entity_id: 'id_for_entity_with_peer_invitation_for_auth_ind', 
           role: Roles.RE_AUTH_IND
         }
       },
@@ -413,7 +433,7 @@ export const UserInvitationTests = {
         statusCode: 200,
         outgoingBody: { 
           message: `Invitation successfully sent: abc123`,
-          payload: { ok: true, invitation_code: 'abc123' }
+          payload: { ok: true, invitation_code: 'abc123', invitation_link: 'non-sysadmin-signup-link' }
         }
       }
     });
@@ -425,7 +445,7 @@ export const UserInvitationTests = {
         task: taskName,
         parameters: {
           email: "invitedButRetracted@gmail.com", 
-          entity_id: "id_for_entity_with_retracted_invitation_for_re_admin", 
+          entity_id: 'id_for_entity_with_retracted_invitation_for_re_admin', 
           role: Roles.RE_ADMIN
         }
       },
@@ -433,7 +453,7 @@ export const UserInvitationTests = {
         statusCode: 200,
         outgoingBody: { 
           message: `Invitation successfully sent: abc123`,
-          payload: { ok: true, invitation_code: 'abc123' }
+          payload: { ok: true, invitation_code: 'abc123', invitation_link: 'non-sysadmin-signup-link' }
         }
       }
     });
@@ -445,7 +465,7 @@ export const UserInvitationTests = {
         task: taskName,
         parameters: {
           email: "invitee@gmail.com", 
-          entity_id: "id_for_active_entity", 
+          entity_id: 'id_for_active_entity', 
           role: Roles.RE_AUTH_IND
         }
       },
@@ -453,9 +473,28 @@ export const UserInvitationTests = {
         statusCode: 200,
         outgoingBody: { 
           message: `Invitation successfully sent: abc123`,
-          payload: { ok: true, invitation_code: 'abc123'}
+          payload: { ok: true, invitation_code: 'abc123', invitation_link: 'non-sysadmin-signup-link' }
         }
       }
     });
-  }
+  },
+  send200SysAdmin: async (_handler:any, eventMock:any, taskName:string) => {
+    await invokeAndAssert({
+      _handler, mockEvent:eventMock,
+      incomingPayload: {
+        task: taskName,
+        parameters: {
+          email: "sysadmin@gmail.com", 
+          role: Roles.SYS_ADMIN
+        }
+      },
+      expectedResponse: {
+        statusCode: 200,
+        outgoingBody: { 
+          message: `Invitation successfully sent: abc123`,
+          payload: { ok: true, invitation_code: 'abc123', invitation_link: 'sysadmin-signup-link' }
+        }
+      }
+    });
+  },
 }

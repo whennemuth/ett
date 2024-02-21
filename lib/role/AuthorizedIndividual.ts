@@ -23,6 +23,7 @@ export class AuthorizedIndividualApi extends AbstractRole {
       lambdaFunction,
       userPool,
       role: Roles.RE_AUTH_IND,
+      roleFullName: 'Authorized Individual',
       description: 'Api for all operations that are open to an authorized individual',
       bannerImage: 'client-auth-ind.png',
       resourceId: Roles.RE_AUTH_IND,

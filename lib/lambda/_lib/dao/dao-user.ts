@@ -1,5 +1,5 @@
 import { DynamoDBClient, PutItemCommand, GetItemCommand, QueryCommand, UpdateItemCommand, AttributeValue, UpdateItemCommandInput, DeleteItemCommand, GetItemCommandInput, GetItemCommandOutput, UpdateItemCommandOutput, DeleteItemCommandInput, DeleteItemCommandOutput, QueryCommandInput, PutItemCommandOutput } from '@aws-sdk/client-dynamodb'
-import { User, UserFields, YN } from './entity';
+import { Roles, User, UserFields, YN } from './entity';
 import { Builder, getUpdateCommandBuilderInstance } from './db-update-builder'; 
 import { convertFromApiObject } from './db-object-builder';
 import { DAOUser } from './dao';
@@ -30,7 +30,9 @@ export function UserCrud(userinfo:User): DAOUser {
     // Handle required field validation
     if( ! entity_id) throwMissingError('create', UserFields.entity_id);
     if( ! role) throwMissingError('create', UserFields.role);
-    if( ! fullname ) throwMissingError('create', UserFields.fullname);
+    if( role != Roles.SYS_ADMIN) {
+      if( ! fullname ) throwMissingError('create', UserFields.fullname);
+    }
     if( ! sub ) throwMissingError('create', UserFields.sub);
 
     // Make sure the original userinfo object gets a create_timestamp value if a default value is invoked.

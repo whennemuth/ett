@@ -129,7 +129,7 @@ export class SignupApiConstruct extends Construct {
     // Add the task path element
     const taskPath = consentPath.addResource('{task}')
     // Add the "invitation-code" parameter as the last path element.
-    const invitationCodePath = taskPath.addResource('{invitation_code}');
+    const invitationCodePath = taskPath.addResource('{invitation-code}');
     invitationCodePath.addMethod('GET');   // GET /consent/task/{invitation-code}
     invitationCodePath.addMethod('POST');
     invitationCodePath.addCorsPreflight({
