@@ -111,7 +111,7 @@ export function UserCrud(userinfo:User): DAOUser {
     console.log(`Reading users for ${v1}`);
     const params = {
       TableName: process.env.DYNAMODB_USER_TABLE_NAME,
-      ConsistentRead: true,
+      // ConsistentRead: true,
       ExpressionAttributeValues: {
         ':v1': { S: v1 }
       },
