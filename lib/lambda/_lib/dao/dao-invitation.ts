@@ -4,6 +4,7 @@ import { Builder, getUpdateCommandBuilderInstance } from './db-update-builder';
 import { convertFromApiObject } from './db-object-builder';
 import { DAOInvitation } from './dao';
 import { v4 as uuidv4 } from 'uuid';
+import { DynamoDbConstruct } from '../../../DynamoDb';
 
 const dbclient = new DynamoDBClient({ region: process.env.REGION });
 
@@ -108,7 +109,7 @@ export function InvitationCrud(invitationInfo:Invitation): DAOInvitation {
       else {
         cdns = `${InvitationFields.entity_id} = :v2`;
       }
-      if( ! email) index = 'EntityIndex';
+      if( ! email) index = DynamoDbConstruct.DYNAMODB_INVITATION_ENTITY_INDEX;
     }
 
     // Declare QueryCommandInput

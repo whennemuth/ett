@@ -2,7 +2,8 @@ import { DynamoDBClient, PutItemCommand, GetItemCommand, QueryCommand, UpdateIte
 import { Roles, User, UserFields, YN } from './entity';
 import { Builder, getUpdateCommandBuilderInstance } from './db-update-builder'; 
 import { convertFromApiObject } from './db-object-builder';
-import { DAOUser } from './dao';
+import {DAOUser } from './dao';
+import { DynamoDbConstruct } from '../../../DynamoDb';
 
 const dbclient = new DynamoDBClient({ region: process.env.REGION });
 
@@ -73,7 +74,7 @@ export function UserCrud(userinfo:User): DAOUser {
       return await _query({ v1: email, index: null } as IdxParms) as User[];
     }
     else {
-      return await _query({ v1: entity_id, index: 'EntityIndex' } as IdxParms) as User[];
+      return await _query({ v1: entity_id, index: DynamoDbConstruct.DYNAMODB_USER_ENTITY_INDEX } as IdxParms) as User[];
     }
   }
 
@@ -106,6 +107,7 @@ export function UserCrud(userinfo:User): DAOUser {
   type IdxParms = { v1:string; index:string|null }
   const _query = async (idxParms:IdxParms):Promise<User[]> => {
     const { v1, index } = idxParms;
+    const key = DynamoDbConstruct.DYNAMODB_USER_ENTITY_INDEX == index ? UserFields.entity_id : UserFields.email;
     console.log(`Reading users for ${v1}`);
     const params = {
       TableName: process.env.DYNAMODB_USER_TABLE_NAME,
@@ -113,7 +115,7 @@ export function UserCrud(userinfo:User): DAOUser {
       ExpressionAttributeValues: {
         ':v1': { S: v1 }
       },
-      KeyConditionExpression: `${UserFields.email} = :v1`
+      KeyConditionExpression: `${key} = :v1`
     } as QueryCommandInput;
 
     if(index) {

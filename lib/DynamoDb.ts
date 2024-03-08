@@ -10,6 +10,10 @@ export class DynamoDbConstruct extends Construct {
   static DYNAMODB_ENTITY_TABLE_NAME: string = 'ett-entities';
   static DYNAMODB_INVITATION_TABLE_NAME: string = 'ett-invitations';
 
+  static DYNAMODB_USER_ENTITY_INDEX: string = 'EntityIndex';
+  static DYNAMODB_INVITATION_ENTITY_INDEX: string = 'EntityIndex';
+  static DYNAMODB_INVITATION_EMAIL_INDEX: string = 'EmailIndex';
+
   context: IContext;
 
   private usersTable: TableV2;
@@ -34,7 +38,7 @@ export class DynamoDbConstruct extends Construct {
       deletionProtection: this.context.TAGS.Landscape == 'prod', 
       globalSecondaryIndexes: [
         {
-          indexName: 'EntityIndex',
+          indexName: DynamoDbConstruct.DYNAMODB_USER_ENTITY_INDEX,
           partitionKey: { name: UserFields.entity_id, type: AttributeType.STRING },
           sortKey: { name: UserFields.email, type: AttributeType.STRING },
           projectionType: ProjectionType.KEYS_ONLY,
@@ -66,13 +70,13 @@ export class DynamoDbConstruct extends Construct {
       deletionProtection: this.context.TAGS.Landscape == 'prod', 
       globalSecondaryIndexes: [
         {
-          indexName: 'EmailIndex',
+          indexName: DynamoDbConstruct.DYNAMODB_INVITATION_EMAIL_INDEX,
           partitionKey: { name: InvitationFields.email, type: AttributeType.STRING },
           sortKey: { name: InvitationFields.entity_id, type: AttributeType.STRING },
           projectionType: ProjectionType.ALL,
         },
         {
-          indexName: 'EntityIndex',
+          indexName: DynamoDbConstruct.DYNAMODB_INVITATION_ENTITY_INDEX,
           partitionKey: { name: InvitationFields.entity_id, type: AttributeType.STRING },
           sortKey: { name: InvitationFields.email, type: AttributeType.STRING },
           projectionType:ProjectionType.KEYS_ONLY
