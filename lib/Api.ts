@@ -56,7 +56,7 @@ export class ApiConstruct extends Construct {
     // Grant the re administrator api permissions to read/write from the users table
     dynamodb.getUsersTable().grantReadWriteData(this.reAdminApi.getLambdaFunction());
     dynamodb.getInvitationsTable().grantReadWriteData(this.reAdminApi.getLambdaFunction());
-    dynamodb.getUsersTable().grantReadWriteData(this.reAdminApi.getLambdaFunction());
+    dynamodb.getEntitiesTable().grantReadWriteData(this.reAdminApi.getLambdaFunction());
     // Grant the re administrator api permissions to read from the cognito userpool
     cognito.getUserPool().grant(this.reAdminApi.getLambdaFunction(), 
       'cognito-identity:Describe*', 
