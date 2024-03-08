@@ -1,4 +1,5 @@
-import { CognitoLookupMock, InvitationMock, ParameterValidationTests, SignupLinkMock, UserInvitationTests, UtilsMock } from './ReAdminUser.mocks';
+import { CognitoLookupMock, InvitationMock, UtilsMock, DaoMock, SignupLinkMock, 
+  ParameterValidationTests, UserInvitationTests, EntityLookupTests, MockingScenario } from './ReAdminUser.mocks';
 
 process.env.CLOUDFRONT_DOMAIN = 'dnkkwr06vb9yr.cloudfront.net';
 
@@ -25,8 +26,16 @@ jest.mock('../../_lib/cognito/Lookup.ts', () => {
   return CognitoLookupMock(originalModule);
 });
 
+jest.mock('../../_lib/dao/dao.ts', () => {
+  const originalModule = jest.requireActual('../../_lib/dao/dao.ts');
+  return DaoMock(originalModule);
+});
+
 import { mockEvent } from './MockEvent';
 import { Task, handler } from './ReAdminUser';
+import { AbstractRoleApi } from '../../../role/AbstractRole';
+import { Roles, User } from '../../_lib/dao/entity';
+import { SCENARIO } from '../../../../contexts/IContext';
 
 describe('ReAdminUser lambda trigger: handler', () => {
   it('Should handle a simple ping test as expected', async () => {
@@ -72,3 +81,48 @@ describe('ReAdminUser lambda trigger: inviteUser', () => {
     await UserInvitationTests.send200(handler, mockEvent, Task.INVITE_USER);
   });
 });
+
+describe('ReAdminUser lambda trigger: lookupEntity', () => {
+
+  it('Should ignore inactive users', async () => {
+    const eventMock = Object.assign({}, mockEvent);
+    eventMock.headers[AbstractRoleApi.ETTPayloadHeader] = JSON.stringify({
+      email: 'inactiveUser@gmail.com',
+      role: Roles.RE_ADMIN
+    });
+    await EntityLookupTests.ignoreInactiveUsers(handler, mockEvent, Task.LOOKUP_USER_CONTEXT);
+  });
+
+  it('Should process a typical scenario as expected', async () => {
+    const eventMock = Object.assign({}, mockEvent);
+    eventMock.headers[AbstractRoleApi.ETTPayloadHeader] = JSON.stringify({
+      email: 'daffyduck@warnerbros.com',
+      role: Roles.RE_ADMIN
+    });
+    await EntityLookupTests.userLookup(handler, mockEvent, Task.LOOKUP_USER_CONTEXT, { 
+      UserLookup: 'normal' 
+    } as MockingScenario);
+  });
+
+  it('Should process the multi-match on email edge case as expected', async () => {
+    const eventMock = Object.assign({}, mockEvent);
+    eventMock.headers[AbstractRoleApi.ETTPayloadHeader] = JSON.stringify({
+      email: 'daffyduck@cartoonville.com',
+      role: Roles.RE_ADMIN
+    });
+    await EntityLookupTests.userLookup(handler, mockEvent, Task.LOOKUP_USER_CONTEXT, { 
+      UserLookup: 'multi-match' 
+    } as MockingScenario);
+  });
+
+  it('Should ignore users who are sitting in the waiting room', async () => {
+    const eventMock = Object.assign({}, mockEvent);
+    eventMock.headers[AbstractRoleApi.ETTPayloadHeader] = JSON.stringify({
+      email: 'daffyduck@warnerbros.com',
+      role: Roles.RE_ADMIN
+    });
+    await EntityLookupTests.userLookup(handler, mockEvent, Task.LOOKUP_USER_CONTEXT, { 
+      UserLookup: 'waitingroom' 
+    } as MockingScenario);
+  });
+}); 

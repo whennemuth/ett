@@ -779,13 +779,13 @@
           desc.innerHTML = 'API to fill out a consent form'; break;
       }
     }
-    let selected_role = new URL(document.location.href).searchParams.get('selected_role');
+    let selected_role = new URL(document.location.href).searchParams.get('action');
     if(selected_role) {
       document.forms['formRole']['rdoRole'].value = selected_role;
     }
     roleChange();
 
-    let userContext;
+    let userContext = {};
 
     const rdoRoles = document.getElementsByName('rdoRole');
     rdoRoles.forEach(rdoRole => {
@@ -1263,12 +1263,12 @@
      * Make an api call to retrieve information about the currently logged in user along with entity info
      * RESUME NEXT: Test this.
      */
-    const getUserContext = async () => {
+    const setUserContext = async () => {
+      const msg = document.getElementById('apiResponse');
       try {
-        const msg = document.getElementById('apiResponse');
         const role = AccessJwtCookie.getRole().name;
         const email = IDJwtCookie.getUser().email;
-        const apiUri = STATIC_PARAMETERS.ROLES[role.name].API_URI
+        const apiUri = STATIC_PARAMETERS.ROLES[role].API_URI
         const outgoingPayload = {
           task: 'lookup_user_context',
           parameters: { email, role }
@@ -1479,13 +1479,13 @@
       $('#sysAdmin a').on('click', function (e) {
         e.preventDefault()
         $(this).tab('show')
-      })
+      });
 
       // Add show/hide behavior to the RE_ADMIN tabstrip
       $('#reAdmin a').on('click', function (e) {
         e.preventDefault()
         $(this).tab('show')
-      })
+      });
 
       // Function for checking the users login status and selecting the correct view based on the JWT content.
       const checkAuth = async () => {
@@ -1500,9 +1500,13 @@
               break;
 
             case 'RE_ADMIN':
-              userContext = await getUserContext();
-              // RESUME NEXT: Apply the entity data to the corresponding fields/labels in the RE_ADMIN view,
-              // including toggling disabled state between the create and update entity buttons accordingly.
+              await setUserContext();
+              const entity = userContext?.user?.entity || {};
+              const isEmpty = e => Object.keys(e).length == 0;
+              $('#btnReAdminEntityCreate').prop("disabled", !isEmpty(entity));
+              $('#btnReAdminEntityUpdate').prop("disabled", isEmpty(entity));
+              $('#txtReAdminEntityName').val(entity.entity_name);
+              $('#txtReAdminEntityDesc').val(entity.description);
               document.getElementById('app-section-RE_ADMIN').style.display = 'inline';
               break;
 

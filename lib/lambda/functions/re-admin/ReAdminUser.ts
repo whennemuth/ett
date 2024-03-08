@@ -62,6 +62,7 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
     }
   }
   catch(e:any) {
+    console.error(e);
     return errorResponse(`Internal server error: ${e.message}`);
   }
 }
@@ -118,8 +119,13 @@ export const lookupEntity = async (email:string, role:Role):Promise<LambdaProxyI
       usr.entity = {};
       continue;
     }
-    usr.entity = await getEntity(users[i].entity_id) as any;
-    usr.entity.users = await getOtherUsers(users[i].entity_id);
+    usr.entity = await getEntity(users[i].entity_id) as Entity|null;
+    // Get the other users in the entity and remove the entity_id value (extraneous)
+    usr.entity.users = (await getOtherUsers(users[i].entity_id)).map(u => { 
+      const retval = Object.assign({}, u) as any;
+      delete retval.entity_id;
+      return retval;
+    });
     userinfo.push(usr);
   }
 
@@ -314,7 +320,8 @@ export const inviteUser = async (parms:any, inviterRole:Role, linkGenerator:Func
 const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
 
-  const task = Task.INVITE_USER;
+  // const task = Task.INVITE_USER;
+  const task = Task.LOOKUP_USER_CONTEXT;
   const landscape = 'dev';
 
   lookupCloudfrontDomain(landscape).then((cloudfrontDomain) => {
@@ -331,9 +338,9 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
     const payload = {
       task,
       parameters: {
-        email: 'wrh@bu.edu',
-        role: Roles.RE_AUTH_IND,
-        entity_id: ''
+        email: 'warhen@comcast.net',
+        role: Roles.RE_ADMIN,
+        entity_id: '0952e4a9-060e-4d43-8a7d-7d90f6e04be4'
       }
     } as IncomingPayload;
 

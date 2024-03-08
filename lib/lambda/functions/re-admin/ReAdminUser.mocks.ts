@@ -1,7 +1,9 @@
 // TODO: Move this module out into a more generic location
 
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse, OutgoingBody } from "../../../role/AbstractRole";
-import { Entity, Invitation, Role, Roles, User, YN } from "../../_lib/dao/entity";
+import { FactoryParms } from "../../_lib/dao/dao";
+import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
+import { Entity, EntityFields, Invitation, Role, Roles, User, YN } from "../../_lib/dao/entity";
 
 /**
  * Define a partial mock for Utils.ts module
@@ -137,6 +139,82 @@ export function SignupLinkMock() {
         }
       }
     })
+  }
+}
+
+/**
+ * Define a mock for the es6 DAOFactory class
+ */
+const inactiveUser = { email: 'inactiveUser@gmail.com', entity_id: 'warnerbros', role: Roles.RE_ADMIN, active: YN.No } as User;
+const daffyduck1 = { email: 'daffyduck@warnerbros.com', entity_id: 'warnerbros', role: Roles.RE_ADMIN, active: YN.Yes } as User;
+const porkypig = { email: 'porkypig@warnerbros.com', entity_id: 'warnerbros', role: Roles.RE_AUTH_IND, active: YN.Yes } as User;
+const bugsbunny = { email: 'bugs@warnerbros.com', entity_id: 'warnerbros', role: Roles.RE_AUTH_IND, active: YN.Yes } as User;
+const daffyduck2 = { email: 'daffyduck@warnerbros.com', entity_id: 'cartoonville', role: Roles.RE_ADMIN, active: YN.Yes } as User;
+const yosemitesam = { email: 'yosemitesam@cartoonville.com', entity_id: 'cartoonville', role: Roles.RE_AUTH_IND, active: YN.Yes } as User;
+const foghornLeghorn = { email: 'fl@cartoonville.com', entity_id: 'cartoonville', role: Roles.RE_AUTH_IND, active: YN.Yes } as User;
+export type MockingScenario = {
+  UserLookup: 'normal' | 'waitingroom' | 'multi-match'
+}
+let currentScenario:MockingScenario
+export function DaoMock(originalModule: any) {
+  return {
+    __esModule: true,
+    ...originalModule,
+    DAOFactory: {
+      getInstance: jest.fn().mockImplementation((parms:FactoryParms) => {
+        let { email, entity_id } = parms.Payload;
+        if(parms.DAOType == 'user') {
+          return {
+            read: async ():Promise<User|User[]> => {
+              switch(email) {
+                case 'inactiveUser@gmail.com':
+                  return [ inactiveUser ] as User[]
+                case 'daffyduck@warnerbros.com':
+                  switch(currentScenario.UserLookup) {
+                    case "normal":
+                      return [ daffyduck1 ] as User[];
+                    case "waitingroom":
+                      var dduck1 = Object.assign({}, daffyduck1);
+                      dduck1.entity_id = ENTITY_WAITING_ROOM;
+                      return [ dduck1, daffyduck2 ];
+                    case "multi-match":
+                      var dduck2 = Object.assign({}, daffyduck2);
+                      dduck2.entity_id = 'cartoonville';
+                      return [ dduck2, daffyduck1 ];
+                  }
+              }
+              switch(entity_id) {
+                case 'warnerbros':
+                  return [ daffyduck1, porkypig, bugsbunny ];
+                case 'cartoonville':
+                  return [ daffyduck2, yosemitesam, foghornLeghorn ]
+              }
+              return [] as User[];
+            }
+          }
+        }
+
+        if(parms.DAOType == 'entity') {
+          return {
+            read: async ():Promise<Entity|null> => {
+              switch(entity_id) {
+                case 'warnerbros':
+                  return {
+                    entity_id, entity_name: 'Warner Bros.', active: YN.Yes
+                  } as Entity
+                case 'cartoonville':
+                  return {
+                    entity_id, entity_name: 'Cartoon Villiage', active: YN.Yes
+                  } as Entity
+              }
+              return null;
+            }
+          }
+        }
+
+        return null;
+      })
+    }
   }
 }
 
@@ -497,4 +575,79 @@ export const UserInvitationTests = {
       }
     });
   },
+}
+
+export const EntityLookupTests = {
+  ignoreInactiveUsers: async (_handler:any, eventMock:any, taskName:string) => {
+    await invokeAndAssert({
+      _handler, mockEvent:eventMock,
+      incomingPayload: {
+        task: taskName,
+        parameters: {
+          email: inactiveUser.email, 
+          role: Roles.RE_ADMIN
+        }
+      },
+      expectedResponse: {
+        statusCode: 200,
+        outgoingBody: {
+          message: 'Ok',
+          payload: { ok: true, user: {}}
+        }
+      }
+    });
+  },
+  userLookup: async (_handler:any, eventMock:any, taskName:string, scenario:MockingScenario) => {
+
+    // Expected info comprises a daffy duck 2 user object with entity_id replaced by the full
+    // entity object and that entity object having been appended the two other users of the entity.
+    const expectedUserInfo1 = Object.assign({}, daffyduck1) as any;
+    expectedUserInfo1.entity = {
+      entity_id: 'warnerbros', entity_name: 'Warner Bros.', active: YN.Yes,
+      users: [ Object.assign({}, porkypig), Object.assign({}, bugsbunny) ]
+    };
+    const expectedUserInfo2 = Object.assign({}, daffyduck2) as any;
+    expectedUserInfo2.entity = {
+      entity_id: 'cartoonville', entity_name: 'Cartoon Villiage', active: YN.Yes,
+      users: [ Object.assign({}, yosemitesam), Object.assign({}, foghornLeghorn) ]
+    };
+    delete expectedUserInfo1.entity_id;
+    delete expectedUserInfo1.entity.users[0].entity_id;
+    delete expectedUserInfo1.entity.users[1].entity_id;
+    delete expectedUserInfo2.entity_id;
+    delete expectedUserInfo2.entity.users[0].entity_id;
+    delete expectedUserInfo2.entity.users[1].entity_id;
+
+    let expectedUserInfo;
+    switch(scenario.UserLookup) {
+      case "normal":
+        expectedUserInfo = expectedUserInfo1;
+        break;
+      case "waitingroom":
+        expectedUserInfo = expectedUserInfo2;
+        break;
+      case "multi-match":
+        expectedUserInfo = [ expectedUserInfo2, expectedUserInfo1 ];
+        break;
+    }
+
+    currentScenario = scenario;
+    await invokeAndAssert({
+      _handler, mockEvent:eventMock,
+      incomingPayload: {
+        task: taskName,
+        parameters: {
+          email: 'daffyduck@warnerbros.com',
+          role: Roles.RE_ADMIN,
+        }
+      },
+      expectedResponse: {
+        statusCode: 200,
+        outgoingBody: {
+          message: 'Ok',
+          payload: { ok: true, user: expectedUserInfo }
+        }
+      }
+    });
+  }
 }

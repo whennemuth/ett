@@ -29,9 +29,6 @@ export class DAOFactory {
       case 'user':
         var { email=undefined, role=undefined, active } = parms.Payload as User;
         
-        if( ! email ) {
-          throw new Error(`User crud error: Missing email in ${JSON.stringify(parms, null, 2)}`);
-        }
         if( role && ! validator.isRole(role)) {
           throw new Error(`User crud error: Invalid role specified in: ${JSON.stringify(parms, null, 2)}`);
         }
