@@ -18,7 +18,7 @@
       "args": [
         "${workspaceFolder}/lib/lambda/_lib/dao/_runner.ts",
         "user",
-        "update"
+        "migrate"
       ], 
       "env": {
         "AWS_PROFILE": "bu",

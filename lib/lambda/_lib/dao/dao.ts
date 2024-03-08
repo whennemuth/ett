@@ -2,6 +2,7 @@ import { User, Validator, Entity, Invitation } from './entity';
 import { UserCrud } from './dao-user';
 import { InvitationCrud } from './dao-invitation';
 import { EntityCrud } from './dao-entity';
+import { UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
 
 const validator = Validator();
 
@@ -11,7 +12,7 @@ type Baseline = {
   Delete():Promise<any>; 
   test():Promise<any> 
 }
-export type DAOUser = Baseline & { read():Promise<(User|null)|User[]> };
+export type DAOUser = Baseline & { read():Promise<(User|null)|User[]>, migrate(old_entity_id:string):Promise<any> };
 export type DAOInvitation = Baseline & { code():string, read():Promise<(Invitation|null)|Invitation[]> };
 export type DAOEntity = Baseline & { id():string, read():Promise<Entity|null> };
 

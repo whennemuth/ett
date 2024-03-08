@@ -1299,6 +1299,54 @@
       }
     }
 
+    const createEntity = async () => {
+      const msg = document.getElementById('apiResponse');
+      try {
+        const role = AccessJwtCookie.getRole().name;
+        const apiUri = STATIC_PARAMETERS.ROLES[role].API_URI
+        const entity_name = $('#txtReAdminEntityName').val();
+        const description = $('#txtReAdminEntityDesc').val();
+        if( ! entity_name) {
+          alert('Required entry: Entity name');
+          return;
+        }
+        if( ! description) {
+          alert('Required entry: Entity description');
+          return;
+        }
+        const outgoingPayload = {
+          task: 'create_entity',
+          parameters: { entity_name, description }
+        }
+
+        const response = await fetch(apiUri, {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify(outgoingPayload)
+          }
+        });
+
+        const package = await response.json();
+        const { message, payload } = package;
+        if(payload.ok) {
+          await setUserContext();
+          $('#btnReAdminEntityCreate').prop("disabled", true);
+          $('#btnReAdminEntityUpdate').prop("disabled", false);
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
+
     /**
      * This function serves as a utility object for processing JWTs received from cognito and the cookies they are stored in.
      */
@@ -1473,7 +1521,10 @@
           email.style.display = 'inline-block';
           if( val == 'RE_AUTH_IND') entities.style.display = 'inline-block';
         })
-      })
+      });
+      document.getElementById('btnReAdminEntityCreate').addEventListener('click', async () => {
+        await createEntity();
+      });
 
       // Add show/hide behavior to the SYS_ADMIN tabstrip
       $('#sysAdmin a').on('click', function (e) {

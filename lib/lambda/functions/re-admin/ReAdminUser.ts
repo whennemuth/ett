@@ -178,6 +178,7 @@ export const createEntity = async (parms:any, reAdmin?:User):Promise<LambdaProxy
 const updateReAdminInvitationWithNewEntity = async (reAdminEmail:string, new_entity_id:string) => {
   // Get the "homeless" invitation for the RE_ADMIN. This will be found by email hanging out in the waiting room.
   // There may be more than one if a SYS_ADMIN invited the RE_ADMIN again before the original invitation is accepted.
+  console.log(`updateReAdminInvitationWithNewEntity: reAdminEmail:${reAdminEmail}, new_entity_id:${new_entity_id}`);
   let daoInvitation = DAOFactory.getInstance({ 
     DAOType: 'invitation', 
     Payload: { email:reAdminEmail, entity_id:ENTITY_WAITING_ROOM } as Invitation
@@ -188,11 +189,12 @@ const updateReAdminInvitationWithNewEntity = async (reAdminEmail:string, new_ent
   }
 
   // Apply the new entity id to the invitation(s) for the RE_ADMIN
-  homelessInvitations.forEach((invitation) => {
+  homelessInvitations.forEach( async (invitation) => {
     daoInvitation = DAOFactory.getInstance({ 
       DAOType:'invitation', 
       Payload: { code: invitation.code, entity_id:new_entity_id } as Invitation
     });
+    await daoInvitation.update();
   })
 }
 
@@ -202,6 +204,7 @@ const updateReAdminInvitationWithNewEntity = async (reAdminEmail:string, new_ent
  * @param new_entity_id 
  */
 const updateReAdminUserRecordWithNewEntity = async (reAdminEmail:string, new_entity_id:string) => {
+  console.log(`updateReAdminUserRecordWithNewEntity: reAdminEmail:${reAdminEmail}, new_entity_id:${new_entity_id}`);
   const daoUser = DAOFactory.getInstance({
     DAOType: 'user',
     Payload: { email:reAdminEmail, entity_id:new_entity_id } as User

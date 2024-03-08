@@ -1,13 +1,12 @@
 import { DAOUser, DAOFactory, DAOInvitation } from './dao'
+import { ENTITY_WAITING_ROOM } from './dao-entity';
 import { Roles, User, YN, UserFields, InvitationFields } from './entity';
 import { v4 as uuidv4 } from 'uuid';
 
 const launch = async () => {
 
   const daoType = process.argv[2] as ('user'|'entity'|'invitation');
-  const crudOp = process.argv[3] as ('create'|'read'|'update'|'delete'|'deactivate'|'test');
-  const entity_id1 = uuidv4();
-  const entity_id2 = uuidv4();
+  const crudOp = process.argv[3] as ('create'|'read'|'update'|'migrate'|'delete'|'deactivate'|'test');
 
   switch(daoType) {
     case 'user':
@@ -16,7 +15,7 @@ const launch = async () => {
           var daoUser = DAOFactory.getInstance({
             DAOType: 'user', Payload: {
               [UserFields.email]: 'sysadmin@bu.edu', 
-              [UserFields.entity_id]: entity_id1, 
+              [UserFields.entity_id]: uuidv4(), 
               [UserFields.role]: Roles.SYS_ADMIN, 
               [UserFields.fullname]: 'System administrator',
               [UserFields.sub]: 'gkp_sub_id',
@@ -30,7 +29,7 @@ const launch = async () => {
           var daoUser = DAOFactory.getInstance({
             DAOType: 'user', Payload: {
               [UserFields.email]: 'somebody@gmail.com',
-              [UserFields.entity_id]: entity_id1
+              [UserFields.entity_id]: 'some_entity_id'
           }}) as DAOUser;
           var user:User = await daoUser.read() as User
           console.log(JSON.stringify(user, null, 2));
@@ -47,7 +46,7 @@ const launch = async () => {
           var daoUser = DAOFactory.getInstance({
             DAOType: 'user', Payload: {
               [UserFields.email]: 'somebody@gmail.com',
-              [UserFields.entity_id]: entity_id1,
+              [UserFields.entity_id]: 'some_entity_id',
               [UserFields.fullname]: 'Mickey M. Mouse',
               [UserFields.role]: Roles.RE_AUTH_IND
           }}) as DAOUser;
@@ -55,11 +54,21 @@ const launch = async () => {
           console.log(JSON.stringify(response, null, 2));
           break;
 
+        case 'migrate':
+          var daoUser = DAOFactory.getInstance({
+            DAOType: 'user', Payload: {
+              [UserFields.email]: 'warhen@comcast.net',
+              [UserFields.entity_id]: '0952e4a9-060e-4d43-8a7d-7d90f6e04be4',
+          }}) as DAOUser;
+          var response = await daoUser.migrate(ENTITY_WAITING_ROOM);
+          console.log(JSON.stringify(response, null, 2));
+          break;
+
         case 'delete':
           var daoUser = DAOFactory.getInstance({
             DAOType: 'user', Payload: {
               [UserFields.email]: 'somebody@gmail.com',
-              [UserFields.entity_id]: entity_id2,
+              [UserFields.entity_id]: 'some_entity_id',
           }}) as DAOUser;
           var response = await daoUser.Delete();
           console.log(JSON.stringify(response, null, 2));
@@ -79,7 +88,7 @@ const launch = async () => {
           var daoUser = DAOFactory.getInstance({
             DAOType: 'user', Payload: {
               [UserFields.email]: 'somebody@gmail.com', 
-              [UserFields.entity_id]: entity_id1, 
+              [UserFields.entity_id]: 'some_entity_id', 
               [UserFields.role]: Roles.RE_ADMIN, 
               [UserFields.fullname]: 'Mickey Mouse',
               [UserFields.sub]: 'mm_sub_id',

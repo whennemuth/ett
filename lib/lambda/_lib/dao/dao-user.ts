@@ -1,8 +1,9 @@
-import { DynamoDBClient, PutItemCommand, GetItemCommand, QueryCommand, UpdateItemCommand, AttributeValue, UpdateItemCommandInput, DeleteItemCommand, GetItemCommandInput, GetItemCommandOutput, UpdateItemCommandOutput, DeleteItemCommandInput, DeleteItemCommandOutput, QueryCommandInput, PutItemCommandOutput } from '@aws-sdk/client-dynamodb'
+import { DynamoDBClient, PutItemCommand, GetItemCommand, QueryCommand, UpdateItemCommand, AttributeValue, UpdateItemCommandInput, DeleteItemCommand, GetItemCommandInput, GetItemCommandOutput, UpdateItemCommandOutput, DeleteItemCommandInput, DeleteItemCommandOutput, QueryCommandInput, PutItemCommandOutput, TransactWriteItemsCommand, TransactWriteItemsCommandInput, TransactWriteItemsCommandOutput } from '@aws-sdk/client-dynamodb'
+import { marshall} from '@aws-sdk/util-dynamodb';
 import { Roles, User, UserFields, YN } from './entity';
 import { Builder, getUpdateCommandBuilderInstance } from './db-update-builder'; 
 import { convertFromApiObject } from './db-object-builder';
-import {DAOUser } from './dao';
+import { DAOFactory, DAOUser } from './dao';
 import { DynamoDbConstruct } from '../../../DynamoDb';
 
 const dbclient = new DynamoDBClient({ region: process.env.REGION });
@@ -151,6 +152,51 @@ export function UserCrud(userinfo:User): DAOUser {
   }
 
   /**
+   * Migrate a user from one entity to another.
+   * Since this involves modifying the key, the item must be deleted and re-added with the modified entity_id 
+   * key value. This therefore performed in a transaction.
+   * @param old_entity_id 
+   * @returns 
+   */
+  const migrate = async (old_entity_id:string):Promise<TransactWriteItemsCommandOutput|undefined> => {
+    let response:TransactWriteItemsCommandOutput|undefined;
+    try {
+      // Read the existing user from the database to obtain ALL its attributes.
+      const daoUser = DAOFactory.getInstance({ 
+        DAOType:'user', 
+        Payload:{ email, entity_id:old_entity_id } as User
+      });
+      const user = await daoUser.read() as User;
+
+      // Modify the attributes that need to change (entity_id, update_timestamp)
+      user.entity_id = entity_id;
+      user.update_timestamp = new Date().toISOString();
+
+      // Define the transaction to execute (delete of original user followed by put of same user in different entity)
+      const TableName = process.env.DYNAMODB_USER_TABLE_NAME || ''
+      const Key = marshall({ [ UserFields.email ]: email, [ UserFields.entity_id ]: old_entity_id }) as Record<string, AttributeValue>;
+      const Item = marshall(user);
+      const input = {
+        TransactItems: [
+          { Delete: { TableName, Key } },
+          // The condition expression might be a bit superfluous since any matching item would have just been deleted.
+          { Put: { TableName, Item, ConditionExpression: 'attribute_not_exists(entity_id)' } }
+        ]
+      } as TransactWriteItemsCommandInput;
+      
+      // Execute the transaction
+      const command = new TransactWriteItemsCommand(input);
+      response = await dbclient.send(command);
+    }
+    catch(e) {
+      console.error(e);
+    }
+    finally {
+      return response;
+    }    
+  }
+
+  /**
    * Delete the user from the dynamodb table.
    * NOTE: If the sort key (entity_id) is undefined, ALL records with email will be deleted.
    * This is probably not a function you want to expose too publicly, favoring a deactivate method in client
@@ -204,5 +250,5 @@ export function UserCrud(userinfo:User): DAOUser {
     await read();
   }
   
-  return { create, read, update, Delete, test, } as DAOUser
+  return { create, read, update, migrate, Delete, test, } as DAOUser
 }
