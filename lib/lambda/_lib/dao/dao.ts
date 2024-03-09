@@ -28,8 +28,10 @@ export class DAOFactory {
     switch(parms.DAOType) {
 
       case 'user':
-        var { email=undefined, role=undefined, active } = parms.Payload as User;
-        
+        var { email=undefined, entity_id=undefined, role=undefined, active } = parms.Payload as User;
+        if( ! email && ! entity_id) {
+          throw new Error(`User crud error: both email AND entity_id missing in: ${JSON.stringify(parms, null, 2)}`);
+        }
         if( role && ! validator.isRole(role)) {
           throw new Error(`User crud error: Invalid role specified in: ${JSON.stringify(parms, null, 2)}`);
         }

@@ -68,9 +68,6 @@ export function UserCrud(userinfo:User): DAOUser {
     if(email && entity_id) {
       return await _read() as User;
     }
-    else if( ! email && ! entity_id) {
-      return await _read() as User;
-    }
     else if(email) {
       return await _query({ v1: email, index: null } as IdxParms) as User[];
     }
@@ -138,6 +135,9 @@ export function UserCrud(userinfo:User): DAOUser {
    */
   const update = async ():Promise<UpdateItemCommandOutput> => {    
     // Handle field validation
+    if( ! email) {
+      throwMissingError('update', UserFields.email);
+    }
     if( ! entity_id) {
       throwMissingError('update', UserFields.entity_id);
     }
@@ -205,6 +205,7 @@ export function UserCrud(userinfo:User): DAOUser {
   const Delete = async ():Promise<DeleteItemCommandOutput> => {
 
     // Handle missing field validation
+    if( ! email) throwMissingError('delete', UserFields.email);
     if( ! entity_id) throwMissingError('delete', UserFields.entity_id);
 
     const input = {

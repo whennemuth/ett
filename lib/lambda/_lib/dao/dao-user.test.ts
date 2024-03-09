@@ -151,7 +151,7 @@ const testRead = () => {
           DAOType: 'user', Payload: {
             [UserFields.fullname]: fullname
         }});
-      }).rejects.toThrow(/^User crud error: Missing email in/);
+      }).rejects.toThrow(/^User crud error: both email AND entity_id missing in:/);
     });
 
     it('Should return an object of type User if both email and entity_id were provided', async () => {
@@ -209,7 +209,7 @@ const testUpdate = () => {
             [UserFields.entity_id]: entity_id,
         }});
         await dao.update();
-      }).rejects.toThrow(/^User crud error: Missing email in/);
+      }).rejects.toThrow(/^User update error: Missing email in/);
     });
 
     it('Should error if email and entity_id are the only fields provided', async () => {
@@ -256,8 +256,8 @@ const testDelete = () => {
           DAOType: 'user', Payload: {
             [UserFields.entity_id]: entity_id,
         }});
-        await dao.update();
-      }).rejects.toThrow(/^User crud error: Missing email in/);
+        await dao.Delete();
+      }).rejects.toThrow(/^User delete error: Missing email in/);
     });
 
     it('Should accept just partition and sort keys', async () => {
