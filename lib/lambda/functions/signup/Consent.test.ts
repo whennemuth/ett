@@ -1,15 +1,16 @@
 import * as event from './ConsentEventMock.json';
 import { Task, handler } from './Consent';
-import { Invitation, Roles, User, YN } from '../../_lib/dao/entity';
+import { Entity, Invitation, Roles, User, YN } from '../../_lib/dao/entity';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
 import { LambdaProxyIntegrationResponse, OutgoingBody } from '../../../role/AbstractRole';
+import exp = require('constants');
 
 let goodCode:string;
 let code = event.pathParameters['invitation-code'];
 let dte = new Date().toISOString();
 let alreadyAcknowledged:boolean = true;
 let alreadyConsented:boolean = true;
-const goodPayload = {
+const goodInvitationPayload = {
   entity_id: ENTITY_WAITING_ROOM,
   message_id: '0cea3257-38fd-4c24-a12f-fd731f19cae6',
   role: Roles.SYS_ADMIN,
@@ -26,15 +27,16 @@ jest.mock('../../_lib/invitation/Registration', () => {
           let retval = null;
           if(goodCode == code) {
             const payload = {
-              code: goodCode, email: goodCode
+              code: goodCode, email: alreadyConsented ? bugs.email : goodCode
             } as Invitation
-            Object.assign(payload, goodPayload);
+            Object.assign(payload, goodInvitationPayload);
             retval = payload;
             if(alreadyAcknowledged) {
               retval.acknowledged_timestamp = dte;
             }
             if(alreadyConsented) {
-              retval.consented_timestamp = dte
+              retval.consented_timestamp = dte;
+
             }
           }
           return retval;
@@ -50,6 +52,14 @@ jest.mock('../../_lib/invitation/Registration', () => {
   };
 });
 
+const warnerbros = {
+  entity_id: 'abc123', 
+  description: 'Where the cartoon characters live',
+  entity_name: 'Warner Bros.',
+  active: YN.Yes,
+  create_timestamp: dte,
+  update_timestamp: dte
+} as Entity
 const bugs = {
   email: 'bugsbunny@warnerbros.com',
   entity_id: 'abc123',
@@ -64,7 +74,7 @@ const bugs = {
 } as User
 const daffy = {
   email: 'daffyduck@warnerbros.com',
-  entity_id: 'def456',
+  entity_id: 'abc123',
   role: Roles.RE_AUTH_IND,
   sub: 'sub-def-456',
   title: 'Cartoon Character',
@@ -91,6 +101,17 @@ jest.mock('../../_lib/dao/dao.ts', () => {
     }
   }
 });
+
+jest.mock('../Utils.ts', () => {
+  const originalModule = jest.requireActual('../Utils.ts');
+  return {
+    __esModule: true,
+    ...originalModule,
+    lookupSingleEntity: async (entity_id:string):Promise<Entity|null> => {
+      return warnerbros;    
+    }
+  }
+});  
 
 type Expected = { statusCode:number, outgoingBody:OutgoingBody };
 type TestParms = { 
@@ -196,8 +217,8 @@ describe(`Consent lambda trigger: handler ${Task.LOOKUP_INVITATION}`, () => {
   
   it('Should return a message_id in the payload if the invitation code is matched', async () => {
     goodCode = code;
-    const expectedPayload = { ok: true, code, email:code, acknowledged_timestamp:dte, consented_timestamp:dte };
-    Object.assign(expectedPayload, goodPayload);
+    const expectedPayload = { ok: true, code, email:bugs.email, acknowledged_timestamp:dte, consented_timestamp:dte };
+    Object.assign(expectedPayload, goodInvitationPayload);
     await invokeAndAssert({
       _handler:handler, code, task: Task.LOOKUP_INVITATION,
       queryStringParameters: {},
@@ -214,25 +235,30 @@ describe(`Consent lambda trigger: handler ${Task.LOOKUP_INVITATION}`, () => {
 
 describe(`Consent lambda trigger: handler ${Task.LOOKUP_ENTITY}`, () => {
 
-  // it('Should return 400 response with message if entity_id querystring parameter is missing', async () => {
-  //   goodCode = code;
-  //   await invokeAndAssert({
-  //     _handler:handler, code, task: Task.LOOKUP_ENTITY,
-  //     queryStringParameters: {},
-  //     expectedResponse: {
-  //       statusCode: 400,
-  //       outgoingBody: {
-  //         message: `Bad Request: Missing/Invalid entity_id`,
-  //         payload: { invalid: true }
-  //       } as OutgoingBody
-  //     }
-  //   });
-  // });
+  it('Should return 400 response with message if entity_id querystring parameter is missing', async () => {
+    goodCode = code;
+    await invokeAndAssert({
+      _handler:handler, code, task: Task.LOOKUP_ENTITY,
+      queryStringParameters: {},
+      expectedResponse: {
+        statusCode: 400,
+        outgoingBody: {
+          message: `Bad Request: Missing email entity_id parameter`,
+          payload: { invalid: true }
+        } as OutgoingBody
+      }
+    });
+  });
 
   it('Should return 200 response with payload if entity_id querystring parameter is provided', async () => {
     goodCode = code;
     const expectedPayload = { ok: true };
-    Object.assign(expectedPayload, { users:[ bugs ] });
+    const expectedInvitation = Object.assign({}, goodInvitationPayload);
+    expectedInvitation.acknowledged_timestamp = dte;
+    expectedInvitation.consented_timestamp = dte;
+    expectedInvitation.code = 'my_invitation_code2',
+    expectedInvitation.email = bugs.email;
+    Object.assign(expectedPayload, { entity:warnerbros, users:[ bugs ], invitation:expectedInvitation });
     await invokeAndAssert({
       _handler:handler, code, task: Task.LOOKUP_ENTITY,
       queryStringParameters: { entity_id: bugs.entity_id },

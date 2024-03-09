@@ -57,7 +57,9 @@ export const handler = async(event:any) => {
           let entity = await lookupSingleEntity(entity_id);
           return okResponse('Ok', { entity:(entity||null), users, invitation });
         }
-        return okResponse('Ok', { entity:null, users:[], invitation });
+        else {
+          return invalidResponse('Bad Request: Missing email entity_id parameter');
+        }
 
       // Officially set the invitation as consented, replace its dummy email with the true value, and set its fullname.
       // The PostSignup trigger lambda will come by later and "scrape" these out of the invitation for its own needs.
