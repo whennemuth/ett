@@ -763,6 +763,9 @@
   <script>
 
     const STATIC_PARAMETERS = 'STATIC_PARAMETERS_PLACEHOLDER';
+    
+    const localTesting = () => /^STATIC_PARAMETERS_.*$/.test(STATIC_PARAMETERS);
+
     const roleChange = () => {
       selected_role = document.forms['formRole']['rdoRole'].value;
       var desc = document.getElementById('apiDescription');
@@ -779,11 +782,22 @@
           desc.innerHTML = 'API to fill out a consent form'; break;
       }
     }
-    let selected_role = new URL(document.location.href).searchParams.get('action');
-    if(selected_role) {
-      document.forms['formRole']['rdoRole'].value = selected_role;
+
+    let IDJwtCookie;
+    let AccessJwtCookie;
+    let RefreshJwtCookie;
+
+    const getSelectedRole = () => {
+      let role = new URL(document.location.href).searchParams.get('selected_role');
+      if(role) return role;
+      if(AccessJwtCookie && !AccessJwtCookie.jwtExpired()) {
+        role = AccessJwtCookie.getRole()?.name;
+        if(role) return role;
+      }
+      return document.forms['formRole']['rdoRole'].value;
     }
-    roleChange();
+
+    let selected_role = getSelectedRole();
 
     let userContext = {};
 
@@ -864,7 +878,7 @@
       
       const queryString = Object.keys(params).map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`).join('&');
       const authorizationUrl = `${STATIC_PARAMETERS.COGNITO_DOMAIN}/oauth2/authorize?${queryString}`;
-      
+ 
       window.location.href = authorizationUrl;
     }
 
@@ -874,7 +888,8 @@
      * SEE: https://docs.aws.amazon.com/cognito/latest/developerguide/token-endpoint.html
      *      https://www.rfc-editor.org/rfc/rfc6749#section-3.2
      */
-    async function exchangeAuthorizationCode(callback) {    
+    async function exchangeAuthorizationCode(callback) {  
+      const msg = document.getElementById('apiResponse');  
       const queryParams = new URLSearchParams(window.location.search);
       const authorizationCode = queryParams.get('code');
       const returnedState = queryParams.get('state')
@@ -899,8 +914,9 @@
       };
 
       const formData = Object.keys(params).map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`).join('&');
+      const tokenUrl = `${STATIC_PARAMETERS.COGNITO_DOMAIN}/oauth2/token`;
 
-      const response = await fetch(`${STATIC_PARAMETERS.COGNITO_DOMAIN}/oauth2/token`, {
+      const response = await fetch(tokenUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
@@ -908,8 +924,13 @@
         body: formData
       });
       const data = await response.json();
-      AccessJwtCookie.setJwt(data.access_token);
-      IDJwtCookie.setJwt(data.id_token);
+      if(data.error) {
+        msg.innerHTML = `<pre>${JSON.stringify(data, Object.getOwnPropertyNames(data), 2)}</pre>`;
+      }
+      else {
+        AccessJwtCookie.setJwt(data.access_token);
+        IDJwtCookie.setJwt(data.id_token);
+      }
 
       await callback();
     }
@@ -1459,9 +1480,9 @@
       })
     }
 
-    const IDJwtCookie= new JwtCookie('EttIdJwt')
-    const AccessJwtCookie = new JwtCookie('EttAccessJwt');
-    const RefreshJwtCookie = new JwtCookie('EttRefreshJwt');
+    IDJwtCookie= new JwtCookie('EttIdJwt')
+    AccessJwtCookie = new JwtCookie('EttAccessJwt');
+    RefreshJwtCookie = new JwtCookie('EttRefreshJwt');
 
     const logout = () => {
       AccessJwtCookie.clearJwt();
@@ -1540,7 +1561,6 @@
 
       // Function for checking the users login status and selecting the correct view based on the JWT content.
       const checkAuth = async () => {
-        const localTesting = () => /^STATIC_PARAMETERS_.*$/.test(STATIC_PARAMETERS);
         const showAppForRole = async () => {
           showSection('app');
           switch(selected_role) {
@@ -1567,6 +1587,10 @@
             
             case 'CONSENTING_PERSON':
               document.getElementById('app-section-CONSENTING_PERSON').style.display = 'inline';
+              break;
+
+            default:
+              showSection('auth');
               break;
           }
         }
