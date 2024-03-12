@@ -1075,18 +1075,28 @@
 
         if(entity) {
           document.getElementById('tdEntityName').innerHTML = entity.entity_name;
+          let authIndCounter = 0;
           if(users && users.length > 0) {
-            let authIndCounter = 0;
             users.forEach((user) => {
+              user.hasAccount = () => true;
               switch(user.role) {
                 case 'RE_ADMIN':
                   setFields(user, 'ReAdmin');
                   break;
                 case 'RE_AUTH_IND':
-                  setFields(user, 'ReAuthInd', ++authIndCounter);
+                  setFields(user, 'AuthInd', ++authIndCounter);
                   break;
               }
             });
+          }
+          if(authIndCounter < 2) {
+           setFields({
+              email: invitation.email,
+              hasAccount: () => invitation.email != invitation.code,
+              fullname: invitation.fullname,
+              title: invitation.title,
+              phone_number: invitation.phone_number
+            }, 'AuthInd', authIndCounter+1);
           }
         }
         else if(role == 'RE_ADMIN') {
@@ -1150,8 +1160,9 @@
       const msg = document.getElementById('apiResponse');
       msg.innerHtml = '';
       const uri = `${STATIC_PARAMETERS.CONSENT_API_URI}/register/${invitationCode}`;
-      const basename = selected_role == 'RE_ADMIN' ? 'ReAdmin' : 'ReAuthInd';
-      const index = selected_role == 'RE_ADMIN' ? '' : '1';
+      const basename = selected_role == 'RE_ADMIN' ? 'ReAdmin' : 'AuthInd';
+      const getAuthIndIndex = () => $(`#txt${basename}Email`).length == 1 ? '1' : '2';
+      const index = selected_role == 'RE_ADMIN' ? '' : getAuthIndIndex();
       const formdata = {
         email: $(`#txt${basename}Email${index}`).val(),
         fullname: $(`#txt${basename}Name${index}`).val(),
@@ -1168,10 +1179,14 @@
       .then((json) => {
         const { message, payload } = json;
         if(payload.ok) {
-          signUp();
+          let email = $('input[type="text"]').filter(function() {
+              return /^txt[^\d]+Email\d*$/.test(this.id);
+          })[0];
+          email = email ? email.value : '';
+          signUp(email);
         }
         else {
-          msg.innerHTML = message;
+          msg.innerHTML = `<pre>${message}</pre>`;
         }
       })
       .catch((e) => {
@@ -1299,7 +1314,6 @@
 
     /**
      * Make an api call to retrieve information about the currently logged in user along with entity info
-     * RESUME NEXT: Test this.
      */
     const setUserContext = async () => {
       const msg = document.getElementById('apiResponse');

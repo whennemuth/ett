@@ -6,16 +6,71 @@ import { LambdaProxyIntegrationResponse, OutgoingBody } from '../../../role/Abst
 import exp = require('constants');
 
 let goodCode:string;
+let inviteToWaitingRoom = true;
+let invitationCodeForEntityMismatch:string|undefined;
 let code = event.pathParameters['invitation-code'];
 let dte = new Date().toISOString();
 let alreadyAcknowledged:boolean = true;
 let alreadyConsented:boolean = true;
-const goodInvitationPayload = {
+
+const waitingroom = {
+  entity_id: ENTITY_WAITING_ROOM, 
+  description: ENTITY_WAITING_ROOM,
+  entity_name: ENTITY_WAITING_ROOM,
+  active: YN.Yes,
+  create_timestamp: dte,
+  update_timestamp: dte
+} as Entity
+
+const warnerbros = {
+  entity_id: 'warnerbros', 
+  description: 'Where the cartoon characters live',
+  entity_name: 'warnerbros',
+  active: YN.Yes,
+  create_timestamp: dte,
+  update_timestamp: dte
+} as Entity
+
+const bugs = {
+  email: 'bugsbunny@warnerbros.com',
+  entity_id: 'warnerbros',
+  role: Roles.RE_AUTH_IND,
+  sub: 'sub-abc-123',
+  title: 'Cartoon Character',
+  fullname: 'Bugs Bunny',
+  phone_number: '+6175558888',
+  create_timestamp: dte,
+  update_timestamp: dte,
+  active: YN.Yes
+} as User
+
+const daffy = {
+  email: 'daffyduck@warnerbros.com',
+  entity_id: 'warnerbros',
+  role: Roles.RE_AUTH_IND,
+  sub: 'sub-def-456',
+  title: 'Cartoon Character',
+  fullname: 'Daffy Duck',
+  phone_number: '+5085558888',
+  create_timestamp: dte,
+  update_timestamp: dte,
+  active: YN.No
+} as User
+
+// A mock of an invitation to the waiting room
+const goodWaitingRoomInvitationPayload = {
   entity_id: ENTITY_WAITING_ROOM,
   message_id: '0cea3257-38fd-4c24-a12f-fd731f19cae6',
   role: Roles.SYS_ADMIN,
   sent_timestamp: dte,
-  entity_name: 'Boston University'
+} as unknown as Invitation;
+
+// A mock of an invitation to a real entity
+const goodNonWaitingRoomInvitationPayload = {
+  entity_id: warnerbros.entity_id,
+  message_id: '0cea3257-38fd-4c24-a12f-fd731f19cae6',
+  role: Roles.SYS_ADMIN,
+  sent_timestamp: dte,
 } as unknown as Invitation;
 
 // Mock the es6 class for registration
@@ -29,16 +84,27 @@ jest.mock('../../_lib/invitation/Registration', () => {
             const payload = {
               code: goodCode, email: alreadyConsented ? bugs.email : goodCode
             } as Invitation
-            Object.assign(payload, goodInvitationPayload);
+            Object.assign(payload, goodWaitingRoomInvitationPayload);
+            if( ! inviteToWaitingRoom) {
+              payload.entity_id = goodNonWaitingRoomInvitationPayload.entity_id;
+            }
             retval = payload;
             if(alreadyAcknowledged) {
               retval.acknowledged_timestamp = dte;
             }
             if(alreadyConsented) {
               retval.consented_timestamp = dte;
-
             }
           }
+          if(invitationCodeForEntityMismatch == code) {
+            const payload = {
+              code: invitationCodeForEntityMismatch, email: alreadyConsented ? bugs.email : invitationCodeForEntityMismatch
+            } as Invitation
+            Object.assign(payload, goodWaitingRoomInvitationPayload);
+            payload.entity_id = 'unknown_entity_id';
+            retval = payload;
+          }
+          
           return retval;
         },
         hasInvitation: async (): Promise<boolean> => {
@@ -52,38 +118,6 @@ jest.mock('../../_lib/invitation/Registration', () => {
   };
 });
 
-const warnerbros = {
-  entity_id: 'abc123', 
-  description: 'Where the cartoon characters live',
-  entity_name: 'Warner Bros.',
-  active: YN.Yes,
-  create_timestamp: dte,
-  update_timestamp: dte
-} as Entity
-const bugs = {
-  email: 'bugsbunny@warnerbros.com',
-  entity_id: 'abc123',
-  role: Roles.RE_AUTH_IND,
-  sub: 'sub-abc-123',
-  title: 'Cartoon Character',
-  fullname: 'Bugs Bunny',
-  phone_number: '+6175558888',
-  create_timestamp: dte,
-  update_timestamp: dte,
-  active: YN.Yes
-} as User
-const daffy = {
-  email: 'daffyduck@warnerbros.com',
-  entity_id: 'abc123',
-  role: Roles.RE_AUTH_IND,
-  sub: 'sub-def-456',
-  title: 'Cartoon Character',
-  fullname: 'Daffy Duck',
-  phone_number: '+5085558888',
-  create_timestamp: dte,
-  update_timestamp: dte,
-  active: YN.No
-} as User
 /**
  * Create a partial mock for the dao.ts module
  */
@@ -108,7 +142,13 @@ jest.mock('../Utils.ts', () => {
     __esModule: true,
     ...originalModule,
     lookupSingleActiveEntity: async (entity_id:string):Promise<Entity|null> => {
-      return warnerbros;    
+      if(entity_id == waitingroom.entity_id) {
+        return waitingroom;    
+      }
+      if(entity_id == warnerbros.entity_id || ! inviteToWaitingRoom) {
+        return warnerbros;
+      }
+      return null;
     }
   }
 });  
@@ -150,14 +190,13 @@ const invokeAndAssert = async (testParms:TestParms) => {
   
   // Return the body of the response in case caller wants to make more assertions.
   return bodyObj;
-
 }
 
 describe('Consent lambda trigger: handler validation', () => {
 
   it('Should return 400 response with message if task is not specified', async () => {
     await invokeAndAssert({
-      _handler:handler, code: 'abc123',
+      _handler:handler, code: 'warnerbros',
       queryStringParameters: {},
       expectedResponse: {
         statusCode: 400,
@@ -171,7 +210,7 @@ describe('Consent lambda trigger: handler validation', () => {
 
   it('Should return 400 response with message if task has an unexpected value', async () => {
     await invokeAndAssert({
-      _handler:handler, code: 'abc123', task: 'bogus',
+      _handler:handler, code: 'warnerbros', task: 'bogus',
       queryStringParameters: {},
       expectedResponse: {
         statusCode: 400,
@@ -218,7 +257,7 @@ describe(`Consent lambda trigger: handler ${Task.LOOKUP_INVITATION}`, () => {
   it('Should return a message_id in the payload if the invitation code is matched', async () => {
     goodCode = code;
     const expectedPayload = { ok: true, code, email:bugs.email, acknowledged_timestamp:dte, consented_timestamp:dte };
-    Object.assign(expectedPayload, goodInvitationPayload);
+    Object.assign(expectedPayload, goodWaitingRoomInvitationPayload);
     await invokeAndAssert({
       _handler:handler, code, task: Task.LOOKUP_INVITATION,
       queryStringParameters: {},
@@ -235,29 +274,47 @@ describe(`Consent lambda trigger: handler ${Task.LOOKUP_INVITATION}`, () => {
 
 describe(`Consent lambda trigger: handler ${Task.LOOKUP_ENTITY}`, () => {
 
-  it('Should return 400 response with message if entity_id querystring parameter is missing', async () => {
-    goodCode = code;
+  it('Should return 400 response with message entity cannot be determined from invitation lookup', async () => {
+    goodCode = 'some_other_code';
+    await invokeAndAssert({
+      _handler:handler, code, task: Task.LOOKUP_ENTITY,
+      queryStringParameters: {},
+      expectedResponse: {
+        statusCode: 401,
+        outgoingBody: {
+          message: `Unauthorized: Unknown invitation code ${code}`,
+          payload: { unauthorized: true }
+        } as OutgoingBody
+      }
+    });
+  });
+
+  it('Should return 400 response with message with no payload if lookup against invitation.entity_id does not return a match', async () => {
+    invitationCodeForEntityMismatch = code;
     await invokeAndAssert({
       _handler:handler, code, task: Task.LOOKUP_ENTITY,
       queryStringParameters: {},
       expectedResponse: {
         statusCode: 400,
         outgoingBody: {
-          message: `Bad Request: Missing email entity_id parameter`,
+          message: `Invitation ${code} references an unknown entity: unknown_entity_id`,
           payload: { invalid: true }
         } as OutgoingBody
       }
     });
+    invitationCodeForEntityMismatch = undefined;
   });
 
-  it('Should return 200 response with payload if entity_id querystring parameter is provided', async () => {
+  it('Should return 200 response with payload if the entity is found from an invitation lookup', async () => {
     goodCode = code;
+    inviteToWaitingRoom = false;
     const expectedPayload = { ok: true };
-    const expectedInvitation = Object.assign({}, goodInvitationPayload);
+    const expectedInvitation = Object.assign({}, goodNonWaitingRoomInvitationPayload);
     expectedInvitation.acknowledged_timestamp = dte;
     expectedInvitation.consented_timestamp = dte;
     expectedInvitation.code = 'my_invitation_code2',
     expectedInvitation.email = bugs.email;
+
     Object.assign(expectedPayload, { entity:warnerbros, users:[ bugs ], invitation:expectedInvitation });
     await invokeAndAssert({
       _handler:handler, code, task: Task.LOOKUP_ENTITY,
@@ -271,6 +328,7 @@ describe(`Consent lambda trigger: handler ${Task.LOOKUP_ENTITY}`, () => {
       }
     });
   });
+  inviteToWaitingRoom = true;
 });
 
 describe(`Consent lambda trigger: handler ${Task.REGISTER}`, () => {

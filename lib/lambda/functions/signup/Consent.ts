@@ -1,4 +1,5 @@
 import { DAOFactory } from "../../_lib/dao/dao";
+import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
 import { Invitation, User, YN } from "../../_lib/dao/entity";
 import { Registration } from "../../_lib/invitation/Registration";
 import { debugLog, errorResponse, invalidResponse, lookupCloudfrontDomain, lookupSingleActiveEntity, okResponse, unauthorizedResponse } from "../Utils";
@@ -42,24 +43,22 @@ export const handler = async(event:any) => {
 
       // Return a list of users who have already gone through the registration process for the entity and exist in the users table.
       case Task.LOOKUP_ENTITY:
-        let entity_id:string|undefined;
-        if(event.queryStringParameters) {
-          entity_id = event.queryStringParameters.entity_id;
+        const { entity_id } = invitation;
+        const dao = DAOFactory.getInstance({
+          DAOType: "user",
+          Payload: { entity_id } as User
+        })
+        let users = await dao.read() as User[];
+        // Filter off inactive users.
+        users = users.filter((user) => { return user.active == YN.Yes; });
+        let entity;
+        if(entity_id != ENTITY_WAITING_ROOM) {
+          entity = await lookupSingleActiveEntity(entity_id);
+          if( ! entity) {
+            return invalidResponse(`Invitation ${invitation.code} references an unknown entity: ${invitation.entity_id}`);
+          }
         }
-        if(entity_id ) {
-          const dao = DAOFactory.getInstance({
-            DAOType: "user",
-            Payload: { entity_id } as User
-          })
-          let users = await dao.read() as User[];
-          // Filter off inactive users.
-          users = users.filter((user) => { return user.active == YN.Yes; });
-          let entity = await lookupSingleActiveEntity(entity_id);
-          return okResponse('Ok', { entity:(entity||null), users, invitation });
-        }
-        else {
-          return invalidResponse('Bad Request: Missing email entity_id parameter');
-        }
+        return okResponse('Ok', { entity:(entity||null), users, invitation });
 
       // Officially set the invitation as consented, replace its dummy email with the true value, and set its fullname.
       // The PostSignup trigger lambda will come by later and "scrape" these out of the invitation for its own needs.
