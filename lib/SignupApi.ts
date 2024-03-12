@@ -54,7 +54,9 @@ export class SignupApiConstruct extends Construct {
       },
       environment: {
         REGION: this.outerScope.node.getContext('stack-parms').REGION,
+        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
         DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
+        DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME,
         CLOUDFRONT_DOMAIN: this.cloudfrontDomain
       }
     });
@@ -108,7 +110,9 @@ export class SignupApiConstruct extends Construct {
       },
       environment: {
         REGION: this.outerScope.node.getContext('stack-parms').REGION,
+        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
         DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
+        DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME,
         CLOUDFRONT_DOMAIN: this.cloudfrontDomain
       }
     });
@@ -147,6 +151,7 @@ export class SignupApiConstruct extends Construct {
     dynamodb.getInvitationsTable().grantReadWriteData(this.acknowledgeLambda);
     dynamodb.getInvitationsTable().grantReadWriteData(this.consentLambda);
     dynamodb.getEntitiesTable().grantReadWriteData(this.consentLambda);
+    dynamodb.getUsersTable().grantReadWriteData(this.consentLambda);
   }
 
   public get acknowledgementApiUri() {
