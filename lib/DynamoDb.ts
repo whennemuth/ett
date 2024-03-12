@@ -6,9 +6,13 @@ import { EntityFields, UserFields, InvitationFields } from "./lambda/_lib/dao/en
 
 export class DynamoDbConstruct extends Construct {
   
-  static DYNAMODB_TABLES_USERS_TABLE_NAME: string = 'ett-users';
-  static DYNAMODB_TABLES_ENTITY_TABLE_NAME: string = 'ett-entities';
-  static DYNAMODB_TABLES_INVITATION_TABLE_NAME: string = 'ett-invitations';
+  static DYNAMODB_USER_TABLE_NAME: string = 'ett-users';
+  static DYNAMODB_ENTITY_TABLE_NAME: string = 'ett-entities';
+  static DYNAMODB_INVITATION_TABLE_NAME: string = 'ett-invitations';
+
+  static DYNAMODB_USER_ENTITY_INDEX: string = 'EntityIndex';
+  static DYNAMODB_INVITATION_ENTITY_INDEX: string = 'EntityIndex';
+  static DYNAMODB_INVITATION_EMAIL_INDEX: string = 'EmailIndex';
 
   context: IContext;
 
@@ -24,9 +28,9 @@ export class DynamoDbConstruct extends Construct {
 
     // Create a table for ALL users of any role.
     this.usersTable = new TableV2(this, 'DbUsers', {
-      tableName: DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME,
+      tableName: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
       partitionKey: { name: UserFields.email, type: AttributeType.STRING },
-      sortKey: { name: UserFields.entity_name, type: AttributeType.STRING },
+      sortKey: { name: UserFields.entity_id, type: AttributeType.STRING },
       billing: Billing.onDemand(),
       tableClass: TableClass.STANDARD_INFREQUENT_ACCESS,
       removalPolicy: RemovalPolicy.DESTROY,
@@ -34,10 +38,11 @@ export class DynamoDbConstruct extends Construct {
       deletionProtection: this.context.TAGS.Landscape == 'prod', 
       globalSecondaryIndexes: [
         {
-          indexName: 'EntityIndex',
-          partitionKey: { name: UserFields.entity_name, type: AttributeType.STRING },
+          indexName: DynamoDbConstruct.DYNAMODB_USER_ENTITY_INDEX,
+          partitionKey: { name: UserFields.entity_id, type: AttributeType.STRING },
           sortKey: { name: UserFields.email, type: AttributeType.STRING },
-          projectionType: ProjectionType.KEYS_ONLY,
+          projectionType: ProjectionType.ALL,
+          // projectionType: ProjectionType.KEYS_ONLY,
           // projectionType: ProjectionType.INCLUDE,
           // nonKeyAttributes: [ role, disclosures, etc...]
         }
@@ -46,8 +51,8 @@ export class DynamoDbConstruct extends Construct {
 
     // Create a table for ALL registerend entities, to be managed by system administrator.
     this.entitiesTable = new TableV2(this, 'DbEntities', {
-      tableName: DynamoDbConstruct.DYNAMODB_TABLES_ENTITY_TABLE_NAME,
-      partitionKey: { name: EntityFields.entity_name, type: AttributeType.STRING },
+      tableName: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME,
+      partitionKey: { name: EntityFields.entity_id, type: AttributeType.STRING },
       billing: Billing.onDemand(),
       tableClass: TableClass.STANDARD_INFREQUENT_ACCESS,
       removalPolicy: RemovalPolicy.DESTROY,
@@ -57,9 +62,8 @@ export class DynamoDbConstruct extends Construct {
 
     // Create a table for invitations sent to users.
     this.invitationsTable = new TableV2(this, 'DbInvitations', {
-      tableName: DynamoDbConstruct.DYNAMODB_TABLES_INVITATION_TABLE_NAME,
-      partitionKey: { name: InvitationFields.email, type: AttributeType.STRING },
-      sortKey: { name: InvitationFields.entity_name, type: AttributeType.STRING },
+      tableName: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
+      partitionKey: { name: InvitationFields.code, type: AttributeType.STRING },
       billing: Billing.onDemand(),
       tableClass: TableClass.STANDARD_INFREQUENT_ACCESS,
       removalPolicy: RemovalPolicy.DESTROY,
@@ -67,12 +71,18 @@ export class DynamoDbConstruct extends Construct {
       deletionProtection: this.context.TAGS.Landscape == 'prod', 
       globalSecondaryIndexes: [
         {
-          indexName: 'EntityIndex',
-          partitionKey: { name: InvitationFields.entity_name, type: AttributeType.STRING },
+          indexName: DynamoDbConstruct.DYNAMODB_INVITATION_EMAIL_INDEX,
+          partitionKey: { name: InvitationFields.email, type: AttributeType.STRING },
+          sortKey: { name: InvitationFields.entity_id, type: AttributeType.STRING },
+          projectionType: ProjectionType.ALL,
+        },
+        {
+          indexName: DynamoDbConstruct.DYNAMODB_INVITATION_ENTITY_INDEX,
+          partitionKey: { name: InvitationFields.entity_id, type: AttributeType.STRING },
           sortKey: { name: InvitationFields.email, type: AttributeType.STRING },
-          projectionType: ProjectionType.KEYS_ONLY
+          projectionType:ProjectionType.ALL
         }
-      ]    
+      ]  
     })
   }
 

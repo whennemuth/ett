@@ -34,6 +34,7 @@ export interface UserAttributes {
     "cognito:email_alias": string;
     name:                  string;
     email:                 string;
+    phone_number:          string;
 }
 
 export interface Response {

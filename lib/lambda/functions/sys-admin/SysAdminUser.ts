@@ -1,142 +1,125 @@
-import { AbstractRoleApi, IncomingPayload, OutgoingPayload, LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
-import { DAOUser, DAOFactory, DAOEntity } from '../../_lib/dao/dao';
-import { YN } from '../../_lib/dao/entity';
-import { InvitationEmail } from '../../_lib/invitation/Invitation'
-import { SignupLink } from '../../_lib/signupLinks/SignupLink';
+import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
+import { Role, Roles } from '../../_lib/dao/entity';
+import { SignupLink } from '../../_lib/invitation/SignupLink';
+import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../Utils";
+import { Task as ReAdminTasks, lookupEntity, createEntity, deactivateEntity, inviteUser, updateEntity } from '../re-admin/ReAdminUser';
 
-/**
- * This function performs all actions a system administrator can take to create/modify entities and 
- * invite "non-public" users (admins, authorized individuals)
- * @param _event 
- * @returns 
- */
 export enum Task {
-  CREATE_ENTITY = 'create_entity',
-  UPDATE_ENTITY = 'update_entity',
-  DEACTIVATE_ENTITY = 'deactivate_entity',
-  INVITE_USER = 'invite_user',
-  PING = 'ping'
+  REPLACE_RE_ADMIN = 'replace_re_admin'
 }
 
+/**
+ * This function performs all actions a system administrator can take. This includes anything an RE_ADMIN
+ * can do, except that an RE_ADMIN can only invite RE_AUTH_IND roles to the same entity, whereas a SYS_ADMIN
+ * can invite any user regardless of entity_id or entity even existing. 
+ * @param event 
+ * @returns 
+ */
 export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse> => {
-  let statusCode = 200;
-  let outgoingPayload = {} as OutgoingPayload;
   try {
-    console.log(JSON.stringify(event, null, 2)); 
 
+    debugLog(event);
+  
     const payloadJson = event.headers[AbstractRoleApi.ETTPayloadHeader];
     const payload = payloadJson ? JSON.parse(payloadJson) as IncomingPayload : null;
     let { task, parameters } = payload || {};
 
-    if( ! Object.values<string>(Task).includes(task || '')) {
-      statusCode = 400;
-      outgoingPayload = {
-        statusCode: 400,
-        statusDescription: 'Bad Request',
-        message: `Invalid/Missing task parameter: ${task}`,
-        payload: { error: true }
-      }
+    const unknownTask = (task?:string):boolean => {
+      if(Object.values<string>(ReAdminTasks).includes(task || '')) return false;
+      if(Object.values<string>(Task).includes(task || '')) return false;
+      return true;
+    }
+
+    if(unknownTask(task)) {
+      return invalidResponse(`Invalid/Missing task parameter: ${task}`);
+    }
+    else if( ! parameters) {
+      return invalidResponse(`Missing parameters parameter for ${task}`);
     }
     else {
-      console.log(`Performing task: ${task}`);
-      switch(task as Task) {
-        case Task.CREATE_ENTITY:
-          await createEntity(parameters);
-          break;
-        case Task.UPDATE_ENTITY:
-          await updateEntity(parameters);
-          break;
-        case Task.DEACTIVATE_ENTITY:
-          await deactivateEntity(parameters);
-          break;
-        case Task.INVITE_USER:
-          await inviteUser(parameters);
-          break;
-        case Task.PING:
-          statusCode = 200;
-          outgoingPayload = { statusCode: 200, statusDescription: 'OK', message: 'Ping!', payload: parameters }
-          break;
+      log(`Performing task: ${task}`);
+      switch(task as ReAdminTasks|Task) {
+        case ReAdminTasks.LOOKUP_USER_CONTEXT:
+          const { email, role } = parameters;
+          return await lookupEntity(email, role);
+        case ReAdminTasks.CREATE_ENTITY:
+          return await createEntity(parameters);
+        case ReAdminTasks.UPDATE_ENTITY:
+          return updateEntity(parameters);
+        case ReAdminTasks.DEACTIVATE_ENTITY:
+          return await deactivateEntity(parameters);
+        case ReAdminTasks.INVITE_USER:
+          return await inviteUser(parameters, Roles.SYS_ADMIN, async (entity_id:string, role:Role) => {
+            if(role == Roles.SYS_ADMIN) {
+              return await new SignupLink().getCognitoLinkForRole(role);
+            }
+            return await new SignupLink().getRegistrationLink(entity_id);
+          });
+        case ReAdminTasks.PING:
+          return okResponse('Ping!', parameters);
+        case Task.REPLACE_RE_ADMIN:
+          return await replaceAdmin(parameters);
       } 
     }
   }
   catch(e:any) {
-    console.error(e);
-    statusCode = 500;
-    outgoingPayload = {
-      statusCode: 500,
-      statusDescription: 'Internal Server Error',
-      message: e.message || 'unknown error',
-      payload: e
-    };
+    return errorResponse(`Internal server error: ${e.message}`);
   }
-
-  const response = { 
-    isBase64Encoded: false,
-    statusCode, 
-    headers: {
-      'Access-Control-Allow-Headers' : 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent',
-      'Access-Control-Allow-Origin': `https://${process.env.CLOUDFRONT_DOMAIN}`,
-      'Access-Control-Allow-Methods': 'OPTIONS,POST,GET',
-      'Access-Control-Allow-Credentials': 'true'
-    },
-    body: JSON.stringify(outgoingPayload, null, 2),
- };
-
- console.log(`Response: ${JSON.stringify(response, null, 2)}`);
- return response;
-}
-
-const createEntity = async (parms:any) => {
-  const { entity_name, description } = parms;
-  const dao:DAOEntity = DAOFactory.getInstance({ DAOType: 'entity', Payload: { entity_name, description }}) as DAOEntity;
-}
-
-const updateEntity = async (parms:any) => {
-  const { entity_name, description, active } = parms;
-  const dao:DAOEntity = DAOFactory.getInstance({ DAOType: 'entity', Payload: {  entity_name, description, active }}) as DAOEntity;
-}
-
-const deactivateEntity = async (parms:any) => {
-  const { entity_name } = parms;
-  updateEntity({ entity_name, active:YN.No });
 }
 
 /**
- * The cognito userpool client signup link can either have been passed in via the api call as a member
- * of the AbstractRoleApi.ETTPayloadHeader header, else it can be constructed by looking up userpool details via the 
- * userpool name.
+ * Replace the RE_ADMIN for the entity with somebody else (may involve deactivating the current RE_ADMIN and inviting a different email)
  * @param parms 
- * @returns 
  */
-const getSigninLink = async (parms:any):Promise<string|undefined> => {
-  const { role, link } = parms;
-  if(link) return link;
-  const userPoolName = process.env.USERPOOL_NAME;
-  let linkLookup:string|undefined;
-  if(userPoolName) {
-    const signupLink = new SignupLink(userPoolName);
-    linkLookup = await signupLink.getLinkForRole(role);
-  }
-  return linkLookup;
+export const replaceAdmin = async (parms:any):Promise<LambdaProxyIntegrationResponse> => {
+  console.log('Not implemented yet.');
+  return errorResponse('Not implemented yet');
 }
 
+
 /**
- * Invite the user via email and log a corresponding tracking entry in the database if successful.
- * @param parms 
+ * RUN MANUALLY: Modify the task, landscape, email & role as needed.
  */
-const inviteUser = async (parms:any) => {
-  const { email, entity_name, role } = parms;
-  // RESUME NEXT 4: Put in a check here that prevents an invitation from being sent to an email for a particular
-  // role & entity, if any pending inviations exist for the same email, but for a different entity.
-  // Make sure this has a unit test.
-  const link = await getSigninLink(parms);
-  if(link) {    
-    const emailInvite = new InvitationEmail({ email, entity_name, role, link });
-    if( await emailInvite.send()) {
-      await emailInvite.persist();
-    }    
-  }
-  else {
-    throw new Error(`Unable to determine the url for ${role} signup`);
-  }
+const { argv:args } = process;
+if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
+
+  const task = ReAdminTasks.INVITE_USER;
+  const landscape = 'dev';
+  process.env.DYNAMODB_INVITATION_TABLE_NAME = 'ett-invitations';
+  process.env.DYNAMODB_USER_TABLE_NAME = 'ett-users';
+  process.env.DYNAMODB_ENTITY_TABLE_NAME = 'ett-entities';
+  process.env.USERPOOL_NAME = 'ett-cognito-userpool'; 
+  process.env.COGNITO_DOMAIN = 'ett-dev.auth.us-east-2.amazoncognito.com'; //  `${this.context.STACK_ID}-${this.context.TAGS.Landscape}.${REGION}.amazoncognito.com`
+  process.env.REGION = 'us-east-2';
+  process.env.DEBUG = 'true';
+
+  lookupCloudfrontDomain(landscape).then((cloudfrontDomain) => {
+    if( ! cloudfrontDomain) {
+      throw('Cloudfront domain lookup failure');
+    }
+    process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
+    process.env.REDIRECT_URI = `${cloudfrontDomain}/index.htm`;
+
+    const payload = {
+      task,
+      parameters: {
+        email: 'wrh@bu.edu',
+        role: Roles.SYS_ADMIN
+      }
+    } as IncomingPayload;
+
+    const _event = {
+      headers: {
+        [AbstractRoleApi.ETTPayloadHeader]: JSON.stringify(payload)
+      }
+    }
+
+    return handler(_event);
+
+  }).then(() => {
+    console.log(`${task} complete.`)
+  }).catch((reason) => {
+    console.error(reason);
+  });
+ 
 }

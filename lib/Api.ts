@@ -40,14 +40,23 @@ export class ApiConstruct extends Construct {
     this._consentPersonApi = new ConsentingPersonApi(this, 'ConsentPersonUser', apiParms);
   }
 
-  public grantPermissions = (dynamodb:DynamoDbConstruct, cognito:CognitoConstruct) => {
+  public grantPermissionsTo = (dynamodb:DynamoDbConstruct, cognito:CognitoConstruct) => {
 
-    // Grant the sysadmin api the permissions to read/write from the users table
+    // Grant the sysadmin api read/write access to dynamodb tables
     dynamodb.getEntitiesTable().grantReadWriteData(this.sysAdminApi.getLambdaFunction());
     dynamodb.getInvitationsTable().grantReadWriteData(this.sysAdminApi.getLambdaFunction());
+    dynamodb.getUsersTable().grantReadWriteData(this.sysAdminApi.getLambdaFunction());
+    // Grant the sysadmin api permissions to read from the cognito userpool
+    cognito.getUserPool().grant(this.reAdminApi.getLambdaFunction(), 
+      'cognito-identity:Describe*', 
+      'cognito-identity:Get*', 
+      'cognito-identity:List*'
+    );
 
     // Grant the re administrator api permissions to read/write from the users table
     dynamodb.getUsersTable().grantReadWriteData(this.reAdminApi.getLambdaFunction());
+    dynamodb.getInvitationsTable().grantReadWriteData(this.reAdminApi.getLambdaFunction());
+    dynamodb.getEntitiesTable().grantReadWriteData(this.reAdminApi.getLambdaFunction());
     // Grant the re administrator api permissions to read from the cognito userpool
     cognito.getUserPool().grant(this.reAdminApi.getLambdaFunction(), 
       'cognito-identity:Describe*', 

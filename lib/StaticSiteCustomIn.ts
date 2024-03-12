@@ -8,7 +8,6 @@ import { EventType } from 'aws-cdk-lib/aws-s3';
 import { Effect, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { AbstractRoleApi } from './role/AbstractRole';
 import path = require('path');
-import { Roles } from './lambda/_lib/dao/entity';
 
 
 export interface NameValuePair {
@@ -21,6 +20,8 @@ export interface StaticSiteCustomInConstructParms {
   cloudfrontDomain: string,
   cognitoDomain: string,
   cognitoUserpoolRegion: string,
+  acknowledgementApiUri: string,
+  consentApiUri: string,
   apis: AbstractRoleApi[]
 }
 
@@ -35,13 +36,16 @@ const buildJsonEnvVar = (parms: StaticSiteCustomInConstructParms) => {
     COGNITO_DOMAIN: parms.cognitoDomain,
     USER_POOL_REGION: parms.cognitoUserpoolRegion,
     PAYLOAD_HEADER: AbstractRoleApi.ETTPayloadHeader,
+    ACKNOWLEDGE_API_URI: parms.acknowledgementApiUri,
+    CONSENT_API_URI: parms.consentApiUri,
     ROLES: { } as any
   };
   parms.apis.forEach((api:AbstractRoleApi) => {
     jsonObj.ROLES[api.getRole()] = {
       CLIENT_ID: api.getUserPoolClientId(),
       REDIRECT_URI: `${parms.cloudfrontDomain}/index.htm`,
-      API_URI: api.getRestApiUrl()
+      API_URI: api.getRestApiUrl(),
+      FULLNAME: api.getRoleFullName()
     }
   });
   return JSON.stringify(jsonObj, null, 2);
@@ -55,7 +59,7 @@ export class StaticSiteCustomInConstruct extends StaticSiteConstruct {
 
   public customize(): void {
     const inProps = (<StaticSiteCustomInConstructParms>this.props);
-    const functionName = `${this.constructId}-injection-function`;
+    const functionName = `ett-${this.constructId.toLowerCase()}-injection-function`;
     const staticParms = buildJsonEnvVar(inProps);
     const conversionFunction = new AbstractFunction(this, 'TextConverterFunction', {
       functionName,

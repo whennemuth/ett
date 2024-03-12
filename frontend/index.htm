@@ -7,14 +7,19 @@
     <meta name="author" content="Don Yurt, Warren Hennemuth">
     <title>ETT Home Page</title>
 
-    <link rel="canonical" href="https://getbootstrap.com/docs/5.2/examples/jumbotron/">
+    <!-- download bootstrap -->
+    <link rel="canonical" href="https://getbootstrap.com/docs/5.3.2/examples/jumbotron/">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
 
-    
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+    <!-- download bootstrap icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
-        <!-- Favicons -->
+    <!-- Favicons -->
     <meta name="theme-color" content="#712cf9">
 
+    <!-- download jquery -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 
     <style>
       .bd-placeholder-img {
@@ -140,24 +145,351 @@
         display:flex; 
         justify-content: center;
       }
+
+      table {
+        width: 100%;
+      }
+
+      th, td {
+        border: 1px solid black
+      }
+
+      td {
+        padding: 5px;
+      }
+
+      .trHeading {
+        font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+        font-weight: bold;
+      }
+
+      .tdHeading {
+        background-color: rgb(84, 123, 196);
+        font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+        font-weight: bold;
+        color:white;
+        padding-left: 10px;
+        padding-right: 20px;
+        text-wrap: nowrap;
+      }
+
+      .tdEntry {
+        width: 50%;
+      }
+
+      .tdSpacing {
+        border: 0px solid black;
+      }
+
+      .ackSubmit {
+        float: left;
+      }
+
+      hr {
+        width: 80%;
+        height: 1px;
+        border: none;
+        margin: 0 auto; 
+        background-color: black;
+      }
+
+      #apiResponse {
+        position: fixed;
+        /* height: 100px; */
+        bottom: 0;
+        width: 100%;
+        color:green;
+        background-color: white;
+      }
+
+      pre {
+        color:white;
+        background-color: red;
+        padding: 10px;
+      }
+
+      .divSysAdminOption {
+        width: 400px;
+        text-align: right;
+        padding: 10px;
+      }
+
+      h3 {
+        text-align: center;
+        margin-bottom: 20px;
+        margin-top: 20px
+      }
+
+      #stage {
+        padding: 20px;
+      }
+
+      #stage:hover {
+        background-color: yellow !important;
+        color: black !important;
+      }
+
+      i {
+        font-size: 2rem;
+        padding: 2px;
+        vertical-align: middle;
+      }
+
+      .idiv {
+        text-align: center; 
+        width: fit-content; 
+        display: inline-block;
+        vertical-align: middle;
+        height: 100%;
+      }
     </style>
 
   </head>
+
+
   <body>
-    
     <main>
-      <div class="container py-4">
+     <div class="container py-4">
+
+        <!-- Top Banner -->
         <header class="pb-3 mb-4 border-bottom">
           <a href="/" class="d-flex align-items-center text-dark text-decoration-none">
-            <img src="https://societiesconsortium.com/wp-content/uploads/2019/05/SocietiesConsortium_on_SexualHarassmentin.svg" height="20%" width="20%" />
-            <span class="fs-4 ps-4">Ethical Transparency Tool</span>
+            <img src="https://societiesconsortium.com/wp-content/uploads/2019/05/SocietiesConsortium_on_SexualHarassmentin.svg" height="20%" width="20%" />            
+            <span class="fs-4 ps-4"><img src="./title1.png" /></span>
           </a>
         </header>
 
-        <div class="p-5 mb-4 bg-light rounded-3">
+          <!---------------------------------------------------->
+          <!--            ACKNOWLEDGEMENT SECTION             -->
+          <!---------------------------------------------------->
+          <div class="p-5 mb-4 bg-light rounded-3">
+          <div id="acknowledge-section" class="container-fluid py-5" style="display: none">
+            <h3 class="display-7 fw-bold" style="text-align:center">Privacy Policy Acknowledgement</h3>
+            <p class="text-justify fs-4" style="text-align:justify;">
+              <p>
+                The Ethical Transparency Tool (ETT) Database, where you complete an entity’s ETT Registration Form or an Individual’s Registration Form, 
+                Consent Form, and Exhibit Forms, is hosted on a server and kept on computers in the United States, governed by United States law.  
+                So, you are transferring the personally identifiable data requested of you to a server or computers in the U.S.  
+                By doing so, you are consenting to that transfer and to your data being further transferred in or outside the U.S. within the ETT design.  
+                (ETT’s design is summarized in links from the Consent Form, Exhibit Forms, and Disclosure Form.)                
+              </p>
+              <p>
+                If you are a citizen of or reside in another country, the privacy laws of that home country (or its states, provinces, or other divisions) 
+                may be more protective than U.S. laws.  Subject to applicable U.S. laws, the ETT Database has been reasonably designed to protect against 
+                the ETT Database itself transferring your personal data to anyone other than those meant to receive it within the ETT design. 
+                However, your data on servers and computers in the U.S. may be subject to access by governments, courts, law enforcement officials and 
+                national security authorities in the U.S. under U.S. or state/local laws.  Also, ETT specifies limits on use of your data by those who 
+                receive it within the ETT design, but ETT does not oversee or control the recipients.  (The Consent Form and Disclosure Form describe the 
+                recipients and use limits.)                
+              </p>
+              <p>
+                By submitting your Entity’s Registration Form or your Individual Registration Form, Consent Form, or Affiliate Exhibit Forms on ETT, you 
+                are acknowledging having reviewed and are agreeing to be bound to terms of the ETT Privacy Notices and ETT Privacy Policy.”                
+              </p>
+              <!-- Button trigger modal -->
+              <div style="display:flex; justify-content: center; padding-top: 15px; padding-bottom: 35px;">
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticBackdrop">
+                  View privacy policy
+                </button>
+              </div>
+              <!-- Modal -->
+              <div class="modal fade" id="staticBackdrop" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+                <div class="modal-dialog  modal-dialog-scrollable">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h5 class="modal-title" id="staticBackdropLabel">ETT privacy policy</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                      Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Sit amet mauris commodo quis imperdiet massa tincidunt nunc pulvinar. Porta non pulvinar neque laoreet suspendisse interdum consectetur libero. Vivamus at augue eget arcu. Ut pharetra sit amet aliquam id diam maecenas ultricies mi. Gravida in fermentum et sollicitudin ac orci. Risus nec feugiat in fermentum posuere. Leo duis ut diam quam nulla porttitor massa id neque. Adipiscing elit pellentesque habitant morbi tristique. Ullamcorper a lacus vestibulum sed arcu. Tempor nec feugiat nisl pretium fusce id velit. Et pharetra pharetra massa massa ultricies mi quis hendrerit dolor. Quisque id diam vel quam. Ac tortor vitae purus faucibus ornare suspendisse. Ornare arcu dui vivamus arcu. Sit amet commodo nulla facilisi. Sed id semper risus in hendrerit gravida rutrum. Faucibus pulvinar elementum integer enim neque volutpat ac tincidunt vitae. Tincidunt tortor aliquam nulla facilisi cras fermentum odio eu feugiat.
+                      Pellentesque massa placerat duis ultricies. Est lorem ipsum dolor sit amet consectetur adipiscing. Ipsum dolor sit amet consectetur adipiscing elit duis. Est ultricies integer quis auctor elit sed vulputate. Vel pretium lectus quam id. Morbi tincidunt ornare massa eget egestas purus viverra. Bibendum est ultricies integer quis auctor. Vitae auctor eu augue ut. Cum sociis natoque penatibus et. Sed vulputate odio ut enim blandit volutpat maecenas volutpat.
+                      Urna porttitor rhoncus dolor purus non enim. Lectus sit amet est placerat. Sit amet volutpat consequat mauris nunc congue nisi. Ac placerat vestibulum lectus mauris ultrices eros. Sed id semper risus in hendrerit gravida rutrum quisque non. Morbi quis commodo odio aenean sed adipiscing diam. Magna etiam tempor orci eu. Amet volutpat consequat mauris nunc congue nisi vitae suscipit tellus. Turpis egestas maecenas pharetra convallis. Morbi tristique senectus et netus. Suspendisse interdum consectetur libero id faucibus nisl tincidunt eget. In fermentum posuere urna nec tincidunt praesent semper feugiat. Sit amet volutpat consequat mauris nunc congue nisi vitae suscipit.
+                      Morbi quis commodo odio aenean sed adipiscing diam donec. Fames ac turpis egestas integer eget aliquet nibh. Aenean euismod elementum nisi quis eleifend. Velit euismod in pellentesque massa placerat duis. Consectetur adipiscing elit pellentesque habitant morbi tristique. Eget dolor morbi non arcu risus quis. Ultrices vitae auctor eu augue ut lectus. Massa sed elementum tempus egestas sed sed risus pretium quam. Arcu cursus euismod quis viverra nibh cras pulvinar mattis. Et malesuada fames ac turpis egestas maecenas pharetra. Nunc sed velit dignissim sodales ut eu sem. Arcu felis bibendum ut tristique et. Egestas dui id ornare arcu odio ut sem. Phasellus faucibus scelerisque eleifend donec pretium vulputate sapien nec sagittis. Sit amet mauris commodo quis. Habitasse platea dictumst vestibulum rhoncus est pellentesque.
+                      Eleifend donec pretium vulputate sapien nec sagittis aliquam. Ipsum dolor sit amet consectetur adipiscing elit. Id consectetur purus ut faucibus pulvinar elementum integer enim. Ipsum consequat nisl vel pretium lectus quam id leo. Fringilla phasellus faucibus scelerisque eleifend. Sed risus ultricies tristique nulla aliquet enim tortor at. Mauris in aliquam sem fringilla ut morbi tincidunt. Ut tristique et egestas quis ipsum. Praesent elementum facilisis leo vel fringilla est ullamcorper eget nulla. Egestas quis ipsum suspendisse ultrices gravida dictum fusce.
+                      Aliquam ut porttitor leo a diam sollicitudin. Parturient montes nascetur ridiculus mus mauris vitae ultricies leo integer. Et ligula ullamcorper malesuada proin libero. Enim tortor at auctor urna nunc. Vel orci porta non pulvinar neque. Neque viverra justo nec ultrices dui sapien eget. Mi bibendum neque egestas congue quisque egestas diam in. Eu augue ut lectus arcu bibendum at varius. Est ultricies integer quis auctor. Turpis tincidunt id aliquet risus feugiat in ante metus dictum. Nulla pharetra diam sit amet nisl suscipit.
+                      Imperdiet nulla malesuada pellentesque elit eget gravida cum sociis natoque. Ridiculus mus mauris vitae ultricies. Placerat orci nulla pellentesque dignissim enim sit amet venenatis. Dui sapien eget mi proin sed. Nunc eget lorem dolor sed viverra ipsum nunc aliquet. Nulla porttitor massa id neque aliquam vestibulum. Faucibus purus in massa tempor nec feugiat nisl. Neque laoreet suspendisse interdum consectetur libero id faucibus nisl tincidunt. Placerat orci nulla pellentesque dignissim. Tempus egestas sed sed risus pretium quam vulputate dignissim. Vitae tempus quam pellentesque nec. Semper viverra nam libero justo laoreet sit amet. Lobortis elementum nibh tellus molestie nunc non blandit massa enim. Nulla facilisi etiam dignissim diam quis enim lobortis scelerisque.
+                      In cursus turpis massa tincidunt dui ut ornare lectus sit. Vivamus arcu felis bibendum ut tristique et. Urna porttitor rhoncus dolor purus non enim praesent elementum facilisis. Nulla pharetra diam sit amet nisl suscipit adipiscing bibendum. Tellus rutrum tellus pellentesque eu tincidunt tortor aliquam nulla facilisi. Sit amet nisl suscipit adipiscing bibendum est ultricies integer. Semper quis lectus nulla at volutpat diam ut venenatis tellus. Pulvinar etiam non quam lacus suspendisse faucibus interdum. Commodo elit at imperdiet dui accumsan sit amet nulla. Et sollicitudin ac orci phasellus egestas tellus rutrum tellus. At consectetur lorem donec massa sapien faucibus et molestie ac. Enim tortor at auctor urna nunc. Pretium aenean pharetra magna ac placerat vestibulum. Augue eget arcu dictum varius duis at consectetur lorem donec. Nulla facilisi morbi tempus iaculis urna id volutpat lacus laoreet. Sem viverra aliquet eget sit amet tellus cras adipiscing. Tristique nulla aliquet enim tortor at auctor. Lacus laoreet non curabitur gravida arcu. Adipiscing tristique risus nec feugiat in fermentum posuere urna. Arcu bibendum at varius vel pharetra vel turpis.
+                      Nunc non blandit massa enim nec dui nunc mattis. Pellentesque nec nam aliquam sem et tortor consequat id porta. Tempor nec feugiat nisl pretium. Cursus sit amet dictum sit amet justo. Fermentum posuere urna nec tincidunt. Id diam maecenas ultricies mi eget. Dolor sit amet consectetur adipiscing elit. Fermentum odio eu feugiat pretium nibh ipsum consequat. Lacus suspendisse faucibus interdum posuere lorem. Lobortis scelerisque fermentum dui faucibus in.
+                      Tellus pellentesque eu tincidunt tortor aliquam nulla facilisi cras fermentum. Non tellus orci ac auctor augue mauris augue neque. Etiam erat velit scelerisque in dictum non consectetur a. Adipiscing elit pellentesque habitant morbi tristique. Facilisis sed odio morbi quis commodo odio aenean sed adipiscing. Lectus quam id leo in vitae turpis massa sed elementum. Massa ultricies mi quis hendrerit dolor magna eget. Diam vulputate ut pharetra sit amet aliquam. Metus dictum at tempor commodo ullamcorper a lacus. Netus et malesuada fames ac turpis. Leo a diam sollicitudin tempor id eu nisl. A scelerisque purus semper eget duis at. Odio pellentesque diam volutpat commodo sed egestas egestas fringilla phasellus. Eget felis eget nunc lobortis mattis aliquam. Vulputate eu scelerisque felis imperdiet proin.
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <hr>
+              <table style="border-style:none; width:80%;">
+                <tr>
+                  <td style="text-align:right; border-style:none; font-size:20px;">
+                    "By registering to use the ETT in my capacity as an Authorized Individual
+                    <br>
+                    or Administrative Support Professional of an ETT Registered Entity,
+                    <br>
+                    I have read, accept and agree to all terms of the ETT privacy policy"                 
+                    &nbsp;<input id="chkAcknowledge" type="checkbox" class="form-check-input" onclick="document.getElementById('btnAcknowledgeSubmit').disabled = !this.checked;"/> 
+                  </td>
+                  <td style="padding-left:10px; border-style:none; vertical-align: bottom;">
+                    <button id="btnAcknowledgeSubmit" class="btn btn-primary btn-lg" type="button" disabled>Submit</button>&nbsp;
+                  </td>
+                </tr>
+              </table>
+            </p>
+          </div>
 
-          <div id="auth-section" class="container-fluid py-5">
-            <h1 class="display-5 fw-bold" style="text-align:center">Welcome to the<br>Ethical Transparency Tool (ETT)</h1>
+          <!---------------------------------------------------->
+          <!--                 CONSENT SECTION                -->
+          <!---------------------------------------------------->
+          <div id="consent-section" class="container-fluid py-5" style="display: none">
+            <h3 class="display-7 fw-bold">Entity Registration Form</h3>
+            <p class="text-justify fs-4" style="text-align:justify;">
+              <table>
+                <tr>
+                  <td class='tdHeading' colspan=1 style="padding-right:50px;">Name of organization</td>
+                  <td id="tdEntityName" colspan=3 style="width:100%"></td>
+                </tr>
+                <tr><td class='tdSpacing' colspan=4>&nbsp;</td></tr>
+              </table>
+              <table>
+                <tr><td class='trHeading' colspan=4>Administrative support professional<sup>1</sup></td></tr>
+                <tr>
+                  <td id='tdReAdminNameLabel' class='tdHeading'>Name</td>
+                  <td id='tdReAdminName' class='tdEntry'></td>
+                  <td id='tdReAdminTitleLabel' class='tdHeading'>Title</td>
+                  <td id='tdReAdminTitle' class='tdEntry'></td>
+                </tr>
+                <tr>
+                  <td id='tdReAdminPhoneLabel' class='tdHeading'>Phone</td>
+                  <td id='tdReAdminPhone' class='tdEntry'></td>
+                  <td id='tdReAdminEmailLabel' class='tdHeading'>Email</td>
+                  <td id='tdReAdminEmail' class='tdEntry'></td>
+                </tr>
+                <tr><td class='tdSpacing' colspan=4>&nbsp;</td></tr>
+                <tr><td class='trHeading' colspan=4>Authorized Individual 1<sup>2</sup></td></tr>
+                <tr>
+                  <td id='tdAuthIndName1Label' class='tdHeading'>Name</td>
+                  <td id='tdAuthIndName1' class='tdEntry'></td>
+                  <td id='tdAuthIndTitle1Label' class='tdHeading'>Title</td>
+                  <td id="tdAuthIndTitle1" class='tdEntry'></td>
+                </tr>
+                <tr>
+                  <td id='tdAuthIndPhone1Label' class='tdHeading'>Phone</td>
+                  <td id='tdAuthIndPhone1' class='tdEntry'></td>
+                  <td id='tdAuthIndEmail1Label' class='tdHeading'>Email</td>
+                  <td id='tdAuthIndEmail1' class='tdEntry'></td>
+                </tr>
+                <tr><td class='tdSpacing' colspan=4>&nbsp;</td></tr>
+                <tr><td class='trHeading'colspan=4 class='tdHeading'>Authorized Individual 2<sup>3</sup></td></tr>
+                <tr>
+                  <td id='tdAuthIndName2Label' class='tdHeading'>Name</td>
+                  <td id='tdAuthIndName2' class='tdEntry'></td>
+                  <td id='tdAuthIndTitle2Label' class='tdHeading'>Title</td>
+                  <td id="tdAuthIndTitle2" class='tdEntry'></td>
+                </tr>
+                <tr>
+                  <td id='tdAuthIndPhone2Label' class='tdHeading'>Phone</td>
+                  <td id='tdAuthIndPhone2' class='tdEntry'></td>
+                  <td id='tdAuthIndEmail2Label' class='tdHeading'>Email</td>
+                  <td id='tdAuthIndEmail2' class='tdEntry'></td>
+                </tr>
+                <tr><td class='tdSpacing' colspan=4>&nbsp;</td></tr>
+              </table>
+            </p>
+            <div style="padding-left:20px; display:flex; justify-content: center; text-align:justify; font-style: italic;">
+              Registering to use ETT also means that in your official and personal capacities you have read and agree to the ETT Privacy Policy 
+              [link] and consent to inclusion of your organization’s name, with or without its Authorized Individuals’ names and contact information 
+              (as you reflect them above) on the ETT database and in ETT-related communications, factually stating that your organization is or was 
+              registered to use ETT or is or was an ETT-registered entity (including but not limited to putting your organization’s name, with or without 
+              its Authorized Individuals’ names and contact information, on a list of ETT-registered entities). Your organization’s name and Authorized 
+              Individuals’ names will be removed from lists of then-current ETT-registered entities upon termination of your registration. 
+              (ETT may be abbreviated or spelled out as Ethical Transparency Tool.)  Lists of ETT-registered entities (with or without their Authorized 
+              Individuals names and contact information) may be used in recruiting additional entities to use ETT.  Any such reference will not include 
+              an endorsement of ETT or state the specific way (within all the permitted ways) in which your organization is or was using ETT, without 
+              your additional written consent.  Mere listing of your organization as an ETT-registered entity is not deemed an endorsement. 
+              ETT may communicate aggregated data on the way Registered Entities use ETT.
+            </div>
+            <br>
+            <hr style="margin-bottom: 30px;">
+            <div style="font-style: italic;">
+              <p>
+                <sup>1</sup>Administrative Support Professional who assists and directly works with one or both of the Authorized Individuals, 
+                is accustomed to maintaining confidential and sensitive information, and can administratively support the Registered Entity’s 
+                use of ETT, including submitting requests for disclosures when directed by an Authorized Individual.                
+              </p>                
+              <p>
+                <sup>2</sup>Person in a senior role that is accustomed to managing confidential and sensitive information, who will directly receive the 
+                completed Disclosure Form information on behalf of the Requesting Registered Entity and will decide who at the Registered 
+                Entity needs the information.                
+              </p>                
+              <p>
+                <sup>3</sup>Ibid.                
+              </p>                
+            </div>
+            <div style="justify-content: center; border-style:solid; padding:10px; padding-right:25px;">
+              <div style="text-align: center; text-decoration: underline; font-weight: bold; padding-bottom: 10px;">
+                IMPORTANT TERMS OF USE FOR ENTITIES REGISTERING TO USE ETT—Also at www.INSERT
+              </div>
+              <ol style="text-align: justify;">
+                <li>
+                  EACH REGISTERED ENTITY ACKNOWLEDGES THAT IT MUST MAKE INDEPENDENT DECISIONS AND POLICIES.  
+                  ETT is just an automation tool that an ETT-Registered Entity can use, in its discretion, to get consents to disclosures of 
+                  findings of misconduct about an individual and to make requests for disclosures to the entities that made or adopted findings.  
+                  ETT does not receive any disclosures and does not dictate or guide decisions or policies, including, e.g., when to use ETT or 
+                  who is qualified or should be selected for any honor, privilege, employment, or role.
+                </li>
+                <li>
+                  Authorized Individuals should be in senior institutional roles, accustomed to managing sensitive and confidential information, 
+                  and knowledgeable about the Registered Entity.  Administrative Support Professionals should also be accustomed to managing 
+                  sensitive and confidential information.  A Registered Entity determines the individuals.
+                </li>
+                <li>
+                  The Registered Entity’s Administrative Support Professional will be responsible for updating changes in who is an Authorized 
+                  Individual or Administrative Support Professional.  However, to make a change effective, one of the two Authorized Individuals 
+                  will need to confirm the change. 
+                </li>
+                <li>
+                  The Administrative Support Professional may initiate Disclosure Requests in ETT only when directed by an Authorized Individual.  
+                  Only Authorized Individuals should be the direct recipients of completed Disclosure Forms from other entities.  
+                  Authorized Individuals will decide who within the Registered Entity needs the disclosed information (or will confer with the person who has that authority).  
+                  Registered Entities create internal processes to satisfy all terms of use.
+                </li>
+                <li>
+                  Completed Consent Forms, Affiliate Exhibit Forms, and Disclosure Forms must be used by a Registered Entity only in connection 
+                  with Privilege(s) or Honor(s), Employment or Role(s)<sup>4</sup>.   
+                </li>
+                <li>
+                  Registered Entities must not share completed Consent Forms, Affiliate Exhibit Forms, or Disclosure Forms that they receive with 
+                  other entities (third parties). Registered Entities may access Consent Forms on ETT, while a Consent is in effect.
+                </li>
+                <li>
+                  No warranties of any kind are made concerning ETT.  Each Registered Entity determines the uses of ETT that are operationally 
+                  and legally appropriate for it and waives and releases all claims and liabilities of every kind (except intentional harm) that 
+                  are associated with ETT, against the Societies Consortium on Sexual Harassment in STEMM, EducationCounsel LLC, the American 
+                  Association for the Advancement of Science, and each designer, developer, host, sponsor, agent, contractor, administrator and/or 
+                  operator of ETT (and their respective directors/trustees/managers/partners, members/stockholders, personnel, agents, contractors, 
+                  and representatives).
+                </li>
+              </ol>
+              <div style="text-align: center; border-style:solid; padding:10px; ">
+                Check here
+                <input id="chkConsent" type="checkbox" class="form-check-input" onclick="document.getElementById('btnConsentSubmit').disabled = !this.checked;"/>
+                , type your name below, and submit, to digitally sign this Registration Form on behalf of the Registered Entity 
+                and to agree to these terms, register, and confirm your authority to do so.
+                <br>
+                Sign, date, and click on SUBMIT:____________________&nbsp;
+                <button id="btnConsentSubmit" class="btn btn-primary btn-lg" type="button" disabled>SUBMIT</button>
+                <br>
+                You may terminate your registration at any time <a href="#" onclick="alert('Not implemented')">here</a>.                
+              </div>
+            </div>
+          </div>
+  
+          <!---------------------------------------------------->
+          <!--              LOGIN/SIGNUP SECTION              -->
+          <!---------------------------------------------------->
+          <div id="auth-section" class="container-fluid py-5" style="display: none">
+            <h1 class="display-5 fw-bold" style="text-align:center">Welcome!</h1>
+            <h1 class="display-8 fw-bold" style="text-align:center">Please log in:</h1>
             <p class="text-justify fs-4" style="text-align:justify;">ETT is designed to support AAU’s harassment prevention principles and the recommendations of NASEM’s June 2018 report on sexual harassment of women in academic science, engineering, and medicine by helping to create a norm of transparency about findings of misconduct against a person, across the higher-education and research ecosystem of societies, institutions of higher education, and other research organizations. This tool covers sexual, gender, and racial misconduct — as well as professional licensure, financial, and research misconduct to maximize its utility.</p>
             <div style="display:flex; justify-content: center;">
               <div class="outerButtonContainer">
@@ -183,39 +515,270 @@
                       <input type="radio" name="rdoRole" value="CONSENTING_PERSON">
                       <span class="checkmark"></span>
                     </label>
-                    <button id="btnSignin" class="btn btn-primary btn-lg" type="button" onclick="signIn()">Login</button>
+                    <button id="btnSignin" class="btn btn-primary btn-lg" type="button">Login</button>
                     &nbsp;
-                    <button id="btnSignup" class="btn btn-primary btn-lg" type="button" onclick="signUp()">Signup</button>
+                    <button id="btnSignup" class="btn btn-primary btn-lg" type="button" style="display:none;">Signup</button>
                   </form>
                 </div>
               </div>
             </div>
           </div>
 
-          <div id="app-section" class="container-fluid py-5" style="display: none">
-            <center>
-              <p class="fs-4">Welcome, <span id="username"></span>!</p>
-              <p class="fs-4" id="apiDescription"></p>
-              <p><button class="btn btn-primary btn-lg" type="button" onclick="pingApi()">Ping the API</button></p>
-              <p><span id="apiResponse"></span></p>
-            </center>            
-            <button type="button" class="btn btn-danger" onclick="signOut()">Sign out</button>
-          </div>
+          <!---------------------------------------------------->
+          <!--                   APP SECTION                  -->
+          <!---------------------------------------------------->
+          <div id="app-section" class="container-fluid py-5" style="display:none">
 
+            <!---------------------------------------------------->
+            <!--                   HELLO_WORLD                  -->
+            <!---------------------------------------------------->
+            <div id="app-section-HELLO_WORLD" style="display:none">
+              <center>
+                <p class="fs-4">Welcome, <span id="HELLO_WORLD_username"></span>!</p>
+                <p class="fs-4" id="apiDescription"></p>
+                <p><button id="btnPingApi" class="btn btn-primary btn-lg" type="button">Ping the API</button></p>
+              </center>            
+            </div>
+
+
+            <!---------------------------------------------------->
+            <!--                    SYS_ADMIN                   -->
+            <!---------------------------------------------------->
+            <div id="app-section-SYS_ADMIN" style="display:none;">
+              <ul class="nav nav-tabs" id="sysAdmin" role="tablist">
+                <li class="nav-item">
+                  <a class="nav-link active" id="sys-admin-invitation-tab" data-toggle="tab" href="#sys-admin-invitation" role="tab" aria-controls="sys-admin-invitation" aria-selected="false">Invitation</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" id="sys-admin-misc-tab" data-toggle="tab" href="#sys-admin-misc" role="tab" aria-controls="sys-admin-misc" aria-selected="false">Miscellaneous</a>
+                </li>
+              </ul>
+              <div class="tab-content" id="sysAdminContent">
+                <div class="tab-pane fade show active" id="sys-admin-invitation" role="tabpanel" aria-labelledby="sys-admin-invitation-tab">
+                  <h3 class="display-7 fw-bold">Welcome <span id="SYS_ADMIN_username"></span></h3>
+                  <h3 class="display-7 fw-bold">Invite a registered entity administrator</h3>
+                  <div style="display:inline-block; width:405px;">
+                    <div style="display:none;">
+                      <!-- Temporarily hiding the radio buttons -->
+                      <div class="divSysAdminOption">
+                        Another System Administrator:&nbsp;
+                        <input type="radio" name="rdoSysAdminInvite" value="SYS_ADMIN">
+                      </div>
+                      <div class="divSysAdminOption">
+                        A Registered Entity Administrator:&nbsp;
+                        <input type="radio" name="rdoSysAdminInvite" value="RE_ADMIN">
+                      </div>
+                      <div class="divSysAdminOption">
+                        An Authorized Individual:&nbsp;
+                        <input type="radio" name="rdoSysAdminInvite" value="RE_AUTH_IND">
+                      </div>
+                    </div>
+                    <div id="divSysAdminEmailToInvite" class="divSysAdminOption" style="text-align: right;">
+                      Email Address:
+                      <input id="txtSysAdminEmailToInvite" type="text" class="form-control" style="width:fit-content; display:inline-block;">
+                    </div>                
+                    <div id="divSysAdminEntities" class="divSysAdminOption" style="text-align: right;">
+                      Entity:
+                      <select id="lbxSysAdminEntities" class="form-control" style="width:fit-content; display:inline-block;">
+                        <option><-- Select One --></option>
+                      </select>
+                    </div>                
+                    <div class="divSysAdminOption">
+                      <button id="btnSysAdminInvite" class="btn btn-primary btn-lg" type="button">Invite</button>
+                    </div> 
+                  </div>
+                </div>
+                <div class="tab-pane fade" id="sys-admin-misc" role="tabpanel" aria-labelledby="sys-admin-misc-tab">
+                  <h3 class="display-7 fw-bold" style="text-align:center; margin-bottom: 20px;">Something else can go here, not sure what</h3>
+                </div>
+              </div>
+            </div>
+
+
+            <!---------------------------------------------------->
+            <!--                    RE_ADMIN                    -->
+            <!---------------------------------------------------->
+            <div id="app-section-RE_ADMIN" style="display:none">
+              <ul class="nav nav-tabs" id="reAdmin" role="tablist">
+                <li class="nav-item">
+                  <a class="nav-link active" id="re-admin-entity-link" data-toggle="tab" href="#re-admin-entity" role="tab" aria-controls="re-admin-entity" aria-selected="true">Entity/Organization</a>
+                </li>
+                <li class="nav-item" id="re-admin-invitation-tab">
+                  <a class="nav-link" id="re-admin-invitation-link" data-toggle="tab" href="#re-admin-invitation" role="tab" aria-controls="re-admin-invitation" aria-selected="false">Invitation</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" id="re-admin-misc-link" data-toggle="tab" href="#re-admin-misc" role="tab" aria-controls="re-admin-misc" aria-selected="false">Miscellaneous</a>
+                </li>
+              </ul>
+              <h3 class="display-7 fw-bold">Welcome <span id="RE_ADMIN_username"></span></h3>
+              <div class="tab-content" id="reAdminContent">
+                <div class="tab-pane fade show active" id="re-admin-entity" role="tabpanel" aria-labelledby="re-admin-entity-link">
+                  <div id="divCreateEntity">
+                    <h3 class="display-7 fw-bold">Create your entity</h3>
+                    <div id="divReAdminEntityName" class="divSysAdminOption" style="text-align: right;">
+                      Entity Name:
+                      <input id="txtReAdminEntityName" type="text" class="form-control" style="width:fit-content; display:inline-block;">
+                    </div>                
+                    <div id="divReAdminEntityDesc" class="divSysAdminOption" style="text-align: right;">
+                      Entity Description:
+                      <input id="txtReAdminEntityDesc" type="text" class="form-control" style="width:fit-content; display:inline-block;">
+                    </div>                
+                    <div class="divSysAdminOption">
+                      <button id="btnReAdminEntityCreate" class="btn btn-primary btn-lg" type="button">Create</button>
+                      &nbsp;
+                      <button id="btnReAdminEntityUpdate" class="btn btn-primary btn-lg" type="button" disabled>Update</button>
+                    </div> 
+                  </div>                  
+                </div>
+                <div class="tab-pane fade" id="re-admin-invitation" role="tabpanel" aria-labelledby="re-admin-invitation-link">
+                  <div id="divReAdminInvite">
+                    <h3 class="display-7 fw-bold">Invite an authorized Individual to <span id="re-admin-entity-name">your entity</span></h3>
+                    <div style="display:inline-block; margin-top:30px;">
+                      <div id="divReAdminEmailToInvite" class="divSysAdminOption" style="text-align: right;">
+                        Email Address:
+                        <input id="txtReAdminEmailToInvite" type="text" class="form-control" style="width:fit-content; display:inline-block;">
+                      </div>                
+                      <div class="divSysAdminOption">
+                        <button id="btnReAdminInvite" class="btn btn-primary btn-lg" type="button">Invite</button>
+                      </div> 
+                    </div>
+                  </div>                   
+                </div>
+                <div class="tab-pane fade" id="re-admin-misc" role="tabpanel" aria-labelledby="re-admin-misc-link">
+                  <h3 class="display-7 fw-bold" style="text-align:center; margin-bottom: 20px;">Something else can go here, not sure what</h3>
+                </div>
+              </div>
+            </div>
+
+
+            <!---------------------------------------------------->
+            <!--                  RE_AUTH_IND                   -->
+            <!---------------------------------------------------->
+            <div id="app-section-RE_AUTH_IND" style="display:none">
+              <h3 class="display-7 fw-bold">Welcome <span id="RE_AUTH_IND_username"></span></h3>
+              <h3 class="display-7 fw-bold">Authorized Individual</h3>
+
+              <!-- Temporarily hiding this block -->
+              <div style="display:none;">
+                <div class="d-inline-block" style="width:fit-content;">
+                  <nav aria-label="Page navigation example " style="width:fit-content;">
+                    <ul class="pagination pagination-lg fw-bold" style="width:fit-content" >
+                      <li class="page-item"><a class="page-link" href="#">Previous</a></li>
+                      <li class="page-item"><a class="page-link" href="#">1</a></li>
+                      <li class="page-item"><a class="page-link" href="#">2</a></li>
+                      <li class="page-item"><a class="page-link" href="#">3</a></li>
+                      <li class="page-item"><a class="page-link" href="#">Next</a></li>
+                    </ul>
+                  </nav>
+                </div>
+                <div id="divAuthIndFilter" class="container d-inline-block fw-bold p-2" style="width:fit-content" >
+                  Filters:&nbsp;
+                  <input type="checkbox" class="btn-check" id="chkAuthIndFilter1" autocomplete="off">
+                  <label class="btn btn-outline-dark" for="chkAuthIndFilter1">All Consenting<br>Individuals</label>
+                  <input type="checkbox" class="btn-check" id="chkAuthIndFilter2" autocomplete="off" checked>
+                  <label class="btn btn-outline-dark" for="chkAuthIndFilter2">Needing Exhibit<br>Form Request</label>
+                  <input type="checkbox" class="btn-check" id="chkAuthIndFilter3" autocomplete="off">
+                  <label class="btn btn-outline-dark" for="chkAuthIndFilter3">Pending Exhibit<br>Form Delivery</label>
+                  <input type="checkbox" class="btn-check" id="chkAuthIndFilter4" autocomplete="off">
+                  <label class="btn btn-outline-dark" for="chkAuthIndFilter4">Needing Disclosure<br>Request</label>
+                  <input type="checkbox" class="btn-check" id="chkAuthIndFilter5" autocomplete="off">
+                  <label class="btn btn-outline-dark" for="chkAuthIndFilter5">Pending Disclosure<br>Delivery</label>
+                  <input type="checkbox" class="btn-check" id="chkAuthIndFilter6" autocomplete="off">
+                  <label class="btn btn-outline-dark" for="chkAuthIndFilter6">Disclosures<br>Delivered</label>
+                </div>
+
+                <div id="john_doe">
+                  <div class="container-fluid bg-success bg-opacity-25 fw-bold">
+                    John Doe
+                  </div>
+                  <div class="container-fluid border border-success border-opacity-25 text-center">
+                    <div class="row align-items-start p-2 fw-bold">
+                      <div id="stage" class="stage col bg-success p-2 text-dark bg-opacity-25">
+                        <div class="idiv" style="float: left;"><i class="bi-1-circle"></i></div>
+                        <div class="idiv">
+                          <div class="idiv"><i class="bi-send-check"></i></div> 
+                          <div class="idiv">Exhibit Form Requests</div>                                  
+                        </div>
+                      </div>
+                      <div id="stage" class="col stage bg-success p-2 text-dark bg-opacity-50">
+                        <div class="idiv" style="float: left;"><i class="bi-2-circle"></i></div>
+                        <div class="idiv">
+                          <div class="idiv"><i class="bi-envelope-check"></i></div> 
+                          <div class="idiv">Exhibit Forms Delivered</div>                                  
+                        </div>
+                      </div>
+                      <div id="stage" class="col stage bg-success p-2 text-white bg-opacity-75">
+                        <div class="idiv" style="float: left;"><i class="bi-3-circle"></i></div>
+                        <div class="idiv">
+                          <div class="idiv"><i class="bi-send-check"></i></div> 
+                          <div class="idiv">Disclosures Requested</div>                                  
+                        </div>
+                      </div>
+                      <div id="stage" class="col stage bg-success p-2 text-white">
+                        <div class="idiv" style="float: left;"><i class="bi-4-circle"></i></div>
+                        <div class="idiv">
+                          <div class="idiv"><i class="bi-envelope-check"></i></div> 
+                          <div class="idiv">Disclosures Delivered</div>                                  
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <script>
+                  document.write(document.getElementById('john_doe').outerHTML.replace('John Doe', 'Bugs Bunny'));
+                  document.write(document.getElementById('john_doe').outerHTML.replace('John Doe', 'Daffy Duck'));
+                  document.write(document.getElementById('john_doe').outerHTML.replace('John Doe', 'Porky Pig'));
+                  document.write(document.getElementById('john_doe').outerHTML.replace('John Doe', 'Yosemite Sam'));
+                  document.write(document.getElementById('john_doe').outerHTML.replace('John Doe', 'Wile E. Coyote'));
+                  document.write(document.getElementById('john_doe').outerHTML.replace('John Doe', 'Foghorn Leghorn'));
+                </script>
+              </div>
+
+
+            </div>
+
+
+            <!---------------------------------------------------->
+            <!--               CONSENTING_PERSON                -->
+            <!---------------------------------------------------->
+            <div id="app-section-CONSENTING_PERSON" style="display:none">
+              
+            </div>
+
+          <!-- Signout button -->
+          <p>&nbsp;</p>              
+          <p>&nbsp;</p>              
+          <p>&nbsp;</p>              
+          <p>&nbsp;</p>              
+          <div>
+              <button id="btnSignout" type="button" class="btn btn-danger">Sign out</button>
+            </div>            
+          </div>
         </div>
 
+        <!-- Footer -->
         <footer class="pt-3 mt-4 text-muted border-top">
-          &copy; 2023
+          <span class="footer">&copy; 2023</span>              
         </footer>
+
+        <!-- Vertical spacer -->
+        <div class="container-fluid py-5" style="height:200px;">&nbsp;</div>
+
+        <!-- Display area for api response message (mostly errors) -->
+        <div id="apiResponse"></div>
       </div>
     </main>
 
   <script>
 
-    const STATIC_PARAMETERS = STATIC_PARAMETERS_PLACEHOLDER;
+    const STATIC_PARAMETERS = 'STATIC_PARAMETERS_PLACEHOLDER';
+    
+    const localTesting = () => /^STATIC_PARAMETERS_.*$/.test(STATIC_PARAMETERS);
+
     const roleChange = () => {
       selected_role = document.forms['formRole']['rdoRole'].value;
       var desc = document.getElementById('apiDescription');
+      document.getElementById('btnSignup').style.display = 'none';
       switch(selected_role) {
         case 'HELLO_WORLD':
           desc.innerHTML = 'Simple API to get a hello message'; break;
@@ -226,14 +789,29 @@
         case 'RE_AUTH_IND':
           desc.innerHTML = 'API to view any consenting persons who signed up with the registered entity'; break;
         case 'CONSENTING_PERSON':
-          desc.innerHTML = 'API to fill out a consent form'; break;
+          desc.innerHTML = 'API to fill out a consent form';
+          document.getElementById('btnSignup').style.display = 'inline';
+          break;
       }
     }
-    const qsrole = new URL(document.location.href).searchParams.get('selected_role');
-    if(qsrole) {
-      document.forms['formRole']['rdoRole'].value = qsrole;
+
+    let IDJwtCookie;
+    let AccessJwtCookie;
+    let RefreshJwtCookie;
+
+    const getSelectedRole = () => {
+      let role = new URL(document.location.href).searchParams.get('selected_role');
+      if(role) return role;
+      if(AccessJwtCookie && !AccessJwtCookie.jwtExpired()) {
+        role = AccessJwtCookie.getRole()?.name;
+        if(role) return role;
+      }
+      return document.forms['formRole']['rdoRole'].value;
     }
-    roleChange();
+
+    let selected_role = getSelectedRole();
+
+    let userContext = {};
 
     const rdoRoles = document.getElementsByName('rdoRole');
     rdoRoles.forEach(rdoRole => {
@@ -243,6 +821,7 @@
     const clientId = () => { return STATIC_PARAMETERS.ROLES[selected_role].CLIENT_ID; }
     const redirectUri = () => { return STATIC_PARAMETERS.ROLES[selected_role].REDIRECT_URI; }
     const apiUri = () => { return STATIC_PARAMETERS.ROLES[selected_role].API_URI; }
+    let invitation;
 
     /**
      * Generate a code verifier
@@ -311,7 +890,7 @@
       
       const queryString = Object.keys(params).map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`).join('&');
       const authorizationUrl = `${STATIC_PARAMETERS.COGNITO_DOMAIN}/oauth2/authorize?${queryString}`;
-      
+ 
       window.location.href = authorizationUrl;
     }
 
@@ -321,7 +900,9 @@
      * SEE: https://docs.aws.amazon.com/cognito/latest/developerguide/token-endpoint.html
      *      https://www.rfc-editor.org/rfc/rfc6749#section-3.2
      */
-    function exchangeAuthorizationCode(callback) {
+    async function exchangeAuthorizationCode(callback) {  
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
       const queryParams = new URLSearchParams(window.location.search);
       const authorizationCode = queryParams.get('code');
       const returnedState = queryParams.get('state')
@@ -346,30 +927,317 @@
       };
 
       const formData = Object.keys(params).map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`).join('&');
+      const tokenUrl = `${STATIC_PARAMETERS.COGNITO_DOMAIN}/oauth2/token`;
 
-      fetch(`${STATIC_PARAMETERS.COGNITO_DOMAIN}/oauth2/token`, {
+      const response = await fetch(tokenUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         },
         body: formData
-      })
-      .then(response => response.json())
-      .then(data => {
+      });
+      const data = await response.json();
+      if(data.error) {
+        msg.innerHTML = `<pre>${JSON.stringify(data, Object.getOwnPropertyNames(data), 2)}</pre>`;
+      }
+      else {
         AccessJwtCookie.setJwt(data.access_token);
         IDJwtCookie.setJwt(data.id_token);
-        // RefreshJwtCookie.setJwt(data.refresh_token);
-        callback();       
+      }
+
+      await callback();
+    }
+
+    /**
+     * Lookup the invitation with an api call. The invitation will also contain information as whether or not
+     * the user has acknowledged privacy policy or consented already. Reflect the findings in the current screen.
+     */
+    function showRegistrationScreen(step, invitationCode, callback) {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+
+      /**
+       * If a developer is straddling roles and has jwt tokens from the other role, these would need to be 
+       * removed if the current page makes it though to the consent submission - the existing jwts will 
+       * conflict with the ones issued upon post-consent account creation. So, logout just in case.
+       */
+      logout();
+
+      switch(step) {
+        case 'acknowledge':
+          var uri = `${STATIC_PARAMETERS.ACKNOWLEDGE_API_URI}/lookup-invitation/${invitationCode}`;
+          break;
+        case 'consent':
+          var uri = `${STATIC_PARAMETERS.CONSENT_API_URI}/lookup-entity/${invitationCode}`;
+          break;
+      }
+      fetch(uri, {
+        method: 'GET',
+        credentials: 'omit',
+        mode: 'cors',
       })
-      .catch(error => {
-        console.error(`Authorization error: ${error}`);
-      });
+      .then(response => response.json())
+      .then((json) => {
+        const { message, payload } = json;
+        if(payload.ok) {
+          callback(payload);
+        }
+        else {
+          msg.innerHTML = message;
+        }
+      })
+      .catch((e) => {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+        showSection(step);
+      }); 
+    }
+
+    /**
+     * This function is triggered as a callback from showRegistrationScreen with the returned invitation.
+     * If the invitation shows an acknowledgement timestamp, then enable buttons to goto the consent screen.
+     */
+    function showAcknowledgeScreen(payload) {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+        invitation = payload;
+        const { acknowledged_timestamp } = invitation;
+        const chk = document.getElementById('chkAcknowledge');
+        const btnSubmit = document.getElementById('btnAcknowledgeSubmit');
+        if(acknowledged_timestamp) {
+          msg.innerHTML = `You acknowledged the privacy policy at ${acknowledged_timestamp}`;
+          chk.checked = true;
+          btnSubmit.disabled = false;
+        }
+        else {
+          chk.checked = false;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+      finally {
+        showSection('acknowledge');
+      }
+    }
+
+    /**
+     * This function is triggered as a callback from showRegistrationScreen with the returned invitation.
+     * If the invitation shows a consent timestamp, then enable buttons to goto cognito login.
+     */
+    function showConsentScreen(payload) {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+        const { invitation:_invitation, users, entity } = payload;
+        invitation = _invitation;
+        const { acknowledged_timestamp, consented_timestamp, email:invEmail, role } = invitation;
+        selected_role = role;
+        const chk = document.getElementById('chkConsent');
+        const btnSubmit = document.getElementById('btnConsentSubmit');
+        if( ! acknowledged_timestamp) {
+          showAcknowledgeScreen(invitation);
+          return;
+        }
+        if(consented_timestamp) {
+          msg.innerHTML = `You consented at ${consented_timestamp}`;
+          chk.checked = true;
+          btnSubmit.disabled = true;
+        }
+        else {
+          chk.checked = false;
+          btnSubmit.disabled = true;
+        }
+
+        const sameUser = user =>  invEmail == user.email;
+        const setField = (user, userfld, basename, index) => {
+          let html = user[userfld] || '';
+          if(userfld == 'email' && user.hasAccount() == false) {
+            html = '';
+          }
+          if(sameUser(user)) { 
+            if(userfld == 'phone_number') {
+              document.getElementById(`td${basename}${index}`).innerHTML = html;
+              document.getElementById(`td${basename}${index}Label`).innerHTML = '';
+            }
+            else {
+              html = `<input type="text" class="form-control" id="txt${basename}${index}" value="${html}">`
+            }                  
+          }
+          document.getElementById(`td${basename}${index}`).innerHTML = html;
+        }
+        const setFields = (user, basename, index) => {
+          setField(user, 'fullname', `${basename}Name`, index||'');
+          setField(user, 'title', `${basename}Title`, index||'');
+          setField(user, 'phone_number', `${basename}Phone`, index||'');
+          setField(user, 'email', `${basename}Email`, index||'');
+        }
+
+        if(entity) {
+          document.getElementById('tdEntityName').innerHTML = entity.entity_name;
+          let authIndCounter = 0;
+          if(users && users.length > 0) {
+            users.forEach((user) => {
+              user.hasAccount = () => true;
+              switch(user.role) {
+                case 'RE_ADMIN':
+                  setFields(user, 'ReAdmin');
+                  break;
+                case 'RE_AUTH_IND':
+                  setFields(user, 'AuthInd', ++authIndCounter);
+                  break;
+              }
+            });
+          }
+          if(authIndCounter < 2) {
+           setFields({
+              email: invitation.email,
+              hasAccount: () => invitation.email != invitation.code,
+              fullname: invitation.fullname,
+              title: invitation.title,
+              phone_number: invitation.phone_number
+            }, 'AuthInd', authIndCounter+1);
+          }
+        }
+        else if(role == 'RE_ADMIN') {
+          setFields({
+            email: invitation.email,
+            hasAccount: () => invitation.email != invitation.code,
+            fullname: invitation.fullname,
+            title: invitation.title,
+            phone_number: invitation.phone_number
+          }, 'ReAdmin');
+        }
+        else {
+          showAcknowledgeScreen(invitation);
+          return;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+      finally {
+        showSection('consent');
+      }
+    }
+
+    /**
+     * Submit acknowledgement of the privacy policy and if successful, navigate to the consent screen
+     */
+     function acknowledge(invitationCode) {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+        const uri = `${STATIC_PARAMETERS.ACKNOWLEDGE_API_URI}/register/${invitationCode}`;
+        fetch(uri, {
+          method: 'GET',
+          credentials: 'omit',
+          mode: 'cors',
+        })
+        .then(response => response.json())
+        .then((json) => {
+          const { message, payload } = json;
+          if(payload.ok) {
+            document.location.href = `./?action=consent&code=${invitationCode}`;
+          }
+          else {
+            msg.innerHTML = message;
+          }
+        })
+        .catch((e) => {
+          msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+        }); 
+      }
+      catch(err) {
+        msg.innerHTML = `<pre>${JSON.stringify(err, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
+    /**
+     * Submit consent and if successful, navigate to the cognito hosted UI.
+     */
+    function consent(invitationCode) {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHtml = '';
+      const uri = `${STATIC_PARAMETERS.CONSENT_API_URI}/register/${invitationCode}`;
+      const basename = selected_role == 'RE_ADMIN' ? 'ReAdmin' : 'AuthInd';
+      const getAuthIndIndex = () => $(`#txt${basename}Email`).length == 1 ? '1' : '2';
+      const index = selected_role == 'RE_ADMIN' ? '' : getAuthIndIndex();
+      const formdata = {
+        email: $(`#txt${basename}Email${index}`).val(),
+        fullname: $(`#txt${basename}Name${index}`).val(),
+        title: $(`#txt${basename}Title${index}`).val()
+      }
+      const querystring = Object.keys(formdata).map(key => `${encodeURIComponent(key)}=${encodeURIComponent(formdata[key])}`).join('&');
+
+      fetch(`${uri}?${querystring}`, {
+        method: 'GET',
+        credentials: 'omit',
+        mode: 'cors',
+      })
+      .then(response => response.json())
+      .then((json) => {
+        const { message, payload } = json;
+        if(payload.ok) {
+          let email = $('input[type="text"]').filter(function() {
+              return /^txt[^\d]+Email\d*$/.test(this.id);
+          })[0];
+          email = email ? email.value : '';
+          signUp(email);
+        }
+        else {
+          msg.innerHTML = `<pre>${message}</pre>`;
+        }
+      })
+      .catch((e) => {
+        msg.innerHTML = `<pre>${e.message}</pre>`;
+      }); 
+    }
+
+    /**
+     * Invite a user
+     */
+    function invite(role, email, apiUri) {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      if( ! email) {
+        alert("No email was entered");
+        return;
+      }
+      const payload = {
+        task: 'invite_user',
+        parameters: { email, role }
+      }
+      fetch(apiUri, {
+        method: 'GET',
+        mode: "cors",
+        credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+          'Content-Type': 'application/json',
+          [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify(payload)
+        }
+      })
+      .then(response => response.json())
+      .then((package) => {
+        const { message, payload } = package;
+        if(payload.ok) {
+          alert('Invitation sent!');
+          msg.innerHTML = 'Invitation sent!';
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      })
+      .catch((e) => {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      });      
     }
 
     /**
      * Signup for a cognito userpool account.
      */
-    function signUp() {
+    function signUp(email) {
       const params = {
         client_id: clientId(),
         response_type: 'code',
@@ -377,6 +1245,9 @@
         redirect_uri: encodeURIComponent(`https://${redirectUri()}?action=signedup`)
       };
 
+      if(email) {
+        params.username = email;
+      }
       const queryString = Object.keys(params).map(key => `${key}=${params[key]}`).join('&');
       const signUpUrl = `${STATIC_PARAMETERS.COGNITO_DOMAIN}/signup?${queryString}`;
       window.location.href = signUpUrl;
@@ -440,6 +1311,95 @@
         document.getElementById('apiResponse').innerHTML = `API error: <br><textarea rows=5 cols=80>${JSON.stringify({msg: error.message, stack: error.stack}, null, 2)}</textarea>`;
       });
     }
+
+    /**
+     * Make an api call to retrieve information about the currently logged in user along with entity info
+     */
+    const setUserContext = async () => {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+        const role = AccessJwtCookie.getRole().name;
+        const email = IDJwtCookie.getUser().email;
+        const apiUri = STATIC_PARAMETERS.ROLES[role].API_URI
+        const outgoingPayload = {
+          task: 'lookup_user_context',
+          parameters: { email, role }
+        }
+  
+        const response = await fetch(apiUri, {
+          method: 'GET',
+          mode: "cors",
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify(outgoingPayload)
+          }
+        });
+        const package = await response.json();
+        const { message, payload } = package;
+        if(payload.ok) {
+          userContext = payload.user;
+          return userContext;
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch (e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
+    const createEntity = async () => {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+        const role = AccessJwtCookie.getRole().name;
+        const apiUri = STATIC_PARAMETERS.ROLES[role].API_URI
+        const entity_name = $('#txtReAdminEntityName').val();
+        const description = $('#txtReAdminEntityDesc').val();
+        if( ! entity_name) {
+          alert('Required entry: Entity name');
+          return;
+        }
+        if( ! description) {
+          alert('Required entry: Entity description');
+          return;
+        }
+        const outgoingPayload = {
+          task: 'create_entity',
+          parameters: { entity_name, description }
+        }
+
+        const response = await fetch(apiUri, {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify(outgoingPayload)
+          }
+        });
+
+        const package = await response.json();
+        const { message, payload } = package;
+        if(payload.ok) {
+          await setUserContext();
+          $('#btnReAdminEntityCreate').prop("disabled", true);
+          $('#btnReAdminEntityUpdate').prop("disabled", false);
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
 
     /**
      * This function serves as a utility object for processing JWTs received from cognito and the cookies they are stored in.
@@ -519,48 +1479,214 @@
       };
       this.getUser = function() {
         const decodedToken = this.getDecodedToken();
-        return {
-          name: decodedToken.name
-        };
+        const { name, email } = decodedToken;
+        return { name, email, getDisplayName: () => name || email };
+      }
+      this.getRole = function() {
+        let retval = { };
+        try {
+          const decodedToken = this.getDecodedToken();
+          // Set the role in a global variable - the value should be evident from the scope found in the access JWT.
+          decodedToken.scope.split(' ').forEach(s => { 
+            if(/\//.test(s)) selected_role = s.split('/')[0]; 
+          });         
+          const { client_id } = decodedToken;
+          const roles = STATIC_PARAMETERS.ROLES;
+          Object.keys(roles).forEach(rolename => {
+            if(roles[rolename].CLIENT_ID == client_id) {
+              retval.name = selected_role;
+              retval.fullname = roles[rolename].FULLNAME;
+            }
+          })
+        }
+        finally {
+          return retval;
+        }
       }
     };
 
-    const IDJwtCookie= new JwtCookie('EttIdJwt')
-    const AccessJwtCookie = new JwtCookie('EttAccessJwt');
-    const RefreshJwtCookie = new JwtCookie('EttRefreshJwt');
+    // Define the different sections of the page and a function to switch between them
+    const sections = [ 'auth', 'app', 'acknowledge', 'consent' ];
+    const showSection = (sectionToShow) => {
+      sections.forEach(section => {
+        document.getElementById(`${section}-section`).style.display = sectionToShow == section ? 'block' : 'none';
+      })
+    }
+
+    IDJwtCookie= new JwtCookie('EttIdJwt')
+    AccessJwtCookie = new JwtCookie('EttAccessJwt');
+    RefreshJwtCookie = new JwtCookie('EttRefreshJwt');
+
+    const logout = () => {
+      AccessJwtCookie.clearJwt();
+      IDJwtCookie.clearJwt();
+      RefreshJwtCookie.clearJwt();
+    }
 
     // Check the querystring for action=login on page load
-    window.onload = () => {
+
+    $( document ).ready(function() {
+      onDocumentLoad().then(() => console.log('onDocumentLoad complete.'));
+    });
+    // window.onload = () => {
+    //   onDocumentLoad().then(() => console.log('onDocumentLoad complete.'));;
+    // }
+
+    const onDocumentLoad = async () => {
       const queryParams = new URLSearchParams(window.location.search);
-      const checkAuth = () => {
-        if(!AccessJwtCookie.jwtExpired()) {
+
+      // Get querystring parameters
+      const action = queryParams.get('action');
+      const invitationCode = queryParams.get('code');
+
+      // Assign events to buttons
+      document.getElementById('btnSignin').addEventListener('click', () => {
+        signIn();
+      });
+      document.getElementById('btnSignup').addEventListener('click', () => {
+        signUp();
+      });
+      document.getElementById('btnPingApi').addEventListener('click', () => {
+        pingApi();
+      });
+      document.getElementById('btnSignout').addEventListener('click', () => {
+        signOut();
+      });
+      document.getElementById('btnAcknowledgeSubmit').addEventListener('click', () => {
+        acknowledge(invitationCode);
+      });
+      document.getElementById('btnConsentSubmit').addEventListener('click', () => {
+        consent(invitationCode);
+      });
+      document.getElementById('btnSysAdminInvite').addEventListener('click', () => {
+        const role = $("input[name='rdoSysAdminInvite']:checked").val();
+        const email = $('#txtSysAdminEmailToInvite').val();
+        const apiUri = STATIC_PARAMETERS.ROLES['SYS_ADMIN'].API_URI;
+        invite(role, email, apiUri);
+      });
+      document.getElementById('btnReAdminInvite').addEventListener('click', () => {
+        const email = $('#txtReAdminEmailToInvite').val();
+        const apiUri = STATIC_PARAMETERS.ROLES['RE_ADMIN'].API_URI;
+        invite('RE_AUTH_IND', email, apiUri);
+      });
+      document.getElementsByName('rdoSysAdminInvite').forEach(rdo => {
+        rdo.addEventListener('click', () => {
+          const val = event.srcElement.value;
+          const entities = document.getElementById('divSysAdminEntities');
+          const email = document.getElementById('divSysAdminEmailToInvite');
+          entities.style.display = 'none';
+          email.style.display = 'none';
+          if( ! val) return;
+          email.style.display = 'inline-block';
+          if( val == 'RE_AUTH_IND') entities.style.display = 'inline-block';
+        })
+      });
+      document.getElementById('btnReAdminEntityCreate').addEventListener('click', async () => {
+        await createEntity();
+      });
+
+      // Add show/hide behavior to the SYS_ADMIN tabstrip
+      $('#sysAdmin a').on('click', function (e) {
+        e.preventDefault()
+        $(this).tab('show')
+      });
+
+      // Add show/hide behavior to the RE_ADMIN tabstrip
+      $('#reAdmin a').on('click', function (e) {
+        e.preventDefault()
+        $(this).tab('show')
+      });
+
+      // Function for checking the users login status and selecting the correct view based on the JWT content.
+      const checkAuth = async () => {
+        const showAppForRole = async () => {
+          showSection('app');
+          switch(selected_role) {
+                
+            case 'SYS_ADMIN':
+              document.getElementById('app-section-SYS_ADMIN').style.display = 'inline';
+              document.getElementsByName('rdoSysAdminInvite')[1].click();
+              break;
+
+            case 'RE_ADMIN':
+              await setUserContext();
+              const entity = userContext?.entity || {};
+              const isEmpty = e => Object.keys(e).length == 0;
+              document.getElementById('re-admin-invitation-tab').style.display = isEmpty(entity) ? 'none' : 'inline';
+              $('#btnReAdminEntityCreate').prop("disabled", !isEmpty(entity));
+              $('#btnReAdminEntityUpdate').prop("disabled", isEmpty(entity));
+              $('#txtReAdminEntityName').val(entity.entity_name);
+              $('#txtReAdminEntityDesc').val(entity.description);
+              document.getElementById('app-section-RE_ADMIN').style.display = 'inline';
+              break;
+
+            case 'RE_AUTH_IND':
+              document.getElementById('app-section-RE_AUTH_IND').style.display = 'inline';
+              break;
+            
+            case 'CONSENTING_PERSON':
+              document.getElementById('app-section-CONSENTING_PERSON').style.display = 'inline';
+              break;
+
+            default:
+              showSection('auth');
+              break;
+          }
+        }
+
+        if(localTesting()) {
+          await showAppForRole();
+        }
+        else if(!AccessJwtCookie.jwtExpired()) {
+          const role = AccessJwtCookie.getRole();
           const user = IDJwtCookie.getUser();
-          document.getElementById('username').innerHTML = user.name;
-          document.getElementById('auth-section').style.display = 'none';
-          document.getElementById('app-section').style.display = 'block';
+          document.getElementById(`${role.name}_username`).innerHTML = `${role.fullname} ${user.getDisplayName()}`;  
+          await showAppForRole();        
         }
         else if(!RefreshJwtCookie.jwtExpired()) {
           // TODO: Use the refresh token to restore access.
           console.log('Token refresh not implemented yet.');
         }
+        else {
+          showSection('auth');
+        }
       }
 
-      if(queryParams.get('action') === 'login') {
-        exchangeAuthorizationCode(checkAuth);
-      }
-      else {
-        if(queryParams.get('action') === 'signedup') {
+
+      /**
+       * 1) Render the screen that corresponds to the task querystring parameter (no task defaults to the login screen)
+       * 2) Perform any "onload" actions specific to the task.
+       */
+      switch(action) {
+
+        case 'acknowledge':
+          showRegistrationScreen('acknowledge', invitationCode, showAcknowledgeScreen);
+          break;
+
+        case 'consent':
+          showRegistrationScreen('consent', invitationCode, showConsentScreen);
+          break;
+
+        case 'login':
+          await exchangeAuthorizationCode(checkAuth);
+          break;
+
+        case 'signedup':
           document.getElementById('btnSignup').style.display = 'none';
-        }
-        if(queryParams.get('action') === 'logout') {
-          console.log('Sign out successful');
+          await checkAuth();
+          break;
+
+        case 'logout':
           // Remove JWT access and refresh tokens from cookies
-          AccessJwtCookie.clearJwt();
-          IDJwtCookie.clearJwt();
-          RefreshJwtCookie.clearJwt();
-        }
-        checkAuth();
-      }    
+          logout();
+          console.log('Sign out successful');
+          await checkAuth();
+          break;
+
+        default:
+          await checkAuth();
+          break;
+      }
     };
 
   </script>

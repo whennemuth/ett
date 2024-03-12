@@ -3,7 +3,7 @@ import { Construct } from "constructs";
 import { IContext } from "../../contexts/IContext";
 import { LogGroup } from "aws-cdk-lib/aws-logs";
 import { Duration, RemovalPolicy } from "aws-cdk-lib";
-import { AccessLogFormat, CognitoUserPoolsAuthorizer, Cors, LambdaIntegration, LogGroupLogDestination, MethodLoggingLevel, RestApi } from "aws-cdk-lib/aws-apigateway";
+import { AccessLogFormat, CognitoUserPoolsAuthorizer, Cors, LambdaIntegration, LogGroupLogDestination, MethodLoggingLevel, RestApi, RestApiProps } from "aws-cdk-lib/aws-apigateway";
 import { Function } from 'aws-cdk-lib/aws-lambda';
 import { EttUserPoolClient } from "../CognitoUserPoolClient";
 import { Role } from '../lambda/_lib/dao/entity';
@@ -13,6 +13,7 @@ export interface ApiParms {
   cloudfrontDomain: string,
   lambdaFunction: Function,
   role: Role,
+  roleFullName: string,
   description: string,
   bannerImage: string,
   resourceId: string,
@@ -28,15 +29,12 @@ export type IncomingPayload = {
   task:string,
   parameters: any
 }
-/**
- * This is the type expected by api clients for json returned in the body of all api calls.
- */
-export type OutgoingPayload = {
-  statusCode:number;
-  statusDescription:string,
+
+export type OutgoingBody = {
   message:string,
-  payload:any
+  payload?:any
 }
+
 /**
  * This is the type that brings api responses into compliance with lambda proxy integration.
  * SEE: https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-integration-settings-integration-response.html
@@ -61,6 +59,7 @@ export class AbstractRoleApi extends Construct {
   private userPoolClient: UserPoolClient;
   private lambdaFunction: Function;
   private role: Role;
+  private roleFullName: string;
 
   /** Name of the header in incoming api call requests for task specific parameters. 
    * NOTE: Must be lowercase, because api gateway will convert it to lowercase and any lambda function
@@ -74,8 +73,9 @@ export class AbstractRoleApi extends Construct {
     
     const context: IContext = scope.node.getContext('stack-parms');
     const stageName = context.TAGS.Landscape;
-    const { userPool, cloudfrontDomain, lambdaFunction, role, role:resourceServerId, description, bannerImage, resourceId, scopes, methods } = parms;
+    const { userPool, cloudfrontDomain, lambdaFunction, role, role:resourceServerId, roleFullName, description, bannerImage, resourceId, scopes, methods } = parms;
     this.role = role;
+    this.roleFullName = roleFullName;
     this.lambdaFunction = lambdaFunction;
 
     // Create a log group for the api gateway to log to.
@@ -87,7 +87,7 @@ export class AbstractRoleApi extends Construct {
     // Create the api gateway REST api.
     const api = new RestApi(this, `LambdaRestApi`, {
       description,
-      restApiName: `${role}-rest-api-${stageName}`,
+      restApiName: `Ett-${role}-rest-api-${stageName}`,
       deployOptions: { 
         stageName,
         accessLogDestination: new LogGroupLogDestination(log_group),
@@ -103,7 +103,7 @@ export class AbstractRoleApi extends Construct {
         maxAge: Duration.minutes(10),
         allowCredentials: true
       }
-    });
+    } as RestApiProps);
     
     // Add a resource. This will be the resource "path" portion of the api. Example:
     // https://ud8xqc84ha.execute-api.us-east-2.amazonaws.com/[stage]/[path]
@@ -188,6 +188,10 @@ export class AbstractRoleApi extends Construct {
 
   public getRole(): Role {
     return this.role;
+  }
+
+  public getRoleFullName(): string {
+    return this.roleFullName;
   }
 }
 

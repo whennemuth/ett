@@ -23,6 +23,7 @@ export class AuthorizedIndividualApi extends AbstractRole {
       lambdaFunction,
       userPool,
       role: Roles.RE_AUTH_IND,
+      roleFullName: 'Authorized Individual',
       description: 'Api for all operations that are open to an authorized individual',
       bannerImage: 'client-auth-ind.png',
       resourceId: Roles.RE_AUTH_IND,
@@ -68,9 +69,9 @@ export class LambdaFunction extends AbstractFunction {
       },
       environment: {
         REGION: scope.node.getContext('stack-parms').REGION,
-        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME,
-        DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_ENTITY_TABLE_NAME,
-        DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_INVITATION_TABLE_NAME,
+        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
+        DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME,
+        DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
       }
     });
   }

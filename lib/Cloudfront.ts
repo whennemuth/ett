@@ -29,6 +29,7 @@ export class CloudfrontConstruct extends Construct {
 
     this.distribution = new Distribution(this, 'Distribution', {
       defaultBehavior,
+      comment: `ett-${this.context.TAGS.Landscape}-distribution`,
       defaultRootObject: 'index.htm',
       logBucket: new Bucket(this, 'DistributionLogsBucket', {
         removalPolicy: RemovalPolicy.DESTROY,    
@@ -44,7 +45,7 @@ export class CloudfrontConstruct extends Construct {
       }
     });      
 
-    const oac = new CfnOriginAccessControl(this, 'EttStaticSiteAccessControl', {
+    const oac = new CfnOriginAccessControl(this, 'StaticSiteAccessControl', {
       originAccessControlConfig: {
         name: 'ett-static-site',
         originAccessControlOriginType: 's3',
@@ -55,7 +56,7 @@ export class CloudfrontConstruct extends Construct {
     });
 
     /**
-     * The cdk has not caught up with the newer origin access control (oac). You can get there by letting the it
+     * The cdk has not caught up with the newer origin access control (oac). You can get there by letting it
      * produce an oai and tying it to the S3Config, but then you must blank it out (not remove it) and add the oac 
      * with escape hatches:
      */

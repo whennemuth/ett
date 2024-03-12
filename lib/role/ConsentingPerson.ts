@@ -22,6 +22,7 @@ export class ConsentingPersonApi extends AbstractRole {
       lambdaFunction,
       userPool,
       role: Roles.CONSENTING_PERSON,
+      roleFullName: 'Consenting Person',
       description: 'Api for all operations that are open to a consenting person',
       bannerImage: 'client-consenting.png',
       resourceId: Roles.CONSENTING_PERSON,
@@ -67,9 +68,9 @@ export class LambdaFunction extends AbstractFunction {
       },
       environment: {
         REGION: scope.node.getContext('stack-parms').REGION,
-        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_USERS_TABLE_NAME,
-        DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_ENTITY_TABLE_NAME,
-        DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_TABLES_INVITATION_TABLE_NAME,
+        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
+        DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME,
+        DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
       }
     });
   }

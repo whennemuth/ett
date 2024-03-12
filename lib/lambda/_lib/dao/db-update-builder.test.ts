@@ -1,13 +1,13 @@
-import { UpdateItemCommandInput } from '@aws-sdk/client-dynamodb';
+import { AttributeValue, UpdateItemCommandInput } from '@aws-sdk/client-dynamodb';
 import { getUpdateCommandBuilderInstance } from './db-update-builder';
-import { Invitation, Roles, User, UserFields } from './entity';
+import { Invitation, InvitationFields, Roles, User, UserFields } from './entity';
 
 describe('getCommandInputBuilderForUserUpdate', () => {
 
   it('Should produce the expected command', () => {
     const user = {
       email: 'mickey-mouse@gmail.com',
-      entity_name: 'Boston University',
+      entity_id: 'abc123',
       role: Roles.CONSENTING_PERSON,
       sub: 'mm_sub_id',
       fullname: 'Mickey Mouse',
@@ -18,73 +18,62 @@ describe('getCommandInputBuilderForUserUpdate', () => {
       TableName: 'ett-user',
       Key: {
         [UserFields.email]: { S: user.email },
-        [UserFields.entity_name]: { S: user.entity_name }
+        [UserFields.entity_id]: { S: user.entity_id }
       },
-      ExpressionAttributeNames: {},
-      ExpressionAttributeValues: {},
+      ExpressionAttributeNames: {
+        ['#sub']: 'sub',
+        ['#role']: 'role', 
+        ['#fullname']: 'fullname', 
+        ['#update_timestamp']: 'update_timestamp', 
+      },
+      ExpressionAttributeValues: {
+        [':sub']: { S: 'mm_sub_id' },
+        [':role']: { S: 'CONSENTING_PERSON' }, 
+        [':fullname']: { S: 'Mickey Mouse' }, 
+        [':update_timestamp']: { S: isoString }, 
+      },
       // NOTE: fields will be set in the same order as they appear in the entity.UserFields
-      UpdateExpression: `SET sub = {"S":"mm_sub_id"}, role = {"S":"CONSENTING_PERSON"}, fullname = {"S":"Mickey Mouse"}, update_timestamp = {"S":"${isoString}"}`
+      UpdateExpression: 'SET #sub = :sub, #role = :role, #fullname = :fullname, #update_timestamp = :update_timestamp'
     } as UpdateItemCommandInput;
 
     Date.prototype.toISOString = () => { return isoString; }
-    const command:UpdateItemCommandInput = getUpdateCommandBuilderInstance(user, 'ett-user').buildUpdateItem();
+    const command:UpdateItemCommandInput = getUpdateCommandBuilderInstance(user, 'user', 'ett-user').buildUpdateItem();
     expect(command).toEqual(expectedOutput);
   })
 });
 
-describe('getCommandInputBuilderForInvitationAppend', () => {
-  const invitation = {
-    email: 'mickey-mouse@gmail.com',
-    entity_name: 'Boston University',
-    attempts: [{
-      link: 'https://path/and?querystring',
-      role: Roles.CONSENTING_PERSON,        
-    }]     
-  } as Invitation;
-  const isoString = new Date().toISOString();
-  const expectedOutput = {
-    TableName: 'ett-user',
-    Key: {
-      [UserFields.email]: { S: invitation.email },
-      [UserFields.entity_name]: { S: invitation.entity_name }
-    },
-    ExpressionAttributeNames: {},
-    ExpressionAttributeValues: {},
-  } as UpdateItemCommandInput;
+describe('getCommandInputBuilderForInvitationUpdate', () => {
 
   it('Should produce the expected command for invitation creation', () => {    
+    const invitation = {
+      code: 'abc123',
+      email: 'mickey-mouse@gmail.com',
+      entity_id: 'abc123',
+      role: Roles.CONSENTING_PERSON     
+    } as Invitation;
+
+    const isoString = new Date().toISOString();
+    const expectedOutput = {
+      TableName: 'ett-invitation',
+      Key: {
+        [InvitationFields.code]: { S: invitation.code }
+      },
+      ExpressionAttributeNames: {
+        ['#role']: 'role',
+        ['#email']: 'email',
+        ['#entity_id']: 'entity_id',
+      },
+      ExpressionAttributeValues: {
+        [':role']: { S: Roles.CONSENTING_PERSON },
+        [':email']: { S: 'mickey-mouse@gmail.com' },
+        [':entity_id']: { S: 'abc123' },
+      },
+      // NOTE: fields will be set in the same order as they appear in the entity.InvitationFields
+      UpdateExpression: `SET #role = :role, #email = :email, #entity_id = :entity_id`
+    } as UpdateItemCommandInput;
+
     Date.prototype.toISOString = () => { return isoString; }
-    const email = '{"S":"mickey-mouse@gmail.com"}';
-    const entity = '{"S":"Boston University"}';
-    const role = '{"S":"CONSENTING_PERSON"}';
-    const link = '{"S":"https://path/and?querystring"}';
-    const sentTs = `{"S":"${isoString}"}`
-    const attempt = `{"M":{"link":${link},"role":${role},"sent_timestamp":${sentTs}}}`;
-    expectedOutput.UpdateExpression = `SET email = ${email}, entity_name = ${entity}, attempts = list_append(attempts, ${attempt})`;
-    const command:UpdateItemCommandInput = getUpdateCommandBuilderInstance(invitation, 'ett-user', 'create').buildUpdateItem();
+    const command:UpdateItemCommandInput = getUpdateCommandBuilderInstance(invitation, 'invitation', 'ett-invitation').buildUpdateItem();
     expect(command).toEqual(expectedOutput);    
-  });
-
-  it('Should produce the expected command for invitation append', () => {
-    Date.prototype.toISOString = () => { return isoString; };
-    const role = '{"S":"CONSENTING_PERSON"}';
-    const link = '{"S":"https://path/and?querystring"}'
-    const sentTs = `{"S":"${isoString}"}`;
-    const attempt = `{"M":{"link":${link},"role":${role},"sent_timestamp":${sentTs}}}`;
-    expectedOutput.UpdateExpression = `SET attempts = list_append(attempts, ${attempt})`;
-    const command:UpdateItemCommandInput = getUpdateCommandBuilderInstance(invitation, 'ett-user', 'append').buildUpdateItem();
-    expect(command).toEqual(expectedOutput);    
-  });
-
-  it('Should produce the expected command for invitation update', () => {
-    Date.prototype.toISOString = () => { return isoString; };
-    const day = 1000*60*60*24;
-    const acceptedDate = new Date(Date.now()+day).toISOString();
-    invitation.attempts[0].accepted_timestamp = acceptedDate;
-    const accepted = `{"S":"${acceptedDate}"}`;
-    const index = 1;
-    expectedOutput.UpdateExpression = `SET attempts[${index}].accepted_timestamp = ${accepted}`;
-    const command:UpdateItemCommandInput = getUpdateCommandBuilderInstance(invitation, 'ett-user', 'update').buildUpdateItem(index);
-    expect(command).toEqual(expectedOutput);
   });
 });

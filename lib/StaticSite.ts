@@ -68,5 +68,6 @@ export abstract class StaticSiteConstruct extends Construct {
         deployment.node.addDependency(d);
       })
     }
+    deployment.node.addDependency(this.getBucket())
   }
 }

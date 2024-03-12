@@ -4,21 +4,21 @@ import * as event from './PreAuthenticationEventMock.json';
 
 const mockUser1:User = {
   email: '',
-  entity_name: '',
+  entity_id: '',
   sub: '',
   active: YN.No,
   role: Roles.SYS_ADMIN,
 };
 const mockUser2:User = {
   email: '',
-  entity_name: '',
+  entity_id: '',
   sub: '',
   active: YN.Yes,
   role: Roles.RE_ADMIN,
 };
 const mockUser3:User = {
   email: '',
-  entity_name: '',
+  entity_id: '',
   sub: '',
   active: YN.No,
   role: Roles.RE_AUTH_IND,
@@ -44,13 +44,16 @@ jest.mock('../../_lib/dao/dao.ts', () => {
 });
 
 let role:Role|undefined;
-jest.mock('./RoleLookup.ts', () => {
+/**
+ * Define a partial mock for the cognito Lookup.ts module
+ */
+jest.mock('../../_lib/cognito/Lookup.ts', () => {
+  const originalModule = jest.requireActual('../../_lib/cognito/Lookup');
   return {
     __esModule: true,
-    lookupRole: async ():Promise<Role|undefined> => {
-      return new Promise((resolve, reject) => {
-        resolve(role);
-      });
+    ...originalModule,
+    lookupRole: async (userPoolId:string, clientId:string, region:string):Promise<Role|undefined> => {
+      return role;
     }
   }
 });

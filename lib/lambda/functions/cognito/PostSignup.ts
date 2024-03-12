@@ -1,7 +1,8 @@
-import { lookupRole } from './RoleLookup';
+import { lookupRole, removeUserFromUserpool } from '../../_lib/cognito/Lookup';
 import { DAOUser, DAOFactory } from '../../_lib/dao/dao';
-import { Role, UserFields, User } from '../../_lib/dao/entity';
+import { Role, UserFields, User, Invitation, Roles } from '../../_lib/dao/entity';
 import { PostSignupEventType } from './PostSignupEventType';
+import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
 
 const debugLog = (entry:String) => { 
   if(process.env?.DEBUG === 'true') {
@@ -34,56 +35,80 @@ export const handler = async (_event:any) => {
   }
 
   // If any of this failed (no new dynamodb entry made), erase the users presence in cognito.
-  if( ! newUser ) {
-    await undoCognitoLogin(event);
-    throw new Error('Post cognito signup confirmation error.');
+  if( ! newUser) {
+    const errmsg = 'Post cognito signup confirmation error.'
+    if(event.request && event.request.userAttributes) {
+      const { email } = event.request.userAttributes;
+      if(email) {
+        await removeUserFromUserpool(userPoolId, email, region);
+        throw new Error(`${errmsg} User rolled back from userpool: ${email}`);
+      }
+    }
+    throw new Error(errmsg);
   }
 
   return event;
 }
 
-export const addUserToDynamodb = async (event:PostSignupEventType, role:Role):Promise<User|undefined> => {
+/**
+ * 
+ * @param event 
+ * @param role 
+ * @returns 
+ */
+const addUserToDynamodb = async (event:PostSignupEventType, role:Role):Promise<User|undefined> => {
   
-  if( ! event?.request?.userAttributes ) {
+  if( ! event.request || ! event.request.userAttributes) {
     console.log('ERROR: Attributes are missing from the event');
-    return
+    return;
   }
 
-  const { sub, email, name, email_verified, 'cognito:user_status':status } = event?.request?.userAttributes;
+  const { sub, email, email_verified, phone_number, 'cognito:user_status':status } = event.request.userAttributes;
   const goodStatus = ( status && status.toUpperCase() == 'CONFIRMED' );
   const emailVerified = ( email_verified && email_verified.toLowerCase() == 'true' );
   let invalidMsg:string|undefined;
 
-  if( ! (goodStatus || emailVerified )) {
-    invalidMsg = 'User is neither confirmed or verified!'
+  if( ! goodStatus) {
+    invalidMsg = 'User is not confirmed!';
+  }
+  else if( ! emailVerified) {
+    invalidMsg = 'Users email has not been verified yet!';
   }
   else if( ! sub) {
-    console.error('Cognito user ID (sub) is missing as an attribute in the event!');
+    invalidMsg = 'Cognito user ID (sub) is missing as an attribute in the event!';
   }
   else if( ! email) {
-    console.error('Email is missing as an attribute in the event!');
+    invalidMsg = 'Email is missing as an attribute in the event!';
   }
-  else if( ! name) {
-    console.error('Full name is missing as an attribute in the event!');
+  else if( ! phone_number) {
+    invalidMsg = 'Phone number is missing as an attribute in the event!';
   }
   if(invalidMsg) {
-    console.log(`ERROR: ${invalidMsg}`);
+    console.error(`ERROR: ${invalidMsg}`);
     return;
   }
 
-  let user:User|undefined;
+  // Lookup the original invitation for the email to get the entity_id, fullname and title values:
+  const invitation = await scrapeUserValuesFromInvitation(email, role);
+
+  if( ! invitation) return;
+
+  let user:User;
   user = {
     [UserFields.email]: email,
-    [UserFields.entity_name]: '__UNASSIGNED__',
-    [UserFields.fullname]: name,
+    [UserFields.entity_id]: invitation.entity_id,
+    [UserFields.fullname]: invitation.fullname,
+    [UserFields.title]: invitation.title,
+    [UserFields.phone_number]: phone_number,
     [UserFields.sub]: sub,
     [UserFields.role]: role
-  }
-  const dao = DAOFactory.getInstance({ DAOType: 'user', Payload: user }) as DAOUser;
+  };
+
+  const daoUser = DAOFactory.getInstance({ DAOType: 'user', Payload: user }) as DAOUser;
   try {
-    await dao.create();
+    await daoUser.create();
   } catch (e) {
-    console.log(e);
+    console.error(e);
     return;
   } 
 
@@ -91,13 +116,44 @@ export const addUserToDynamodb = async (event:PostSignupEventType, role:Role):Pr
 }
 
 /**
- * Making an entry to dynamodb for the user failed for one reason or another. It is invalid state to have 
- * a confirmed cognito user with no matching dynamodb entry, so remove the cognito entry.
- * @param sub 
+ * Find the original invitation for the user who is signing up.
+ * @param email 
+ * @param role 
+ * @returns 
  */
-export const undoCognitoLogin = async (event:PostSignupEventType):Promise<void> => {
-  if(event?.request?.userAttributes?.sub) {
-    const { sub } = event.request.userAttributes;
-  }  
-  console.log('TODO: Write this function, and then assert it gets called in the unit tests.');
+const scrapeUserValuesFromInvitation = async (email:string, role:Role):Promise<Invitation|null> => {
+
+  // Lookup any invitations for the email:
+  const daoInvitation = DAOFactory.getInstance({
+    DAOType: 'invitation',
+    Payload: {
+      email
+    } as Invitation
+  });
+  let invitations = await daoInvitation.read() as Invitation[];
+
+  // Filter off invitations that are retracted, unconsented, for other roles, or not to the expected entity.
+  invitations = invitations.filter((invitation) => {
+    if(invitation.retracted_timestamp) return false;
+    if( ! invitation.acknowledged_timestamp) return false;
+    if( ! invitation.consented_timestamp) return false;
+    if( invitation.role != role) return false;
+    // Should NEVER find these role and entity_id combinations for associated invitation directly after signup
+    // An RE_ADMIN is always in the waiting room BEFORE they create their entity.
+    // A SYS_ADMIN is always in the waiting room since they transcend entities.
+    if(role == Roles.RE_AUTH_IND && invitation.entity_id == ENTITY_WAITING_ROOM) return false;
+    if(role == Roles.RE_ADMIN && invitation.entity_id != ENTITY_WAITING_ROOM) return false;
+    if(role == Roles.SYS_ADMIN && invitation.entity_id != ENTITY_WAITING_ROOM) return false;
+    return true;
+  });
+
+  // Handle lookup failure
+  if(invitations.length == 0) {
+    console.error(`ERROR: Cannot find qualifying invitation for ${email} for fullname and title - User creation cancelled.`);
+    return null;
+  }
+
+  // There should be only one result, but multiple results just means a SYS_ADMIN sent a subsequent invitation
+  // to the same person before that person had a chance to consent to and setup an account against the first invitation.
+  return invitations[0];
 }

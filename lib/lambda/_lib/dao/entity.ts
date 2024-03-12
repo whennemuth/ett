@@ -14,26 +14,31 @@ export type Y_or_N = YN.Yes | YN.No
 
 export enum UserFields {
   email = 'email',
-  entity_name = 'entity_name',
+  entity_id = 'entity_id',
   sub = 'sub',
   role = 'role',
   fullname = 'fullname',
+  title = 'title',
+  phone_number = 'phone_number',
   create_timestamp = 'create_timestamp',
   update_timestamp = 'update_timestamp',
   active = 'active'
 };
 export type User = {
   email: string,
-  entity_name: string,
+  entity_id: string,
   sub: string,
-  role?: Role,
+  role: Role,
   fullname?: string,
+  title?: string,
+  phone_number?: string,
   create_timestamp?: string,
   update_timestamp?: string,
   active?: Y_or_N
 };
 
 export enum EntityFields {
+  entity_id = 'entity_id',
   entity_name = 'entity_name',
   description = 'description',
   create_timestamp = 'create_timestamp',
@@ -41,6 +46,7 @@ export enum EntityFields {
   active = 'active'
 };
 export type Entity = {
+  entity_id: string,
   entity_name: string,
   description: string,
   create_timestamp?: string,
@@ -49,28 +55,30 @@ export type Entity = {
 }
 
 export enum InvitationFields {
-  email = 'email',
-  entity_name = 'entity_name',
-  attempts = 'attempts',
-}
-export enum InvitationAttemptFields {
+  code = 'code',
   role = 'role',
-  link = 'link',
+  email = 'email',
+  entity_id = 'entity_id',
   sent_timestamp = 'sent_timestamp',
-  accepted_timestamp = 'update_timestamp',
+  message_id = 'message_id',
+  fullname = 'fullname',
+  title = 'title',
+  acknowledged_timestamp = 'acknowledged_timestamp',
+  consented_timestamp = 'consented_timestamp',
   retracted_timestamp = 'retracted_timestamp',
 }
-export type InvitationAttempt = {
-  role: Role,
-  link: string,
-  sent_timestamp?: string,
-  accepted_timestamp?: string,
-  retracted_timestamp?: string,
-}
 export type Invitation = {
+  code: string,
+  role: Role,
   email: string,
-  entity_name: string,
-  attempts: InvitationAttempt[]
+  entity_id: string,
+  sent_timestamp: string,
+  message_id: string,
+  fullname?: string,
+  title?: string,
+  acknowledged_timestamp?: string,
+  consented_timestamp?: string,
+  retracted_timestamp?: string,
 }
 
 export function Validator() {

@@ -1,8 +1,8 @@
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { User, Validator, Entity, Invitation, InvitationAttempt } from './entity';
+import { User, Validator, Entity, Invitation } from './entity';
 import { UserCrud } from './dao-user';
 import { InvitationCrud } from './dao-invitation';
 import { EntityCrud } from './dao-entity';
+import { UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
 
 const validator = Validator();
 
@@ -12,9 +12,9 @@ type Baseline = {
   Delete():Promise<any>; 
   test():Promise<any> 
 }
-export type DAOUser = Baseline & { read():Promise<User|User[]> };
-export type DAOInvitation = Baseline & { read():Promise<Invitation|Invitation[]> };
-export type DAOEntity = Baseline & { read():Promise<Entity|Entity[]> };
+export type DAOUser = Baseline & { read():Promise<(User|null)|User[]>, migrate(old_entity_id:string):Promise<any> };
+export type DAOInvitation = Baseline & { code():string, read():Promise<(Invitation|null)|Invitation[]> };
+export type DAOEntity = Baseline & { id():string, read():Promise<Entity|null> };
 
 export type FactoryParms = {
   DAOType: 'user' | 'entity' | 'invitation',
@@ -28,10 +28,9 @@ export class DAOFactory {
     switch(parms.DAOType) {
 
       case 'user':
-        var { email, role, active } = parms.Payload as User;
-        
-        if( ! email ) {
-          throw new Error(`User crud error: Missing email in ${JSON.stringify(parms, null, 2)}`);
+        var { email=undefined, entity_id=undefined, role=undefined, active } = parms.Payload as User;
+        if( ! email && ! entity_id) {
+          throw new Error(`User crud error: both email AND entity_id missing in: ${JSON.stringify(parms, null, 2)}`);
         }
         if( role && ! validator.isRole(role)) {
           throw new Error(`User crud error: Invalid role specified in: ${JSON.stringify(parms, null, 2)}`);
@@ -41,20 +40,19 @@ export class DAOFactory {
         }
         
         return UserCrud(parms.Payload as User);
-
-      case 'entity':
         
+      case 'entity':
+        var { active } = parms.Payload as Entity;
+
+        if( active && ! validator.isYesNo(active)) {
+          throw new Error(`Entity crud error: Invalid Y/N active field value specified in ${JSON.stringify(parms, null, 2)} as ${role}: ${active}`);
+        }
+
         return EntityCrud(parms.Payload as Entity);
 
       case 'invitation':
-        var { email, attempts } = parms.Payload as Invitation;
-        if(attempts && attempts.length > 0) {
-          var { role=undefined, link } = attempts[0] as InvitationAttempt;
-        }
+        var { role=undefined } = parms.Payload as Invitation;
         
-        if( ! email ) {
-          throw new Error(`Invitation crud error: Missing email in ${JSON.stringify(parms, null, 2)}`);
-        }
         if( role && ! validator.isRole(role)) {
           throw new Error(`Invitation crud error: Invalid role specified in ${JSON.stringify(parms, null, 2)}`);
         }

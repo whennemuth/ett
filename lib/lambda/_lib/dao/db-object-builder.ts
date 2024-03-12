@@ -1,4 +1,25 @@
 export type ConvertObjectFilter = { exclude?:string[], include?:string[], setNull?:boolean };
+
+export const wrap = (raw:any) => {
+  const wrapped = {} as any;
+  if(typeof raw === 'string') {
+    wrapped.S = raw;
+  }
+  else if(typeof raw === 'number' || typeof raw === 'bigint') {
+    wrapped.N = raw;
+  }
+  else if(typeof raw === 'boolean') {
+    wrapped.BOOL = raw;
+  }
+  else if(raw === null || typeof raw === 'undefined') {
+    wrapped.NULL = true;
+  }
+  else if(raw instanceof Object) {
+    wrapped.M = convertToApiObject(raw);
+  }
+  return wrapped;
+}
+
 /**
  * This function takes a javascript object or value and converts into the equivalent for dynamodb
  * low-level api commands. For example:
@@ -17,25 +38,6 @@ export const convertToApiObject = (obj:any, filter?:ConvertObjectFilter) => {
       }
     }
     return false;
-  }
-  const wrap = (raw:any) => {
-    const wrapped = {} as any;
-    if(typeof raw === 'string') {
-      wrapped.S = raw;
-    }
-    else if(typeof raw === 'number' || typeof raw === 'bigint') {
-      wrapped.N = raw;
-    }
-    else if(typeof raw === 'boolean') {
-      wrapped.BOOL = raw;
-    }
-    else if(raw === null || typeof raw === 'undefined') {
-      wrapped.NULL = true;
-    }
-    else if(raw instanceof Object) {
-      wrapped.M = convertToApiObject(raw);
-    }
-    return wrapped;
   }
   const converted = {} as any;
   for(const key in obj) {

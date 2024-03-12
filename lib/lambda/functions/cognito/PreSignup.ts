@@ -1,13 +1,13 @@
 import { DAOFactory, DAOInvitation } from "../../_lib/dao/dao";
-import { UpdateOutput } from "../../_lib/dao/dao-invitation";
 import { Invitation, Role, Roles } from "../../_lib/dao/entity";
 import { PreSignupEventType } from "./PreSignupEventType";
-import { lookupRole } from "./RoleLookup";
+import { lookupRole, lookupUserPoolClientId, lookupUserPoolId } from "../../_lib/cognito/Lookup";
 
 export enum Messages {
   UNINVITED = 'You are not on the invite list for signup as ',
   SERVER_ERROR = 'Server error during initial pre-screening process at ',
   ROLE_LOOKUP_FAILURE = 'Cannot determine role',
+  RETRACTED = 'Your invitation was retracted signup as '
 }
 
 const debugLog = (entry:String) => { 
@@ -57,55 +57,89 @@ export const handler = async (_event:any) => {
     const { email } = event?.request?.userAttributes;
     const dao = DAOFactory.getInstance({ DAOType: 'invitation', Payload: { email } }) as DAOInvitation;
 
-    // All invitations for the email
-    const knownInvitations = await dao.read() as Invitation[];
+    // All invitations associated with the email.
+    let qualifiedInvitations = await dao.read() as Invitation[];
 
-    // All invitations not accepted or retracted for the role in question
-    const pendingInvitations = [] as Invitation[];
-
-    // Load up the pendingInvitations array (Should usually just get one)
-    knownInvitations.forEach((invitation) => {
-      const pendingAttempts = invitation.attempts.filter((attempt) => {
-        if(attempt.role != role) return false;
-        if( ! attempt.retracted_timestamp) return false;
-        if( ! attempt.accepted_timestamp) return false;
-        return true;
-      });
-      if(pendingAttempts && pendingAttempts.length > 0) {
-        pendingInvitations.push({
-          email, entity_name: invitation.entity_name, attempts: pendingAttempts
-        });
+    // Check for illegal state.
+    const illegalStateInvitations = qualifiedInvitations.filter((invitation) => {
+      if( ! invitation.acknowledged_timestamp || ! invitation.consented_timestamp) {
+        console.error(
+          `INVALID STATE: an invitation has persisted its email address (${email}) BEFORE the legal 
+          requirements for doing so have been met! Check the codebase for bugs or flaws that would 
+          allow this to happen. The email field of an invitation should be set to the invitation code 
+          and NEVER the actual value before the user has acknowledged and consented as part of their 
+          registration.`);
       }
     });
-    
-    if(pendingInvitations.length == 0) {
-      throw new Error(Messages.UNINVITED + role);
-    }
-    else {
-      // Mark all invitations to email for role to be accepted.
-      const accepted_timestamp = new Date().toISOString();
-      pendingInvitations.forEach(async (invitation) => {
-        invitation.attempts.forEach((attempt) => {
-          attempt.accepted_timestamp = accepted_timestamp;
-        });
-        const dao = DAOFactory.getInstance({ DAOType: 'invitation', Payload: invitation }) as DAOInvitation;
-        const output:UpdateOutput = await dao.update();
-        const updates = output.update.length;
-        if(updates > 0) {
-          console.log(`${updates} invitation to ${email} accepted for ${role}`);
-        }
-        else {
-          console.error(`Dynamodb update to accept invitation to ${email} for ${role} indicates no items affected`);
-        }
-      });
 
-      return event;
+    // Reduce down to invitations for the same role.
+    qualifiedInvitations = qualifiedInvitations.filter((invitation) => { 
+      return invitation.role == role; 
+    });
+
+    // All invitations for the same role that have been retracted.
+    const retractedInvitations = [] as Invitation[];
+
+    // Reduce down to invitations that have not been retracted.
+    qualifiedInvitations = qualifiedInvitations.filter((invitation) => { 
+      if(invitation.retracted_timestamp) {
+        retractedInvitations.push(invitation);
+        return false;
+      }
+      return true;
+    });
+    
+    switch(qualifiedInvitations.length) {
+      case 0:
+        if(retractedInvitations.length > 0) {
+          throw new Error(Messages.RETRACTED + role);
+        }
+        throw new Error(Messages.UNINVITED + role);
+      default:
+        return event;
     }
+
   }
   catch(e) {
-    const errTime = new Date().toISOString();
-    console.log(`Error at: ${errTime}`);
     console.error(e);
-    throw new Error(Messages.SERVER_ERROR + errTime);
+    throw e;
   }
+}
+
+/**
+ * RUN MANUALLY: Modify the role, region, etc. as needed.
+ */
+const { argv:args } = process;
+if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
+
+  const role:Role = Roles.SYS_ADMIN;
+  const userpoolName:string = 'ett-cognito-userpool';
+  const region = 'us-east-2';
+  const email = 'wrh@bu.edu';
+  let userPoolId:string|undefined;
+
+  process.env.DYNAMODB_INVITATION_TABLE_NAME = 'ett-invitations';
+  process.env.DYNAMODB_USER_TABLE_NAME = 'ett-users';
+
+  lookupUserPoolId(userpoolName, region)
+  .then((id:string|undefined) => {
+    userPoolId = id;
+    return lookupUserPoolClientId(userPoolId||'', role, region);
+  })
+  .then((clientId:string|undefined) => {
+    const _event = {
+      region, userPoolId,
+      callerContext: { clientId },
+      request: {
+        userAttributes: { email }
+      }
+    } as PreSignupEventType;
+
+    return handler(_event);
+  })
+  .then(() => {
+    console.log('Presignup check complete.');
+  }).catch((reason) => {
+    console.error(reason);
+  });
 }
