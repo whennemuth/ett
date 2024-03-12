@@ -889,7 +889,8 @@
      *      https://www.rfc-editor.org/rfc/rfc6749#section-3.2
      */
     async function exchangeAuthorizationCode(callback) {  
-      const msg = document.getElementById('apiResponse');  
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
       const queryParams = new URLSearchParams(window.location.search);
       const authorizationCode = queryParams.get('code');
       const returnedState = queryParams.get('state')
@@ -941,6 +942,7 @@
      */
     function showRegistrationScreen(step, invitationCode, callback) {
       const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
 
       /**
        * If a developer is straddling roles and has jwt tokens from the other role, these would need to be 
@@ -984,11 +986,11 @@
      */
     function showAcknowledgeScreen(payload) {
       const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
       try {
         invitation = payload;
         const { acknowledged_timestamp } = invitation;
         const chk = document.getElementById('chkAcknowledge');
-        const msg = document.getElementById('apiResponse');
         const btnSubmit = document.getElementById('btnAcknowledgeSubmit');
         if(acknowledged_timestamp) {
           msg.innerHTML = `You acknowledged the privacy policy at ${acknowledged_timestamp}`;
@@ -1013,6 +1015,7 @@
      */
     function showConsentScreen(payload) {
       const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
       try {
         const { invitation:_invitation, users, entity } = payload;
         invitation = _invitation;
@@ -1101,6 +1104,7 @@
      */
      function acknowledge(invitationCode) {
       const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
       try {
         const uri = `${STATIC_PARAMETERS.ACKNOWLEDGE_API_URI}/register/${invitationCode}`;
         fetch(uri, {
@@ -1124,7 +1128,6 @@
       }
       catch(err) {
         msg.innerHTML = `<pre>${JSON.stringify(err, Object.getOwnPropertyNames(e), 2)}</pre>`;
-
       }
     }
 
@@ -1133,6 +1136,7 @@
      */
     function consent(invitationCode) {
       const msg = document.getElementById('apiResponse');
+      msg.innerHtml = '';
       const uri = `${STATIC_PARAMETERS.CONSENT_API_URI}/register/${invitationCode}`;
       const basename = selected_role == 'RE_ADMIN' ? 'ReAdmin' : 'ReAuthInd';
       const index = selected_role == 'RE_ADMIN' ? '' : '1';
@@ -1168,7 +1172,8 @@
      */
     function invite(role, email, apiUri) {
       const msg = document.getElementById('apiResponse');
-       if( ! email) {
+      msg.innerHTML = '';
+      if( ! email) {
         alert("No email was entered");
         return;
       }
@@ -1286,6 +1291,7 @@
      */
     const setUserContext = async () => {
       const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
       try {
         const role = AccessJwtCookie.getRole().name;
         const email = IDJwtCookie.getUser().email;
@@ -1322,6 +1328,7 @@
 
     const createEntity = async () => {
       const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
       try {
         const role = AccessJwtCookie.getRole().name;
         const apiUri = STATIC_PARAMETERS.ROLES[role].API_URI
