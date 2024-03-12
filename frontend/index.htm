@@ -601,18 +601,18 @@
             <div id="app-section-RE_ADMIN" style="display:none">
               <ul class="nav nav-tabs" id="reAdmin" role="tablist">
                 <li class="nav-item">
-                  <a class="nav-link active" id="re-admin-entity-tab" data-toggle="tab" href="#re-admin-entity" role="tab" aria-controls="re-admin-entity" aria-selected="true">Entity/Organization</a>
+                  <a class="nav-link active" id="re-admin-entity-link" data-toggle="tab" href="#re-admin-entity" role="tab" aria-controls="re-admin-entity" aria-selected="true">Entity/Organization</a>
+                </li>
+                <li class="nav-item" id="re-admin-invitation-tab">
+                  <a class="nav-link" id="re-admin-invitation-link" data-toggle="tab" href="#re-admin-invitation" role="tab" aria-controls="re-admin-invitation" aria-selected="false">Invitation</a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" id="re-admin-invitation-tab" data-toggle="tab" href="#re-admin-invitation" role="tab" aria-controls="re-admin-invitation" aria-selected="false">Invitation</a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link" id="re-admin-misc-tab" data-toggle="tab" href="#re-admin-misc" role="tab" aria-controls="re-admin-misc" aria-selected="false">Miscellaneous</a>
+                  <a class="nav-link" id="re-admin-misc-link" data-toggle="tab" href="#re-admin-misc" role="tab" aria-controls="re-admin-misc" aria-selected="false">Miscellaneous</a>
                 </li>
               </ul>
               <h3 class="display-7 fw-bold">Welcome <span id="RE_ADMIN_username"></span></h3>
               <div class="tab-content" id="reAdminContent">
-                <div class="tab-pane fade show active" id="re-admin-entity" role="tabpanel" aria-labelledby="re-admin-entity-tab">
+                <div class="tab-pane fade show active" id="re-admin-entity" role="tabpanel" aria-labelledby="re-admin-entity-link">
                   <div id="divCreateEntity">
                     <h3 class="display-7 fw-bold">Create your entity</h3>
                     <div id="divReAdminEntityName" class="divSysAdminOption" style="text-align: right;">
@@ -630,7 +630,7 @@
                     </div> 
                   </div>                  
                 </div>
-                <div class="tab-pane fade" id="re-admin-invitation" role="tabpanel" aria-labelledby="re-admin-invitation-tab">
+                <div class="tab-pane fade" id="re-admin-invitation" role="tabpanel" aria-labelledby="re-admin-invitation-link">
                   <div id="divReAdminInvite">
                     <h3 class="display-7 fw-bold">Invite an authorized Individual to <span id="re-admin-entity-name">your entity</span></h3>
                     <div style="display:inline-block; margin-top:30px;">
@@ -644,7 +644,7 @@
                     </div>
                   </div>                   
                 </div>
-                <div class="tab-pane fade" id="re-admin-misc" role="tabpanel" aria-labelledby="re-admin-misc-tab">
+                <div class="tab-pane fade" id="re-admin-misc" role="tabpanel" aria-labelledby="re-admin-misc-link">
                   <h3 class="display-7 fw-bold" style="text-align:center; margin-bottom: 20px;">Something else can go here, not sure what</h3>
                 </div>
               </div>
@@ -1564,6 +1564,11 @@
         const apiUri = STATIC_PARAMETERS.ROLES['SYS_ADMIN'].API_URI;
         invite(role, email, apiUri);
       });
+      document.getElementById('btnReAdminInvite').addEventListener('click', () => {
+        const email = $('#txtReAdminEmailToInvite').val();
+        const apiUri = STATIC_PARAMETERS.ROLES['RE_ADMIN'].API_URI;
+        invite('RE_AUTH_IND', email, apiUri);
+      });
       document.getElementsByName('rdoSysAdminInvite').forEach(rdo => {
         rdo.addEventListener('click', () => {
           const val = event.srcElement.value;
@@ -1600,13 +1605,14 @@
                 
             case 'SYS_ADMIN':
               document.getElementById('app-section-SYS_ADMIN').style.display = 'inline';
-              document.getElementsByName('rdoSysAdminInvite')[0].click();
+              document.getElementsByName('rdoSysAdminInvite')[1].click();
               break;
 
             case 'RE_ADMIN':
               await setUserContext();
-              const entity = userContext?.user?.entity || {};
+              const entity = userContext?.entity || {};
               const isEmpty = e => Object.keys(e).length == 0;
+              document.getElementById('re-admin-invitation-tab').style.display = isEmpty(entity) ? 'none' : 'inline';
               $('#btnReAdminEntityCreate').prop("disabled", !isEmpty(entity));
               $('#btnReAdminEntityUpdate').prop("disabled", isEmpty(entity));
               $('#txtReAdminEntityName').val(entity.entity_name);

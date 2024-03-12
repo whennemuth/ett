@@ -1,5 +1,5 @@
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
-import { lookupEmail } from '../../_lib/cognito/Lookup';
+import { lookupEmail, lookupUserPoolId } from '../../_lib/cognito/Lookup';
 import { DAOEntity, DAOFactory, DAOUser } from '../../_lib/dao/dao';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
 import { Entity, Invitation, Role, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
@@ -69,8 +69,6 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
 
 /**
  * Get the users information, including the entity details, as well as the other users in the entity.
- * 
- * RESUME NEXT: Create a unit test for this function and also test through the frontend.
  * 
  * TODO: Replace the filtering (ie: user.active, user.role, etc) with filters applied by the dynamodb query itself.
  * This would entail modifying the _read and _query functions so that extra attributes supplied in the User object
@@ -229,31 +227,86 @@ export const deactivateEntity = async (parms:any):Promise<LambdaProxyIntegration
  * @param parms 
  */
 export const inviteUser = async (parms:any, inviterRole:Role, linkGenerator:Function, inviterCognitoUserName?:string): Promise<LambdaProxyIntegrationResponse> => {
-  const { email, entity_id=ENTITY_WAITING_ROOM, role } = parms;
+  let { email, entity_id, role } = parms;
   const cloudfrontDomain = process.env.CLOUDFRONT_DOMAIN;
   if(cloudfrontDomain) {
 
-    const link = await linkGenerator(entity_id, role);
+    let entity:Entity|null = null;
+    const invitedByReAdmin = () => inviterRole == Roles.RE_ADMIN;
+    const invitedToWaitingRoom = () => entity_id == ENTITY_WAITING_ROOM;
+    const invitingAuthInd = () => role == Roles.RE_AUTH_IND
+    const lookupInviterViaCognito = async (_role:Role): Promise<User[]> => {
+      let matches = [] as User[];
+      if(inviterCognitoUserName) {
+        const inviterEmail = await lookupEmail(
+          process.env.USERPOOL_ID || '', 
+          inviterCognitoUserName, 
+          process.env.REGION || ''
+        );
+        if(inviterEmail) {
+          matches = (await lookupUser(inviterEmail)).filter((user) => {
+            return user.role == _role && user.active == YN.Yes;
+          });
+        }
+      }
+      return matches;
+    }
 
     // Prevent RE_ADMIN from inviting any other role than AUTH_IND
-    if(inviterRole == Roles.RE_ADMIN && role != Roles.RE_AUTH_IND) {
+    if(invitedByReAdmin() && ! invitingAuthInd()) {
       return invalidResponse(`An ${Roles.RE_ADMIN} can only invite a ${Roles.RE_AUTH_IND}`);
     }
 
-    // Get the name of the associated entity.
-    let entity:Entity|null = null;
-    if(entity_id) {
+    // Prevent RE_ADMIN from inviting anyone to the waiting room (only SYS_ADMIN can do that).
+    if(invitedByReAdmin() && invitedToWaitingRoom()) {
+      return invalidResponse(`An ${Roles.RE_ADMIN} cannot invite anyone into the waiting room`);
+    }
+
+    // Attempt to lookup the entity
+    if(entity_id && ! invitedToWaitingRoom()) {
       entity = await lookupSingleActiveEntity(entity_id) as Entity;
+      if( ! entity) {
+        return invalidResponse(`Entity ${entity_id} lookup failed`);
+      }
     }
 
-    // Prevent inviting the user if the entity is deactivated.
-    if(entity && entity.active == YN.No) {
-      return invalidResponse(`Entity ${entity_id} has been deactivated`);
+    // Lookup the inviter.
+    let inviterLookupMatches = [] as User[];
+    if(invitedByReAdmin()) {
+      inviterLookupMatches = await lookupInviterViaCognito(Roles.RE_ADMIN);
+      if(inviterLookupMatches.length == 0 && ! entity_id) {
+        return invalidResponse(`Lookup for ${Roles.RE_ADMIN} inviter failed`);
+      }
+      if(inviterLookupMatches.length == 1 && ! entity_id) {
+        entity_id = inviterLookupMatches[0].entity_id;
+      }
     }
 
-    // Prevent AUTH_IND users from being invited to non-existent entities
-    if( ! entity && role == Roles.RE_AUTH_IND) {
-      return invalidResponse(`Entity ${entity_id} does not exist`)
+    // Prevent an RE_ADMIN from inviting someone to an entity they are not themselves a member of.
+    if(invitedByReAdmin() && inviterLookupMatches.length > 0 && entity_id) {
+      if( ! inviterLookupMatches.some(m => m.entity_id == entity_id)) {
+        return invalidResponse(`The ${Roles.RE_ADMIN} cannot invite anyone to entity: ${entity_id} if they are not a member themselves.`);
+      }
+    }
+
+    // Bail out if the entity is undetermined and the RE_ADMIN inviter belongs to more than one entity.
+    if(invitedByReAdmin() && inviterLookupMatches.length > 1 && ! entity_id) {
+      const msg = `The inviter appears to be a ${Roles.RE_ADMIN} for multiple entities`;
+      const listing = (inviterLookupMatches).reduce((list:string, _user:User) => {
+        return `${list}, ${_user.entity_id}`
+      }, '');
+      return invalidResponse(`${msg}: ${listing} - it is not clear to which the invitation applies.`);
+    }
+
+    // Bail out at this point if the entity is still undetermined and the inviter is a RE_ADMIN
+    if(invitedByReAdmin() && ! entity_id ) {
+      return invalidResponse(`Cannot determine entity to invite ${email} to.`);
+    }
+
+    // Default the entity as the waiting room.
+    if( ! entity_id) {
+      entity_id = ENTITY_WAITING_ROOM
+      entity = { entity_id, active: YN.Yes, entity_name:entity_id } as Entity
     }
 
     // Prevent inviting the user if they already have an account with the specified entity.
@@ -263,28 +316,11 @@ export const inviteUser = async (parms:any, inviterRole:Role, linkGenerator:Func
       // TODO: What if the user is deactivated? Should an invitation be allowed that reactivates them instead of creating a new user?
     }
 
-    // Prevent an RE_ADMIN from inviting someone to an entity they are not themselves a member of.
-    if(inviterCognitoUserName && inviterRole == Roles.RE_ADMIN) {
-      const inviterEmail = await lookupEmail(
-        process.env.USERPOOL_ID || '', 
-        inviterCognitoUserName, 
-        process.env.REGION || ''
-      );
-      if(inviterEmail) {
-        const inviterAsReAdminInSameEntity:User[] = (await lookupUser(inviterEmail)).filter((user) => {
-          return user.role == Roles.RE_ADMIN && user.entity_id == entity_id;
-        });
-        if(inviterAsReAdminInSameEntity.length == 0) {
-          return invalidResponse(`RE_ADMIN ${inviterEmail} is attempting to invite an authorized individual to entity they are not themselves a member of`);
-        }
-      }
-    }
-
     // Prevent inviting a non-RE_AUTH_IND user if somebody has already been invited for the same role in the same entity.
     const pendingInvitations = await lookupPendingInvitations(entity_id) as Invitation[];
     const conflictingInvitations = pendingInvitations.filter((invitation) => {
       if(invitation.retracted_timestamp) return false;
-      if(entity_id == ENTITY_WAITING_ROOM) return false; // Anybody can be invited into the waiting room.
+      if(invitedToWaitingRoom()) return false; // Anybody can be invited into the waiting room.
       if(role == Roles.RE_AUTH_IND) return false; // You can invite any number of AUTH_IND users to an entity.
       if(invitation.role != role) return false;
       return true;
@@ -293,6 +329,8 @@ export const inviteUser = async (parms:any, inviterRole:Role, linkGenerator:Func
       return invalidResponse(`One or more individuals already have outstanding invitations for role: ${role} in entity: ${entity_id}`);
     }
     
+    const link = await linkGenerator(entity_id, role);
+
     // Instantiate an invitation
     const emailInvite = new UserInvitation(
       { entity_id, email, role } as Invitation, 
@@ -324,40 +362,52 @@ const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
 
   // const task = Task.INVITE_USER;
-  const task = Task.LOOKUP_USER_CONTEXT;
+  const task = Task.INVITE_USER;
   const landscape = 'dev';
+  const region = 'us-east-2';
 
   lookupCloudfrontDomain(landscape).then((cloudfrontDomain) => {
     if( ! cloudfrontDomain) {
       throw('Cloudfront domain lookup failure');
     }
+    process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
+    return lookupUserPoolId('ett-cognito-userpool', region);
+  }).then((userpoolId) => {
+
     process.env.DYNAMODB_INVITATION_TABLE_NAME = 'ett-invitations';
     process.env.DYNAMODB_USER_TABLE_NAME = 'ett-users';
     process.env.DYNAMODB_ENTITY_TABLE_NAME = 'ett-entities'
-    process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
-    process.env.REGION = 'us-east-2'
+    process.env.USERPOOL_ID = userpoolId;
+    process.env.REGION = region;
     process.env.DEBUG = 'true';
 
     const payload = {
       task,
       parameters: {
-        email: 'warhen@comcast.net',
-        role: Roles.RE_ADMIN,
-        entity_id: '0952e4a9-060e-4d43-8a7d-7d90f6e04be4'
+        email: 'warhen8@gmail.com',
+        role: Roles.RE_AUTH_IND,
       }
     } as IncomingPayload;
 
     const _event = {
       headers: {
         [AbstractRoleApi.ETTPayloadHeader]: JSON.stringify(payload)
+      },
+      requestContext: {
+        authorizer: {
+          claims: {
+            username: '417bd590-f021-70f6-151f-310c0a83985c',
+            sub: '417bd590-f021-70f6-151f-310c0a83985c'
+          }
+        }
       }
-    }
+    } as any
 
     return handler(_event);
-
   }).then(() => {
     console.log(`${task} complete.`)
-  }).catch((reason) => {
+  })
+  .catch((reason) => {
     console.error(reason);
   });
  

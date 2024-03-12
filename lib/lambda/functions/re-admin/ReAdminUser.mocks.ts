@@ -73,8 +73,7 @@ export function UtilsMock(originalModule: any) {
         case 'id_for_active_entity':
           break;
         case 'id_for_deactivated_entity':
-          entity.active = YN.No;
-          break;
+          return null;
         case 'id_for_no_such_entity':
           return null;
       } 
@@ -408,7 +407,7 @@ export const UserInvitationTests = {
       expectedResponse: {
         statusCode: 400,
         outgoingBody: { 
-          message: `Entity id_for_deactivated_entity has been deactivated`,
+          message: `Entity id_for_deactivated_entity lookup failed`,
           payload: { invalid: true  }
         }
       }
@@ -428,7 +427,7 @@ export const UserInvitationTests = {
       expectedResponse: {
         statusCode: 400,
         outgoingBody: { 
-          message: `Entity id_for_no_such_entity does not exist`,
+          message: `Entity id_for_no_such_entity lookup failed`,
           payload: { invalid: true  }
         }
       }
@@ -448,7 +447,7 @@ export const UserInvitationTests = {
       expectedResponse: {
         statusCode: 400,
         outgoingBody: { 
-          message: `RE_ADMIN reAdmin@foreignEntity.net is attempting to invite an authorized individual to entity they are not themselves a member of`,
+          message: 'The RE_ADMIN cannot invite anyone to entity: id_for_invitee_entity if they are not a member themselves.',
           payload: { invalid: true  }
         }
       },
