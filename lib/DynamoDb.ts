@@ -41,7 +41,8 @@ export class DynamoDbConstruct extends Construct {
           indexName: DynamoDbConstruct.DYNAMODB_USER_ENTITY_INDEX,
           partitionKey: { name: UserFields.entity_id, type: AttributeType.STRING },
           sortKey: { name: UserFields.email, type: AttributeType.STRING },
-          projectionType: ProjectionType.KEYS_ONLY,
+          projectionType: ProjectionType.ALL,
+          // projectionType: ProjectionType.KEYS_ONLY,
           // projectionType: ProjectionType.INCLUDE,
           // nonKeyAttributes: [ role, disclosures, etc...]
         }
@@ -79,7 +80,7 @@ export class DynamoDbConstruct extends Construct {
           indexName: DynamoDbConstruct.DYNAMODB_INVITATION_ENTITY_INDEX,
           partitionKey: { name: InvitationFields.entity_id, type: AttributeType.STRING },
           sortKey: { name: InvitationFields.email, type: AttributeType.STRING },
-          projectionType:ProjectionType.KEYS_ONLY
+          projectionType:ProjectionType.ALL
         }
       ]  
     })
