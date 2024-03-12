@@ -81,7 +81,7 @@ export function UserCrud(userinfo:User): DAOUser {
    * @returns 
    */
   const _read = async ():Promise<User|null> => {
-    console.log(`Reading ${email} / ${entity_id}`);
+    console.log(`Reading user ${email} / ${entity_id}`);
     const params = {
       TableName: process.env.DYNAMODB_USER_TABLE_NAME,
       ConsistentRead: true,

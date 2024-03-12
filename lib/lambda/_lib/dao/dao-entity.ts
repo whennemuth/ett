@@ -56,7 +56,7 @@ export function EntityCrud(entityInfo:Entity): DAOEntity {
     // Handle missing field validation
     if( ! entity_id) throwMissingError('read', EntityFields.entity_id);
 
-    console.log(`Reading ${entity_id}`);
+    console.log(`Reading entity ${entity_id}`);
     const params = {
       TableName: process.env.DYNAMODB_ENTITY_TABLE_NAME,
       Key: {

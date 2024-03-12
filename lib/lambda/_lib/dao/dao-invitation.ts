@@ -65,7 +65,7 @@ export function InvitationCrud(invitationInfo:Invitation): DAOInvitation {
       throwMissingError('read', InvitationFields.code);
     }
 
-    console.log(`Reading ${_code}`);
+    console.log(`Reading invitation ${_code}`);
     const params = {
       TableName: process.env.DYNAMODB_INVITATION_TABLE_NAME,
       Key: { 
