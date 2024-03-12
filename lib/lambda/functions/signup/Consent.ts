@@ -1,7 +1,7 @@
 import { DAOFactory } from "../../_lib/dao/dao";
 import { Invitation, User, YN } from "../../_lib/dao/entity";
 import { Registration } from "../../_lib/invitation/Registration";
-import { debugLog, errorResponse, invalidResponse, lookupCloudfrontDomain, lookupSingleEntity, okResponse, unauthorizedResponse } from "../Utils";
+import { debugLog, errorResponse, invalidResponse, lookupCloudfrontDomain, lookupSingleActiveEntity, okResponse, unauthorizedResponse } from "../Utils";
 
 export enum Task {
   LOOKUP_INVITATION = 'lookup-invitation',
@@ -54,7 +54,7 @@ export const handler = async(event:any) => {
           let users = await dao.read() as User[];
           // Filter off inactive users.
           users = users.filter((user) => { return user.active == YN.Yes; });
-          let entity = await lookupSingleEntity(entity_id);
+          let entity = await lookupSingleActiveEntity(entity_id);
           return okResponse('Ok', { entity:(entity||null), users, invitation });
         }
         else {

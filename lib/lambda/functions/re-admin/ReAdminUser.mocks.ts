@@ -63,7 +63,7 @@ export function UtilsMock(originalModule: any) {
       }
       return pending;
     },
-    lookupSingleEntity: async (entity_id:string):Promise<Entity|null> => {
+    lookupSingleActiveEntity: async (entity_id:string):Promise<Entity|null> => {
       const dte = new Date().toISOString();
       let entity = {
         entity_id, entity_name: `Name for ${entity_id}`, description: `Description for ${entity_id}`,

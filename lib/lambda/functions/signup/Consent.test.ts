@@ -107,7 +107,7 @@ jest.mock('../Utils.ts', () => {
   return {
     __esModule: true,
     ...originalModule,
-    lookupSingleEntity: async (entity_id:string):Promise<Entity|null> => {
+    lookupSingleActiveEntity: async (entity_id:string):Promise<Entity|null> => {
       return warnerbros;    
     }
   }

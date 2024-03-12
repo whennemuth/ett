@@ -1,6 +1,6 @@
-import { DAOEntity, DAOFactory, DAOInvitation, DAOUser } from "../_lib/dao/dao";
-import { Entity, Invitation, Role, User } from "../_lib/dao/entity";
 import { CloudFrontClient, DistributionSummary, ListDistributionsCommand, ListDistributionsResult } from "@aws-sdk/client-cloudfront";
+import { DAOEntity, DAOFactory, DAOInvitation, DAOUser } from "../_lib/dao/dao";
+import { Entity, Invitation, User, YN } from "../_lib/dao/entity";
 
 export type LambdaProxyIntegrationResponse<T extends string = string> = {
   isBase64Encoded: boolean;
@@ -47,6 +47,7 @@ const getResponse = (message:string, statusCode:number, payload?:any): LambdaPro
   }
   addCorsHeaders(headers);
   const body = { message } as any;
+  console.log(message);
   if(payload) {
     body.payload = payload;
   }
@@ -124,6 +125,14 @@ export const lookupSingleEntity = async (entity_id:string):Promise<Entity|null> 
     Payload: { entity_id } as Entity
   }) as DAOEntity;
   return await dao.read() as Entity|null;
+}
+
+export const lookupSingleActiveEntity = async (entity_id:string):Promise<Entity|null> => {
+  const entity = await lookupSingleEntity(entity_id);
+  if(entity && entity.active == YN.No) {
+    return null;
+  }
+  return entity;
 }
 
 /**

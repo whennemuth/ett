@@ -5,7 +5,7 @@ import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
 import { Entity, Invitation, Role, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
 import { UserInvitation } from '../../_lib/invitation/Invitation';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
-import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, lookupPendingInvitations, lookupSingleEntity, lookupSingleUser, lookupUser, okResponse } from "../Utils";
+import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, lookupPendingInvitations, lookupSingleActiveEntity, lookupSingleUser, lookupUser, okResponse } from "../Utils";
 
 // TODO: Change underscores to dashes and rebuild stack.
 export enum Task {
@@ -243,7 +243,7 @@ export const inviteUser = async (parms:any, inviterRole:Role, linkGenerator:Func
     // Get the name of the associated entity.
     let entity:Entity|null = null;
     if(entity_id) {
-      entity = await lookupSingleEntity(entity_id) as Entity;
+      entity = await lookupSingleActiveEntity(entity_id) as Entity;
     }
 
     // Prevent inviting the user if the entity is deactivated.
