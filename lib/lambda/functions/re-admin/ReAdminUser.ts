@@ -1,6 +1,6 @@
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
 import { lookupEmail } from '../../_lib/cognito/Lookup';
-import { DAOEntity, DAOFactory, DAOInvitation } from '../../_lib/dao/dao';
+import { DAOEntity, DAOFactory, DAOUser } from '../../_lib/dao/dao';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
 import { Entity, Invitation, Role, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
 import { UserInvitation } from '../../_lib/invitation/Invitation';
@@ -162,7 +162,7 @@ export const createEntity = async (parms:any, reAdmin?:User):Promise<LambdaProxy
 
       await updateReAdminInvitationWithNewEntity(creatorEmail, new_entity_id);
 
-      await updateReAdminUserRecordWithNewEntity(creatorEmail, new_entity_id);
+      await migrateReAdminUserFromWaitingRoomToNewEntity(creatorEmail, new_entity_id);
     }
   }
 
@@ -203,13 +203,13 @@ const updateReAdminInvitationWithNewEntity = async (reAdminEmail:string, new_ent
  * @param reAdminEmail 
  * @param new_entity_id 
  */
-const updateReAdminUserRecordWithNewEntity = async (reAdminEmail:string, new_entity_id:string) => {
+const migrateReAdminUserFromWaitingRoomToNewEntity = async (reAdminEmail:string, new_entity_id:string) => {
   console.log(`updateReAdminUserRecordWithNewEntity: reAdminEmail:${reAdminEmail}, new_entity_id:${new_entity_id}`);
   const daoUser = DAOFactory.getInstance({
     DAOType: 'user',
     Payload: { email:reAdminEmail, entity_id:new_entity_id } as User
-  });
-  await daoUser.update();
+  }) as DAOUser;
+  await daoUser.migrate(ENTITY_WAITING_ROOM);
 }
 
 export const updateEntity = async (parms:any):Promise<LambdaProxyIntegrationResponse> => {
