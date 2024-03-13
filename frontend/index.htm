@@ -1161,7 +1161,7 @@
       msg.innerHtml = '';
       const uri = `${STATIC_PARAMETERS.CONSENT_API_URI}/register/${invitationCode}`;
       const basename = selected_role == 'RE_ADMIN' ? 'ReAdmin' : 'AuthInd';
-      const getAuthIndIndex = () => $(`#txt${basename}Email`).length == 1 ? '1' : '2';
+      const getAuthIndIndex = () => $(`#txt${basename}Email1`).length == 1 ? '1' : '2';
       const index = selected_role == 'RE_ADMIN' ? '' : getAuthIndIndex();
       const formdata = {
         email: $(`#txt${basename}Email${index}`).val(),
@@ -1390,6 +1390,7 @@
           await setUserContext();
           $('#btnReAdminEntityCreate').prop("disabled", true);
           $('#btnReAdminEntityUpdate').prop("disabled", false);
+          document.getElementById('re-admin-invitation-tab').style.display = true;
         }
         else {
           msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
