@@ -76,6 +76,8 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
  * "where clause" (research how to do this in dynamodb). This will become more necessary as CONSENTING_PERSON
  * users start to pile up in the entity and it becomes inefficient to filter them all off with javascript if the
  * use case doesn't even call for including them in the lookup.
+ * 
+ * TODO: Refactor this lambda so that each task is broken out into its own module. Adjust unit tests accordingly.
  * @param email 
  * @param role 
  * @returns 
