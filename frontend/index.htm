@@ -1390,7 +1390,8 @@
           await setUserContext();
           $('#btnReAdminEntityCreate').prop("disabled", true);
           $('#btnReAdminEntityUpdate').prop("disabled", false);
-          document.getElementById('re-admin-invitation-tab').style.display = true;
+          document.getElementById('re-admin-invitation-tab').style.display = 'inline';
+          alert('Entity created');
         }
         else {
           msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
