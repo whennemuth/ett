@@ -155,6 +155,24 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Jest DAO user migration",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/_lib/dao/dao-user-migration.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "env": {
+        "DYNAMODB_USER_TABLE_NAME": "ett-users",
+        "ACTION_TO_TEST": ""
+      }
+    },    {
+      "type": "node",
+      "request": "launch",
       "name": "Jest DAO invitation crud",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 

@@ -159,41 +159,40 @@ export function UserCrud(userinfo:User): DAOUser {
    * @returns 
    */
   const migrate = async (old_entity_id:string):Promise<TransactWriteItemsCommandOutput|undefined> => {
-    let response:TransactWriteItemsCommandOutput|undefined;
-    try {
-      // Read the existing user from the database to obtain ALL its attributes.
-      const daoUser = DAOFactory.getInstance({ 
-        DAOType:'user', 
-        Payload:{ email, entity_id:old_entity_id } as User
-      });
-      const user = await daoUser.read() as User;
+    // Read the existing user from the database to obtain ALL its attributes.
+    const daoUser = DAOFactory.getInstance({ 
+      DAOType:'user', 
+      Payload:{ email, entity_id:old_entity_id } as User
+    });
+    const user = await daoUser.read() as User;
 
-      // Modify the attributes that need to change (entity_id, update_timestamp)
-      user.entity_id = entity_id;
-      user.update_timestamp = new Date().toISOString();
+    // Modify the attributes that need to change (entity_id, update_timestamp)
+    user.entity_id = entity_id;
+    user.update_timestamp = new Date().toISOString();
 
-      // Define the transaction to execute (delete of original user followed by put of same user in different entity)
-      const TableName = process.env.DYNAMODB_USER_TABLE_NAME || ''
-      const Key = marshall({ [ UserFields.email ]: email, [ UserFields.entity_id ]: old_entity_id }) as Record<string, AttributeValue>;
-      const Item = marshall(user);
-      const input = {
-        TransactItems: [
-          { Delete: { TableName, Key } },
-          // The condition expression might be a bit superfluous since any matching item would have just been deleted.
-          { Put: { TableName, Item, ConditionExpression: 'attribute_not_exists(entity_id)' } }
-        ]
-      } as TransactWriteItemsCommandInput;
-      
-      // Execute the transaction
-      const command = new TransactWriteItemsCommand(input);
-      response = await dbclient.send(command);
+    if( ! email) {
+      throw new Error(`User migrate error: Missing email to migrate in: ${JSON.stringify(userinfo, null, 2)}`);
     }
-    catch(e) {
-      console.error(e);
+
+    if( ! entity_id) {
+      throw new Error(`User migrate error: Missing migration target entity_id in: ${JSON.stringify(userinfo, null, 2)}`);
     }
-    finally {
-      return response;
-    }    
+
+    // Define the transaction to execute (delete of original user followed by put of same user in different entity)
+    const TableName = process.env.DYNAMODB_USER_TABLE_NAME || ''
+    const Key = marshall({ [ UserFields.email ]: email, [ UserFields.entity_id ]: old_entity_id }) as Record<string, AttributeValue>;
+    const Item = marshall(user);
+    const input = {
+      TransactItems: [
+        { Delete: { TableName, Key } },
+        // The condition expression might be a bit superfluous since any matching item would have just been deleted.
+        { Put: { TableName, Item, ConditionExpression: 'attribute_not_exists(entity_id)' } }
+      ]
+    } as TransactWriteItemsCommandInput;
+    
+    // Execute the transaction
+    const transCommand = new TransactWriteItemsCommand(input);
+    return await dbclient.send(transCommand); 
   }
 
   /**
