@@ -1,8 +1,8 @@
-import { mockClient } from 'aws-sdk-client-mock'
+import { DeleteItemCommand, DynamoDBClient, GetItemCommand, PutItemCommand, QueryCommand, UpdateItemCommand } from '@aws-sdk/client-dynamodb';
+import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest';
-import { DAOFactory } from './dao';
-import { DeleteItemCommand, DynamoDBClient, GetItemCommand, PutItemCommand, QueryCommand, UpdateItemCommand } from '@aws-sdk/client-dynamodb'
-import { User, Roles, UserFields, YN } from './entity';
+import { DAOFactory, DAOUser } from './dao';
+import { Roles, User, UserFields, YN } from './entity';
 
 const dbMockClient = mockClient(DynamoDBClient);
 
@@ -144,15 +144,6 @@ const testPut = () => {
 
 const testRead = () => {
   describe('Dao user read', () => {
-
-    it('Should error if both email and entity_id are missing', async () => {
-      expect(async () => {
-        const dao = DAOFactory.getInstance({
-          DAOType: 'user', Payload: {
-            [UserFields.fullname]: fullname
-        }});
-      }).rejects.toThrow(/^User crud error: both email AND entity_id missing in:/);
-    });
 
     it('Should return an object of type User if both email and entity_id were provided', async () => {
       dbMockClient.on(GetItemCommand).resolves({
@@ -299,6 +290,31 @@ const testDelete = () => {
 
 }
 
+const testDeleteEntity = () => {
+  it('Should error if entity_id is missing', async () => {
+    expect(() => {
+      const dao = DAOFactory.getInstance({
+        DAOType: 'user', Payload: { }}) as DAOUser;
+      return dao.deleteEntity();
+    }).rejects.toThrow(/^User delete-entity error: Missing entity_id in/);
+  });
+
+  const response = {      
+    ConsumedCapacity: {
+      CapacityUnits: 1,
+      TableName: process.env.DYNAMODB_USER_TABLE_NAME || 'ett-users'
+    }      
+  };
+  dbMockClient.on(DeleteItemCommand).resolves(response);
+  it('Should NOT error if email is missing', async () => {
+    const dao = DAOFactory.getInstance({
+      DAOType: 'user', Payload: {
+        [UserFields.entity_id]: entity_id,
+    }}) as DAOUser;
+    expect( dao.deleteEntity()).resolves.toEqual(response);
+  });
+}
+
 testPut();
 
 testRead();
@@ -307,5 +323,5 @@ testUpdate();
 
 testDelete();
 
-
+testDeleteEntity();
 

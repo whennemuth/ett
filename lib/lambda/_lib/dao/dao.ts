@@ -12,9 +12,20 @@ type Baseline = {
   dryRun():any;
   test():Promise<any>;
 }
-export type DAOUser = Baseline & { read():Promise<(User|null)|User[]>, migrate(old_entity_id:string):Promise<any> };
-export type DAOInvitation = Baseline & { code():string, read():Promise<(Invitation|null)|Invitation[]> };
-export type DAOEntity = Baseline & { id():string, read():Promise<Entity|null> };
+export type DAOUser = Baseline & { 
+  read():Promise<(User|null)|User[]>, 
+  migrate(old_entity_id:string):Promise<any>,
+  deleteEntity():Promise<any>;
+};
+export type DAOInvitation = Baseline & { 
+  code():string, 
+  read():Promise<(Invitation|null)|Invitation[]>
+  deleteEntity():Promise<any>;
+};
+export type DAOEntity = Baseline & { 
+  id():string, 
+  read():Promise<Entity|null>
+};
 
 export type FactoryParms = {
   DAOType: 'user' | 'entity' | 'invitation',
@@ -29,9 +40,6 @@ export class DAOFactory {
 
       case 'user':
         var { email=undefined, entity_id=undefined, role=undefined, active } = parms.Payload as User;
-        if( ! email && ! entity_id) {
-          throw new Error(`User crud error: both email AND entity_id missing in: ${JSON.stringify(parms, null, 2)}`);
-        }
         if( role && ! validator.isRole(role)) {
           throw new Error(`User crud error: Invalid role specified in: ${JSON.stringify(parms, null, 2)}`);
         }

@@ -1,4 +1,4 @@
-import { DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, QueryCommand, QueryCommandInput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
+import { AttributeValue, DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, QueryCommand, QueryCommandInput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
 import { DynamoDbConstruct } from '../../../DynamoDb';
 import { DAOInvitation } from './dao';
@@ -175,6 +175,24 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
   }
 
   /**
+   * Delete all invitations that were sent to the specified entity
+   * @returns
+   */
+  const deleteEntity = async ():Promise<DeleteItemCommandOutput> => {
+
+    // Handle missing field validation
+    if( ! entity_id) throwMissingError('delete-entity', InvitationFields.entity_id);
+
+    const input = {
+      TableName: process.env.DYNAMODB_INVITATION_TABLE_NAME,
+      Key: { 
+        [InvitationFields.entity_id]: { S: entity_id, },
+      } as Record<string, AttributeValue>
+    } as DeleteItemCommandInput;
+    command = new DeleteItemCommand(input);
+    return await sendCommand(command);
+  }
+  /**
    * Envelope the clientdb send function with error handling.
    * @param command 
    * @returns 
@@ -209,5 +227,5 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
     await read();
   }
 
-  return { create, read, update, Delete, code, dryRun, test, } as DAOInvitation;
+  return { create, read, update, Delete, deleteEntity, code, dryRun, test, } as DAOInvitation;
 }

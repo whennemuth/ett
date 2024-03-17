@@ -233,6 +233,25 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
     return await sendCommand(command);
   }
 
+  /**
+   * Delete all users that belong to the specified entity
+   * @returns
+   */
+  const deleteEntity = async ():Promise<DeleteItemCommandOutput> => {
+
+    // Handle missing field validation
+    if( ! entity_id) throwMissingError('delete-entity', UserFields.entity_id);
+
+    const input = {
+      TableName: process.env.DYNAMODB_USER_TABLE_NAME,
+      Key: { 
+        [UserFields.entity_id]: { S: entity_id, },
+      } as Record<string, AttributeValue>
+    } as DeleteItemCommandInput;
+    command = new DeleteItemCommand(input);
+    return await sendCommand(command);
+  }
+
   const hasSortKey = () => { return userinfo.entity_id || false; }
 
   const loadUser = async (user:any):Promise<User> => {
@@ -266,5 +285,5 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
     await read();
   }
   
-  return { create, read, update, migrate, Delete, dryRun, test, } as DAOUser
+  return { create, read, update, migrate, Delete, deleteEntity, dryRun, test, } as DAOUser
 }
