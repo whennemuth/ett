@@ -13,9 +13,20 @@ const dbclient = new DynamoDBClient({ region: process.env.REGION });
  * @param invitationInfo 
  * @returns 
  */
-export function InvitationCrud(invitationInfo:Invitation): DAOInvitation {
+export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false): DAOInvitation {
 
   let { code:_code, entity_id, role, email } = invitationInfo;
+
+  let command:any;
+  
+  /**
+   * @returns An instance of UserCrud with the same configuration that is in "dryrun" mode. That is, when any
+   * operation, like read, update, query, etc is called, the command is withheld from being issued to dynamodb
+   * and is returned instead.
+   */
+  const dryRun = () => {
+    return InvitationCrud(invitationInfo, true);
+  }
 
   const throwMissingError = (task:string, fld:string) => {
     throw new Error(`Invitation ${task} error: Missing ${fld} in ${JSON.stringify(invitationInfo, null, 2)}`)
@@ -37,7 +48,7 @@ export function InvitationCrud(invitationInfo:Invitation): DAOInvitation {
     console.log(`Creating invitation ${entity_id ? `to ${entity_id} ` : ''}for: ${role}`);
     const builder:Builder = getUpdateCommandBuilderInstance(invitationInfo, 'invitation', process.env.DYNAMODB_INVITATION_TABLE_NAME || '');
     const input:UpdateItemCommandInput = builder.buildUpdateItem();
-    const command = new UpdateItemCommand(input);
+    command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
 
@@ -72,7 +83,7 @@ export function InvitationCrud(invitationInfo:Invitation): DAOInvitation {
         [InvitationFields.code]: { S: _code },
       }
     } as GetItemCommandInput;
-    const command = new GetItemCommand(params);
+    command = new GetItemCommand(params);
     const retval = await sendCommand(command);
     if( ! retval.Item) {
       return null;
@@ -121,7 +132,7 @@ export function InvitationCrud(invitationInfo:Invitation): DAOInvitation {
     } as QueryCommandInput;
 
     // Run the query
-    const command = new QueryCommand(params);
+    command = new QueryCommand(params);
     const retval = await sendCommand(command);
     const invitations = [] as Invitation[];
     for(const item in retval.Items) {
@@ -142,7 +153,7 @@ export function InvitationCrud(invitationInfo:Invitation): DAOInvitation {
     console.log(`Updating existing invitation in: ${_code}/${entity_id}`);
     const builder:Builder = getUpdateCommandBuilderInstance(invitationInfo, 'invitation', process.env.DYNAMODB_INVITATION_TABLE_NAME || '');
     const input:UpdateItemCommandInput = builder.buildUpdateItem();
-    const command = new UpdateItemCommand(input);
+    command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
 
@@ -158,7 +169,12 @@ export function InvitationCrud(invitationInfo:Invitation): DAOInvitation {
   const sendCommand = async (command:any): Promise<any> => {
     let response;
     try {
-      response = await dbclient.send(command);
+      if(_dryRun) {
+        response = command;
+      }
+      else {
+        response = await dbclient.send(command);
+      }           
     }
     catch(e) {
       console.error(e);
@@ -180,5 +196,5 @@ export function InvitationCrud(invitationInfo:Invitation): DAOInvitation {
     await read();
   }
 
-  return { create, read, update, Delete, code, test, } as DAOInvitation;
+  return { create, read, update, Delete, code, dryRun, test, } as DAOInvitation;
 }

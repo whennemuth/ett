@@ -13,10 +13,21 @@ const dbclient = new DynamoDBClient({ region: process.env.REGION });
  * @param {*} userinfo 
  * @returns 
  */
-export function UserCrud(userinfo:User): DAOUser {
+export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
 
   let { email, entity_id, role, sub, active=YN.Yes, create_timestamp=(new Date().toDateString()), 
     fullname, phone_number, title } = userinfo;
+
+  let command:any;
+  
+  /**
+   * @returns An instance of UserCrud with the same configuration that is in "dryrun" mode. That is, when any
+   * operation, like read, update, query, etc is called, the command is withheld from being issued to dynamodb
+   * and is returned instead.
+   */
+  const dryRun = () => {
+    return UserCrud(userinfo, true);
+  }
 
   const throwMissingError = (task:string, fld:string) => {
     throw new Error(`User ${task} error: Missing ${fld} in ${JSON.stringify(userinfo, null, 2)}`)
@@ -57,7 +68,7 @@ export function UserCrud(userinfo:User): DAOUser {
     if(phone_number) ItemToCreate[UserFields.phone_number] = { S: phone_number };
 
     // Send the command
-    const command = new PutItemCommand({
+    command = new PutItemCommand({
       TableName: process.env.DYNAMODB_USER_TABLE_NAME,
       Item: ItemToCreate
     });
@@ -90,7 +101,7 @@ export function UserCrud(userinfo:User): DAOUser {
         [UserFields.entity_id]: { S: entity_id }
       }
     } as GetItemCommandInput;
-    const command = new GetItemCommand(params);
+    command = new GetItemCommand(params);
     const retval:GetItemCommandOutput = await sendCommand(command);
     return await loadUser(retval.Item) as User;
   }
@@ -119,7 +130,7 @@ export function UserCrud(userinfo:User): DAOUser {
     if(index) {
       params.IndexName = index;
     }
-    const command = new QueryCommand(params);
+    command = new QueryCommand(params);
     const retval = await sendCommand(command);
     const users = [] as User[];
     for(const item in retval.Items) {
@@ -147,7 +158,7 @@ export function UserCrud(userinfo:User): DAOUser {
     console.log(`Updating user: ${email} / ${entity_id}`);
     const builder:Builder = getUpdateCommandBuilderInstance(userinfo, 'user', process.env.DYNAMODB_USER_TABLE_NAME || '');
     const input:UpdateItemCommandInput = builder.buildUpdateItem();
-    const command = new UpdateItemCommand(input);
+    command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
 
@@ -218,7 +229,7 @@ export function UserCrud(userinfo:User): DAOUser {
       // Add the sort key. Only one item will be deleted.
       input.Key[UserFields.entity_id] = { S: entity_id };
     }
-    const command = new DeleteItemCommand(input);
+    command = new DeleteItemCommand(input);
     return await sendCommand(command);
   }
 
@@ -238,7 +249,12 @@ export function UserCrud(userinfo:User): DAOUser {
   const sendCommand = async (command:any): Promise<any> => {
     let response;
     try {
-      response = await dbclient.send(command);
+      if(_dryRun) {
+        response = command;
+      }
+      else {
+        response = await dbclient.send(command);
+      }           
     }
     catch(e) {
       console.error(e);
@@ -250,5 +266,5 @@ export function UserCrud(userinfo:User): DAOUser {
     await read();
   }
   
-  return { create, read, update, migrate, Delete, test, } as DAOUser
+  return { create, read, update, migrate, Delete, dryRun, test, } as DAOUser
 }
