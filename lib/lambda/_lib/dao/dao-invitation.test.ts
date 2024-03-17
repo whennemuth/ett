@@ -185,8 +185,14 @@ const testUpdate = () => {
 
 const testDelete = () => {
   describe('Dao invitation delete', () => {
-    it('Should complete this test', () => {
-      console.log('TBD');
+    it('Should error if code is missing (no bulk deletes)', async () => {
+      expect(async () => {
+        const dao = DAOFactory.getInstance({
+          DAOType: 'invitation', Payload: {
+            [InvitationFields.email]: email,
+        }});
+        await dao.Delete();
+      }).rejects.toThrow(/^Invitation delete error: Missing code in/);
     });
   });
 }

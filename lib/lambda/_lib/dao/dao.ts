@@ -1,4 +1,3 @@
-import { TransactWriteItemsCommandInput } from '@aws-sdk/client-dynamodb';
 import { EntityCrud } from './dao-entity';
 import { InvitationCrud } from './dao-invitation';
 import { UserCrud } from './dao-user';

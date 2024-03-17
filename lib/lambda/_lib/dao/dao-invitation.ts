@@ -1,10 +1,10 @@
-import { DynamoDBClient, PutItemCommand, GetItemCommand, QueryCommand, UpdateItemCommand, AttributeValue, UpdateItemCommandInput, DeleteItemCommand, UpdateItemCommandOutput, GetItemCommandInput, QueryCommandInput } from '@aws-sdk/client-dynamodb'
-import { Invitation, InvitationFields } from './entity';
-import { Builder, getUpdateCommandBuilderInstance } from './db-update-builder'; 
-import { convertFromApiObject } from './db-object-builder';
-import { DAOInvitation } from './dao';
+import { DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, QueryCommand, QueryCommandInput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
 import { DynamoDbConstruct } from '../../../DynamoDb';
+import { DAOInvitation } from './dao';
+import { convertFromApiObject } from './db-object-builder';
+import { Builder, getUpdateCommandBuilderInstance } from './db-update-builder';
+import { Invitation, InvitationFields } from './entity';
 
 const dbclient = new DynamoDBClient({ region: process.env.REGION });
 
@@ -157,8 +157,21 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
     return await sendCommand(command);
   }
 
-  const Delete = async () => {
-    // TODO: write this function
+  /**
+   * Delete an invitation from the dynamodb table.
+   */
+  const Delete = async ():Promise<DeleteItemCommandOutput> => {
+    if( ! _code) {
+      throwMissingError('delete', InvitationFields.code);
+    }
+    const input = {
+      TableName: process.env.DYNAMODB_INVITATION_TABLE_NAME,
+      Key: { 
+         [InvitationFields.entity_id]: { S: entity_id, },
+      },
+    } as DeleteItemCommandInput;
+    command = new DeleteItemCommand(input);
+    return await sendCommand(command);
   }
 
   /**
