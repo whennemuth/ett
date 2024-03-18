@@ -55,6 +55,8 @@ export class AuthorizedIndividualApi extends AbstractRole {
  */
 export class LambdaFunction extends AbstractFunction {
   constructor(scope: Construct, constructId: string, parms:ApiConstructParms) {
+    const { userPool } = parms;
+    const { userPoolId } = userPool;
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
       entry: 'lib/lambda/functions/authorized-individual/AuthorizedIndividual.ts',
@@ -72,6 +74,7 @@ export class LambdaFunction extends AbstractFunction {
         DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
         DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME,
         DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
+        USERPOOL_ID: userPoolId
       }
     });
   }

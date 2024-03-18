@@ -61,6 +61,21 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "AuthorizedIndividual",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/authorized-individual/AuthorizedIndividual.ts",
+        "RUN_MANUALLY",
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Acknowledge",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
