@@ -6,6 +6,8 @@ import { Function, Runtime } from "aws-cdk-lib/aws-lambda";
 import { DynamoDbConstruct } from "../DynamoDb";
 import { Roles } from "../lambda/_lib/dao/entity";
 import { ResourceServerScope } from "aws-cdk-lib/aws-cognito";
+import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
+import { IContext } from "../../contexts/IContext";
 
 
 export class AuthorizedIndividualApi extends AbstractRole {
@@ -55,8 +57,9 @@ export class AuthorizedIndividualApi extends AbstractRole {
  */
 export class LambdaFunction extends AbstractFunction {
   constructor(scope: Construct, constructId: string, parms:ApiConstructParms) {
+    const context:IContext = scope.node.getContext('stack-parms');
     const { userPool } = parms;
-    const { userPoolId } = userPool;
+    const { userPoolId, userPoolArn } = userPool;
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
       entry: 'lib/lambda/functions/authorized-individual/AuthorizedIndividual.ts',
@@ -69,6 +72,26 @@ export class LambdaFunction extends AbstractFunction {
           '@aws-sdk/*',
         ]
       },
+      role: new Role(scope, 'AuthIndRole', {
+        assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+        description: `Grants actions to the ${Roles.RE_AUTH_IND} lambda function to perform the related api tasks.`,
+        inlinePolicies: {
+          'EttAuthIndCognitoPolicy': new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [  'cognito-idp:List*'  ],
+                resources: [ '*' ],
+                effect: Effect.ALLOW
+              }),
+              new PolicyStatement({
+                actions: [  'cognito-idp:AdminGet*', 'cognito-idp:AdminDeleteUser' ],
+                resources: [ userPoolArn ],
+                effect: Effect.ALLOW
+              })
+            ]
+          })
+        }
+      }),
       environment: {
         REGION: scope.node.getContext('stack-parms').REGION,
         DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,

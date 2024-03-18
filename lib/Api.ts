@@ -52,7 +52,12 @@ export class ApiConstruct extends Construct {
     dynamodb.getInvitationsTable().grantReadWriteData(this.reAdminApi.getLambdaFunction());
     dynamodb.getEntitiesTable().grantReadWriteData(this.reAdminApi.getLambdaFunction());
 
-    // TODO: Grant the appropriate iam policies to the auth ind and consenting persons lambdas
+    // Grant the authorized individual api permissions to read/write from the users table
+    dynamodb.getUsersTable().grantReadWriteData(this.authIndApi.getLambdaFunction());
+    dynamodb.getInvitationsTable().grantReadWriteData(this.authIndApi.getLambdaFunction());
+    dynamodb.getEntitiesTable().grantReadWriteData(this.authIndApi.getLambdaFunction());
+
+    // TODO: Grant the appropriate iam policies to the consenting persons lambdas
   }
 
   public get helloWorldApi(): HelloWorldApi {
