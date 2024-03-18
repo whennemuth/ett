@@ -309,6 +309,21 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Jest Demolition",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/functions/authorized-individual/Demolition.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Jest Lambda Acknowledgement",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
