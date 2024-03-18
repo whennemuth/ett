@@ -117,7 +117,7 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
   const _query = async (idxParms:IdxParms):Promise<User[]> => {
     const { v1, index } = idxParms;
     const key = DynamoDbConstruct.DYNAMODB_USER_ENTITY_INDEX == index ? UserFields.entity_id : UserFields.email;
-    console.log(`Reading users for ${v1}`);
+    console.log(`Reading users for ${key}: ${v1}`);
     const params = {
       TableName: process.env.DYNAMODB_USER_TABLE_NAME,
       // ConsistentRead: true,

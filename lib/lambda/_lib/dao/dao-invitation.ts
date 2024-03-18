@@ -100,7 +100,11 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
   type IdxParms = { email:string|null, entity_id:string|null }
   const _query = async (idxParms:IdxParms):Promise<Invitation[]> => {
     const { email, entity_id } = idxParms;
-    console.log(`Reading all invitations for ${email}`);
+    const parmEmail = email ? `email: ${email}` : '';
+    let parmEntityId = entity_id ? `entity_id: ${entity_id}` : '';
+    if(parmEmail && parmEntityId) parmEntityId = `${parmEntityId}`;
+
+    console.log(`Reading all invitations for ${parmEmail}${parmEntityId}`);
 
     // Declare QueryCommandInput fields
     let vals = {} as any;
