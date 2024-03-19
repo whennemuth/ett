@@ -452,6 +452,21 @@
       "env": {
         "DYNAMODB_USER_TABLE_NAME": "ett-users"
       }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Lambda Role Auth-Ind",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/functions/authorized-individual/AuthorizedIndividual.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
     }
   ]
 }

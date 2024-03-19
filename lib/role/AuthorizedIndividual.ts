@@ -76,6 +76,17 @@ export class LambdaFunction extends AbstractFunction {
         assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
         description: `Grants actions to the ${Roles.RE_AUTH_IND} lambda function to perform the related api tasks.`,
         inlinePolicies: {
+          'EttAuthIndSesPolicy': new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'ses:Send*', 'ses:Get*' ],
+                resources: context.SES_IDENTITIES.map((identity:string) => {
+                  return `arn:aws:ses:${context.REGION}:${context.ACCOUNT}:identity/${identity}`
+                }),
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
           'EttAuthIndCognitoPolicy': new PolicyDocument({
             statements: [
               new PolicyStatement({

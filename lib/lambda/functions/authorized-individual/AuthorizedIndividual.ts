@@ -1,5 +1,7 @@
+import { SESv2Client, SendEmailCommand, SendEmailCommandInput, SendEmailResponse } from "@aws-sdk/client-sesv2";
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
+import { Entity, User } from "../../_lib/dao/entity";
 import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../Utils";
 import { DemolitionRecord, EntityToDemolish } from "./Demolition";
 
@@ -34,7 +36,7 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
       const callerSub = callerUsername || event?.requestContext?.authorizer?.claims?.sub;
       switch(task as Task) {
         case Task.DEMOLISH_ENTITY:
-          const { entity_id, dryRun=false } = parameters;
+          const { entity_id, dryRun=false, notify=true } = parameters;
 
           // Bail out if missing the required entity_id parameter
           if( ! entity_id) {
@@ -50,16 +52,90 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           if( ! entityToDemolish.entity) {
             return invalidResponse(`Bad Request: Invalid entity_id: ${entity_id}`);
           }
+          
+          // For every user deleted by the demolish operation, notify them it happened by email.
+          if(notify) {            
+            const isEmail = (email:string|undefined) => /@/.test(email||'');
+            entityToDemolish.deletedUsers
+              .map((user:User) => { return isEmail(user.email) ? user.email : ''; })
+              .filter((email:string) => email)
+              .forEach(async (email:string) => {
+                await notifyUserOfDemolition(email, entityToDemolish.entity);
+              });
+          }
+          
           return okResponse('Ok', demolitionRecord);
         case Task.PING:
           return okResponse('Ping!', parameters);
       } 
-
     }
   }
   catch(e:any) {
     console.error(e);
     return errorResponse(`Internal server error: ${e.message}`);
+  }
+}
+
+/**
+ * Send a single email to an address notifying the recipient about the entity being demolished.
+ * @param emailAddress 
+ * @returns 
+ */
+const notifyUserOfDemolition = async (emailAddress:string, entity:Entity):Promise<void> => {
+  console.log(`Notifying ${emailAddress} that entity ${entity.entity_id}: ${entity.entity_name} was demolished`);
+
+  const client = new SESv2Client({
+    region: process.env.REGION
+  });
+
+  const command = new SendEmailCommand({
+    Destination: {
+      ToAddresses: [ emailAddress ],
+    },
+    FromEmailAddress: 'noreply@ett.com',
+    Content: {
+      Simple: {
+        Subject: {
+          Charset: 'utf-8',
+          Data: 'NOTIFICATION: Ethical Transparency Tool (ETT) - notice of entity cancellation',
+        },
+        Body: {
+          // Text: { Charset: 'utf-8', Data: 'This is a test' },
+          Html: {
+            Charset: 'utf-8',
+            Data: `
+              <style>
+                div { float: initial; clear: both; padding: 20px; width: 500px; }
+                hr { height: 1px; background-color: black; margin-bottom:20px; margin-top: 20px; border: 0px; }
+                .content { max-width: 500px; margin: auto; }
+                .heading1 { font: 16px Georgia, serif; background-color: #ffd780; text-align: center; }
+                .body1 { font: italic 14px Georgia, serif; background-color: #ffe7b3; text-align: justify;}
+              </style>
+              <div class="content">
+                <div class="heading1">Notice of entity cancellation</div>
+                <div class="body1" style="padding:20px;">
+                  <hr>
+                  You have recently participated in an invitation to register with ${entity.entity_name} through the ETT (Ethical Transparency Tool).
+                  <br>
+                  However, an Authorized Individual has opted to cancel the registration process for this entity. 
+                </div>
+              </div>`
+          }
+        }
+      }
+    }
+  } as SendEmailCommandInput);
+
+  try {
+    const response:SendEmailResponse = await client.send(command);
+    const messageId = response?.MessageId;
+    if( ! messageId) {
+      console.error(`No message ID in SendEmailResponse for ${emailAddress}`);
+    }
+  } 
+  catch (e:any) {
+    console.error(`Error sending email to ${emailAddress}`);
+    console.error(e);
   }
 }
 

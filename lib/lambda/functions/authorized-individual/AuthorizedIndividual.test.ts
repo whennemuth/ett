@@ -1,0 +1,207 @@
+import { SESv2Client, SendEmailCommand, SendEmailCommandInput, SendEmailResponse } from '@aws-sdk/client-sesv2';
+import { mockClient } from 'aws-sdk-client-mock';
+import 'aws-sdk-client-mock-jest';
+import { User } from '../../_lib/dao/entity';
+import { entity, bugsbunny, daffyduck, tables, yosemitesam } from './MockObjects';
+import * as mockCommandInput from './DemolitionCommandInputMock.json';
+import { Task, handler } from './AuthorizedIndividual';
+import { LambdaProxyIntegrationResponse } from '../Utils';
+import { AbstractRoleApi, IncomingPayload, OutgoingBody } from '../../../role/AbstractRole';
+
+process.env.DYNAMODB_USER_TABLE_NAME = tables.user;
+process.env.DYNAMODB_INVITATION_TABLE_NAME = tables.invitation;
+process.env.DYNAMODB_ENTITY_TABLE_NAME = tables.entity;
+
+const deletedUsers = [ bugsbunny, daffyduck, yosemitesam ] as User[];
+const dryRun = false;
+const demolish = async ():Promise<any> => mockCommandInput;
+
+enum Scenario { NORMAL, UNMATCHABLE_ENTITY, NON_EMAILS };
+let currentScenario = Scenario.NORMAL as Scenario;
+
+const deepClone = (obj:any) => JSON.parse(JSON.stringify(obj));
+
+jest.mock('./Demolition', () => {
+  return {
+    EntityToDemolish: jest.fn().mockImplementation(() => {
+      switch(currentScenario) {
+        case Scenario.NORMAL:
+          return { demolish, dryRun, entity, deletedUsers };
+        case Scenario.UNMATCHABLE_ENTITY:
+          return { demolish, dryRun, entity:undefined, deletedUsers };
+        case Scenario.NON_EMAILS:
+          // Daffy and bugs have non-emails, while yosemite sam retains a real email address.
+          const daffy = deepClone(daffyduck);
+          daffy.email = 'invitation_code';
+          const bugs = deepClone(bugsbunny);
+          bugs.email = 'invitation_code'
+          return { demolish, dryRun, entity, deletedUsers: [ daffy, bugs, yosemitesam ] };
+      }      
+    })
+  };
+});
+
+describe('AuthInd lambda trigger: pre-task validation', () => {
+  it('Should respond with a 400 status code if a missing or unrecognized task is provided', async () => {
+
+    // Missing task
+    let event = {
+      headers: {
+        [AbstractRoleApi.ETTPayloadHeader]: JSON.stringify({
+          parameters: { }
+        } as IncomingPayload)
+      }
+    } as any;
+    let response = await handler(event) as LambdaProxyIntegrationResponse;
+    expect(response.statusCode).toEqual(400);
+    let body = JSON.parse(response.body);
+    expect(body).toEqual({ 
+      message: `Bad Request: Invalid/Missing task parameter: undefined`,
+      payload: { invalid:true } 
+    } as OutgoingBody);
+
+    // Bogus task
+    event = {
+      headers: {
+        [AbstractRoleApi.ETTPayloadHeader]: JSON.stringify({
+          task: 'BOGUS',
+          parameters: { }
+        } as IncomingPayload)
+      }
+    } as any;
+    response = await handler(event) as LambdaProxyIntegrationResponse;
+    expect(response.statusCode).toEqual(400);
+    body = JSON.parse(response.body);
+    expect(body).toEqual({ 
+      message: `Bad Request: Invalid/Missing task parameter: BOGUS`,
+      payload: { invalid:true } 
+    } as OutgoingBody);
+  });
+
+  it('Should respond with a 400 status code if the parameters attribute is missing', async () => {
+    const event = {
+      headers: {
+        [AbstractRoleApi.ETTPayloadHeader]: JSON.stringify({
+          task: Task.DEMOLISH_ENTITY
+        } as IncomingPayload)
+      }
+    } as any;
+    const response = await handler(event) as LambdaProxyIntegrationResponse;
+    expect(response.statusCode).toEqual(400);
+    const body = JSON.parse(response.body);
+    expect(body).toEqual({ 
+      message: `Bad Request: Missing parameters parameter for ${Task.DEMOLISH_ENTITY}`,
+      payload: { invalid:true } 
+    } as OutgoingBody);
+  });
+});
+
+describe('AuthInd lambda trigger: demolition', () => {
+  let emailsSent = [] as string[];
+  const sesClientMock = mockClient(SESv2Client);
+  const { entity_id } = entity;
+  const incomingPayload = {
+    task: Task.DEMOLISH_ENTITY,
+    parameters: { entity_id, dryRun:false }
+  } as IncomingPayload;
+  const event = {
+    headers: {
+      [AbstractRoleApi.ETTPayloadHeader]: JSON.stringify(incomingPayload)
+    }
+  } as any;
+  const UserPoolId = 'user_pool_ID';
+  process.env.USERPOOL_ID = UserPoolId;
+
+  // Keep track of what emails are sent.
+  sesClientMock.on(SendEmailCommand).callsFake((input:SendEmailCommandInput) => {
+    if(input.Destination?.ToAddresses) {
+      emailsSent.push(input.Destination?.ToAddresses[0]);
+    }    
+    return {
+      MessageId: 'some_alpha-numeric_value'
+    } as SendEmailResponse
+  });
+
+  it('Should send an email to every user that was deleted from the system', async () => {
+    currentScenario = Scenario.NORMAL;
+    jest.restoreAllMocks();
+
+    const response = await handler(event) as LambdaProxyIntegrationResponse;
+
+    const emailsThatShouldHaveBeenSent = [ bugsbunny.email, daffyduck.email, yosemitesam.email ];
+    expect(response.statusCode).toEqual(200);
+    expect(response.body).toBeDefined();
+    expect(emailsSent).toEqual(emailsThatShouldHaveBeenSent);
+  });
+
+  it('Should NOT send any emails if notify is set to false', async () => {
+    currentScenario = Scenario.NORMAL;
+    jest.restoreAllMocks();
+    emailsSent = [] as string[];
+
+    // Set up an event that specifies no email notifications upon demolition completion.
+    const _incomingPayload = deepClone(incomingPayload) as IncomingPayload;
+    _incomingPayload.parameters.notify = false;
+    const _event = {
+      headers: {
+        [AbstractRoleApi.ETTPayloadHeader]: JSON.stringify(_incomingPayload)
+      }
+    } as any;
+
+    const response = await handler(_event) as LambdaProxyIntegrationResponse;
+    expect(response.statusCode).toEqual(200);
+    expect(response.body).toBeDefined();
+    expect(emailsSent.length).toEqual(0);
+  });
+
+  it('Should NOT send an email to any user that was deleted who is still in the entity waiting room', async () => {
+    currentScenario = Scenario.NON_EMAILS;
+    jest.restoreAllMocks();
+    emailsSent = [] as string[];
+
+    const response = await handler(event) as LambdaProxyIntegrationResponse;
+
+    const emailsThatShouldHaveBeenSent = [ yosemitesam.email ];
+    expect(response.statusCode).toEqual(200);
+    expect(response.body).toBeDefined();
+    expect(emailsSent).toEqual(emailsThatShouldHaveBeenSent);
+  });
+
+  it('Should respond with a 400 status code if no entity is specified', async () => {
+    currentScenario = Scenario.NON_EMAILS;
+    jest.restoreAllMocks();
+    emailsSent = [] as string[];
+
+    // Set up an event that specifies no email notifications upon demolition completion.
+    const _incomingPayload = deepClone(incomingPayload) as IncomingPayload;
+    _incomingPayload.parameters.entity_id = undefined;
+    const _event = {
+      headers: {
+        [AbstractRoleApi.ETTPayloadHeader]: JSON.stringify(_incomingPayload)
+      }
+    } as any;
+
+    const response = await handler(_event) as LambdaProxyIntegrationResponse;
+    expect(response.statusCode).toEqual(400);
+    const body = JSON.parse(response.body);
+    expect(body).toEqual({ 
+      message: 'Bad Request: Missing entity_id parameter',
+      payload: { invalid:true } 
+    } as OutgoingBody);
+  });
+
+  it('Should respond with a 400 status code lookup against specified entity_id fails', async () => {
+    currentScenario = Scenario.UNMATCHABLE_ENTITY;
+    jest.restoreAllMocks();
+    emailsSent = [] as string[];
+
+    const response = await handler(event) as LambdaProxyIntegrationResponse;
+    expect(response.statusCode).toEqual(400);
+    const body = JSON.parse(response.body);
+    expect(body).toEqual({ 
+      message: `Bad Request: Invalid entity_id: ${entity_id}`,
+      payload: { invalid:true } 
+    } as OutgoingBody);
+  });
+
+});
