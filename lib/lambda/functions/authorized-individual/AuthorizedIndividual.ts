@@ -1,7 +1,7 @@
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../Utils";
-import { EntityToDemolish } from "./Demolition";
+import { DemolitionRecord, EntityToDemolish } from "./Demolition";
 
 export enum Task {
   DEMOLISH_ENTITY = 'demolish-entity',
@@ -23,10 +23,10 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
     let { task, parameters } = payload || {};
 
     if( ! Object.values<string>(Task).includes(task || '')) {
-      return invalidResponse(`Invalid/Missing task parameter: ${task}`);
+      return invalidResponse(`Bad Request: Invalid/Missing task parameter: ${task}`);
     }
     else if( ! parameters) {
-      return invalidResponse(`Missing parameters parameter for ${task}`);
+      return invalidResponse(`Bad Request: Missing parameters parameter for ${task}`);
     }
     else {
       log(`Performing task: ${task}`);
@@ -34,13 +34,25 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
       const callerSub = callerUsername || event?.requestContext?.authorizer?.claims?.sub;
       switch(task as Task) {
         case Task.DEMOLISH_ENTITY:
-          const { entity_id, dryRun } = parameters;
+          const { entity_id, dryRun=false } = parameters;
+
+          // Bail out if missing the required entity_id parameter
+          if( ! entity_id) {
+            return invalidResponse('Bad Request: Missing entity_id parameter');
+          }
+
+          // Demolish the entity
           const entityToDemolish = new EntityToDemolish(entity_id);
           entityToDemolish.dryRun = dryRun;
-          await entityToDemolish.demolish();
-          return okResponse('Ok', entityToDemolish.demolitionRecord);
+          const demolitionRecord = await entityToDemolish.demolish() as DemolitionRecord;
+
+          // Bail out if the initial lookup for the entity failed.
+          if( ! entityToDemolish.entity) {
+            return invalidResponse(`Bad Request: Invalid entity_id: ${entity_id}`);
+          }
+          return okResponse('Ok', demolitionRecord);
         case Task.PING:
-          return okResponse('Ping!', parameters)
+          return okResponse('Ping!', parameters);
       } 
 
     }

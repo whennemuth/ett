@@ -6,6 +6,10 @@ import { CognitoIdentityProviderClient, AdminDeleteUserCommand, AdminDeleteUserR
 
 const dbclient = new DynamoDBClient({ region: process.env.REGION });
 const cognitoClient = new CognitoIdentityProviderClient({ region: process.env.REGION });
+export type DemolitionRecord = {
+  databaseCommandInput: TransactWriteItemsCommandInput,
+  deletedUsers: User[]
+}
 /**
  * This class implements is the "Nuclear Option" for an entity. That is, for any given entity:
  *   1) Every user belonging to the entity is removed from the database.
@@ -18,7 +22,8 @@ const cognitoClient = new CognitoIdentityProviderClient({ region: process.env.RE
 export class EntityToDemolish {
   private entityId: string;
   private dynamodbCommandInput: TransactWriteItemsCommandInput;
-  private cognitoUsernames = [] as string[];
+  private _entity: Entity;
+  private _deletedUsers = [] as User[];
   private _dryRun = false;
 
   constructor(entityId:string) {
@@ -41,7 +46,7 @@ export class EntityToDemolish {
       const { entity_id, email } = user;
       const Key = marshall({ entity_id, email } as User);
       TransactItems.push({ Delete: { TableName, Key }} as TransactWriteItem);
-      this.cognitoUsernames.push(user.sub);
+      this._deletedUsers.push(user);   
     });
   
     // Load commands to delete each item from the invitations table that invited somebody to the specified entity.
@@ -56,6 +61,8 @@ export class EntityToDemolish {
   
     // Load the one command to delete the entity itself from the entities table.
     TableName = process.env.DYNAMODB_ENTITY_TABLE_NAME;
+    const daoEntity = DAOFactory.getInstance({ DAOType: 'entity', Payload: { entity_id:this.entityId } as Entity });
+    this._entity = await daoEntity.read() as Entity;
     const Key = marshall({ entity_id: this.entityId } as Entity);
     TransactItems.push({
       Delete: { TableName, Key }
@@ -86,33 +93,34 @@ export class EntityToDemolish {
       }
       return await cognitoClient.send(command);
     }
-    this.cognitoUsernames.forEach(async (username) => deleteUser(username));
+    this._deletedUsers.forEach(async (user) => deleteUser(user.sub));
   }
 
-  public demolish = async () => {
+  public demolish = async ():Promise<any> => {
 
     await this.deleteEntityFromDatabase();
 
     await this.deleteEntityFromUserPool();
   }
 
+  public get entity(): Entity {
+    return this._entity;
+  }
+
+  public get deletedUsers(): User[] {
+    return this._deletedUsers;
+  }
+
   public get commandInput(): TransactWriteItemsCommandInput|undefined {
     return this.dynamodbCommandInput;
   }
 
-  public get cognitoUsernamesToDelete(): string[] {
-    return this.cognitoUsernames;
-  }
 
-  public set cognitoUsernamesToDelete(items:string[]) {
-    this.cognitoUsernames.push(...items);
-  }
-
-  public get demolitionRecord(): any {
+  public get demolitionRecord(): DemolitionRecord {
     return {
-      database: this.dynamodbCommandInput,
-      cognito: this.cognitoUsernames
-    }
+      databaseCommandInput: this.dynamodbCommandInput,
+      deletedUsers: this._deletedUsers,
+    } as DemolitionRecord
   }
 
   public set dryRun(_dryRun:boolean) {
