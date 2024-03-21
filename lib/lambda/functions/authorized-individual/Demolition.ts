@@ -93,7 +93,15 @@ export class EntityToDemolish {
       }
       return await cognitoClient.send(command);
     }
-    this._deletedUsers.forEach(async (user) => deleteUser(user.sub));
+    this._deletedUsers.forEach((user) => {
+      deleteUser(user.sub)
+        .then(() => {
+          console.log('User deleted');
+        })
+        .catch((reason) => {
+          JSON.stringify(reason, Object.getOwnPropertyNames(reason), 2);
+        });
+    });
   }
 
   public demolish = async ():Promise<any> => {

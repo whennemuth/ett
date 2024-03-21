@@ -60,8 +60,15 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
               .map((user:User) => { return isEmail(user.email) ? user.email : ''; })
               .filter((email:string) => email)
               .forEach(async (email:string) => {
-                await notifyUserOfDemolition(email, entityToDemolish.entity);
+                notifyUserOfDemolition(email, entityToDemolish.entity)
+                .then(() => {
+                  console.log('Email sent');
+                })
+                .catch((reason) => {
+                  JSON.stringify(reason, Object.getOwnPropertyNames(reason), 2);
+                });
               });
+      
           }
           
           return okResponse('Ok', demolitionRecord);
