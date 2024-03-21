@@ -128,7 +128,7 @@ export class SignupApiConstruct extends Construct {
       proxy: false
     });
 
-    // Add the root resource path element of "acknowledge"
+    // Add the root resource path element of "consent"
     const consentPath = api.root.addResource('consent');
     // Add the task path element
     const taskPath = consentPath.addResource('{task}')

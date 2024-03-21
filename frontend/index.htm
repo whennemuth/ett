@@ -475,11 +475,12 @@
                 <input id="chkConsent" type="checkbox" class="form-check-input" onclick="document.getElementById('btnConsentSubmit').disabled = !this.checked;"/>
                 , type your name below, and submit, to digitally sign this Registration Form on behalf of the Registered Entity 
                 and to agree to these terms, register, and confirm your authority to do so.
-                <br>
+                <br><br>
                 Sign, date, and click on SUBMIT:____________________&nbsp;
                 <button id="btnConsentSubmit" class="btn btn-primary btn-lg" type="button" disabled>SUBMIT</button>
-                <br>
-                You may terminate your registration at any time <a href="#" onclick="alert('Not implemented')">here</a>.                
+                <br><br>
+                You may terminate your registration at any time 
+                <button id="btnTerminate" class="btn btn-danger btn-lg" type="button">Terminate</button>                
               </div>
             </div>
           </div>
@@ -1195,6 +1196,42 @@
     }
 
     /**
+     * This is the "nuclear option".
+     * Demolish the entire entity (users, invitations, entity, related cognito items)
+     */
+    const terminate = async (invitationCode) => {
+      if( ! confirm("This removal includes all other personnel registered with the entity and CANNOT BE UNDONE.\n\n" +
+      "Click 'Ok' to proceed,\n" +
+      "Click 'Cancel' to abort")) {
+        alert('Cancelled');
+        return;
+      }
+      const msg = document.getElementById('apiResponse');
+      msg.innerHtml = '';
+      try {
+        const uri = `${STATIC_PARAMETERS.CONSENT_API_URI}/terminate/${invitationCode}`;
+        
+        const response = await fetch(uri, {
+          method: 'GET',
+          credentials: 'omit',
+          mode: 'cors',
+        });
+
+        const package = await response.json();
+        const { message, payload } = package;
+        if(payload.ok) {
+          alert('Entity terminated');
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
+    /**
      * Invite a user
      */
     function invite(role, email, apiUri) {
@@ -1559,6 +1596,9 @@
       });
       document.getElementById('btnConsentSubmit').addEventListener('click', () => {
         consent(invitationCode);
+      });
+      document.getElementById('btnTerminate').addEventListener('click', async () => {
+        await terminate(invitationCode);
       });
       document.getElementById('btnSysAdminInvite').addEventListener('click', () => {
         const role = $("input[name='rdoSysAdminInvite']:checked").val();

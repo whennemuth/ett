@@ -35,43 +35,11 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
       const callerUsername = event?.requestContext?.authorizer?.claims?.username;
       const callerSub = callerUsername || event?.requestContext?.authorizer?.claims?.sub;
       switch(task as Task) {
+
         case Task.DEMOLISH_ENTITY:
           const { entity_id, dryRun=false, notify=true } = parameters;
+          return await demolishEntity(entity_id, notify, dryRun);
 
-          // Bail out if missing the required entity_id parameter
-          if( ! entity_id) {
-            return invalidResponse('Bad Request: Missing entity_id parameter');
-          }
-
-          // Demolish the entity
-          const entityToDemolish = new EntityToDemolish(entity_id);
-          entityToDemolish.dryRun = dryRun;
-          const demolitionRecord = await entityToDemolish.demolish() as DemolitionRecord;
-
-          // Bail out if the initial lookup for the entity failed.
-          if( ! entityToDemolish.entity) {
-            return invalidResponse(`Bad Request: Invalid entity_id: ${entity_id}`);
-          }
-          
-          // For every user deleted by the demolish operation, notify them it happened by email.
-          if(notify) {            
-            const isEmail = (email:string|undefined) => /@/.test(email||'');
-            entityToDemolish.deletedUsers
-              .map((user:User) => { return isEmail(user.email) ? user.email : ''; })
-              .filter((email:string) => email)
-              .forEach(async (email:string) => {
-                notifyUserOfDemolition(email, entityToDemolish.entity)
-                .then(() => {
-                  console.log('Email sent');
-                })
-                .catch((reason) => {
-                  JSON.stringify(reason, Object.getOwnPropertyNames(reason), 2);
-                });
-              });
-      
-          }
-          
-          return okResponse('Ok', demolitionRecord);
         case Task.PING:
           return okResponse('Ping!', parameters);
       } 
@@ -83,12 +51,48 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
   }
 }
 
+export const demolishEntity = async (entity_id:string, notify:boolean, dryRun?:boolean): Promise<LambdaProxyIntegrationResponse> => {
+  // Bail out if missing the required entity_id parameter
+  if( ! entity_id) {
+    return invalidResponse('Bad Request: Missing entity_id parameter');
+  }
+
+  // Demolish the entity
+  const entityToDemolish = new EntityToDemolish(entity_id);
+  entityToDemolish.dryRun = dryRun||false;
+  const demolitionRecord = await entityToDemolish.demolish() as DemolitionRecord;
+
+  // Bail out if the initial lookup for the entity failed.
+  if( ! entityToDemolish.entity) {
+    return invalidResponse(`Bad Request: Invalid entity_id: ${entity_id}`);
+  }
+  
+  // For every user deleted by the demolish operation, notify them it happened by email.
+  if(notify) {            
+    const isEmail = (email:string|undefined) => /@/.test(email||'');
+    entityToDemolish.deletedUsers
+      .map((user:User) => { return isEmail(user.email) ? user.email : ''; })
+      .filter((email:string) => email)
+      .forEach((email:string) => {
+        notifyUserOfDemolition(email, entityToDemolish.entity)
+          .then(() => {
+            console.log('Email sent');
+          })
+          .catch((reason) => {
+            JSON.stringify(reason, Object.getOwnPropertyNames(reason), 2);
+          });
+        });
+  }
+  
+  return okResponse('Ok', demolitionRecord);
+}
+
 /**
  * Send a single email to an address notifying the recipient about the entity being demolished.
  * @param emailAddress 
  * @returns 
  */
-const notifyUserOfDemolition = async (emailAddress:string, entity:Entity):Promise<void> => {
+export const notifyUserOfDemolition = async (emailAddress:string, entity:Entity):Promise<void> => {
   console.log(`Notifying ${emailAddress} that entity ${entity.entity_id}: ${entity.entity_name} was demolished`);
 
   const client = new SESv2Client({

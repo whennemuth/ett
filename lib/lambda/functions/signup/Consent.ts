@@ -1,16 +1,25 @@
+import { LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { DAOFactory } from "../../_lib/dao/dao";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
 import { Invitation, User, YN } from "../../_lib/dao/entity";
 import { Registration } from "../../_lib/invitation/Registration";
 import { debugLog, errorResponse, invalidResponse, lookupCloudfrontDomain, lookupSingleActiveEntity, okResponse, unauthorizedResponse } from "../Utils";
+import { demolishEntity } from "../authorized-individual/AuthorizedIndividual";
 
 export enum Task {
   LOOKUP_INVITATION = 'lookup-invitation',
   LOOKUP_ENTITY = 'lookup-entity',
-  REGISTER = 'register'
+  REGISTER = 'register',
+  TERMINATE = 'terminate'
 }
 
-export const handler = async(event:any) => {
+/**
+ * This handler is for the consent lambda function which takes all api calls related to activity that 
+ * happens on the second screen of registration for RE_ADMIN and AUTH_IND users.
+ * @param event 
+ * @returns 
+ */
+export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> => {
 
   try {
     debugLog(event);
@@ -35,6 +44,8 @@ export const handler = async(event:any) => {
       return unauthorizedResponse(`Unauthorized: Unknown invitation code ${code}`);
     }
 
+    const { entity_id } = invitation;
+
     switch(task) {
 
       // Just want the invitation, probably to know its acknowledge and consent statuses.
@@ -43,7 +54,6 @@ export const handler = async(event:any) => {
 
       // Return a list of users who have already gone through the registration process for the entity and exist in the users table.
       case Task.LOOKUP_ENTITY:
-        const { entity_id } = invitation;
         const dao = DAOFactory.getInstance({
           DAOType: "user",
           Payload: { entity_id } as User
@@ -93,6 +103,13 @@ export const handler = async(event:any) => {
         }
 
         return errorResponse('Error: Consent failed!');
+
+      // This is the "nuclear option" - demolish the entire entity (users, invitations, entity, related cognito items)
+      case Task.TERMINATE:
+        
+        // Demolish the entity
+        let { notify=true } = event.queryStringParameters || {};
+        return demolishEntity(entity_id, notify);
     }
 
     // Should never get here:
