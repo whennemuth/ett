@@ -1242,7 +1242,7 @@
         return;
       }
       const payload = {
-        task: 'invite_user',
+        task: 'invite-user',
         parameters: { email, role }
       }
       fetch(apiUri, {
@@ -1360,7 +1360,7 @@
         const email = IDJwtCookie.getUser().email;
         const apiUri = STATIC_PARAMETERS.ROLES[role].API_URI
         const outgoingPayload = {
-          task: 'lookup_user_context',
+          task: 'lookup-user-context',
           parameters: { email, role }
         }
   
@@ -1406,7 +1406,7 @@
           return;
         }
         const outgoingPayload = {
-          task: 'create_entity',
+          task: 'create-entity',
           parameters: { entity_name, description }
         }
 

@@ -7,13 +7,12 @@ import { UserInvitation } from '../../_lib/invitation/Invitation';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
 import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, lookupPendingInvitations, lookupSingleActiveEntity, lookupSingleUser, lookupUser, okResponse } from "../Utils";
 
-// TODO: Change underscores to dashes and rebuild stack.
 export enum Task {
-  CREATE_ENTITY = 'create_entity',
-  UPDATE_ENTITY = 'update_entity',
-  DEACTIVATE_ENTITY = 'deactivate_entity',
-  LOOKUP_USER_CONTEXT = 'lookup_user_context',
-  INVITE_USER = 'invite_user',
+  CREATE_ENTITY = 'create-entity',
+  UPDATE_ENTITY = 'update-entity',
+  DEACTIVATE_ENTITY = 'deactivate-entity',
+  LOOKUP_USER_CONTEXT = 'lookup-user-context',
+  INVITE_USER = 'invite-user',
   PING = 'ping'
 }
 

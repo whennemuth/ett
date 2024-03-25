@@ -286,12 +286,12 @@ export const ParameterValidationTests = {
       expectedResponse: {
         statusCode: 400, 
         outgoingBody: { 
-          message: `Missing parameters parameter for invite_user`, 
+          message: `Missing parameters parameter for invite-user`, 
           payload: { invalid: true  }
         }
       }, 
       _handler, mockEvent: eventMock,
-      incomingPayload: { task: 'invite_user' } as IncomingPayload
+      incomingPayload: { task: 'invite-user' } as IncomingPayload
     });
   },
   bogusTask: async (_handler:any, eventMock:any) => {
