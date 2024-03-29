@@ -13,7 +13,7 @@ export enum Task {
 /**
  * This function performs all actions a RE_AUTH_IND can take to accomplish their role in the system.
  * @param event 
- * @returns 
+ * @returns LambdaProxyIntegrationResponse
  */
 export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse> => {
   try {
@@ -51,6 +51,13 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
   }
 }
 
+/**
+ * Remove the entity entirely. Includes user, invitations, and cognito userpool entries associated with the entity.
+ * @param entity_id 
+ * @param notify 
+ * @param dryRun 
+ * @returns LambdaProxyIntegrationResponse
+ */
 export const demolishEntity = async (entity_id:string, notify:boolean, dryRun?:boolean): Promise<LambdaProxyIntegrationResponse> => {
   // Bail out if missing the required entity_id parameter
   if( ! entity_id) {
@@ -60,7 +67,7 @@ export const demolishEntity = async (entity_id:string, notify:boolean, dryRun?:b
   // Demolish the entity
   const entityToDemolish = new EntityToDemolish(entity_id);
   entityToDemolish.dryRun = dryRun||false;
-  const demolitionRecord = await entityToDemolish.demolish() as DemolitionRecord;
+  await entityToDemolish.demolish() as DemolitionRecord;
 
   // Bail out if the initial lookup for the entity failed.
   if( ! entityToDemolish.entity) {
@@ -72,8 +79,12 @@ export const demolishEntity = async (entity_id:string, notify:boolean, dryRun?:b
     const isEmail = (email:string|undefined) => /@/.test(email||'');
     entityToDemolish.deletedUsers
       .map((user:User) => { return isEmail(user.email) ? user.email : ''; })
-      .filter((email:string) => email)
+      .filter((email:string) => email) // filter off the empty strings
       .forEach((email:string) => {
+        console.log(`Sending email to ${email}`)
+        if(dryRun) {
+          return;
+        }
         notifyUserOfDemolition(email, entityToDemolish.entity)
           .then(() => {
             console.log('Email sent');
@@ -84,13 +95,13 @@ export const demolishEntity = async (entity_id:string, notify:boolean, dryRun?:b
         });
   }
   
-  return okResponse('Ok', demolitionRecord);
+  return okResponse('Ok', entityToDemolish.demolitionRecord);
 }
 
 /**
  * Send a single email to an address notifying the recipient about the entity being demolished.
  * @param emailAddress 
- * @returns 
+ * @returns LambdaProxyIntegrationResponse
  */
 export const notifyUserOfDemolition = async (emailAddress:string, entity:Entity):Promise<void> => {
   console.log(`Notifying ${emailAddress} that entity ${entity.entity_id}: ${entity.entity_name} was demolished`);
