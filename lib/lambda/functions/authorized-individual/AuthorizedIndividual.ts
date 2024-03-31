@@ -1,9 +1,11 @@
 import { SESv2Client, SendEmailCommand, SendEmailCommandInput, SendEmailResponse } from "@aws-sdk/client-sesv2";
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
-import { Entity, User } from "../../_lib/dao/entity";
+import { Entity, Roles, User } from "../../_lib/dao/entity";
 import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../Utils";
 import { DemolitionRecord, EntityToDemolish } from "./Demolition";
+import { DAOFactory, DAOUser } from "../../_lib/dao/dao";
+import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
 
 export enum Task {
   DEMOLISH_ENTITY = 'demolish-entity',
@@ -75,7 +77,8 @@ export const demolishEntity = async (entity_id:string, notify:boolean, dryRun?:b
   }
   
   // For every user deleted by the demolish operation, notify them it happened by email.
-  if(notify) {            
+  if(notify) {
+    const fromEmail = await getSysAdminEmail();
     const isEmail = (email:string|undefined) => /@/.test(email||'');
     const emailAddresses:string[] = entityToDemolish.deletedUsers
       .map((user:User) => { return isEmail(user.email) ? user.email : ''; })
@@ -109,6 +112,8 @@ export const demolishEntity = async (entity_id:string, notify:boolean, dryRun?:b
 export const notifyUserOfDemolition = async (emailAddress:string, entity:Entity):Promise<void> => {
   console.log(`Notifying ${emailAddress} that entity ${entity.entity_id}: ${entity.entity_name} was demolished`);
 
+  const FromEmailAddress = await getSysAdminEmail();
+
   const client = new SESv2Client({
     region: process.env.REGION
   });
@@ -117,7 +122,7 @@ export const notifyUserOfDemolition = async (emailAddress:string, entity:Entity)
     Destination: {
       ToAddresses: [ emailAddress ],
     },
-    FromEmailAddress: 'noreply@ett.com',
+    FromEmailAddress,
     Content: {
       Simple: {
         Subject: {
@@ -151,19 +156,31 @@ export const notifyUserOfDemolition = async (emailAddress:string, entity:Entity)
     }
   } as SendEmailCommandInput);
 
-  try {
-    const response:SendEmailResponse = await client.send(command);
-    const messageId = response?.MessageId;
-    if( ! messageId) {
-      console.error(`No message ID in SendEmailResponse for ${emailAddress}`);
-    }
-  } 
-  catch (e:any) {
-    console.error(`Error sending email to ${emailAddress}`);
-    console.error(e);
+  const response:SendEmailResponse = await client.send(command);
+  const messageId = response?.MessageId;
+  if( ! messageId) {
+    console.error(`No message ID in SendEmailResponse for ${emailAddress}`);
+  }
+  if(response) {
+    console.log(JSON.stringify(response, null, 2));
   }
 }
 
+/**
+ * Get the email address of the first system administrator found in a lookup.
+ * @returns 
+ */
+const getSysAdminEmail = async ():Promise<string|null> => {
+  const dao:DAOUser = DAOFactory.getInstance({
+    DAOType: 'user', Payload: { entity_id:ENTITY_WAITING_ROOM } as User
+  }) as DAOUser;
+  const users = await dao.read() as User[] | [] as User[];
+  const sysadmins = users.filter((user:User) => user.role == Roles.SYS_ADMIN);
+  if(sysadmins.length > 0) {
+    return sysadmins[0].email;
+  }
+  return null;
+}
 
 /**
  * RUN MANUALLY: Modify the task, landscape, entity_id, and dryRun settings as needed.
