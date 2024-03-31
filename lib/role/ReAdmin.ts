@@ -79,9 +79,9 @@ export class LambdaFunction extends AbstractFunction {
       },
       role: new Role(scope, 'ReAdminRole', {
         assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
-        description: 'Grants access to SES for invitations',
+        description: `Grants actions to the ${Roles.RE_ADMIN} lambda function to perform the related api tasks.`,
         inlinePolicies: {
-          'SendEmails': new PolicyDocument({
+          'EttReAdminSesPolicy': new PolicyDocument({
             statements: [
               new PolicyStatement({
                 actions: [ 'ses:Send*', 'ses:Get*' ],
@@ -92,7 +92,7 @@ export class LambdaFunction extends AbstractFunction {
               })
             ]
           }),
-          'QueryCognito': new PolicyDocument({
+          'EttReAdminCognitoPolicy': new PolicyDocument({
             statements: [
               new PolicyStatement({
                 actions: [  'cognito-idp:List*'  ],

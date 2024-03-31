@@ -9,9 +9,21 @@ export const ENTITY_WAITING_ROOM:string = '__UNASSIGNED__';
 
 const dbclient = new DynamoDBClient({ region: process.env.REGION });
 
-export function EntityCrud(entityInfo:Entity): DAOEntity {
+export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity {
 
   let { entity_id, entity_name, create_timestamp, update_timestamp, active=YN.Yes } = entityInfo;
+
+  let command:any;
+  
+  /**
+   * @returns An instance of EntityCrud with the same configuration that is in "dryrun" mode. That is, when any
+   * operation, like read, update, query, etc is called, the command is withheld from being issued to dynamodb
+   * and is returned instead 
+   */
+  const dryRun = () => {
+    return EntityCrud(entityInfo, true);
+  }
+
 
   const throwMissingError = (task:string, fld:string) => {
     throw new Error(`Entity ${task} error: Missing ${fld} in ${JSON.stringify(entityInfo, null, 2)}`)
@@ -44,7 +56,7 @@ export function EntityCrud(entityInfo:Entity): DAOEntity {
     
     const builder:Builder = getUpdateCommandBuilderInstance(entityInfo, 'entity', process.env.DYNAMODB_ENTITY_TABLE_NAME || '');
     const input:UpdateItemCommandInput = builder.buildUpdateItem();
-    const command = new UpdateItemCommand(input);
+    command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
 
@@ -63,7 +75,7 @@ export function EntityCrud(entityInfo:Entity): DAOEntity {
         [EntityFields.entity_id]: { S: entity_id }
       }
     } as GetItemCommandInput
-    const command = new GetItemCommand(params);
+    command = new GetItemCommand(params);
     const retval:GetItemCommandOutput = await sendCommand(command);
     if( ! retval.Item) {
       return null;
@@ -85,7 +97,7 @@ export function EntityCrud(entityInfo:Entity): DAOEntity {
     console.log(`Updating entity: ${entity_id}`);
     const builder:Builder = getUpdateCommandBuilderInstance(entityInfo, 'entity', process.env.DYNAMODB_ENTITY_TABLE_NAME || '');
     const input:UpdateItemCommandInput = builder.buildUpdateItem();
-    const command = new UpdateItemCommand(input);
+    command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
 
@@ -96,12 +108,12 @@ export function EntityCrud(entityInfo:Entity): DAOEntity {
    */
   const Delete = async ():Promise<DeleteItemCommandOutput> => {
     const input = {
-      TableName: process.env.DYNAMODB_USER_TABLE_NAME,
+      TableName: process.env.DYNAMODB_ENTITY_TABLE_NAME,
       Key: { 
          [EntityFields.entity_id]: { S: entity_id, },
       },
     } as DeleteItemCommandInput;
-    const command = new DeleteItemCommand(input);
+    command = new DeleteItemCommand(input);
     return await sendCommand(command);
   }
   
@@ -113,7 +125,12 @@ export function EntityCrud(entityInfo:Entity): DAOEntity {
   const sendCommand = async (command:any): Promise<any> => {
     let response;
     try {
-      response = await dbclient.send(command);
+      if(_dryRun) {
+        response = command;
+      }
+      else {
+        response = await dbclient.send(command);
+      }           
     }
     catch(e) {
       console.error(e);
@@ -135,6 +152,6 @@ export function EntityCrud(entityInfo:Entity): DAOEntity {
     await read();
   }
 
-  return { create, read, update, Delete, id, test, } as DAOEntity;
+  return { create, read, update, Delete, id, dryRun, test, } as DAOEntity;
 }
 

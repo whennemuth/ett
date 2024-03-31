@@ -61,6 +61,21 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "AuthorizedIndividual",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/authorized-individual/AuthorizedIndividual.ts",
+        "RUN_MANUALLY",
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Acknowledge",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
@@ -81,6 +96,21 @@
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
         "${workspaceFolder}/lib/lambda/functions/signup/Consent.ts",
+        "RUN_MANUALLY",
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Demolish",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/authorized-individual/Demolition.ts",
         "RUN_MANUALLY",
       ], 
       "env": {
@@ -153,6 +183,24 @@
       }
     },
     {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest DAO user migration",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/_lib/dao/dao-user-migration.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "env": {
+        "DYNAMODB_USER_TABLE_NAME": "ett-users",
+        "ACTION_TO_TEST": ""
+      }
+    },    {
       "type": "node",
       "request": "launch",
       "name": "Jest DAO invitation crud",
@@ -291,6 +339,21 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Jest Demolition",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/functions/authorized-individual/Demolition.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Jest Lambda Acknowledgement",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
@@ -404,6 +467,21 @@
       "env": {
         "DYNAMODB_USER_TABLE_NAME": "ett-users"
       }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Lambda Role Auth-Ind",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/functions/authorized-individual/AuthorizedIndividual.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
     }
   ]
 }

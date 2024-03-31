@@ -45,7 +45,7 @@ export class CognitoConstruct extends Construct {
         assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
         description: 'Grants access to write to dynamodb and read from cognito userpool clients',
         inlinePolicies: {
-          'ListUserPoolClients': new PolicyDocument({
+          'EttCognitoPreSignupListUserPoolClients': new PolicyDocument({
             statements: [new PolicyStatement({
               actions: [
                 'cognito-idp:ListUserPoolClients'
@@ -54,7 +54,7 @@ export class CognitoConstruct extends Construct {
               effect: Effect.ALLOW
             })],
           }),
-          'ReadWriteToDynamodb': new PolicyDocument({
+          'EttCognitoPreSignupReadWriteToDynamodb': new PolicyDocument({
             statements: [new PolicyStatement({
               actions: [
                 'dynamodb:*'
@@ -96,7 +96,7 @@ export class CognitoConstruct extends Construct {
         assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
         description: 'Grants access to write to dynamodb and read from cognito userpool clients',
         inlinePolicies: {
-          'ListUserPoolClients': new PolicyDocument({
+          'EttPostSignupListUserPoolClients': new PolicyDocument({
             statements: [new PolicyStatement({
               actions: [
                 'cognito-idp:ListUserPoolClients',
@@ -105,7 +105,7 @@ export class CognitoConstruct extends Construct {
               effect: Effect.ALLOW
             })],
           }),
-          'DeleteUserFromPool': new PolicyDocument({
+          'EttPostSignupDeleteUserFromPool': new PolicyDocument({
             statements: [ new PolicyStatement({
               actions: [
                 'cognito-idp:AdminDeleteUser',
@@ -114,7 +114,7 @@ export class CognitoConstruct extends Construct {
               effect: Effect.ALLOW
             })]
           }),
-          'WriteToDynamodb': new PolicyDocument({
+          'EttPostSignupWriteToDynamodb': new PolicyDocument({
             statements: [new PolicyStatement({
               actions: [
                 'dynamodb:*'
@@ -156,7 +156,7 @@ export class CognitoConstruct extends Construct {
         assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
         description: 'Grants access to read from dynamodb cognito userpool clients',
         inlinePolicies: {
-          'ListUserPoolClients': new PolicyDocument({
+          'EttPreAuthListUserPoolClients': new PolicyDocument({
             statements: [new PolicyStatement({
               actions: [
                 'cognito-idp:ListUserPoolClients',
@@ -165,7 +165,7 @@ export class CognitoConstruct extends Construct {
               effect: Effect.ALLOW
             })],
           }),
-          'ReadFromDynamodb': new PolicyDocument({
+          'EttPreAuthReadFromDynamodb': new PolicyDocument({
             statements: [new PolicyStatement({
               actions: [
                 'dynamodb:*'

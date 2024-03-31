@@ -1,10 +1,10 @@
-import { DynamoDBClient, PutItemCommand, GetItemCommand, QueryCommand, UpdateItemCommand, AttributeValue, UpdateItemCommandInput, DeleteItemCommand, UpdateItemCommandOutput, GetItemCommandInput, QueryCommandInput } from '@aws-sdk/client-dynamodb'
-import { Invitation, InvitationFields } from './entity';
-import { Builder, getUpdateCommandBuilderInstance } from './db-update-builder'; 
-import { convertFromApiObject } from './db-object-builder';
-import { DAOInvitation } from './dao';
+import { AttributeValue, DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, QueryCommand, QueryCommandInput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
 import { DynamoDbConstruct } from '../../../DynamoDb';
+import { DAOInvitation } from './dao';
+import { convertFromApiObject } from './db-object-builder';
+import { Builder, getUpdateCommandBuilderInstance } from './db-update-builder';
+import { Invitation, InvitationFields } from './entity';
 
 const dbclient = new DynamoDBClient({ region: process.env.REGION });
 
@@ -13,9 +13,20 @@ const dbclient = new DynamoDBClient({ region: process.env.REGION });
  * @param invitationInfo 
  * @returns 
  */
-export function InvitationCrud(invitationInfo:Invitation): DAOInvitation {
+export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false): DAOInvitation {
 
   let { code:_code, entity_id, role, email } = invitationInfo;
+
+  let command:any;
+  
+  /**
+   * @returns An instance of UserCrud with the same configuration that is in "dryrun" mode. That is, when any
+   * operation, like read, update, query, etc is called, the command is withheld from being issued to dynamodb
+   * and is returned instead.
+   */
+  const dryRun = () => {
+    return InvitationCrud(invitationInfo, true);
+  }
 
   const throwMissingError = (task:string, fld:string) => {
     throw new Error(`Invitation ${task} error: Missing ${fld} in ${JSON.stringify(invitationInfo, null, 2)}`)
@@ -37,7 +48,7 @@ export function InvitationCrud(invitationInfo:Invitation): DAOInvitation {
     console.log(`Creating invitation ${entity_id ? `to ${entity_id} ` : ''}for: ${role}`);
     const builder:Builder = getUpdateCommandBuilderInstance(invitationInfo, 'invitation', process.env.DYNAMODB_INVITATION_TABLE_NAME || '');
     const input:UpdateItemCommandInput = builder.buildUpdateItem();
-    const command = new UpdateItemCommand(input);
+    command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
 
@@ -72,7 +83,7 @@ export function InvitationCrud(invitationInfo:Invitation): DAOInvitation {
         [InvitationFields.code]: { S: _code },
       }
     } as GetItemCommandInput;
-    const command = new GetItemCommand(params);
+    command = new GetItemCommand(params);
     const retval = await sendCommand(command);
     if( ! retval.Item) {
       return null;
@@ -89,7 +100,11 @@ export function InvitationCrud(invitationInfo:Invitation): DAOInvitation {
   type IdxParms = { email:string|null, entity_id:string|null }
   const _query = async (idxParms:IdxParms):Promise<Invitation[]> => {
     const { email, entity_id } = idxParms;
-    console.log(`Reading all invitations for ${email}`);
+    const parmEmail = email ? `email: ${email}` : '';
+    let parmEntityId = entity_id ? `entity_id: ${entity_id}` : '';
+    if(parmEmail && parmEntityId) parmEntityId = `${parmEntityId}`;
+
+    console.log(`Reading all invitations for ${parmEmail}${parmEntityId}`);
 
     // Declare QueryCommandInput fields
     let vals = {} as any;
@@ -121,7 +136,7 @@ export function InvitationCrud(invitationInfo:Invitation): DAOInvitation {
     } as QueryCommandInput;
 
     // Run the query
-    const command = new QueryCommand(params);
+    command = new QueryCommand(params);
     const retval = await sendCommand(command);
     const invitations = [] as Invitation[];
     for(const item in retval.Items) {
@@ -142,14 +157,45 @@ export function InvitationCrud(invitationInfo:Invitation): DAOInvitation {
     console.log(`Updating existing invitation in: ${_code}/${entity_id}`);
     const builder:Builder = getUpdateCommandBuilderInstance(invitationInfo, 'invitation', process.env.DYNAMODB_INVITATION_TABLE_NAME || '');
     const input:UpdateItemCommandInput = builder.buildUpdateItem();
-    const command = new UpdateItemCommand(input);
+    command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
 
-  const Delete = async () => {
-    // TODO: write this function
+  /**
+   * Delete an invitation from the dynamodb table.
+   */
+  const Delete = async ():Promise<DeleteItemCommandOutput> => {
+    if( ! _code) {
+      throwMissingError('delete', InvitationFields.code);
+    }
+    const input = {
+      TableName: process.env.DYNAMODB_INVITATION_TABLE_NAME,
+      Key: { 
+         [InvitationFields.entity_id]: { S: entity_id, },
+      },
+    } as DeleteItemCommandInput;
+    command = new DeleteItemCommand(input);
+    return await sendCommand(command);
   }
 
+  /**
+   * Delete all invitations that were sent to the specified entity
+   * @returns
+   */
+  const deleteEntity = async ():Promise<DeleteItemCommandOutput> => {
+
+    // Handle missing field validation
+    if( ! entity_id) throwMissingError('delete-entity', InvitationFields.entity_id);
+
+    const input = {
+      TableName: process.env.DYNAMODB_INVITATION_TABLE_NAME,
+      Key: { 
+        [InvitationFields.entity_id]: { S: entity_id, },
+      } as Record<string, AttributeValue>
+    } as DeleteItemCommandInput;
+    command = new DeleteItemCommand(input);
+    return await sendCommand(command);
+  }
   /**
    * Envelope the clientdb send function with error handling.
    * @param command 
@@ -158,7 +204,12 @@ export function InvitationCrud(invitationInfo:Invitation): DAOInvitation {
   const sendCommand = async (command:any): Promise<any> => {
     let response;
     try {
-      response = await dbclient.send(command);
+      if(_dryRun) {
+        response = command;
+      }
+      else {
+        response = await dbclient.send(command);
+      }           
     }
     catch(e) {
       console.error(e);
@@ -180,5 +231,5 @@ export function InvitationCrud(invitationInfo:Invitation): DAOInvitation {
     await read();
   }
 
-  return { create, read, update, Delete, code, test, } as DAOInvitation;
+  return { create, read, update, Delete, deleteEntity, code, dryRun, test, } as DAOInvitation;
 }

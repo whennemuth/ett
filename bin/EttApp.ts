@@ -1,18 +1,17 @@
 #!/usr/bin/env node
-import 'source-map-support/register';
-import * as ctx from '../contexts/context.json';
-import { IContext, SCENARIO } from '../contexts/IContext';
 import { App, CfnOutput, StackProps, Tags } from 'aws-cdk-lib';
+import 'source-map-support/register';
+import { IContext, SCENARIO } from '../contexts/IContext';
+import * as ctx from '../contexts/context.json';
 import { AbstractStack } from '../lib/AbstractStack';
-import { StaticSiteConstruct } from '../lib/StaticSite';
+import { ApiConstruct, ApiConstructParms } from '../lib/Api';
 import { CloudfrontConstruct, CloudfrontConstructProps } from '../lib/Cloudfront';
 import { CognitoConstruct } from '../lib/Cognito';
 import { DynamoDbConstruct } from '../lib/DynamoDb';
-import { LambdaFunction as ReAdminLambdaFunction } from '../lib/role/ReAdmin';
+import { SignupApiConstruct, SignupApiConstructParms } from '../lib/SignupApi';
+import { StaticSiteConstruct } from '../lib/StaticSite';
 import { StaticSiteCustomInConstruct, StaticSiteCustomInConstructParms } from '../lib/StaticSiteCustomIn';
-import { ApiConstruct, ApiConstructParms } from '../lib/Api';
 import { Roles } from '../lib/lambda/_lib/dao/entity';
-import { SignupApiConstruct } from '../lib/SignupApi';
 
 const context:IContext = <IContext>ctx;
 
@@ -57,7 +56,10 @@ const buildAll = () => {
   const dynamodb = new DynamoDbConstruct(stack, 'Dynamodb');
 
   // Set up the public api endpoints (acknowledgement & consent) for "pre-signup" that are called before any cognito signup occurs.
-  const signupApi = new SignupApiConstruct(stack, 'SignupApi', cloudfront.getDistributionDomainName());
+  const signupApi = new SignupApiConstruct(stack, 'SignupApi', {
+    cloudfrontDomain: cloudfront.getDistributionDomainName(),
+    userPool:cognito.getUserPool()
+  } as SignupApiConstructParms);
 
   // Set up an api for every role with cognito as the authorizer and oauth as the flow.
   const api = new ApiConstruct(stack, 'Api', {

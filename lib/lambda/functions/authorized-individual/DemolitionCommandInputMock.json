@@ -1,0 +1,83 @@
+{
+  "TransactItems": [
+    {
+      "Delete": {
+        "TableName": "ett-users",
+        "Key": {
+          "entity_id": {
+            "S": "mock_entity_id"
+          },
+          "email": {
+            "S": "bugsbunny@warnerbros.com"
+          }
+        }
+      }
+    },
+    {
+      "Delete": {
+        "TableName": "ett-users",
+        "Key": {
+          "entity_id": {
+            "S": "mock_entity_id"
+          },
+          "email": {
+            "S": "daffyduck@warnerbros.com"
+          }
+        }
+      }
+    },
+    {
+      "Delete": {
+        "TableName": "ett-users",
+        "Key": {
+          "entity_id": {
+            "S": "mock_entity_id"
+          },
+          "email": {
+            "S": "yosemitesam@warnerbros.com"
+          }
+        }
+      }
+    },
+    {
+      "Delete": {
+        "TableName": "ett-invitation",
+        "Key": {
+          "code": {
+            "S": "abc123"
+          }
+        }
+      }
+    },
+    {
+      "Delete": {
+        "TableName": "ett-invitation",
+        "Key": {
+          "code": {
+            "S": "def456"
+          }
+        }
+      }
+    },
+    {
+      "Delete": {
+        "TableName": "ett-invitation",
+        "Key": {
+          "code": {
+            "S": "ghi789"
+          }
+        }
+      }
+    },
+    {
+      "Delete": {
+        "TableName": "ett-entities",
+        "Key": {
+          "entity_id": {
+            "S": "mock_entity_id"
+          }
+        }
+      }
+    }
+  ]
+}

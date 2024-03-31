@@ -343,14 +343,14 @@
           <div id="consent-section" class="container-fluid py-5" style="display: none">
             <h3 class="display-7 fw-bold">Entity Registration Form</h3>
             <p class="text-justify fs-4" style="text-align:justify;">
-              <table>
+              <table id='tblEntityName'>
                 <tr>
                   <td class='tdHeading' colspan=1 style="padding-right:50px;">Name of organization</td>
                   <td id="tdEntityName" colspan=3 style="width:100%"></td>
                 </tr>
                 <tr><td class='tdSpacing' colspan=4>&nbsp;</td></tr>
               </table>
-              <table>
+              <table id="tblReAdmin">
                 <tr><td class='trHeading' colspan=4>Administrative support professional<sup>1</sup></td></tr>
                 <tr>
                   <td id='tdReAdminNameLabel' class='tdHeading'>Name</td>
@@ -365,6 +365,8 @@
                   <td id='tdReAdminEmail' class='tdEntry'></td>
                 </tr>
                 <tr><td class='tdSpacing' colspan=4>&nbsp;</td></tr>
+              </table>
+              <table id="tblAuthInd1">
                 <tr><td class='trHeading' colspan=4>Authorized Individual 1<sup>2</sup></td></tr>
                 <tr>
                   <td id='tdAuthIndName1Label' class='tdHeading'>Name</td>
@@ -379,6 +381,8 @@
                   <td id='tdAuthIndEmail1' class='tdEntry'></td>
                 </tr>
                 <tr><td class='tdSpacing' colspan=4>&nbsp;</td></tr>
+              </table>
+              <table id="tblAuthInd2">
                 <tr><td class='trHeading'colspan=4 class='tdHeading'>Authorized Individual 2<sup>3</sup></td></tr>
                 <tr>
                   <td id='tdAuthIndName2Label' class='tdHeading'>Name</td>
@@ -475,11 +479,12 @@
                 <input id="chkConsent" type="checkbox" class="form-check-input" onclick="document.getElementById('btnConsentSubmit').disabled = !this.checked;"/>
                 , type your name below, and submit, to digitally sign this Registration Form on behalf of the Registered Entity 
                 and to agree to these terms, register, and confirm your authority to do so.
-                <br>
-                Sign, date, and click on SUBMIT:____________________&nbsp;
                 <button id="btnConsentSubmit" class="btn btn-primary btn-lg" type="button" disabled>SUBMIT</button>
-                <br>
-                You may terminate your registration at any time <a href="#" onclick="alert('Not implemented')">here</a>.                
+                <br><br>
+                <div id="divTerminate">
+                  You may terminate your registration at any time 
+                  <button id="btnTerminate" class="btn btn-danger btn-lg" type="button">Terminate</button>                
+                </div>
               </div>
             </div>
           </div>
@@ -988,7 +993,8 @@
       })
       .catch((e) => {
         msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
-        showSection(step);
+        callback({ invitation: { role: selected_role }}); // Should work for localhost testing
+        // showSection(step);
       }); 
     }
 
@@ -1035,6 +1041,14 @@
         selected_role = role;
         const chk = document.getElementById('chkConsent');
         const btnSubmit = document.getElementById('btnConsentSubmit');
+        const divTerminate = document.getElementById('divTerminate');
+
+        if(selected_role == 'RE_ADMIN') {
+          divTerminate.style.display = 'none';
+        }
+        else {
+          divTerminate.style.display = 'inline';
+        }
         if( ! acknowledged_timestamp) {
           showAcknowledgeScreen(invitation);
           return;
@@ -1071,10 +1085,18 @@
           setField(user, 'title', `${basename}Title`, index||'');
           setField(user, 'phone_number', `${basename}Phone`, index||'');
           setField(user, 'email', `${basename}Email`, index||'');
+          if(user.role == 'RE_AUTH_IND') {
+            document.getElementById('tblAuthInd2').style.display = 'inline';
+          }
         }
+        
+        document.getElementById(`tblAuthInd1`).style.display = 'none';
+        document.getElementById(`tblAuthInd2`).style.display = 'none';
 
         if(entity) {
+          document.getElementById('tblEntityName').style.display = 'inline';
           document.getElementById('tdEntityName').innerHTML = entity.entity_name;
+          document.getElementById('tblAuthInd1').style.display = 'inline'; 
           let authIndCounter = 0;
           if(users && users.length > 0) {
             users.forEach((user) => {
@@ -1090,16 +1112,22 @@
             });
           }
           if(authIndCounter < 2) {
-           setFields({
-              email: invitation.email,
-              hasAccount: () => invitation.email != invitation.code,
-              fullname: invitation.fullname,
-              title: invitation.title,
-              phone_number: invitation.phone_number
-            }, 'AuthInd', authIndCounter+1);
+            if( users.find(user =>  user.email == invitation.email )) {
+              document.getElementById(`tblAuthInd${authIndCounter+1}`).style.display = 'none';
+            }
+            else {
+              setFields({
+                email: invitation.email,
+                hasAccount: () => invitation.email != invitation.code,
+                fullname: invitation.fullname,
+                title: invitation.title,
+                phone_number: invitation.phone_number
+              }, 'AuthInd', authIndCounter+1);
+            }
           }
         }
         else if(role == 'RE_ADMIN') {
+          document.getElementById('tblEntityName').style.display = 'none';
           setFields({
             email: invitation.email,
             hasAccount: () => invitation.email != invitation.code,
@@ -1107,6 +1135,7 @@
             title: invitation.title,
             phone_number: invitation.phone_number
           }, 'ReAdmin');
+
         }
         else {
           showAcknowledgeScreen(invitation);
@@ -1195,6 +1224,42 @@
     }
 
     /**
+     * This is the "nuclear option".
+     * Demolish the entire entity (users, invitations, entity, related cognito items)
+     */
+    const terminate = async (invitationCode) => {
+      if( ! confirm("This removal includes all other personnel registered with the entity and CANNOT BE UNDONE.\n\n" +
+      "Click 'Ok' to proceed,\n" +
+      "Click 'Cancel' to abort")) {
+        alert('Cancelled');
+        return;
+      }
+      const msg = document.getElementById('apiResponse');
+      msg.innerHtml = '';
+      try {
+        const uri = `${STATIC_PARAMETERS.CONSENT_API_URI}/terminate/${invitationCode}`;
+        
+        const response = await fetch(uri, {
+          method: 'GET',
+          credentials: 'omit',
+          mode: 'cors',
+        });
+
+        const package = await response.json();
+        const { message, payload } = package;
+        if(payload.ok) {
+          alert('Entity terminated');
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
+    /**
      * Invite a user
      */
     function invite(role, email, apiUri) {
@@ -1205,7 +1270,7 @@
         return;
       }
       const payload = {
-        task: 'invite_user',
+        task: 'invite-user',
         parameters: { email, role }
       }
       fetch(apiUri, {
@@ -1323,7 +1388,7 @@
         const email = IDJwtCookie.getUser().email;
         const apiUri = STATIC_PARAMETERS.ROLES[role].API_URI
         const outgoingPayload = {
-          task: 'lookup_user_context',
+          task: 'lookup-user-context',
           parameters: { email, role }
         }
   
@@ -1369,7 +1434,7 @@
           return;
         }
         const outgoingPayload = {
-          task: 'create_entity',
+          task: 'create-entity',
           parameters: { entity_name, description }
         }
 
@@ -1390,7 +1455,8 @@
           await setUserContext();
           $('#btnReAdminEntityCreate').prop("disabled", true);
           $('#btnReAdminEntityUpdate').prop("disabled", false);
-          document.getElementById('re-admin-invitation-tab').style.display = true;
+          document.getElementById('re-admin-invitation-tab').style.display = 'inline';
+          alert('Entity created');
         }
         else {
           msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
@@ -1558,6 +1624,9 @@
       });
       document.getElementById('btnConsentSubmit').addEventListener('click', () => {
         consent(invitationCode);
+      });
+      document.getElementById('btnTerminate').addEventListener('click', async () => {
+        await terminate(invitationCode);
       });
       document.getElementById('btnSysAdminInvite').addEventListener('click', () => {
         const role = $("input[name='rdoSysAdminInvite']:checked").val();
