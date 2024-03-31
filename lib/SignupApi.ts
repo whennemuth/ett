@@ -1,10 +1,17 @@
-import { Construct } from "constructs";
-import { AbstractFunction } from "./AbstractFunction";
-import { Runtime } from "aws-cdk-lib/aws-lambda";
-import { DynamoDbConstruct } from "./DynamoDb";
-import { Cors, LambdaRestApi } from "aws-cdk-lib/aws-apigateway";
 import { Duration } from "aws-cdk-lib";
+import { LambdaRestApi } from "aws-cdk-lib/aws-apigateway";
+import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
+import { Runtime } from "aws-cdk-lib/aws-lambda";
+import { Construct } from "constructs";
 import { IContext } from "../contexts/IContext";
+import { AbstractFunction } from "./AbstractFunction";
+import { DynamoDbConstruct } from "./DynamoDb";
+import { UserPool } from "aws-cdk-lib/aws-cognito";
+
+export type SignupApiConstructParms = {
+  userPool: UserPool,
+  cloudfrontDomain: string
+};
 
 /**
  * Construct for all api gateways and integrated lambda functions for pre-cognito signup activity (
@@ -14,21 +21,22 @@ export class SignupApiConstruct extends Construct {
 
   private outerScope:Construct;
   private constructId:string;
-  private cloudfrontDomain:string;
   private stageName:string;
   private _acknowledgementApiUri:string;
   private _consentApiUri:string;
   private acknowledgeLambda:AbstractFunction;
   private consentLambda:AbstractFunction;
+  private context:IContext;
+  private parms:SignupApiConstructParms;
 
-  constructor(scope:Construct, constructId:string, cloudfrontDomain:string) {
+  constructor(scope:Construct, constructId:string, parms:SignupApiConstructParms) {
     super(scope, constructId);
 
     this.outerScope = scope;
     this.constructId = constructId;
-    this.cloudfrontDomain = cloudfrontDomain;
-    const context: IContext = scope.node.getContext('stack-parms');
-    this.stageName = context.TAGS.Landscape;
+    this.parms = parms;
+    this.context = scope.node.getContext('stack-parms');
+    this.stageName = this.context.TAGS.Landscape;
 
     this.createAcknowledgementApi();
 
@@ -53,11 +61,11 @@ export class SignupApiConstruct extends Construct {
         ]
       },
       environment: {
-        REGION: this.outerScope.node.getContext('stack-parms').REGION,
+        REGION: this.context.REGION,
         DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
         DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
         DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME,
-        CLOUDFRONT_DOMAIN: this.cloudfrontDomain
+        CLOUDFRONT_DOMAIN: this.parms.cloudfrontDomain
       }
     });
 
@@ -81,7 +89,7 @@ export class SignupApiConstruct extends Construct {
     invitationCodePath.addMethod('GET');   // GET /acknowledge/task/{invitation-code}
     invitationCodePath.addMethod('POST');
     invitationCodePath.addCorsPreflight({
-      allowOrigins: [ `https://${this.cloudfrontDomain}` ],
+      allowOrigins: [ `https://${this.parms.cloudfrontDomain}` ],
       // allowHeaders: Cors.DEFAULT_HEADERS.concat('Is a header needed?'),
       allowMethods: [ 'POST', 'GET', 'OPTIONS' ],
       maxAge: Duration.minutes(10),
@@ -108,12 +116,44 @@ export class SignupApiConstruct extends Construct {
           '@aws-sdk/*',
         ]
       },
+      role: new Role(this, 'ConsentApiRole', {
+        assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+        description: `Grants actions to the consent api lambda function to perform the related api tasks.`,
+        inlinePolicies: {
+          'EttAuthIndSesPolicy': new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'ses:Send*', 'ses:Get*' ],
+                resources: this.context.SES_IDENTITIES.map((identity:string) => {
+                  return `arn:aws:ses:${this.context.REGION}:${this.context.ACCOUNT}:identity/${identity}`
+                }),
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
+          'EttAuthIndCognitoPolicy': new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [  'cognito-idp:List*'  ],
+                resources: [ '*' ],
+                effect: Effect.ALLOW
+              }),
+              new PolicyStatement({
+                actions: [  'cognito-idp:AdminGet*', 'cognito-idp:AdminDeleteUser' ],
+                resources: [ this.parms.userPool.userPoolArn ],
+                effect: Effect.ALLOW
+              })
+            ]
+          })
+        }
+      }),
       environment: {
-        REGION: this.outerScope.node.getContext('stack-parms').REGION,
+        REGION: this.context.REGION,
         DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
         DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
         DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME,
-        CLOUDFRONT_DOMAIN: this.cloudfrontDomain
+        CLOUDFRONT_DOMAIN: this.parms.cloudfrontDomain,
+        USERPOOL_ID: this.parms.userPool.userPoolId
       }
     });
 
@@ -137,7 +177,7 @@ export class SignupApiConstruct extends Construct {
     invitationCodePath.addMethod('GET');   // GET /consent/task/{invitation-code}
     invitationCodePath.addMethod('POST');
     invitationCodePath.addCorsPreflight({
-      allowOrigins: [ `https://${this.cloudfrontDomain}` ],
+      allowOrigins: [ `https://${this.parms.cloudfrontDomain}` ],
       // allowHeaders: Cors.DEFAULT_HEADERS.concat('Is a header needed?'),
       allowMethods: [ 'POST', 'GET', 'OPTIONS' ],
       maxAge: Duration.minutes(10),

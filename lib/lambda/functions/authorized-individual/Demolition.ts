@@ -3,6 +3,7 @@ import { marshall } from '@aws-sdk/util-dynamodb';
 import { DAOFactory } from "../../_lib/dao/dao";
 import { Entity, Invitation, User } from "../../_lib/dao/entity";
 import { CognitoIdentityProviderClient, AdminDeleteUserCommand, AdminDeleteUserRequest, AdminDeleteUserCommandOutput } from '@aws-sdk/client-cognito-identity-provider';
+import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 
 const dbclient = new DynamoDBClient({ region: process.env.REGION });
 const cognitoClient = new CognitoIdentityProviderClient({ region: process.env.REGION });
@@ -121,6 +122,10 @@ export class EntityToDemolish {
     return this._deletedUsers;
   }
 
+  public set deletedUsers(users:User[]) {
+    this._deletedUsers.push(...users);
+  }
+
   public get commandInput(): TransactWriteItemsCommandInput|undefined {
     return this.dynamodbCommandInput;
   }
@@ -138,3 +143,40 @@ export class EntityToDemolish {
   }
 }
 
+
+/**
+ * RUN MANUALLY: Modify the task, landscape, entity_id, and dryRun settings as needed.
+ */
+const { argv:args } = process;
+if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
+  const region = 'us-east-2';
+  const dryRun = false;
+  const entity_id = 'db542060-7de0-4c55-be58-adc92671d63a';
+
+  
+  lookupUserPoolId('ett-cognito-userpool', region)
+    .then((userpoolId) => {
+
+      process.env.DYNAMODB_INVITATION_TABLE_NAME = 'ett-invitations';
+      process.env.DYNAMODB_USER_TABLE_NAME = 'ett-users';
+      process.env.DYNAMODB_ENTITY_TABLE_NAME = 'ett-entities'
+      process.env.USERPOOL_ID = userpoolId;
+      process.env.REGION = region;
+      process.env.DEBUG = 'true';
+
+      const entityToDemolish = new EntityToDemolish(entity_id);
+      entityToDemolish.dryRun = dryRun;
+      entityToDemolish.deletedUsers = [
+        { sub: '44f80329-a6f8-4c3d-8e50-36fc422035d5' } as User,
+        { sub: 'd250ef9d-0e4d-4fb2-b490-c7e60d8e9afd' } as User,
+        { sub: 'f66b3491-5476-4fd1-b0c2-324cd5eac7f4' } as User
+      ];
+      return entityToDemolish.deleteEntityFromUserPool();
+    })
+    .then(() => {
+      console.log('Entity deleted');
+    })
+    .catch((reason) => {
+      console.error(reason);
+    });
+}
