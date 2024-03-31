@@ -2,7 +2,7 @@ import { DynamoDBClient, TransactWriteItem, TransactWriteItemsCommand, TransactW
 import { marshall } from '@aws-sdk/util-dynamodb';
 import { DAOFactory } from "../../_lib/dao/dao";
 import { Entity, Invitation, User } from "../../_lib/dao/entity";
-import { CognitoIdentityProviderClient, AdminDeleteUserCommand, AdminDeleteUserRequest } from '@aws-sdk/client-cognito-identity-provider';
+import { CognitoIdentityProviderClient, AdminDeleteUserCommand, AdminDeleteUserRequest, AdminDeleteUserCommandOutput } from '@aws-sdk/client-cognito-identity-provider';
 
 const dbclient = new DynamoDBClient({ region: process.env.REGION });
 const cognitoClient = new CognitoIdentityProviderClient({ region: process.env.REGION });
@@ -84,24 +84,26 @@ export class EntityToDemolish {
    */
   public deleteEntityFromUserPool = async ():Promise<any> => {
     const UserPoolId = process.env.USERPOOL_ID;
-    const deleteUser = async (Username:string):Promise<any> => {
+    const deleteUser = async (Username:string):Promise<AdminDeleteUserCommandOutput|string> => {
       const input = { UserPoolId, Username } as AdminDeleteUserRequest;
       const command = new AdminDeleteUserCommand(input);
       console.log(`Demolishing users from userpool related to entity ${this.entityId} - ${JSON.stringify(input, null, 2)}`);
       if(this._dryRun) {
         return new Promise((resolve) => resolve('dryrun'));
       }
-      return await cognitoClient.send(command);
+      const output = await cognitoClient.send(command) as AdminDeleteUserCommandOutput;
+      return output;
     }
-    this._deletedUsers.forEach((user) => {
-      deleteUser(user.sub)
-        .then(() => {
-          console.log('User deleted');
-        })
-        .catch((reason) => {
-          JSON.stringify(reason, Object.getOwnPropertyNames(reason), 2);
-        });
-    });
+    for(var i=0; i<this._deletedUsers.length; i++) {
+      try {
+        var username = this._deletedUsers[i].sub;
+        const output:AdminDeleteUserCommandOutput|string = await deleteUser(username);
+        console.log(`User ${username} deleted: ${JSON.stringify(output, null, 2)}`);
+      }
+      catch(reason) {
+        console.log(JSON.stringify(reason, Object.getOwnPropertyNames(reason), 2));
+      }
+    }
   }
 
   public demolish = async ():Promise<any> => {

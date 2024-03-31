@@ -77,22 +77,25 @@ export const demolishEntity = async (entity_id:string, notify:boolean, dryRun?:b
   // For every user deleted by the demolish operation, notify them it happened by email.
   if(notify) {            
     const isEmail = (email:string|undefined) => /@/.test(email||'');
-    entityToDemolish.deletedUsers
+    const emailAddresses:string[] = entityToDemolish.deletedUsers
       .map((user:User) => { return isEmail(user.email) ? user.email : ''; })
-      .filter((email:string) => email) // filter off the empty strings
-      .forEach((email:string) => {
-        console.log(`Sending email to ${email}`)
+      .filter((email:string) => email);
+
+    for(var i=0; i<emailAddresses.length; i++) {
+      var email = emailAddresses[i];
+      try {
+        console.log(`Sending email to ${email}`);
         if(dryRun) {
-          return;
+          continue;
         }
-        notifyUserOfDemolition(email, entityToDemolish.entity)
-          .then(() => {
-            console.log('Email sent');
-          })
-          .catch((reason) => {
-            JSON.stringify(reason, Object.getOwnPropertyNames(reason), 2);
-          });
-        });
+        await notifyUserOfDemolition(email, entityToDemolish.entity);
+        console.log('Email sent');
+      }
+      catch(reason) {
+        console.error(`Error sending email to ${email}`);
+        console.log(JSON.stringify(reason, Object.getOwnPropertyNames(reason), 2));
+      }
+    }
   }
   
   return okResponse('Ok', entityToDemolish.demolitionRecord);
