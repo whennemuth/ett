@@ -1,12 +1,13 @@
 import { SESv2Client, SendEmailCommand, SendEmailCommandInput, SendEmailResponse } from '@aws-sdk/client-sesv2';
 import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest';
-import { User } from '../../_lib/dao/entity';
+import { Roles, User } from '../../_lib/dao/entity';
 import { entity, bugsbunny, daffyduck, tables, yosemitesam } from './MockObjects';
 import * as mockCommandInput from './DemolitionCommandInputMock.json';
 import { Task, handler } from './AuthorizedIndividual';
 import { LambdaProxyIntegrationResponse } from '../Utils';
 import { AbstractRoleApi, IncomingPayload, OutgoingBody } from '../../../role/AbstractRole';
+import { DAOUser, FactoryParms } from '../../_lib/dao/dao';
 
 process.env.DYNAMODB_USER_TABLE_NAME = tables.user;
 process.env.DYNAMODB_INVITATION_TABLE_NAME = tables.invitation;
@@ -39,6 +40,35 @@ jest.mock('./Demolition', () => {
       }      
     })
   };
+});
+
+const mockUserRead = jest.fn(async ():Promise<User[]> => {
+  return new Promise((resolve) => {
+    resolve([ {
+      email: 'sysadmin1@bu.edu', role: Roles.SYS_ADMIN
+    } as User, {
+      email: 'sysadmin2@bu.edu', role: Roles.SYS_ADMIN
+    } as User ] as User[]);
+  });
+}) as any;
+
+// Mock the lookup for the system administrator used as the from address for demolition ses notifications.
+jest.mock('../../_lib/dao/dao.ts', () => {
+  return {
+    __esModule: true,
+    DAOFactory: {
+      getInstance: jest.fn().mockImplementation((parms:FactoryParms) => {
+        switch(parms.DAOType) {
+          case 'user': 
+            return { read: mockUserRead } as DAOUser;
+          case 'entity':
+            return null;
+          case 'invitation':
+            return null;
+        }
+      })
+    }
+  }
 });
 
 describe('AuthInd lambda trigger: pre-task validation', () => {
@@ -121,6 +151,8 @@ describe('AuthInd lambda trigger: demolition', () => {
       MessageId: 'some_alpha-numeric_value'
     } as SendEmailResponse
   });
+
+
 
   it('Should send an email to every user that was deleted from the system', async () => {
     currentScenario = Scenario.NORMAL;
