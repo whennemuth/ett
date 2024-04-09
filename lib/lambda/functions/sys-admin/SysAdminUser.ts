@@ -2,7 +2,7 @@ import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from
 import { Role, Roles } from '../../_lib/dao/entity';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
 import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../Utils";
-import { Task as ReAdminTasks, lookupEntity, createEntity, deactivateEntity, inviteUser, updateEntity } from '../re-admin/ReAdminUser';
+import { Task as ReAdminTasks, lookupEntity, createEntity, deactivateEntity, inviteUser, updateEntity, createEntityAndInviteUsers } from '../re-admin/ReAdminUser';
 
 export enum Task {
   REPLACE_RE_ADMIN = 'replace_re_admin'
@@ -55,6 +55,8 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
             }
             return await new SignupLink().getRegistrationLink(entity_id);
           });
+        case ReAdminTasks.CREATE_ENTITY_INVITE:
+          return await createEntityAndInviteUsers(parameters);
         case ReAdminTasks.PING:
           return okResponse('Ping!', parameters);
         case Task.REPLACE_RE_ADMIN:
