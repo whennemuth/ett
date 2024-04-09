@@ -78,7 +78,6 @@ export const demolishEntity = async (entity_id:string, notify:boolean, dryRun?:b
   
   // For every user deleted by the demolish operation, notify them it happened by email.
   if(notify) {
-    const fromEmail = await getSysAdminEmail();
     const isEmail = (email:string|undefined) => /@/.test(email||'');
     const emailAddresses:string[] = entityToDemolish.deletedUsers
       .map((user:User) => { return isEmail(user.email) ? user.email : ''; })

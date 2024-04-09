@@ -9,6 +9,7 @@ import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, 
 
 export enum Task {
   CREATE_ENTITY = 'create-entity',
+  CREATE_ENTITY_INVITE = 'create-entity-invite',
   UPDATE_ENTITY = 'update-entity',
   DEACTIVATE_ENTITY = 'deactivate-entity',
   LOOKUP_USER_CONTEXT = 'lookup-user-context',
@@ -43,18 +44,24 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
       const callerSub = callerUsername || event?.requestContext?.authorizer?.claims?.sub;
       switch(task as Task) {
         case Task.LOOKUP_USER_CONTEXT:
-          const { email, role } = parameters;
+          var { email, role } = parameters;
           return await lookupEntity(email, role);
         case Task.CREATE_ENTITY:
-          return await createEntity(parameters, { sub:callerSub, role:Roles.RE_ADMIN } as User);
+          const { entity_name, entity_description } = parameters;
+          var entity = { entity_name, description:entity_description } as Entity;
+          return await createEntity(entity, { sub:callerSub, role:Roles.RE_ADMIN } as User);
         case Task.UPDATE_ENTITY:
           return updateEntity(parameters);
         case Task.DEACTIVATE_ENTITY:
           return await deactivateEntity(parameters);
         case Task.INVITE_USER:
-          return await inviteUser(parameters, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
+          var { email, entity_id, role } = parameters;
+          var user = { email, entity_id, role } as User;
+          return await inviteUser(user, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
             return await new SignupLink().getRegistrationLink(entity_id);
           }, callerSub);
+        case Task.CREATE_ENTITY_INVITE:
+          return await createEntityAndInviteUsers(parameters, callerSub);
         case Task.PING:
           return okResponse('Ping!', parameters)
       } 
@@ -136,13 +143,20 @@ export const lookupEntity = async (email:string, role:Role):Promise<LambdaProxyI
 }
 
 
-export const createEntity = async (parms:any, reAdmin?:User):Promise<LambdaProxyIntegrationResponse> => {
-  const { entity_name, description } = parms;
+export const createEntity = async (entity:Entity, reAdmin?:User):Promise<LambdaProxyIntegrationResponse> => {
+
+  if( ! entity.entity_name) {
+    return invalidResponse('Cannot proceed with unspecified entity');
+  }
+
+  if( ! entity.description) {
+    entity.description = entity.entity_name;
+  }
 
   // Create the entity
   const daoEntity = DAOFactory.getInstance({ 
     DAOType: 'entity', 
-    Payload: { entity_name, description }
+    Payload: entity
   }) as DAOEntity;
   await daoEntity.create();
   const new_entity_id = daoEntity.id();
@@ -227,8 +241,8 @@ export const deactivateEntity = async (parms:any):Promise<LambdaProxyIntegration
  * Invite the user via email and log a corresponding tracking entry in the database if successful.
  * @param parms 
  */
-export const inviteUser = async (parms:any, inviterRole:Role, linkGenerator:Function, inviterCognitoUserName?:string): Promise<LambdaProxyIntegrationResponse> => {
-  let { email, entity_id, role } = parms;
+export const inviteUser = async (user:User, inviterRole:Role, linkGenerator:Function, inviterCognitoUserName?:string): Promise<LambdaProxyIntegrationResponse> => {
+  let { email, entity_id, role } = user;
   const cloudfrontDomain = process.env.CLOUDFRONT_DOMAIN;
   if(cloudfrontDomain) {
 
@@ -355,6 +369,60 @@ export const inviteUser = async (parms:any, inviterRole:Role, linkGenerator:Func
   }
 }
 
+/**
+ * Create the entity and invite both authorized individuals in one shot.
+ * @param parameters 
+ * @param callerSub 
+ * @returns 
+ */
+export const createEntityAndInviteUsers = async (parameters:any, callerSub?:string):Promise<LambdaProxyIntegrationResponse> =>  {
+  const { entity:_entity, invitations } = parameters;
+  const { email:email1, role:role1 } = invitations?.invitee1 || {};
+  const { email:email2, role:role2 } = invitations?.invitee2 || {};
+
+  var entity = { entity_name:_entity?.name, description:_entity?.description } as Entity;
+
+  if( ! entity.entity_name) {
+    return invalidResponse('Cannot proceed with unspecified entity');
+  }
+
+  if( ! email1 || ! role1) {
+    return invalidResponse(`Cannot create entity ${entity.entity_name} since invitee1 is missing/incomplete`);
+  }
+
+  if( ! email2 || ! role2) {
+    return invalidResponse(`Cannot create entity ${entity.entity_name} since invitee2 is missing/incomplete`);
+  }
+
+  if( (email1 as string).toLowerCase() == (email2 as string).toLowerCase()) {
+    return invalidResponse(`Cannot invite two authorized individuals with the same email: ${email1}`);
+  }
+
+  if( ! entity.description) {
+    entity.description = entity.entity_name;
+  }
+
+  var response = await createEntity( entity, { sub:callerSub, role:Roles.RE_ADMIN } as User ) as LambdaProxyIntegrationResponse;
+  if(response.body) {
+    var output = JSON.parse(response.body);
+    const { entity_id } = output.payload;
+    const user1 = { email:email1, role:role1, entity_id } as User
+    const user2 = { email:email2, role:role2, entity_id } as User
+
+    await inviteUser(user1, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
+      return await new SignupLink().getRegistrationLink(entity_id);
+    }, callerSub);
+
+    await inviteUser(user2, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
+      return await new SignupLink().getRegistrationLink(entity_id);
+    }, callerSub);
+
+    return await lookupEntity(email1, role1);
+  }
+  else {
+    return errorResponse('ID of newly created entity not available'); 
+  }
+}
 
 /**
  * RUN MANUALLY: Modify the task, landscape, email, role, & entity_id as needed.

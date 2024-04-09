@@ -1,32 +1,31 @@
 import { CognitoLookupMock, InvitationMock, UtilsMock, DaoMock, SignupLinkMock, 
-  ParameterValidationTests, UserInvitationTests, EntityLookupTests, MockingScenario } from './ReAdminUser.mocks';
+  ParameterValidationTests, UserInvitationTests, EntityLookupTests, CreateAndInviteTests, MockingScenario, CreateEntityTests } from './ReAdminUser.mocks';
 
 process.env.CLOUDFRONT_DOMAIN = 'dnkkwr06vb9yr.cloudfront.net';
 
 // Create the partial mock for Utils.ts module
-jest.mock('../Utils.ts', () => {
+const utilsMock = jest.mock('../Utils.ts', () => {
   const originalModule = jest.requireActual('../Utils.ts');
   return UtilsMock(originalModule);
 });  
 
 // Create the mock for the es6 UserInvitation class
-jest.mock('../../_lib/invitation/Invitation', () => {
+const invitationMock = jest.mock('../../_lib/invitation/Invitation', () => {
   return InvitationMock();
 });
 
 // Create the mock for the SignupLink.ts module
-jest.mock('../../_lib/invitation/SignupLink.ts', () => {
-  const originalModule = jest.requireActual('../../_lib/invitation/SignupLink.ts');
+const signupLinkMock = jest.mock('../../_lib/invitation/SignupLink.ts', () => {
   return SignupLinkMock();
 });
 
 // Create the mock for the cognito Lookup.ts module
-jest.mock('../../_lib/cognito/Lookup.ts', () => {
+const cognitoLookupMock = jest.mock('../../_lib/cognito/Lookup.ts', () => {
   const originalModule = jest.requireActual('../../_lib/cognito/Lookup.ts');
   return CognitoLookupMock(originalModule);
 });
 
-jest.mock('../../_lib/dao/dao.ts', () => {
+const daoMock = jest.mock('../../_lib/dao/dao.ts', () => {
   const originalModule = jest.requireActual('../../_lib/dao/dao.ts');
   return DaoMock(originalModule);
 });
@@ -34,8 +33,7 @@ jest.mock('../../_lib/dao/dao.ts', () => {
 import { mockEvent } from './MockEvent';
 import { Task, handler } from './ReAdminUser';
 import { AbstractRoleApi } from '../../../role/AbstractRole';
-import { Roles, User } from '../../_lib/dao/entity';
-import { SCENARIO } from '../../../../contexts/IContext';
+import { Roles } from '../../_lib/dao/entity';
 
 describe('ReAdminUser lambda trigger: handler', () => {
   it('Should handle a simple ping test as expected', async () => {
@@ -52,7 +50,7 @@ describe('ReAdminUser lambda trigger: handler', () => {
 describe('ReAdminUser lambda trigger: inviteUser', () => {
   it('Should return 400 if attempting to invite any role other than RE_AUTH_IND', async () => {
     await UserInvitationTests.reAdminInvitesWrongRole(handler, mockEvent, Task.INVITE_USER);
-  })
+  });
   it('Should return 400 if user has already accepted an invitation for same role in same entity', async () => {
     await UserInvitationTests.alreadyAccepted(handler, mockEvent, Task.INVITE_USER);
   });
@@ -76,7 +74,7 @@ describe('ReAdminUser lambda trigger: inviteUser', () => {
   });
   it('Should return 200 if a second invitation is being made for AUTH_IND for same entity', async () => {
     await UserInvitationTests.outstandingInvitationAuthInd(handler, mockEvent, Task.INVITE_USER);
-  })
+  });
   it('Should return 200 if all validity criterion are met', async () => {
     await UserInvitationTests.send200(handler, mockEvent, Task.INVITE_USER);
   });
@@ -126,3 +124,28 @@ describe('ReAdminUser lambda trigger: lookupEntity', () => {
     } as MockingScenario);
   });
 }); 
+
+describe('ReAdminUser lambda trigger: createEntity', () => {
+  it('Should return 400 if the entity is missing or incomplete', async () => {
+    await CreateEntityTests.missingEntity(handler, mockEvent, Task.CREATE_ENTITY);
+  });
+  it('Should behave as expected if no invalid parameters', async () => {
+    await CreateEntityTests.missingEntity(handler, mockEvent, Task.CREATE_ENTITY);
+  })
+});
+
+describe('ReAdminUser lambda trigger: createEntityAndInviteUsers', () => {
+
+  it('Should return 400 if the entity is missing or incomplete', async () => {
+    await CreateAndInviteTests.missingEntity(handler, mockEvent, Task.CREATE_ENTITY_INVITE);
+  });
+  it('Should return 400 if either of the authorized individuals is missing/incomplete', async () => {
+    await CreateAndInviteTests.missingAuthInd(handler, mockEvent, Task.CREATE_ENTITY_INVITE);
+  });
+  it('Should return 400 if the two authorized individuals have the same email', async () => {
+    await CreateAndInviteTests.duplicateEmails(handler, mockEvent, Task.CREATE_ENTITY_INVITE);
+  });
+  it('Should behave as expected if no invalid parameters', async () => {
+    await CreateAndInviteTests.successful(handler, mockEvent, Task.CREATE_ENTITY_INVITE);
+  })
+});
