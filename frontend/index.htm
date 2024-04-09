@@ -209,15 +209,16 @@
       }
 
       .divSysAdminOption {
-        width: 400px;
+        width: 450px;
         text-align: right;
+        vertical-align: middle;
         padding: 10px;
       }
 
       h3 {
         text-align: center;
         margin-bottom: 20px;
-        margin-top: 20px
+        margin-top: 20px  
       }
 
       #stage {
@@ -608,9 +609,6 @@
                 <li class="nav-item">
                   <a class="nav-link active" id="re-admin-entity-link" data-toggle="tab" href="#re-admin-entity" role="tab" aria-controls="re-admin-entity" aria-selected="true">Entity/Organization</a>
                 </li>
-                <li class="nav-item" id="re-admin-invitation-tab">
-                  <a class="nav-link" id="re-admin-invitation-link" data-toggle="tab" href="#re-admin-invitation" role="tab" aria-controls="re-admin-invitation" aria-selected="false">Invitation</a>
-                </li>
                 <li class="nav-item">
                   <a class="nav-link" id="re-admin-misc-link" data-toggle="tab" href="#re-admin-misc" role="tab" aria-controls="re-admin-misc" aria-selected="false">Miscellaneous</a>
                 </li>
@@ -619,35 +617,27 @@
               <div class="tab-content" id="reAdminContent">
                 <div class="tab-pane fade show active" id="re-admin-entity" role="tabpanel" aria-labelledby="re-admin-entity-link">
                   <div id="divCreateEntity">
-                    <h3 class="display-7 fw-bold">Create your entity</h3>
+                    <h3 class="display-7 fw-bold">Create your entity and invite authorized individuals</h3>
                     <div id="divReAdminEntityName" class="divSysAdminOption" style="text-align: right;">
                       Entity Name:
                       <input id="txtReAdminEntityName" type="text" class="form-control" style="width:fit-content; display:inline-block;">
+                      <button id="btnReAdminEntityUpdate" class="btn btn-primary" type="button">Update</button>
+                    </div>
+                    <div id="divReAdminEmailToInvite" class="divSysAdminOption" style="text-align: right;">
+                      <div style="padding: 20px;">
+                        Authorized Individual Invitee Email Addresses
+                      </div>                
+                      Email 1:
+                      <input id="txtReAdminEmailToInvite1" type="text" class="form-control" style="width:fit-content; display:inline-block;">
                     </div>                
-                    <div id="divReAdminEntityDesc" class="divSysAdminOption" style="text-align: right;">
-                      Entity Description:
-                      <input id="txtReAdminEntityDesc" type="text" class="form-control" style="width:fit-content; display:inline-block;">
+                    <div id="divReAdminEmailToInvite" class="divSysAdminOption" style="text-align: right;">
+                      Email 2:
+                      <input id="txtReAdminEmailToInvite2" type="text" class="form-control" style="width:fit-content; display:inline-block;">
                     </div>                
                     <div class="divSysAdminOption">
-                      <button id="btnReAdminEntityCreate" class="btn btn-primary btn-lg" type="button">Create</button>
-                      &nbsp;
-                      <button id="btnReAdminEntityUpdate" class="btn btn-primary btn-lg" type="button" disabled>Update</button>
+                      <button id="btnReAdminInvite" class="btn btn-primary btn-lg" type="button">Create and Invite</button>
                     </div> 
                   </div>                  
-                </div>
-                <div class="tab-pane fade" id="re-admin-invitation" role="tabpanel" aria-labelledby="re-admin-invitation-link">
-                  <div id="divReAdminInvite">
-                    <h3 class="display-7 fw-bold">Invite an authorized Individual to <span id="re-admin-entity-name">your entity</span></h3>
-                    <div style="display:inline-block; margin-top:30px;">
-                      <div id="divReAdminEmailToInvite" class="divSysAdminOption" style="text-align: right;">
-                        Email Address:
-                        <input id="txtReAdminEmailToInvite" type="text" class="form-control" style="width:fit-content; display:inline-block;">
-                      </div>                
-                      <div class="divSysAdminOption">
-                        <button id="btnReAdminInvite" class="btn btn-primary btn-lg" type="button">Invite</button>
-                      </div> 
-                    </div>
-                  </div>                   
                 </div>
                 <div class="tab-pane fade" id="re-admin-misc" role="tabpanel" aria-labelledby="re-admin-misc-link">
                   <h3 class="display-7 fw-bold" style="text-align:center; margin-bottom: 20px;">Something else can go here, not sure what</h3>
@@ -1239,6 +1229,7 @@
       try {
         const uri = `${STATIC_PARAMETERS.CONSENT_API_URI}/terminate/${invitationCode}`;
         
+        document.body.style.cursor = 'progress';
         const response = await fetch(uri, {
           method: 'GET',
           credentials: 'omit',
@@ -1246,6 +1237,7 @@
         });
 
         const package = await response.json();
+        document.body.style.cursor = 'progress';
         const { message, payload } = package;
         if(payload.ok) {
           alert('Entity terminated');
@@ -1424,18 +1416,14 @@
         const role = AccessJwtCookie.getRole().name;
         const apiUri = STATIC_PARAMETERS.ROLES[role].API_URI
         const entity_name = $('#txtReAdminEntityName').val();
-        const description = $('#txtReAdminEntityDesc').val();
+        const entity_description = entity_name;
         if( ! entity_name) {
           alert('Required entry: Entity name');
           return;
         }
-        if( ! description) {
-          alert('Required entry: Entity description');
-          return;
-        }
         const outgoingPayload = {
           task: 'create-entity',
-          parameters: { entity_name, description }
+          parameters: { entity_name, entity_description }
         }
 
         const response = await fetch(apiUri, {
@@ -1453,9 +1441,7 @@
         const { message, payload } = package;
         if(payload.ok) {
           await setUserContext();
-          $('#btnReAdminEntityCreate').prop("disabled", true);
-          $('#btnReAdminEntityUpdate').prop("disabled", false);
-          document.getElementById('re-admin-invitation-tab').style.display = 'inline';
+          document.getElementById('btnReAdminEntityUpdate').style.display = 'inline';
           alert('Entity created');
         }
         else {
@@ -1467,6 +1453,77 @@
       }
     }
 
+    /**
+     * Combines createEntity and invite (twice) as a consolidated RE_ADMIN task
+     */
+    const createEntityAndInviteUsers = async () => {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+        const email = IDJwtCookie.getUser().email;
+        const role = AccessJwtCookie.getRole().name;
+        const apiUri = STATIC_PARAMETERS.ROLES[role].API_URI
+        const entity_name = $('#txtReAdminEntityName').val();
+        const email1 = $('#txtReAdminEmailToInvite1').val();
+        const email2 = $('#txtReAdminEmailToInvite2').val();
+        const description = entity_name;
+        if( ! entity_name) {
+          alert('Required entry: Entity name');
+          return;
+        } 
+        if( ! email1) {
+          alert('Required entry: Authorized Individual 1 email address');
+          return;
+        }
+        if( ! email2) {
+          alert('Required entry: Authorized Individual 2 email address');
+          return;
+        }
+        const outgoingPayload = {
+          task: 'create-entity-invite',
+          // parameters: { email, role, entity_name, description, email1, email2 }
+          parameters: {
+            entity: {
+              name:entity_name, description:entity_name
+            },
+            invitations: {
+              from: {
+                email, role
+              },
+              invitee1: { email: email1, role:'RE_AUTH_IND' },
+              invitee2: { email: email2, role:'RE_AUTH_IND' }
+            }
+          }
+        }
+
+        document.body.style.cursor = 'progress';
+        const response = await fetch(apiUri, {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify(outgoingPayload)
+          }
+        });
+
+        const package = await response.json();
+        document.body.style.cursor = 'default';
+        const { message, payload } = package;
+        if(payload.ok) {
+          userContext = payload.user;
+          document.getElementById('btnReAdminEntityUpdate').style.display = 'inline';
+          alert('Entity created');
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
 
     /**
      * This function serves as a utility object for processing JWTs received from cognito and the cookies they are stored in.
@@ -1593,13 +1650,20 @@
     // Check the querystring for action=login on page load
 
     $( document ).ready(function() {
-      onDocumentLoad().then(() => console.log('onDocumentLoad complete.'));
+      onDocumentLoad()
+      .then(() => {
+        console.log('onDocumentLoad complete.')
+      })
+      .finally(() => {
+        document.body.style.display = 'default';
+      });
     });
     // window.onload = () => {
     //   onDocumentLoad().then(() => console.log('onDocumentLoad complete.'));;
     // }
 
     const onDocumentLoad = async () => {
+      document.body.style.display = 'progress';
       const queryParams = new URLSearchParams(window.location.search);
 
       // Get querystring parameters
@@ -1634,10 +1698,8 @@
         const apiUri = STATIC_PARAMETERS.ROLES['SYS_ADMIN'].API_URI;
         invite(role, email, apiUri);
       });
-      document.getElementById('btnReAdminInvite').addEventListener('click', () => {
-        const email = $('#txtReAdminEmailToInvite').val();
-        const apiUri = STATIC_PARAMETERS.ROLES['RE_ADMIN'].API_URI;
-        invite('RE_AUTH_IND', email, apiUri);
+      document.getElementById('btnReAdminInvite').addEventListener('click', async () => {
+        await createEntityAndInviteUsers();
       });
       document.getElementsByName('rdoSysAdminInvite').forEach(rdo => {
         rdo.addEventListener('click', () => {
@@ -1650,9 +1712,6 @@
           email.style.display = 'inline-block';
           if( val == 'RE_AUTH_IND') entities.style.display = 'inline-block';
         })
-      });
-      document.getElementById('btnReAdminEntityCreate').addEventListener('click', async () => {
-        await createEntity();
       });
 
       // Add show/hide behavior to the SYS_ADMIN tabstrip
@@ -1682,11 +1741,10 @@
               await setUserContext();
               const entity = userContext?.entity || {};
               const isEmpty = e => Object.keys(e).length == 0;
-              document.getElementById('re-admin-invitation-tab').style.display = isEmpty(entity) ? 'none' : 'inline';
-              $('#btnReAdminEntityCreate').prop("disabled", !isEmpty(entity));
-              $('#btnReAdminEntityUpdate').prop("disabled", isEmpty(entity));
+              if(isEmpty(entity)) {
+                $('#btnReAdminEntityUpdate').hide();
+              }
               $('#txtReAdminEntityName').val(entity.entity_name);
-              $('#txtReAdminEntityDesc').val(entity.description);
               document.getElementById('app-section-RE_ADMIN').style.display = 'inline';
               break;
 
