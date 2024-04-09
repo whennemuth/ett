@@ -1,10 +1,32 @@
-// TODO: Move this module out into a more generic location
-
+import { UpdateItemCommandOutput } from "@aws-sdk/client-dynamodb";
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse, OutgoingBody } from "../../../role/AbstractRole";
-import { FactoryParms } from "../../_lib/dao/dao";
+import { DAOEntity, DAOInvitation, DAOUser, FactoryParms } from "../../_lib/dao/dao";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
-import { Entity, EntityFields, Invitation, Role, Roles, User, YN } from "../../_lib/dao/entity";
+import { Entity, Invitation, Role, Roles, User, YN } from "../../_lib/dao/entity";
 
+/**
+ * Keeps track of how many times any method of any mock has been called.
+ */
+const mockCalls = new class {
+  private commands = [] as any[];
+  public update(name:string) {
+    const idx = this.commands.findIndex((cmd) => cmd.name == name);
+    if(idx == -1) {
+      this.commands.push({name, calls:1});
+      return;
+    }
+    const cmd = this.commands[idx];
+    cmd.calls++;
+    this.commands[idx] = cmd;
+  }
+  public called(name:string) {
+    const cmd = this.commands.find((cmd) => cmd.name == name );
+    return cmd ? cmd.calls : 0;
+  }
+  public reset() {
+    this.commands = [];
+  }
+}
 /**
  * Define a partial mock for Utils.ts module
  * @param originalModule 
@@ -15,6 +37,7 @@ export function UtilsMock(originalModule: any) {
     __esModule: true,
     ...originalModule,
     lookupSingleUser: async (email:string, entity_id:string):Promise<User|null> => { 
+      mockCalls.update('lookupSingleUser');
       if(email === 'exists@gmail.com') {
         return {
           email, entity_id, role:Roles.RE_AUTH_IND
@@ -23,6 +46,7 @@ export function UtilsMock(originalModule: any) {
       return null;
     },
     lookupUser: async (email:string): Promise<User[]> => {
+      mockCalls.update('lookupUser');
       const userInstances = [] as User[];
       switch(email) {
         case 'reAdmin@foreignEntity.net':
@@ -40,6 +64,7 @@ export function UtilsMock(originalModule: any) {
       return userInstances;
     },
     lookupPendingInvitations: async (entity_id:string):Promise<Invitation[]> => {
+      mockCalls.update('lookupPendingInvitations');
       const pending = [] as Invitation[];
       switch(entity_id) {
         case 'id_for_entity_with_pending_invitation_for_re_admin':
@@ -64,6 +89,7 @@ export function UtilsMock(originalModule: any) {
       return pending;
     },
     lookupSingleActiveEntity: async (entity_id:string):Promise<Entity|null> => {
+      mockCalls.update('lookupSingleActiveEntity');
       const dte = new Date().toISOString();
       let entity = {
         entity_id, entity_name: `Name for ${entity_id}`, description: `Description for ${entity_id}`,
@@ -92,11 +118,14 @@ export function CognitoLookupMock(originalModule: any) {
     __esModule: true,
     ...originalModule,
     lookupEmail: async (UserPoolId:string, Username:string, region:string):Promise<string|undefined> => {
+      mockCalls.update('lookupEmail');
       switch(Username) {
         case 're_admin_foreign_entity_sub':
           return 'reAdmin@foreignEntity.net';
         case 're_admin_same_entity_sub':
           return 'reAdmin@sameEntity.net';
+        case 'daffy_duck_sub':
+          return daffyduck1.email;
         default:
           return undefined;
       }
@@ -113,6 +142,7 @@ export function InvitationMock() {
     UserInvitation: jest.fn().mockImplementation((invitation:Invitation, link:string, entity_name?:string) => {
       return {
         send: async () => {
+          mockCalls.update('invitation.send');
           return invitation.entity_id != 'explode';
         },
         code: 'abc123',
@@ -131,9 +161,11 @@ export function SignupLinkMock() {
     SignupLink: jest.fn().mockImplementation((userPoolName?:string) => {
       return {
         getCognitoLinkForRole: async (role:Role): Promise<string|undefined> => {
+          mockCalls.update('getCognitoLinkForRole');
           return 'sysadmin-signup-link';
         },
         getRegistrationLink: async (entity_id?:string):Promise<string|undefined> => {
+          mockCalls.update('getRegistrationLink');
           return 'non-sysadmin-signup-link'
         }
       }
@@ -151,10 +183,13 @@ const bugsbunny = { email: 'bugs@warnerbros.com', entity_id: 'warnerbros', role:
 const daffyduck2 = { email: 'daffyduck@warnerbros.com', entity_id: 'cartoonville', role: Roles.RE_ADMIN, active: YN.Yes } as User;
 const yosemitesam = { email: 'yosemitesam@cartoonville.com', entity_id: 'cartoonville', role: Roles.RE_AUTH_IND, active: YN.Yes } as User;
 const foghornLeghorn = { email: 'fl@cartoonville.com', entity_id: 'cartoonville', role: Roles.RE_AUTH_IND, active: YN.Yes } as User;
+const entity1 = { entity_id:'warnerbros', entity_name: 'Warner Bros.', active: YN.Yes } as Entity;
+const entity2 = { entity_id:'cartoonville', entity_name: 'Cartoon Villiage', active: YN.Yes } as Entity;
 export type MockingScenario = {
   UserLookup: 'normal' | 'waitingroom' | 'multi-match'
-}
-let currentScenario:MockingScenario
+};
+let currentScenario:MockingScenario;
+
 export function DaoMock(originalModule: any) {
   return {
     __esModule: true,
@@ -165,10 +200,11 @@ export function DaoMock(originalModule: any) {
         if(parms.DAOType == 'user') {
           return {
             read: async ():Promise<User|User[]> => {
+              mockCalls.update('user.read');
               switch(email) {
                 case 'inactiveUser@gmail.com':
                   return [ inactiveUser ] as User[]
-                case 'daffyduck@warnerbros.com':
+                case daffyduck1.email:
                   switch(currentScenario.UserLookup) {
                     case "normal":
                       return [ daffyduck1 ] as User[];
@@ -181,6 +217,10 @@ export function DaoMock(originalModule: any) {
                       dduck2.entity_id = 'cartoonville';
                       return [ dduck2, daffyduck1 ];
                   }
+                case foghornLeghorn.email:
+                  return [ foghornLeghorn ];
+                case yosemitesam.email:
+                  return [ yosemitesam ];
               }
               switch(entity_id) {
                 case 'warnerbros':
@@ -189,26 +229,50 @@ export function DaoMock(originalModule: any) {
                   return [ daffyduck2, yosemitesam, foghornLeghorn ]
               }
               return [] as User[];
+            },
+            migrate: async (entity_name:string):Promise<any> => {
+              mockCalls.update('user.migrate');
+              return;
             }
-          }
+          } as DAOUser;
         }
 
         if(parms.DAOType == 'entity') {
           return {
             read: async ():Promise<Entity|null> => {
+              mockCalls.update('entity.read');
               switch(entity_id) {
                 case 'warnerbros':
-                  return {
-                    entity_id, entity_name: 'Warner Bros.', active: YN.Yes
-                  } as Entity
+                  return entity1;
                 case 'cartoonville':
-                  return {
-                    entity_id, entity_name: 'Cartoon Villiage', active: YN.Yes
-                  } as Entity
+                  return entity2;
               }
               return null;
+            },
+            create: async ():Promise<UpdateItemCommandOutput> => {
+              mockCalls.update('entity.create');
+              return { } as UpdateItemCommandOutput;
+            },
+            id: ():string => {
+              mockCalls.update('entity.id');
+              return 'new_entity_id';
             }
-          }
+          } as DAOEntity;
+        }
+
+        if(parms.DAOType == 'invitation') {
+          return {
+            read: async ():Promise<(Invitation|null)|Invitation[]> => {
+              mockCalls.update('invitation.read');
+              return [
+                { } as Invitation
+              ] as Invitation[];
+            },
+            update: async ():Promise<UpdateItemCommandOutput> => {
+              mockCalls.update('invitation.update');
+              return { } as UpdateItemCommandOutput;
+            }
+          } as DAOInvitation;
         }
 
         return null;
@@ -223,7 +287,7 @@ type TestParms = {
   incomingPayload:IncomingPayload, 
   mockEvent:any, 
   _handler:any,
-  inviterCognitoSub?:string
+  cognitoSub?:string
 }
 /**
  * Invoke the lambda function and check all supplied assertions about the response:
@@ -232,15 +296,15 @@ type TestParms = {
  *   3) Assert the returned status code, message and payload
  * @returns 
  */
-const invokeAndAssert = async (testParms:TestParms) => {
+const invokeAndAssert = async (testParms:TestParms, ignorePayload?:boolean) => {
   // Destructure the testParms
-  const { _handler, expectedResponse, mockEvent, incomingPayload, inviterCognitoSub } = testParms;
+  const { _handler, expectedResponse, mockEvent, incomingPayload, cognitoSub } = testParms;
   const payloadStr:string = JSON.stringify(incomingPayload);
   
   // Inject the supplied payload and attributes into the mock event object
   mockEvent.headers[AbstractRoleApi.ETTPayloadHeader as keyof typeof mockEvent.headers] = payloadStr;
-  if(inviterCognitoSub) {
-    mockEvent.requestContext.authorizer.claims.username = inviterCognitoSub;
+  if(cognitoSub) {
+    mockEvent.requestContext.authorizer.claims.username = cognitoSub;
   } 
   else {
     // Reset the username attribute back to what it originally was.
@@ -257,10 +321,14 @@ const invokeAndAssert = async (testParms:TestParms) => {
   const { message, payload:returnedPayload } = bodyObj;
 
   // Make all assertions
-  const { message:expectedMessage, payload:expectedPayload} = expectedResponse.outgoingBody;
+  const { message:expectedMessage} = expectedResponse.outgoingBody;
   expect(statusCode).toEqual(expectedResponse.statusCode);
   expect(message).toEqual(expectedMessage);
-  expect(returnedPayload).toEqual(expectedPayload); 
+  if(ignorePayload) {
+    return bodyObj;
+  }
+  const { payload:expectedPayload} = expectedResponse.outgoingBody;
+  expect(returnedPayload).toEqual(expectedPayload);
   
   // Return the body of the response in case caller wants to make more assertions.
   return bodyObj;
@@ -451,7 +519,7 @@ export const UserInvitationTests = {
           payload: { invalid: true  }
         }
       },
-      inviterCognitoSub: 're_admin_foreign_entity_sub'
+      cognitoSub: 're_admin_foreign_entity_sub'
     });
   },
   authIndInviteFromSameEntity:  async (_handler:any, eventMock:any, taskName:string) => {
@@ -472,7 +540,7 @@ export const UserInvitationTests = {
           payload: { ok: true, invitation_code: 'abc123', invitation_link: 'non-sysadmin-signup-link' }
         }
       },
-      inviterCognitoSub: 're_admin_same_entity_sub'
+      cognitoSub: 're_admin_same_entity_sub'
     });
   },
   sendError: async (_handler:any, eventMock:any, taskName:string) => {
@@ -650,3 +718,131 @@ export const EntityLookupTests = {
     });
   }
 }
+
+export const CreateEntityTests = {
+  missingEntity: async (_handler:any, eventMock:any, task:string) => {
+    const parms = {
+      _handler, mockEvent:eventMock,
+      incomingPayload: { task, parameters: { } },
+      expectedResponse: {
+        statusCode: 400,
+        outgoingBody: {
+          message: '',
+          payload: { invalid: true  }
+        }
+      },
+      cognitoSub: 'daffy_duck_sub'
+    } as TestParms;
+    parms.expectedResponse.outgoingBody.message = 'Cannot proceed with unspecified entity';
+    await invokeAndAssert(parms);
+
+    parms.incomingPayload.parameters = { entity_name: '' };
+    await invokeAndAssert(parms);
+  },
+  successful: async (_handler:any, eventMock:any, task:string) => {
+    const parms = {
+      _handler, mockEvent:eventMock,
+      incomingPayload: { task, parameters: { } },
+      expectedResponse: {
+        statusCode: 200,
+        outgoingBody: {
+          message: 'Ok',
+          payload: { ok: true, entity_id: 'new_entity_id' }
+        }
+      },
+      cognitoSub: 'daffy_duck_sub'
+    } as TestParms;
+
+    parms.incomingPayload.parameters = { entity_name: 'Boston University' };
+    await invokeAndAssert(parms);
+  }
+};
+
+const getCreateAndInviteTestsBaseParms = (task:string, _handler:any, mockEvent:any) => { 
+  return {
+  _handler, mockEvent,
+  incomingPayload: {
+    task,
+    parameters: {
+      entity: {
+        name: 'Boston University',
+        description: 'Boston University'
+      },
+      invitations: {
+        invitee1: {
+          email: daffyduck1.email, role:Roles.RE_AUTH_IND
+        },
+        invitee2: {
+          email: foghornLeghorn.email, role:Roles.RE_AUTH_IND
+        }
+      }
+    }
+  },
+  expectedResponse: {
+    statusCode: 400,
+    outgoingBody: {
+      message: ``,
+      payload: { invalid: true }
+    }
+  }
+} as TestParms; }
+
+export const CreateAndInviteTests = {
+  missingEntity: async (_handler:any, eventMock:any, taskName:string) => {
+    const parms = getCreateAndInviteTestsBaseParms(taskName, _handler, eventMock);
+    parms.expectedResponse.outgoingBody.message = 'Cannot proceed with unspecified entity';
+    parms.incomingPayload.parameters['entity'] = undefined;
+    await invokeAndAssert(parms);
+    parms.incomingPayload.parameters['entity'] = { };
+    await invokeAndAssert(parms);
+    parms.incomingPayload.parameters['entity'] = { name: '' };    
+    await invokeAndAssert(parms);
+  },
+  missingAuthInd: async (_handler:any, eventMock:any, taskName:string) => {
+    const parms1 = getCreateAndInviteTestsBaseParms(taskName, _handler, eventMock);
+    parms1.expectedResponse.outgoingBody.message = `Cannot create entity ${parms1.incomingPayload.parameters['entity'].name} since invitee1 is missing/incomplete`;
+    parms1.incomingPayload.parameters.invitations['invitee1'] = undefined;
+    await invokeAndAssert(parms1);
+    parms1.incomingPayload.parameters.invitations['invitee1'] = { };
+    await invokeAndAssert(parms1);
+    parms1.incomingPayload.parameters.invitations['invitee1'] = { email: '', role:Roles.RE_AUTH_IND };
+    await invokeAndAssert(parms1);
+    parms1.incomingPayload.parameters.invitations = undefined;
+    await invokeAndAssert(parms1);
+
+    const parms2 = getCreateAndInviteTestsBaseParms(taskName, _handler, eventMock);
+    parms2.expectedResponse.outgoingBody.message = `Cannot create entity ${parms2.incomingPayload.parameters['entity'].name} since invitee2 is missing/incomplete`;
+    parms2.incomingPayload.parameters.invitations['invitee2'] = undefined;
+    await invokeAndAssert(parms2);
+    parms2.incomingPayload.parameters.invitations['invitee2'] = { };
+    await invokeAndAssert(parms2);
+    parms2.incomingPayload.parameters.invitations['invitee2'] = { email: '', role:Roles.RE_AUTH_IND };
+    await invokeAndAssert(parms2);
+  },
+  duplicateEmails: async (_handler:any, eventMock:any, taskName:string) => {
+    const parms = getCreateAndInviteTestsBaseParms(taskName, _handler, eventMock);
+    const email1 = parms.incomingPayload.parameters.invitations['invitee1'].email as string;
+    const email2 =  email1.toUpperCase();
+    parms.incomingPayload.parameters.invitations['invitee2'].email = email2;
+    parms.expectedResponse.outgoingBody.message = `Cannot invite two authorized individuals with the same email: ${email1}`;
+    await invokeAndAssert(parms);
+  },
+  successful: async (_handler:any, eventMock:any, taskName:string) => {
+    const parms = getCreateAndInviteTestsBaseParms(taskName, _handler, eventMock);
+    // Change to yosemite sam because he's an authorized indivdual and won't get filtered off by lookupEntity
+    parms.incomingPayload.parameters.invitations['invitee1'] = yosemitesam;
+    parms.expectedResponse = {
+      statusCode: 200,
+      outgoingBody: {
+        message: 'Ok',
+      }
+    };
+    mockCalls.reset();
+    const body = await invokeAndAssert(parms, true);
+    const { user } = body.payload;
+    expect(user.email).toEqual(yosemitesam.email);
+    expect(user.entity).toEqual(entity2);
+    expect(mockCalls.called('entity.create')).toEqual(1);
+    expect(mockCalls.called('invitation.send')).toEqual(2);
+  }
+};
