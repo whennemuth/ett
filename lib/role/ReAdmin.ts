@@ -85,9 +85,9 @@ export class LambdaFunction extends AbstractFunction {
             statements: [
               new PolicyStatement({
                 actions: [ 'ses:Send*', 'ses:Get*' ],
-                resources: context.SES_IDENTITIES.map((identity:string) => {
-                  return `arn:aws:ses:${context.REGION}:${context.ACCOUNT}:identity/${identity}`
-                }),
+                resources: [
+                  `arn:aws:ses:${context.REGION}:${context.ACCOUNT}:identity/*`
+                ],
                 effect: Effect.ALLOW
               })
             ]

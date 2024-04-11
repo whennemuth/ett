@@ -4,9 +4,6 @@
   "ACCOUNT": "037860335094",
   "REGION": "us-east-2",
   "BUCKET_NAME": "ett-static-site-content",
-  "SES_IDENTITIES": [
-    "wrh@bu.edu", "warhen@comcast.net", "warhen8@gmail.com", "warhen9@gmail.com"
-  ],
   "TAGS": {
     "Service": "client",
     "Function": "ett",
