@@ -3,7 +3,14 @@ export type IExhibitForm = { getBytes():Promise<Uint8Array> };
 export const enum AffiliateTypes { EMPLOYER = 'EMPLOYER', ACADEMIC = 'ACADEMIC', OTHER = 'OTHER' };
 export type AffiliateType = AffiliateTypes.EMPLOYER | AffiliateTypes.ACADEMIC | AffiliateTypes.OTHER;
 export type Affiliate = { type: AffiliateType, organization: string, fullname: string, title: string, email: string, phone: string };
-export type ExhibitData = { affiliates: Affiliate|Affiliate[], fullname: string, email: string, phone: string, timestamp?: string };
+export type ExhibitData = { 
+  affiliates: Affiliate|Affiliate[], 
+  entity_id:string, 
+  fullname?: string, 
+  email?: string, 
+  phone?: string, 
+  timestamp?: string 
+};
 
 import { Color, PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
 import { Margins, Position, rgbPercent } from "./lib/Utils";

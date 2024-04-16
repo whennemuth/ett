@@ -117,6 +117,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
 
   const baseForm = new ExhibitForm({
     email: 'applicant@gmail.com',
+    entity_id: 'abc123',
     fullname: 'Porky Pig',
     phone: '617-234-5678',
     affiliates: [
