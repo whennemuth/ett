@@ -1,8 +1,5 @@
-import { Color, PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
-import { Affiliate, AffiliateTypes, ExhibitData, ExhibitForm } from "./ExhibitForm";
-import { Margins, Position, rgbPercent } from "./lib/Utils";
-import { Page } from "./lib/Page";
 import { writeFile } from "node:fs/promises";
+import { Affiliate, AffiliateTypes, ExhibitData, ExhibitForm } from "./ExhibitForm";
 
 export class ExhibitFormSingle {
   private baseForm:ExhibitForm
