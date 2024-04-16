@@ -1,13 +1,13 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { PDFDocument } from 'pdf-lib';
-import { Affiliate, AffiliateType, AffiliateTypes, ExhibitData, ExhibitForm, blue, white } from './ExhibitForm';
+import { Affiliate, AffiliateType, AffiliateTypes, ExhibitData, ExhibitForm, IExhibitForm, blue, white } from './ExhibitForm';
 import { Align, Rectangle, VAlign } from './lib/Rectangle';
 import { Margins } from './lib/Utils';
 
 /**
  * This class represents an exhibit pdf form that can be dynamically generated around the provided exhibit data.
  */
-export class ExhibitFormFull {
+export class ExhibitFormFull implements IExhibitForm {
   private baseForm:ExhibitForm
 
   constructor(baseForm:ExhibitForm) {

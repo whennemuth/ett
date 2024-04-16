@@ -1,7 +1,7 @@
 import { writeFile } from "node:fs/promises";
-import { Affiliate, AffiliateTypes, ExhibitData, ExhibitForm } from "./ExhibitForm";
+import { Affiliate, AffiliateTypes, ExhibitData, ExhibitForm, IExhibitForm } from "./ExhibitForm";
 
-export class ExhibitFormSingle {
+export class ExhibitFormSingle implements IExhibitForm {
   private baseForm:ExhibitForm
 
   constructor(baseForm:ExhibitForm) {

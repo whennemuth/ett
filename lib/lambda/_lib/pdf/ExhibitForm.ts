@@ -1,4 +1,5 @@
 
+export type IExhibitForm = { getBytes():Promise<Uint8Array> };
 export const enum AffiliateTypes { EMPLOYER = 'EMPLOYER', ACADEMIC = 'ACADEMIC', OTHER = 'OTHER' };
 export type AffiliateType = AffiliateTypes.EMPLOYER | AffiliateTypes.ACADEMIC | AffiliateTypes.OTHER;
 export type Affiliate = { type: AffiliateType, organization: string, fullname: string, title: string, email: string, phone: string };
