@@ -161,6 +161,28 @@
         "restore"
       ],
     },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF full exhibit form",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/pdf/ExhibitFormFull.ts",
+        "RUN_MANUALLY"
+      ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF single exhibit form",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/pdf/ExhibitFormSingle.ts",
+        "RUN_MANUALLY"
+      ],
+    },
 
     // JEST TESTS
     {
