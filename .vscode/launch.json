@@ -183,6 +183,22 @@
         "RUN_MANUALLY_EXHIBIT_FORM_SINGLE"
       ],
     },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF send exhibit form",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/ExhibitEmail.ts",
+        "RUN_MANUALLY"
+      ],
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      },
+      "envFile": "${workspaceFolder}/.env",
+    },
 
     // JEST TESTS
     {
