@@ -169,7 +169,7 @@
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
         "${workspaceFolder}/lib/lambda/_lib/pdf/ExhibitFormFull.ts",
-        "RUN_MANUALLY"
+        "RUN_MANUALLY_EXHIBIT_FORM_FULL"
       ],
     },
     {
@@ -180,7 +180,7 @@
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
         "${workspaceFolder}/lib/lambda/_lib/pdf/ExhibitFormSingle.ts",
-        "RUN_MANUALLY"
+        "RUN_MANUALLY_EXHIBIT_FORM_SINGLE"
       ],
     },
 

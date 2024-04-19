@@ -14,6 +14,9 @@ export class ExhibitFormFull implements IExhibitForm {
     this.baseForm = baseForm;
   }
 
+  /**
+   * @returns The bytes for the entire pdf form.
+   */
   public async getBytes():Promise<Uint8Array> {
     const { baseForm, drawTitle, drawIntro, drawAffiliateGroup } = this;
 
@@ -113,7 +116,7 @@ export class ExhibitFormFull implements IExhibitForm {
 }
 
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
+if(args.length > 2 && args[2] == 'RUN_MANUALLY_EXHIBIT_FORM_FULL') {
 
   const baseForm = new ExhibitForm({
     email: 'applicant@gmail.com',
