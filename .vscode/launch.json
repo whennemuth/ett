@@ -161,6 +161,44 @@
         "restore"
       ],
     },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF full exhibit form",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/pdf/ExhibitFormFull.ts",
+        "RUN_MANUALLY_EXHIBIT_FORM_FULL"
+      ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF single exhibit form",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/pdf/ExhibitFormSingle.ts",
+        "RUN_MANUALLY_EXHIBIT_FORM_SINGLE"
+      ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF send exhibit form",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/ExhibitEmail.ts",
+        "RUN_MANUALLY"
+      ],
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      },
+      "envFile": "${workspaceFolder}/.env",
+    },
 
     // JEST TESTS
     {
@@ -354,7 +392,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest Lambda Acknowledgement",
+      "name": "Jest Lambda Entity Acknowledgement",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
         "--runTestsByPath", 
@@ -369,7 +407,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest Lambda Consent",
+      "name": "Jest Lambda Entity Consent",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
         "--runTestsByPath", 
@@ -478,6 +516,22 @@
         "--silent",
         "-i", 
         "${workspaceFolder}/lib/lambda/functions/authorized-individual/AuthorizedIndividual.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Lambda Role Consenting-Person",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "killBehavior": "forceful",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/ConsentingPerson.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
