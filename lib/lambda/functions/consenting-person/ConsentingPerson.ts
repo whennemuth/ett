@@ -89,12 +89,18 @@ export const processExhibitData = async (data:ExhibitData):Promise<LambdaProxyIn
   users = users.filter(user => user.active == YN.Yes && (user.role == Roles.RE_AUTH_IND || user.role == Roles.RE_ADMIN));
 
   // Send the full exhibit form to each authorized individual and the RE admin.
+  const emailFailures = [] as string[];
   for(let i=0; i<users.length; i++) {
-    await new ExhibitEmail(data, FormTypes.FULL, entity).send(users[i].email);
+    var sent:boolean = await new ExhibitEmail(data, FormTypes.FULL, entity).send(users[i].email);
+    if( ! sent) {
+      emailFailures.push(users[i].email);
+    }
     // TODO: Make database record of exhibit form. Make sure it only lasts for 48 hours, enough time for 
     // authorized individuals to make disclosure requests which will contain single exhibit form "extracts" 
     // based on this db record as attachments.
   }
 
-  return okResponse('Ok');
-}
+  if(emailFailures.length > 0) {
+    return errorResponse(INVALID_RESPONSE_MESSAGES.emailFailure, { emailFailures });
+  }
+  return okResponse('Ok');}
