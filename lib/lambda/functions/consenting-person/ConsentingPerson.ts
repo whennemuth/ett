@@ -6,7 +6,8 @@ import { debugLog, errorResponse, invalidResponse, log, okResponse } from "../Ut
 import { ExhibitEmail, FormTypes } from "./ExhibitEmail";
 
 export enum Task {
-  SEND_AFFILIATE_DATA = 'send-affliate-data'
+  SEND_AFFILIATE_DATA = 'send-affliate-data',
+  PING = 'ping'
 }
 
 /**
