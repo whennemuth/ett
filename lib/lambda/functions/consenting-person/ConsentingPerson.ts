@@ -10,6 +10,16 @@ export enum Task {
   PING = 'ping'
 }
 
+export const INVALID_RESPONSE_MESSAGES = {
+  missingOrInvalidTask: 'Invalid/Missing task parameter!',
+  missingTaskParms: 'Missing parameters parameter for:',
+  missingExhibitData: 'Missing exhibit form data!',
+  missingAffiliateRecords: 'Missing affiliate records in exhibit form data!',
+  missingEntityId: 'Missing entity_id!',
+  missingFullname: 'Missing fullname of exhibit form issuer!',
+  emailFailure: 'Email failed for one or more recipients!'
+} 
+
 /**
  * This function performs all actions a CONSENTING_PERSON can take.
  * @param event 
@@ -24,10 +34,10 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
     let { task, parameters } = payload || {};
 
     if( ! Object.values<string>(Task).includes(task || 'undefined')) {
-      return invalidResponse(`Invalid/Missing task parameter: ${task}`);
+      return invalidResponse(`${INVALID_RESPONSE_MESSAGES.missingOrInvalidTask} ${task}`);
     }
     else if( ! parameters) {
-      return invalidResponse(`Missing parameters parameter for ${task}`);
+      return invalidResponse(`${INVALID_RESPONSE_MESSAGES.missingTaskParms} ${task}`);
     }
     else {
       log(`Performing task: ${task}`);
@@ -37,6 +47,8 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
         case Task.SEND_AFFILIATE_DATA:
           const { exhibit_data } = parameters;
           return await processExhibitData(exhibit_data);
+        case Task.PING:
+          return okResponse('Ping!', parameters); 
       }
     }
   }
@@ -47,19 +59,24 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
 }
 
 /**
- * Send full exhibit form to each authorized individual of the entity and excerpts each affiliate.
- * @param entity_id 
+ * Send full exhibit form to each authorized individual of the entity.
  * @param data 
  * @returns 
  */
 export const processExhibitData = async (data:ExhibitData):Promise<LambdaProxyIntegrationResponse> => {
+  // Validate incoming data
   if( ! data) {
-    return invalidResponse('Missing exhibit form data!');
+    return invalidResponse(INVALID_RESPONSE_MESSAGES.missingExhibitData);
   }
-
-  let { affiliates, entity_id } = data;
+  let { affiliates, entity_id, fullname } = data as ExhibitData;
+  if( ! entity_id ) {
+    return invalidResponse(INVALID_RESPONSE_MESSAGES.missingEntityId);
+  }
   if( ! affiliates) {
-    return invalidResponse('Missing affiliate records in exhibit form data!');
+    return invalidResponse(INVALID_RESPONSE_MESSAGES.missingAffiliateRecords);
+  }
+  if( ! fullname) {
+    return invalidResponse(INVALID_RESPONSE_MESSAGES.missingFullname);
   }
 
   // Get the entity
