@@ -1,7 +1,7 @@
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { DAOFactory } from "../../_lib/dao/dao";
 import { Entity, Roles, User, YN } from "../../_lib/dao/entity";
-import { ExhibitData } from "../../_lib/pdf/ExhibitForm";
+import { Affiliate, ExhibitData } from "../../_lib/pdf/ExhibitForm";
 import { debugLog, errorResponse, invalidResponse, log, okResponse } from "../Utils";
 import { ExhibitEmail, FormTypes } from "./ExhibitEmail";
 
@@ -99,8 +99,28 @@ export const processExhibitData = async (data:ExhibitData):Promise<LambdaProxyIn
     // authorized individuals to make disclosure requests which will contain single exhibit form "extracts" 
     // based on this db record as attachments.
   }
+  
+  // Make sure affiliates is always an array.
+  if(affiliates instanceof Array) {
+    affiliates = affiliates as Affiliate[];
+  }
+  else {
+    affiliates = [ affiliates ];
+  }
+  
+  // Send the single exhibit form excerpts to each affiliate
+  for(let i=0; i<affiliates.length; i++) {
+    var sent:boolean = await new ExhibitEmail(data, FormTypes.SINGLE, entity).send(affiliates[i].email);
+    if( ! sent) {
+      emailFailures.push(affiliates[i].email);
+    }
+    // TODO: Include completed consent form as second attachment in the email.
+    // TODO: Include blank disclosure form as third attachment in the email.
+    // TODO: Make database record of email
+  }
 
   if(emailFailures.length > 0) {
     return errorResponse(INVALID_RESPONSE_MESSAGES.emailFailure, { emailFailures });
   }
-  return okResponse('Ok');}
+  return okResponse('Ok');
+}
