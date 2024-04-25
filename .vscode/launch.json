@@ -392,7 +392,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest Lambda Acknowledgement",
+      "name": "Jest Lambda Entity Acknowledgement",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
         "--runTestsByPath", 
@@ -407,7 +407,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest Lambda Consent",
+      "name": "Jest Lambda Entity Consent",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
         "--runTestsByPath", 
@@ -516,6 +516,22 @@
         "--silent",
         "-i", 
         "${workspaceFolder}/lib/lambda/functions/authorized-individual/AuthorizedIndividual.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Lambda Role Consenting-Person",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "killBehavior": "forceful",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/ConsentingPerson.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
