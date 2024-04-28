@@ -1,14 +1,9 @@
 import { AttributeValue, DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, QueryCommand, QueryCommandInput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
-import { DynamoDbConstruct } from '../../../DynamoDb';
 import { DAOInvitation } from './dao';
 import { convertFromApiObject } from './db-object-builder';
 import { Builder, getUpdateCommandBuilderInstance } from './db-update-builder';
 import { Invitation, InvitationFields } from './entity';
-
-const dbclient = new DynamoDBClient({ region: process.env.REGION });
-const TableName = process.env[DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME] || '';
-const TableEntityIndex = process.env[DynamoDbConstruct.DYNAMODB_INVITATION_ENTITY_INDEX] || '';
 
 /**
  * Basic CRUD operations for the invitations table.
@@ -16,6 +11,9 @@ const TableEntityIndex = process.env[DynamoDbConstruct.DYNAMODB_INVITATION_ENTIT
  * @returns 
  */
 export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false): DAOInvitation {
+  const dbclient = new DynamoDBClient({ region: process.env.REGION });
+  const TableName = process.env.DYNAMODB_INVITATION_TABLE_NAME || '';
+  const TableEntityIndex = process.env.DYNAMODB_INVITATION_ENTITY_INDEX || '';
 
   let { code:_code, entity_id, role, email } = invitationInfo;
 

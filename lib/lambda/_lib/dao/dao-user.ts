@@ -1,14 +1,9 @@
-import { DynamoDBClient, PutItemCommand, GetItemCommand, QueryCommand, UpdateItemCommand, AttributeValue, UpdateItemCommandInput, DeleteItemCommand, GetItemCommandInput, GetItemCommandOutput, UpdateItemCommandOutput, DeleteItemCommandInput, DeleteItemCommandOutput, QueryCommandInput, PutItemCommandOutput, TransactWriteItemsCommand, TransactWriteItemsCommandInput, TransactWriteItemsCommandOutput } from '@aws-sdk/client-dynamodb'
-import { marshall} from '@aws-sdk/util-dynamodb';
-import { Roles, User, UserFields, YN } from './entity';
-import { Builder, getUpdateCommandBuilderInstance } from './db-update-builder'; 
-import { convertFromApiObject } from './db-object-builder';
+import { AttributeValue, DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, PutItemCommand, PutItemCommandOutput, QueryCommand, QueryCommandInput, TransactWriteItemsCommand, TransactWriteItemsCommandInput, TransactWriteItemsCommandOutput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
+import { marshall } from '@aws-sdk/util-dynamodb';
 import { DAOFactory, DAOUser } from './dao';
-import { DynamoDbConstruct } from '../../../DynamoDb';
-
-const dbclient = new DynamoDBClient({ region: process.env.REGION });
-const TableName = process.env[DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME] || '';
-const TableEntityIndex = DynamoDbConstruct.DYNAMODB_USER_ENTITY_INDEX || '';
+import { convertFromApiObject } from './db-object-builder';
+import { Builder, getUpdateCommandBuilderInstance } from './db-update-builder';
+import { Roles, User, UserFields, YN } from './entity';
 
 /**
  * Basic CRUD operations for the dynamodb table behind the user base.
@@ -16,6 +11,10 @@ const TableEntityIndex = DynamoDbConstruct.DYNAMODB_USER_ENTITY_INDEX || '';
  * @returns 
  */
 export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
+
+  const dbclient = new DynamoDBClient({ region: process.env.REGION });
+  const TableName = process.env.DYNAMODB_USER_TABLE_NAME || '';
+  const TableEntityIndex = process.env.DYNAMODB_USER_ENTITY_INDEX || '';
 
   let { email, entity_id, role, sub, active=YN.Yes, create_timestamp=(new Date().toISOString()), 
     fullname, phone_number, title } = userinfo;

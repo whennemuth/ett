@@ -1,8 +1,8 @@
 import { mock } from "node:test";
 import { IncomingPayload, OutgoingBody } from "../../../role/AbstractRole";
 import { DAOEntity, DAOInvitation, DAOUser, FactoryParms } from "../../_lib/dao/dao";
-import { Entity, Roles, User, YN } from "../../_lib/dao/entity";
-import { Affiliate, AffiliateTypes, ExhibitData } from "../../_lib/pdf/ExhibitForm";
+import { AffiliateTypes, Entity, Roles, User, YN } from "../../_lib/dao/entity";
+import { Affiliate, ExhibitData } from "../../_lib/pdf/ExhibitForm";
 import { MockCalls, TestParms, invokeAndAssert } from "../UtilsTest";
 import { FormType, FormTypes } from "./ExhibitEmail";
 

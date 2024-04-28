@@ -1,7 +1,5 @@
 
 export type IExhibitForm = { getBytes():Promise<Uint8Array> };
-export const enum AffiliateTypes { EMPLOYER = 'EMPLOYER', ACADEMIC = 'ACADEMIC', OTHER = 'OTHER' };
-export type AffiliateType = AffiliateTypes.EMPLOYER | AffiliateTypes.ACADEMIC | AffiliateTypes.OTHER;
 export type Affiliate = { type: AffiliateType, organization: string, fullname: string, title: string, email: string, phone: string };
 export type ExhibitData = { 
   affiliates: Affiliate|Affiliate[], 
@@ -16,6 +14,7 @@ import { Color, PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-li
 import { Margins, Position, rgbPercent } from "./lib/Utils";
 import { Page } from "./lib/Page";
 import { Align, Rectangle, VAlign } from "./lib/Rectangle";
+import { AffiliateType } from "../dao/entity";
 
 export const blue = rgbPercent(47, 84, 150) as Color;
 export const grey = rgb(.1, .1, .1) as Color;

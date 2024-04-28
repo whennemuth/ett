@@ -1,5 +1,6 @@
 import { writeFile } from "node:fs/promises";
-import { Affiliate, AffiliateTypes, ExhibitData, ExhibitForm, IExhibitForm } from "./ExhibitForm";
+import { AffiliateTypes } from "../dao/entity";
+import { Affiliate, ExhibitData, ExhibitForm, IExhibitForm } from "./ExhibitForm";
 
 export class ExhibitFormSingle implements IExhibitForm {
   private baseForm:ExhibitForm

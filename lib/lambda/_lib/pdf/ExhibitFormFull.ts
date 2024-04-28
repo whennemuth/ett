@@ -1,6 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { PDFDocument } from 'pdf-lib';
-import { Affiliate, AffiliateType, AffiliateTypes, ExhibitData, ExhibitForm, IExhibitForm, blue, white } from './ExhibitForm';
+import { AffiliateType, AffiliateTypes } from '../dao/entity';
+import { Affiliate, ExhibitData, ExhibitForm, IExhibitForm, blue, white } from './ExhibitForm';
 import { Align, Rectangle, VAlign } from './lib/Rectangle';
 import { Margins } from './lib/Utils';
 
