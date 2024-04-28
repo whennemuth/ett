@@ -7,6 +7,8 @@ import { Builder, getUpdateCommandBuilderInstance } from './db-update-builder';
 import { Invitation, InvitationFields } from './entity';
 
 const dbclient = new DynamoDBClient({ region: process.env.REGION });
+const TableName = process.env[DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME] || '';
+const TableEntityIndex = process.env[DynamoDbConstruct.DYNAMODB_INVITATION_ENTITY_INDEX] || '';
 
 /**
  * Basic CRUD operations for the invitations table.
@@ -46,7 +48,7 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
     }
 
     console.log(`Creating invitation ${entity_id ? `to ${entity_id} ` : ''}for: ${role}`);
-    const builder:Builder = getUpdateCommandBuilderInstance(invitationInfo, 'invitation', process.env.DYNAMODB_INVITATION_TABLE_NAME || '');
+    const builder:Builder = getUpdateCommandBuilderInstance(invitationInfo, 'invitation', TableName);
     const input:UpdateItemCommandInput = builder.buildUpdateItem();
     command = new UpdateItemCommand(input);
     return await sendCommand(command);
@@ -78,7 +80,7 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
 
     console.log(`Reading invitation ${_code}`);
     const params = {
-      TableName: process.env.DYNAMODB_INVITATION_TABLE_NAME,
+      TableName,
       Key: { 
         [InvitationFields.code]: { S: _code },
       }
@@ -124,12 +126,12 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
       else {
         cdns = `${InvitationFields.entity_id} = :v2`;
       }
-      if( ! email) index = DynamoDbConstruct.DYNAMODB_INVITATION_ENTITY_INDEX;
+      if( ! email) index = TableEntityIndex;
     }
 
     // Declare QueryCommandInput
     const params = {
-      TableName: process.env.DYNAMODB_INVITATION_TABLE_NAME,
+      TableName,
       IndexName: index,
       ExpressionAttributeValues: vals,
       KeyConditionExpression: cdns
@@ -155,7 +157,7 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
     }
     
     console.log(`Updating existing invitation in: ${_code}/${entity_id}`);
-    const builder:Builder = getUpdateCommandBuilderInstance(invitationInfo, 'invitation', process.env.DYNAMODB_INVITATION_TABLE_NAME || '');
+    const builder:Builder = getUpdateCommandBuilderInstance(invitationInfo, 'invitation', TableName);
     const input:UpdateItemCommandInput = builder.buildUpdateItem();
     command = new UpdateItemCommand(input);
     return await sendCommand(command);
@@ -169,7 +171,7 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
       throwMissingError('delete', InvitationFields.code);
     }
     const input = {
-      TableName: process.env.DYNAMODB_INVITATION_TABLE_NAME,
+      TableName,
       Key: { 
          [InvitationFields.entity_id]: { S: entity_id, },
       },
@@ -188,7 +190,7 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
     if( ! entity_id) throwMissingError('delete-entity', InvitationFields.entity_id);
 
     const input = {
-      TableName: process.env.DYNAMODB_INVITATION_TABLE_NAME,
+      TableName,
       Key: { 
         [InvitationFields.entity_id]: { S: entity_id, },
       } as Record<string, AttributeValue>
