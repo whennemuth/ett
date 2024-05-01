@@ -154,8 +154,8 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
       throw new Error(`User update error: No fields to update for ${entity_id}: ${email}`);
     }
     console.log(`Updating user: ${email} / ${entity_id}`);
-    const builder:Builder = getUpdateCommandBuilderInstance(userinfo, 'user', TableName);
-    const input:UpdateItemCommandInput = builder.buildUpdateItem();
+    const builder:Builder = getUpdateCommandBuilderInstance({ TableName, _type:'user', info_new:userinfo });
+    const input = builder.buildUpdateItem() as UpdateItemCommandInput;
     command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }

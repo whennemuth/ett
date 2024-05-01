@@ -1,12 +1,12 @@
 import { AttributeValue, UpdateItemCommandInput } from "@aws-sdk/client-dynamodb";
 import { wrap } from './db-object-builder';
-import { Entity, EntityFields, Invitation, InvitationFields, User, UserFields } from "./entity";
+import { Consenter, Entity, EntityFields, Invitation, InvitationFields, User, UserFields } from "./entity";
 
 /**
  * Type for builder with single method buildUpdateItem, where optional index refers to the index of a 
  * list member that is the target of the update within an item. Else the update refers to the item itself.
  */
-export type Builder = { buildUpdateItem(index?:number): UpdateItemCommandInput };
+export type Builder = { buildUpdateItem(index?:number): UpdateItemCommandInput|UpdateItemCommandInput[] };
 
 let item: UpdateItemCommandInput;
 /**
@@ -15,20 +15,22 @@ let item: UpdateItemCommandInput;
  * not changed as it is impractical to perform updates to fields that and would result in no change.
  * https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/dynamodb/command/UpdateItemCommand/
  */
-export function getUpdateCommandBuilderInstance(info:User|Invitation|Entity, _type:'user'|'invitation'|'entity', TableName:string): Builder {
-  item = { 
-    TableName, 
-    ExpressionAttributeNames: {} as Record<string, string>,
-    ExpressionAttributeValues: {} as Record<string, AttributeValue>,
-  } as UpdateItemCommandInput;
-
+export type UpdateCommandBuilderParameters = {
+  TableName:string,
+  _type:'user'|'invitation'|'entity'|'consenter',
+  info_new:User|Invitation|Entity|Consenter,
+  info_old?:User|Invitation|Entity|Consenter,
+}
+export function getUpdateCommandBuilderInstance(parms:UpdateCommandBuilderParameters): Builder {
+  const { TableName, _type, info_new, info_old } = parms;
+  
   switch(_type) {
     case 'user':
-      return userUpdate(info as User);
+      return userUpdate(info_new as User);
     case "invitation":
-      return invitationUpdate(info as Invitation);
+      return invitationUpdate(info_new as Invitation);
     case "entity":
-      return entityUpdate(info as Entity);
+      return entityUpdate(info_new as Entity);
     default:
       return {} as Builder;
   }

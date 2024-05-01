@@ -55,8 +55,10 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
       entityInfo.update_timestamp = update_timestamp;
     }
     
-    const builder:Builder = getUpdateCommandBuilderInstance(entityInfo, 'entity', TableName);
-    const input:UpdateItemCommandInput = builder.buildUpdateItem();
+    const builder:Builder = getUpdateCommandBuilderInstance({
+      TableName, _type:'entity', info_new:entityInfo
+    });
+    const input = builder.buildUpdateItem() as UpdateItemCommandInput;
     command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
@@ -96,8 +98,10 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
       throw new Error(`Entity update error: No fields to update for ${entity_id}`);
     }
     console.log(`Updating entity: ${entity_id}`);
-    const builder:Builder = getUpdateCommandBuilderInstance(entityInfo, 'entity', TableName);
-    const input:UpdateItemCommandInput = builder.buildUpdateItem();
+    const builder:Builder = getUpdateCommandBuilderInstance({
+      TableName, _type:'entity', info_new:entityInfo
+    });
+    const input = builder.buildUpdateItem() as UpdateItemCommandInput;
     command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }

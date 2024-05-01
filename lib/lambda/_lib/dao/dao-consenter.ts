@@ -64,7 +64,7 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
     return await sendCommand(command);
   }
 
-  const update = async ():Promise<UpdateItemCommandOutput> => {
+  const update = async (oldConsenterInfo:Consenter):Promise<UpdateItemCommandOutput> => {
     return await sendCommand(command);
   }
 

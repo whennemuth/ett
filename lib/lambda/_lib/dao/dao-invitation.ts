@@ -46,8 +46,10 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
     }
 
     console.log(`Creating invitation ${entity_id ? `to ${entity_id} ` : ''}for: ${role}`);
-    const builder:Builder = getUpdateCommandBuilderInstance(invitationInfo, 'invitation', TableName);
-    const input:UpdateItemCommandInput = builder.buildUpdateItem();
+    const builder:Builder = getUpdateCommandBuilderInstance({
+      TableName, _type:'invitation', info_new:invitationInfo
+    });
+    const input = builder.buildUpdateItem() as UpdateItemCommandInput;
     command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
@@ -155,8 +157,10 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
     }
     
     console.log(`Updating existing invitation in: ${_code}/${entity_id}`);
-    const builder:Builder = getUpdateCommandBuilderInstance(invitationInfo, 'invitation', TableName);
-    const input:UpdateItemCommandInput = builder.buildUpdateItem();
+    const builder:Builder = getUpdateCommandBuilderInstance({
+      TableName, _type:'invitation', info_new:invitationInfo
+    });
+    const input = builder.buildUpdateItem() as UpdateItemCommandInput;
     command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
