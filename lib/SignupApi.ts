@@ -124,9 +124,9 @@ export class SignupApiConstruct extends Construct {
             statements: [
               new PolicyStatement({
                 actions: [ 'ses:Send*', 'ses:Get*' ],
-                resources: this.context.SES_IDENTITIES.map((identity:string) => {
-                  return `arn:aws:ses:${this.context.REGION}:${this.context.ACCOUNT}:identity/${identity}`
-                }),
+                resources: [
+                  `arn:aws:ses:${REGION}:${ACCOUNT}:identity/*`
+                ],
                 effect: Effect.ALLOW
               })
             ]
