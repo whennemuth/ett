@@ -12,6 +12,7 @@ export type Role = Roles.SYS_ADMIN | Roles.RE_ADMIN | Roles.RE_AUTH_IND | Roles.
 
 export type Y_or_N = YN.Yes | YN.No
 
+/**************** USER ****************/
 export enum UserFields {
   email = 'email',
   entity_id = 'entity_id',
@@ -37,6 +38,61 @@ export type User = {
   active?: Y_or_N
 };
 
+/**************** CONSENTER ****************/
+export const enum AffiliateTypes { EMPLOYER = 'EMPLOYER', ACADEMIC = 'ACADEMIC', OTHER = 'OTHER' };
+export type AffiliateType = AffiliateTypes.EMPLOYER | AffiliateTypes.ACADEMIC | AffiliateTypes.OTHER;
+export type Affiliate = {
+  affiliateType: AffiliateType,
+  email: string,
+  org: string,
+  fullname: string,
+  title?: string,
+  phone_number?: string
+};
+export enum ExhibitFormFields {
+  entity_id = 'entity_id',
+  create_timestamp = 'create_timestamp',
+  update_timestamp = 'update_timestamp',
+  sent_timestamp = 'sent_timestamp',
+  affiliates = 'affiliates'
+}
+export type ExhibitForm = {
+  entity_id: string,
+  create_timestamp?: string,
+  update_timestamp?: string,
+  sent_timestamp?: string,
+  affiliates?: Affiliate[]
+};
+export enum ConsenterFields {
+  email = 'email',
+  sub = 'sub',
+  fullname = 'fullname',
+  title = 'title',
+  phone_number = 'phone_number',
+  create_timestamp = 'create_timestamp',
+  update_timestamp = 'update_timestamp',
+  consented_timestamp = 'consented_timestamp',
+  rescinded_timestamp = 'rescinded_timestamp',
+  renewed_timestamp = 'renewed_timestamp',
+  exhibit_forms = 'exhibit_forms',
+  active = 'active'
+};
+export type Consenter = {
+  email: string,
+  sub?: string,
+  fullname?: string,
+  title?: string,
+  phone_number?: string,
+  create_timestamp?: string,
+  update_timestamp?: string,
+  consented_timestamp?: string,
+  rescinded_timestamp?: string,
+  renewed_timestamp?: string,
+  exhibit_forms?: ExhibitForm[],
+  active?: Y_or_N
+};
+
+/**************** ENTITY ****************/
 export enum EntityFields {
   entity_id = 'entity_id',
   entity_name = 'entity_name',
@@ -54,6 +110,7 @@ export type Entity = {
   active?: Y_or_N
 }
 
+/**************** INVITATION ****************/
 export enum InvitationFields {
   code = 'code',
   role = 'role',

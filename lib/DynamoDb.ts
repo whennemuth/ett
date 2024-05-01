@@ -9,7 +9,7 @@ export class DynamoDbConstruct extends Construct {
   static DYNAMODB_USER_TABLE_NAME: string = 'ett-users';
   static DYNAMODB_ENTITY_TABLE_NAME: string = 'ett-entities';
   static DYNAMODB_INVITATION_TABLE_NAME: string = 'ett-invitations';
-  static DYNAMODB_CONSENTER_TABLE_NAME: string = 'ett-consenter';
+  static DYNAMODB_CONSENTER_TABLE_NAME: string = 'ett-consenters';
 
   static DYNAMODB_USER_ENTITY_INDEX: string = 'EntityIndex';
   static DYNAMODB_INVITATION_ENTITY_INDEX: string = 'EntityIndex';

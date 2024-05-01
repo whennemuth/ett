@@ -1,6 +1,6 @@
 import { mock } from "node:test";
 import { IncomingPayload, OutgoingBody } from "../../../role/AbstractRole";
-import { DAOEntity, DAOInvitation, DAOUser, FactoryParms } from "../../_lib/dao/dao";
+import { DAOConsenter, DAOEntity, DAOInvitation, DAOUser, FactoryParms } from "../../_lib/dao/dao";
 import { AffiliateTypes, Entity, Roles, User, YN } from "../../_lib/dao/entity";
 import { Affiliate, ExhibitData } from "../../_lib/pdf/ExhibitForm";
 import { MockCalls, TestParms, invokeAndAssert } from "../UtilsTest";
@@ -87,6 +87,9 @@ export function DaoMock(originalModule: any) {
           case "invitation":
             mockCalls.update('invitation.read');
             return {} as DAOInvitation;
+          case "consenter":
+            mockCalls.update('consenter.read');
+            return {} as DAOConsenter;
         }
       })
     }

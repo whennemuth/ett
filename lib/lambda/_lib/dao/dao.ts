@@ -1,7 +1,8 @@
+import { ConsenterCrud } from './dao-consenter';
 import { EntityCrud } from './dao-entity';
 import { InvitationCrud } from './dao-invitation';
 import { UserCrud } from './dao-user';
-import { Entity, Invitation, User, Validator } from './entity';
+import { Consenter, Entity, Invitation, User, Validator } from './entity';
 
 const validator = Validator();
 
@@ -26,16 +27,19 @@ export type DAOEntity = Baseline & {
   id():string, 
   read():Promise<Entity|null>
 };
+export type DAOConsenter = Baseline & {
+  read():Promise<(Consenter|null)|Consenter[]>
+}
 
 export type FactoryParms = {
-  DAOType: 'user' | 'entity' | 'invitation',
+  DAOType: 'user' | 'entity' | 'invitation' | 'consenter',
   Payload: any
 }
 
 export class DAOFactory {
   constructor() { }
   
-  public static getInstance(parms:FactoryParms): DAOUser|DAOInvitation|DAOEntity {
+  public static getInstance(parms:FactoryParms): DAOUser|DAOInvitation|DAOEntity|DAOConsenter {
     switch(parms.DAOType) {
 
       case 'user':
@@ -65,6 +69,14 @@ export class DAOFactory {
           throw new Error(`Invitation crud error: Invalid role specified in ${JSON.stringify(parms, null, 2)}`);
         }
         return InvitationCrud(parms.Payload as Invitation);
+
+      case 'consenter':
+        var { active } = parms.Payload as Consenter;
+
+        if( active && ! validator.isYesNo(active)) {
+          throw new Error(`Consenter crud error: Invalid Y/N active field value specified in ${JSON.stringify(parms, null, 2)}: ${active}`);
+        }
+        return ConsenterCrud(parms.Payload as Consenter);
     }
   }
 }
