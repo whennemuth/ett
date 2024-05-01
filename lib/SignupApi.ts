@@ -44,7 +44,8 @@ export class SignupApiConstruct extends Construct {
   }
 
   private createAcknowledgementApi = () => {
-    const basename = `${this.constructId}Acknowledgement`;
+    const { constructId, parms: { cloudfrontDomain }, stageName, acknowledgeLambda, context: { REGION } } = this;
+    const basename = `${constructId}Acknowledgement`;
     const description = 'for checking invitation code and registering a new user has acknowledged privacy policy';
 
     // Create the lambda function
@@ -61,12 +62,12 @@ export class SignupApiConstruct extends Construct {
         ]
       },
       environment: {
-        REGION: this.context.REGION,
+        REGION,
         DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
         DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
         DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME,
         DYNAMODB_CONSENTER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME,
-        CLOUDFRONT_DOMAIN: this.parms.cloudfrontDomain
+        CLOUDFRONT_DOMAIN: cloudfrontDomain
       }
     });
 
@@ -74,7 +75,7 @@ export class SignupApiConstruct extends Construct {
     const api = new LambdaRestApi(this, `${basename}LambdaRestApi`, {
       deployOptions: {
         description: `API ${description}`,
-        stageName: this.stageName
+        stageName
       },
       restApiName: `Ett-${basename}-rest-api`,
       handler: this.acknowledgeLambda,
@@ -90,7 +91,7 @@ export class SignupApiConstruct extends Construct {
     invitationCodePath.addMethod('GET');   // GET /acknowledge/task/{invitation-code}
     invitationCodePath.addMethod('POST');
     invitationCodePath.addCorsPreflight({
-      allowOrigins: [ `https://${this.parms.cloudfrontDomain}` ],
+      allowOrigins: [ `https://${cloudfrontDomain}` ],
       // allowHeaders: Cors.DEFAULT_HEADERS.concat('Is a header needed?'),
       allowMethods: [ 'POST', 'GET', 'OPTIONS' ],
       maxAge: Duration.minutes(10),
@@ -101,7 +102,10 @@ export class SignupApiConstruct extends Construct {
   }
 
   private createConsentApi = () => {
-    const basename = `${this.constructId}Consent`;
+    const { constructId, context: { REGION, ACCOUNT }, 
+      parms: { cloudfrontDomain, userPool: { userPoolArn, userPoolId } }, stageName 
+    } = this;
+    const basename = `${constructId}Consent`;
     const description = 'for checking invitation code and registering a new user has signed and consented';
 
     // Create the lambda function
@@ -141,7 +145,7 @@ export class SignupApiConstruct extends Construct {
               }),
               new PolicyStatement({
                 actions: [  'cognito-idp:AdminGet*', 'cognito-idp:AdminDeleteUser' ],
-                resources: [ this.parms.userPool.userPoolArn ],
+                resources: [ userPoolArn ],
                 effect: Effect.ALLOW
               })
             ]
@@ -149,12 +153,13 @@ export class SignupApiConstruct extends Construct {
         }
       }),
       environment: {
-        REGION: this.context.REGION,
+        REGION,
         DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
         DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
         DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME,
-        CLOUDFRONT_DOMAIN: this.parms.cloudfrontDomain,
-        USERPOOL_ID: this.parms.userPool.userPoolId
+        DYNAMODB_CONSENTER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME,
+        CLOUDFRONT_DOMAIN: cloudfrontDomain,
+        USERPOOL_ID: userPoolId
       }
     });
 
@@ -162,7 +167,7 @@ export class SignupApiConstruct extends Construct {
     const api = new LambdaRestApi(this, `${basename}LambdaRestApi`, {
       deployOptions: {
         description: `API ${description}`,
-        stageName: this.stageName
+        stageName: stageName
       },
       restApiName: `Ett-${basename}-rest-api`,
       handler: this.consentLambda,
@@ -178,7 +183,7 @@ export class SignupApiConstruct extends Construct {
     invitationCodePath.addMethod('GET');   // GET /consent/task/{invitation-code}
     invitationCodePath.addMethod('POST');
     invitationCodePath.addCorsPreflight({
-      allowOrigins: [ `https://${this.parms.cloudfrontDomain}` ],
+      allowOrigins: [ `https://${cloudfrontDomain}` ],
       // allowHeaders: Cors.DEFAULT_HEADERS.concat('Is a header needed?'),
       allowMethods: [ 'POST', 'GET', 'OPTIONS' ],
       maxAge: Duration.minutes(10),
