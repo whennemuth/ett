@@ -1,12 +1,14 @@
 import { writeFile } from "node:fs/promises";
-import { AffiliateTypes } from "../dao/entity";
-import { Affiliate, ExhibitData, ExhibitForm, IExhibitForm } from "./ExhibitForm";
+import { Affiliate, AffiliateTypes, Consenter, ExhibitForm as ExhibitFormData } from "../dao/entity";
+import { ExhibitForm, IExhibitForm } from "./ExhibitForm";
 
 export class ExhibitFormSingle implements IExhibitForm {
-  private baseForm:ExhibitForm
+  private baseForm:ExhibitForm;
+  private consenter:Consenter;
 
-  constructor(baseForm:ExhibitForm) {
+  constructor(baseForm:ExhibitForm, consenter:Consenter) {
     this.baseForm = baseForm;
+    this.consenter = consenter;
   }
 
   /**
@@ -25,7 +27,7 @@ export class ExhibitFormSingle implements IExhibitForm {
 
     drawIntro();
 
-    drawAffliate(data.affiliates as Affiliate, 10);
+    drawAffliate(data.affiliates![0] as Affiliate, 10);
 
     const pdfBytes = await doc.save();
     return pdfBytes;
@@ -44,9 +46,9 @@ export class ExhibitFormSingle implements IExhibitForm {
    * Draw the introductory language
    */
   private drawIntro = () => {
-    const { page, boldfont, data } = this.baseForm;
+    const { consenter, baseForm: { page, boldfont }} = this;
     const size = 10;
-    page.drawWrappedText(`This Single Exhibit Form was prepared by ${data.fullname} as part of ` + 
+    page.drawWrappedText(`This Single Exhibit Form was prepared by ${consenter.fullname} as part of ` + 
       `an exhibit form provided to an ETT authorized individual listing you as a known Consent Recipient. ` +
       `The definitions in their Consent Form also apply to this single Exhibit Form.`,
       { size, font:boldfont }, 4, 8
@@ -65,21 +67,18 @@ const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY_EXHIBIT_FORM_SINGLE') {
 
   const baseForm = new ExhibitForm({
-    email: 'applicant@gmail.com',
     entity_id: 'abc123',
-    fullname: 'Porky Pig',
-    phone: '617-234-5678',
-    affiliates: { 
-        type: AffiliateTypes.EMPLOYER,
-        organization: 'Warner Bros.', 
-        fullname: 'Foghorn Leghorn', 
-        email: 'foghorn@warnerbros.com',
-        title: 'Lead animation coordinator',
-        phone: '617-333-4444'
-      }
-  } as ExhibitData);
+    affiliates: [{ 
+      affiliateType: AffiliateTypes.EMPLOYER,
+      org: 'Warner Bros.', 
+      fullname: 'Foghorn Leghorn', 
+      email: 'foghorn@warnerbros.com',
+      title: 'Lead animation coordinator',
+      phone_number: '617-333-4444'
+    }]
+  } as ExhibitFormData);
   
-  new ExhibitFormSingle(baseForm).writeToDisk('./lib/lambda/_lib/pdf/outputSingle.pdf')
+  new ExhibitFormSingle(baseForm, { fullname:'Porky Pig' } as Consenter).writeToDisk('./lib/lambda/_lib/pdf/outputSingle.pdf')
     .then((bytes) => {
       console.log('done');
     })

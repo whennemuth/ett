@@ -1,20 +1,11 @@
 
 export type IExhibitForm = { getBytes():Promise<Uint8Array> };
-export type Affiliate = { type: AffiliateType, organization: string, fullname: string, title: string, email: string, phone: string };
-export type ExhibitData = { 
-  affiliates: Affiliate|Affiliate[], 
-  entity_id:string, 
-  fullname?: string, 
-  email?: string, 
-  phone?: string, 
-  timestamp?: string 
-};
 
 import { Color, PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
 import { Margins, Position, rgbPercent } from "./lib/Utils";
 import { Page } from "./lib/Page";
 import { Align, Rectangle, VAlign } from "./lib/Rectangle";
-import { AffiliateType } from "../dao/entity";
+import { Affiliate, ExhibitForm as ExhibitFormData } from "../dao/entity";
 
 export const blue = rgbPercent(47, 84, 150) as Color;
 export const grey = rgb(.1, .1, .1) as Color;
@@ -27,7 +18,7 @@ export const white = rgb(1, 1, 1) as Color;
  * the height of the next item to be drawn.
  */
 export class ExhibitForm {
-  private _data:ExhibitData;
+  private _data:ExhibitFormData;
   doc:PDFDocument;
   pageMargins:Margins;
   page:Page;
@@ -35,7 +26,7 @@ export class ExhibitForm {
   boldfont:PDFFont;
   markedPosition:Position;
 
-  constructor(data:ExhibitData) {
+  constructor(data:ExhibitFormData) {
     this._data = data;
     this.pageMargins = { top: 35, bottom: 35, left: 50, right: 40 } as Margins;
   }
@@ -109,7 +100,7 @@ export class ExhibitForm {
     }).draw(() => { 
       page.basePage.moveRight(150); 
       new Rectangle({
-        text: a.organization, page,
+        text: a.org, page,
         align: Align.left, valign: VAlign.middle,
         options: { borderWidth:1, borderColor:blue, width:(page.bodyWidth - 150), height:16 },
         textOptions: { size, font },
@@ -129,12 +120,12 @@ export class ExhibitForm {
     }).draw(() => {
       returnToPosition();
       page.basePage.moveUp(48);
-      [ [ 'Fullname', a.fullname ], [ 'Job Title', a.title ], [ 'Email', a.email ], [ 'Phone Nbr', a.phone ] ]
+      [ [ 'Fullname', a.fullname ], [ 'Job Title', a.title ], [ 'Email', a.email ], [ 'Phone Nbr', a.phone_number ] ]
       .forEach(item => {
           _return();
           page.basePage.moveRight(75);
           new Rectangle({
-            text: item[0],
+            text: item[0] || '',
             page,
             align: Align.right,
             valign: VAlign.middle,
@@ -145,7 +136,7 @@ export class ExhibitForm {
           .draw(() => {
             page.basePage.moveRight(75);
             new Rectangle({
-              text: item[1],
+              text: item[1] || '',
               page,
               align: Align.left,
               valign: VAlign.middle,

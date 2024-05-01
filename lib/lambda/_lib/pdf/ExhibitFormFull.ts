@@ -1,7 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { PDFDocument } from 'pdf-lib';
-import { AffiliateType, AffiliateTypes } from '../dao/entity';
-import { Affiliate, ExhibitData, ExhibitForm, IExhibitForm, blue, white } from './ExhibitForm';
+import { Affiliate, AffiliateType, AffiliateTypes, Consenter, ExhibitForm as ExhibitFormData } from '../dao/entity';
+import { ExhibitForm, IExhibitForm, blue, white } from './ExhibitForm';
 import { Align, Rectangle, VAlign } from './lib/Rectangle';
 import { Margins } from './lib/Utils';
 
@@ -9,10 +9,12 @@ import { Margins } from './lib/Utils';
  * This class represents an exhibit pdf form that can be dynamically generated around the provided exhibit data.
  */
 export class ExhibitFormFull implements IExhibitForm {
-  private baseForm:ExhibitForm
+  private baseForm:ExhibitForm;
+  private consenter:Consenter;
 
-  constructor(baseForm:ExhibitForm) {
+  constructor(baseForm:ExhibitForm, consenter:Consenter) {
     this.baseForm = baseForm;
+    this.consenter = consenter;
   }
 
   /**
@@ -54,9 +56,9 @@ export class ExhibitFormFull implements IExhibitForm {
    * Draw the introductory language
    */
   private drawIntro = () => {
-    const { page, boldfont, data } = this.baseForm;
+    const { consenter, baseForm: { page, boldfont }} = this;
     const size = 10;
-    page.drawWrappedText(`This Full Exhibit Form was prepared by ${data.fullname} and provides ` + 
+    page.drawWrappedText(`This Full Exhibit Form was prepared by ${consenter.fullname} and provides ` + 
       `an up-to-date list of the names and contacts for their known Consent Recipients on the ` +
       `date of this Exhibit.  The definitions in their Consent Form also apply to this Full ` + 
       `Exhibit Form.`,
@@ -87,7 +89,7 @@ export class ExhibitFormFull implements IExhibitForm {
       margins: { left: 8 } as Margins
     }).draw(() => {
       page.basePage.moveDown(16);
-      const affiliates = (data.affiliates as Affiliate[]).filter(affiliate => affiliate.type == affiliateType);
+      const affiliates = (data.affiliates as Affiliate[]).filter(affiliate => affiliate.affiliateType == affiliateType);
       affiliates.forEach(a => {
         drawAffliate(a, size);
         _return(4);
@@ -120,47 +122,44 @@ const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY_EXHIBIT_FORM_FULL') {
 
   const baseForm = new ExhibitForm({
-    email: 'applicant@gmail.com',
     entity_id: 'abc123',
-    fullname: 'Porky Pig',
-    phone: '617-234-5678',
     affiliates: [
       { 
-        type: AffiliateTypes.EMPLOYER,
-        organization: 'Warner Bros.', 
+        affiliateType: AffiliateTypes.EMPLOYER,
+        org: 'Warner Bros.', 
         fullname: 'Foghorn Leghorn', 
         email: 'foghorn@warnerbros.com',
         title: 'Lead animation coordinator',
-        phone: '617-333-4444'
+        phone_number: '617-333-4444'
       },
       {
-        type: AffiliateTypes.ACADEMIC,
-        organization: 'Cartoon University',
+        affiliateType: AffiliateTypes.ACADEMIC,
+        org: 'Cartoon University',
         fullname: 'Bugs Bunny',
         email: 'bugs@cu.edu',
         title: 'Dean of school of animation',
-        phone: '508-222-7777'
+        phone_number: '508-222-7777'
       },
       {
-        type: AffiliateTypes.EMPLOYER,
-        organization: 'Warner Bros',
+        affiliateType: AffiliateTypes.EMPLOYER,
+        org: 'Warner Bros',
         fullname: 'Daffy Duck',
         email: 'daffy@warnerbros.com',
         title: 'Deputy animation coordinator',
-        phone: '781-555-7777'
+        phone_number: '781-555-7777'
       },
       {
-        type: AffiliateTypes.ACADEMIC,
-        organization: 'Cartoon University',
+        affiliateType: AffiliateTypes.ACADEMIC,
+        org: 'Cartoon University',
         fullname: 'Yosemite Sam',
         email: 'yosemite-sam@cu.edu',
         title: 'Professor animation studies',
-        phone: '617-444-8888'
+        phone_number: '617-444-8888'
       }
     ]
-  } as ExhibitData);
+  } as ExhibitFormData);
   
-  new ExhibitFormFull(baseForm).writeToDisk('./lib/lambda/_lib/pdf/outputFull.pdf')
+  new ExhibitFormFull(baseForm, { fullname: 'Porky Pig' } as Consenter).writeToDisk('./lib/lambda/_lib/pdf/outputFull.pdf')
     .then((bytes) => {
       console.log('done');
     })

@@ -1,7 +1,7 @@
 import { SESv2Client, SendEmailCommand, SendEmailCommandInput, SendEmailResponse } from "@aws-sdk/client-sesv2";
 import { v4 as uuidv4 } from 'uuid';
-import { AffiliateTypes, Entity, YN } from "../../_lib/dao/entity";
-import { ExhibitData, ExhibitForm, IExhibitForm } from "../../_lib/pdf/ExhibitForm";
+import { AffiliateTypes, Entity, YN, ExhibitForm as ExhibitFormData, Consenter } from "../../_lib/dao/entity";
+import { ExhibitForm, IExhibitForm } from "../../_lib/pdf/ExhibitForm";
 import { ExhibitFormFull } from "../../_lib/pdf/ExhibitFormFull";
 import { ExhibitFormSingle } from "../../_lib/pdf/ExhibitFormSingle";
 
@@ -17,38 +17,39 @@ export type FormType = FormTypes.FULL | FormTypes.SINGLE;
  *      only, as excerpted from the full exhibit form.
  */
 export class ExhibitEmail {
-  private data:ExhibitData;
+  private data:ExhibitFormData;
   private formType:FormType;
   private entity:Entity;
+  private consenter:Consenter;
 
   /**
    * @param data The data to build the exhibit form from.
    * @param formType Full or single
    */
-  constructor(data:ExhibitData, formType:FormType, entity:Entity) {
+  constructor(data:ExhibitFormData, formType:FormType, entity:Entity, consenter:Consenter) {
     this.data = data;
     this.formType = formType;
     this.entity = entity;
+    this.consenter = consenter;
   }
 
   public send = async (emailAddress:string):Promise<boolean> => {
-    const { data, formType, entity } = this;
+    const { data, formType, entity, consenter, consenter: { fullname } } = this;
     const { entity_name } = entity;
-    const { fullname } = data;
     switch(formType) {
       case FormTypes.FULL:
         return await sendEmail({
           subject: 'ETT Exhibit Form Submission',
           message: `Consenting individual ${fullname} is forwarding you their full affliate list via ETT`,
           emailAddress,
-          pdf: new ExhibitFormFull(new ExhibitForm(data))
+          pdf: new ExhibitFormFull(new ExhibitForm(data), consenter)
         });
       case FormTypes.SINGLE:
         return await sendEmail({
           subject: 'ETT Notice of Consent',
           message: `Consenting individual ${fullname} has named you as an affilate for disclosure to ${entity_name}`,
           emailAddress,
-          pdf: new ExhibitFormSingle(new ExhibitForm(data))
+          pdf: new ExhibitFormSingle(new ExhibitForm(data), consenter)
         });
     }
   }
@@ -174,41 +175,41 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
     phone: '617-234-5678',
     affiliates: [
       { 
-        type: AffiliateTypes.EMPLOYER,
-        organization: 'Warner Bros.', 
+        affiliateType: AffiliateTypes.EMPLOYER,
+        org: 'Warner Bros.', 
         fullname: 'Foghorn Leghorn', 
         email: 'foghorn@warnerbros.com',
         title: 'Lead animation coordinator',
-        phone: '617-333-4444'
+        phone_number: '617-333-4444'
       },
       {
-        type: AffiliateTypes.ACADEMIC,
-        organization: 'Cartoon University',
+        affiliateType: AffiliateTypes.ACADEMIC,
+        org: 'Cartoon University',
         fullname: 'Bugs Bunny',
         email: 'bugs@cu.edu',
         title: 'Dean of school of animation',
-        phone: '508-222-7777'
+        phone_number: '508-222-7777'
       },
       {
-        type: AffiliateTypes.EMPLOYER,
-        organization: 'Warner Bros',
+        affiliateType: AffiliateTypes.EMPLOYER,
+        org: 'Warner Bros',
         fullname: 'Daffy Duck',
         email: 'daffy@warnerbros.com',
         title: 'Deputy animation coordinator',
-        phone: '781-555-7777'
+        phone_number: '781-555-7777'
       },
       {
-        type: AffiliateTypes.ACADEMIC,
-        organization: 'Cartoon University',
+        affiliateType: AffiliateTypes.ACADEMIC,
+        org: 'Cartoon University',
         fullname: 'Yosemite Sam',
         email: 'yosemite-sam@cu.edu',
         title: 'Professor animation studies',
-        phone: '617-444-8888'
+        phone_number: '617-444-8888'
       }
     ]
-  } as ExhibitData;
+  } as ExhibitFormData;
   
-  new ExhibitEmail(data, FormTypes.FULL, entity).send(email)
+  new ExhibitEmail(data, FormTypes.FULL, entity, { fullname:'Porky Pig' } as Consenter).send(email)
     .then(success => {
       console.log(success ? 'Succeeded' : 'Failed');
     })

@@ -1,7 +1,6 @@
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { DAOFactory } from "../../_lib/dao/dao";
-import { Entity, Roles, User, YN } from "../../_lib/dao/entity";
-import { Affiliate, ExhibitData } from "../../_lib/pdf/ExhibitForm";
+import { Entity, Roles, User, YN, Affiliate, ExhibitForm as ExhibitFormData, Consenter } from "../../_lib/dao/entity";
 import { debugLog, errorResponse, invalidResponse, log, okResponse } from "../Utils";
 import { ExhibitEmail, FormTypes } from "./ExhibitEmail";
 
@@ -16,7 +15,7 @@ export const INVALID_RESPONSE_MESSAGES = {
   missingExhibitData: 'Missing exhibit form data!',
   missingAffiliateRecords: 'Missing affiliate records in exhibit form data!',
   missingEntityId: 'Missing entity_id!',
-  missingFullname: 'Missing fullname of exhibit form issuer!',
+  missingEmail: 'Missing email of exhibit form issuer!',
   emailFailure: 'Email failed for one or more recipients!'
 } 
 
@@ -45,8 +44,8 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
       const callerSub = callerUsername || event?.requestContext?.authorizer?.claims?.sub;
       switch(task as Task) {
         case Task.SEND_AFFILIATE_DATA:
-          const { exhibit_data } = parameters;
-          return await processExhibitData(exhibit_data);
+          const { email, exhibit_data } = parameters;
+          return await processExhibitData(email, exhibit_data);
         case Task.PING:
           return okResponse('Ping!', parameters); 
       }
@@ -63,21 +62,25 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
  * @param data 
  * @returns 
  */
-export const processExhibitData = async (data:ExhibitData):Promise<LambdaProxyIntegrationResponse> => {
+export const processExhibitData = async (email:string, data:ExhibitFormData):Promise<LambdaProxyIntegrationResponse> => {
   // Validate incoming data
   if( ! data) {
     return invalidResponse(INVALID_RESPONSE_MESSAGES.missingExhibitData);
   }
-  let { affiliates, entity_id, fullname } = data as ExhibitData;
+  let { affiliates, entity_id } = data as ExhibitFormData;
   if( ! entity_id ) {
     return invalidResponse(INVALID_RESPONSE_MESSAGES.missingEntityId);
   }
   if( ! affiliates) {
     return invalidResponse(INVALID_RESPONSE_MESSAGES.missingAffiliateRecords);
   }
-  if( ! fullname) {
-    return invalidResponse(INVALID_RESPONSE_MESSAGES.missingFullname);
+  if( ! email) {
+    return invalidResponse(INVALID_RESPONSE_MESSAGES.missingEmail);
   }
+
+  // Get the consenter
+  let daoConsenter = DAOFactory.getInstance({ DAOType: 'consenter', Payload: { email }});
+  const consenter = await daoConsenter.read() as Consenter;
 
   // Get the entity
   const daoEntity = DAOFactory.getInstance({ DAOType:"entity", Payload: { entity_id }});
@@ -91,7 +94,7 @@ export const processExhibitData = async (data:ExhibitData):Promise<LambdaProxyIn
   // Send the full exhibit form to each authorized individual and the RE admin.
   const emailFailures = [] as string[];
   for(let i=0; i<users.length; i++) {
-    var sent:boolean = await new ExhibitEmail(data, FormTypes.FULL, entity).send(users[i].email);
+    var sent:boolean = await new ExhibitEmail(data, FormTypes.FULL, entity, consenter).send(users[i].email);
     if( ! sent) {
       emailFailures.push(users[i].email);
     }
@@ -110,7 +113,7 @@ export const processExhibitData = async (data:ExhibitData):Promise<LambdaProxyIn
   
   // Send the single exhibit form excerpts to each affiliate
   for(let i=0; i<affiliates.length; i++) {
-    var sent:boolean = await new ExhibitEmail(data, FormTypes.SINGLE, entity).send(affiliates[i].email);
+    var sent:boolean = await new ExhibitEmail(data, FormTypes.SINGLE, entity, consenter).send(affiliates[i].email);
     if( ! sent) {
       emailFailures.push(affiliates[i].email);
     }
