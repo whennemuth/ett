@@ -2,7 +2,7 @@ import { AttributeValue, DeleteItemCommand, DeleteItemCommandInput, DeleteItemCo
 import { v4 as uuidv4 } from 'uuid';
 import { DAOInvitation } from './dao';
 import { convertFromApiObject } from './db-object-builder';
-import { Builder, getUpdateCommandBuilderInstance } from './db-update-builder';
+import { invitationUpdate } from './db-update-builder.invitation';
 import { Invitation, InvitationFields } from './entity';
 
 /**
@@ -44,12 +44,9 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
       _code = uuidv4();
       invitationInfo.code = _code;
     }
-
+    
     console.log(`Creating invitation ${entity_id ? `to ${entity_id} ` : ''}for: ${role}`);
-    const builder:Builder = getUpdateCommandBuilderInstance({
-      TableName, _type:'invitation', info_new:invitationInfo
-    });
-    const input = builder.buildUpdateItem() as UpdateItemCommandInput;
+    const input = invitationUpdate(TableName, invitationInfo).buildUpdateItem() as UpdateItemCommandInput;
     command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
@@ -157,10 +154,7 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
     }
     
     console.log(`Updating existing invitation in: ${_code}/${entity_id}`);
-    const builder:Builder = getUpdateCommandBuilderInstance({
-      TableName, _type:'invitation', info_new:invitationInfo
-    });
-    const input = builder.buildUpdateItem() as UpdateItemCommandInput;
+    const input = invitationUpdate(TableName, invitationInfo).buildUpdateItem() as UpdateItemCommandInput;
     command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }

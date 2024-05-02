@@ -2,8 +2,8 @@ import { AttributeValue, DeleteItemCommand, DeleteItemCommandInput, DeleteItemCo
 import { marshall } from '@aws-sdk/util-dynamodb';
 import { DAOFactory, DAOUser } from './dao';
 import { convertFromApiObject } from './db-object-builder';
-import { Builder, getUpdateCommandBuilderInstance } from './db-update-builder';
 import { Roles, User, UserFields, YN } from './entity';
+import { userUpdate } from './db-update-builder.user';
 
 /**
  * Basic CRUD operations for the dynamodb table behind the user base.
@@ -154,8 +154,7 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
       throw new Error(`User update error: No fields to update for ${entity_id}: ${email}`);
     }
     console.log(`Updating user: ${email} / ${entity_id}`);
-    const builder:Builder = getUpdateCommandBuilderInstance({ TableName, _type:'user', info_new:userinfo });
-    const input = builder.buildUpdateItem() as UpdateItemCommandInput;
+    const input = userUpdate(TableName, userinfo).buildUpdateItem() as UpdateItemCommandInput;
     command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }

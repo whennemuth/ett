@@ -2,7 +2,7 @@ import { DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, Dyn
 import { v4 as uuidv4 } from 'uuid';
 import { DAOEntity } from './dao';
 import { convertFromApiObject } from './db-object-builder';
-import { Builder, getUpdateCommandBuilderInstance } from './db-update-builder';
+import { entityUpdate } from './db-update-builder.entity';
 import { Entity, EntityFields, YN } from './entity';
 
 export const ENTITY_WAITING_ROOM:string = '__UNASSIGNED__';
@@ -54,11 +54,8 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
       update_timestamp = create_timestamp;
       entityInfo.update_timestamp = update_timestamp;
     }
-    
-    const builder:Builder = getUpdateCommandBuilderInstance({
-      TableName, _type:'entity', info_new:entityInfo
-    });
-    const input = builder.buildUpdateItem() as UpdateItemCommandInput;
+
+    const input = entityUpdate(TableName, entityInfo).buildUpdateItem() as UpdateItemCommandInput;
     command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
@@ -98,10 +95,7 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
       throw new Error(`Entity update error: No fields to update for ${entity_id}`);
     }
     console.log(`Updating entity: ${entity_id}`);
-    const builder:Builder = getUpdateCommandBuilderInstance({
-      TableName, _type:'entity', info_new:entityInfo
-    });
-    const input = builder.buildUpdateItem() as UpdateItemCommandInput;
+    const input = entityUpdate(TableName, entityInfo).buildUpdateItem() as UpdateItemCommandInput;
     command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
