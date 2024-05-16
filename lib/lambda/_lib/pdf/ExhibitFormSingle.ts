@@ -1,9 +1,10 @@
 import { writeFile } from "node:fs/promises";
 import { Affiliate, AffiliateTypes, Consenter, ExhibitForm as ExhibitFormData } from "../dao/entity";
-import { ExhibitForm, IExhibitForm } from "./ExhibitForm";
+import { IPdfForm } from './PdfForm';
+import { ExhibitForm } from './ExhibitForm';
 
-export class ExhibitFormSingle implements IExhibitForm {
-  private baseForm:ExhibitForm;
+export class ExhibitFormSingle implements IPdfForm {
+  private baseForm:ExhibitForm
   private consenter:Consenter;
 
   constructor(baseForm:ExhibitForm, consenter:Consenter) {

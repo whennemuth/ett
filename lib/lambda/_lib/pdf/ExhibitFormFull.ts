@@ -1,15 +1,16 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { PDFDocument } from 'pdf-lib';
 import { Affiliate, AffiliateType, AffiliateTypes, Consenter, ExhibitForm as ExhibitFormData } from '../dao/entity';
-import { ExhibitForm, IExhibitForm, blue, white } from './ExhibitForm';
+import { ExhibitForm, blue, white } from './ExhibitForm';
+import { IPdfForm } from './PdfForm';
 import { Align, Rectangle, VAlign } from './lib/Rectangle';
 import { Margins } from './lib/Utils';
 
 /**
  * This class represents an exhibit pdf form that can be dynamically generated around the provided exhibit data.
  */
-export class ExhibitFormFull implements IExhibitForm {
-  private baseForm:ExhibitForm;
+export class ExhibitFormFull implements IPdfForm {
+  private baseForm:ExhibitForm
   private consenter:Consenter;
 
   constructor(baseForm:ExhibitForm, consenter:Consenter) {

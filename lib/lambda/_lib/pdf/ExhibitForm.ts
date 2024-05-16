@@ -6,6 +6,7 @@ import { Margins, Position, rgbPercent } from "./lib/Utils";
 import { Page } from "./lib/Page";
 import { Align, Rectangle, VAlign } from "./lib/Rectangle";
 import { Affiliate, ExhibitForm as ExhibitFormData } from "../dao/entity";
+import { PdfForm } from "./PdfForm";
 
 export const blue = rgbPercent(47, 84, 150) as Color;
 export const grey = rgb(.1, .1, .1) as Color;
@@ -17,16 +18,11 @@ export const white = rgb(1, 1, 1) as Color;
  * TODO: Add new page creation that is triggered when the available vertical space left on a page is less than 
  * the height of the next item to be drawn.
  */
-export class ExhibitForm {
+export class ExhibitForm extends PdfForm {
   private _data:ExhibitFormData;
-  doc:PDFDocument;
-  pageMargins:Margins;
-  page:Page;
-  font:PDFFont;
-  boldfont:PDFFont;
-  markedPosition:Position;
 
   constructor(data:ExhibitFormData) {
+    super();
     this._data = data;
     this.pageMargins = { top: 35, bottom: 35, left: 50, right: 40 } as Margins;
   }
@@ -40,33 +36,6 @@ export class ExhibitForm {
 
   public get data() {
     return this._data;
-  }
-
-  /**
-   * Move to the left side of the page, just to the right of the left margin
-   * @param descend How far to move down after returning to the edge of the left margin.
-   */
-  public _return = (descend:number=0) => { 
-    const { basePage, margins } = this.page;
-    basePage.moveDown(descend);
-    basePage.moveTo(margins.left, basePage.getY()); 
-  };
-
-  /**
-   * Mark the current position on the form so it can be returned to later.
-   */
-  public markPosition = () => {
-    const { basePage } = this.page;
-    this.markedPosition = { x:basePage.getX(), y:basePage.getY() };
-  }
-
-  /**
-   * Return to a previously marked position.
-   */
-  public returnToPosition = () => {
-    const { x, y } = this.markedPosition;
-    const { basePage } = this.page;
-    basePage.moveTo(x, y);
   }
 
   /**
