@@ -12,20 +12,16 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Admin dynamodb CRUD",
+      "name": "DAO consenter",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
-        "${workspaceFolder}/lib/lambda/_lib/dao/_runner.ts",
-        "user",
-        "migrate"
+        "${workspaceFolder}/lib/lambda/_lib/dao/dao-consenter.ts",
+        "RUN_MANUALLY",
+        "create",
       ], 
       "env": {
-        "AWS_PROFILE": "bu",
-        "DYNAMODB_USER_TABLE_NAME": "ett-users",
-        "DYNAMODB_INVITATION_TABLE_NAME": "ett-invitations",
-        "DYNAMODB_ENTITY_TABLE_NAME": "ett-entities",
-        "REGION": "us-east-2"
+        "AWS_PROFILE": "bu"
       }, 
     },
     {
@@ -429,7 +425,6 @@
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
         "--runTestsByPath", 
-        "--silent",
         "-i", 
         "${workspaceFolder}/lib/lambda/_lib/dao/db-object-builder.test.ts" 
       ],
@@ -443,13 +438,49 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest DAO db-update-builder",
+      "name": "Jest DAO db-update-builder-consenter",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
         "--runTestsByPath", 
         "--silent",
         "-i", 
-        "${workspaceFolder}/lib/lambda/_lib/dao/db-update-builder.test.ts" 
+        "${workspaceFolder}/lib/lambda/_lib/dao/db-update-builder.consenter.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "env": { 
+        "DYNAMODB_USER_TABLE_NAME": "ett-users"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest DAO db-update-builder-invitation",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/_lib/dao/db-update-builder.invitation.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "env": { 
+        "DYNAMODB_USER_TABLE_NAME": "ett-users"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest DAO db-update-builder-user",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/_lib/dao/db-update-builder.user.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",

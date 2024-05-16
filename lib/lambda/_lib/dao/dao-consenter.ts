@@ -1,8 +1,9 @@
-import { DeleteItemCommandOutput, DynamoDBClient, PutItemCommandOutput, UpdateItemCommandOutput } from "@aws-sdk/client-dynamodb";
+import { DeleteItemCommandOutput, DynamoDBClient, PutItemCommandOutput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { DynamoDbConstruct } from "../../../DynamoDb";
 import { DAOConsenter } from "./dao";
 import { AffiliateTypes, Consenter, ConsenterFields, Roles, YN } from "./entity";
+import { consenterUpdate } from "./db-update-builder.consenter";
 
 export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): DAOConsenter {
 
@@ -48,7 +49,7 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
     if(consented_timestamp) throwIllegalParm('create', ConsenterFields.consented_timestamp);
     if(rescinded_timestamp) throwIllegalParm('create', ConsenterFields.rescinded_timestamp);
     if(renewed_timestamp) throwIllegalParm('create', ConsenterFields.renewed_timestamp);
-    if(exhibit_forms) throwIllegalParm('create', ConsenterFields.exhibit_forms);
+    if(exhibit_forms!.length > 0) throwIllegalParm('create', ConsenterFields.exhibit_forms);
 
     // Make sure the original userinfo object gets a create_timestamp value if a default value is invoked.
     if( ! consenterInfo.create_timestamp) consenterInfo.create_timestamp = create_timestamp;
@@ -65,6 +66,16 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
   }
 
   const update = async (oldConsenterInfo:Consenter):Promise<UpdateItemCommandOutput> => {
+    // Handle field validation
+    if( ! email) {
+      throwMissingError('update', ConsenterFields.email);
+    }
+    if( Object.keys(consenterInfo).length == 1 ) {
+      throw new Error(`Consenter update error: No fields to update for ${email}`);
+    }
+    console.log(`Updating consenter: ${email}`);
+    const input = consenterUpdate(TableName, consenterInfo, oldConsenterInfo).buildUpdateItem() as UpdateItemCommandInput;
+    command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
 
