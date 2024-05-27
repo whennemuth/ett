@@ -202,6 +202,72 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "PDF disclosure form",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/pdf/DisclosureForm.ts",
+        "RUN_MANUALLY_DISCLOSURE_FORM"
+      ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF disclosure form Page 1",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/pdf/DisclosureFormPage1.ts",
+        "RUN_MANUALLY_DISCLOSURE_FORM_PAGE_1"
+      ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF disclosure form Page 2",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/pdf/DisclosureFormPage2.ts",
+        "RUN_MANUALLY_DISCLOSURE_FORM_PAGE_2"
+      ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF disclosure form Page 3",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/pdf/DisclosureFormPage3.ts",
+        "RUN_MANUALLY_DISCLOSURE_FORM_PAGE_3"
+      ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF disclosure form Page 4",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/pdf/DisclosureFormPage4.ts",
+        "RUN_MANUALLY_DISCLOSURE_FORM_PAGE_4"
+      ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF disclosure form Page 5",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/pdf/DisclosureFormPage5.ts",
+        "RUN_MANUALLY_DISCLOSURE_FORM_PAGE_5"
+      ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "PDF TextLine",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
