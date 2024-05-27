@@ -199,6 +199,13 @@ export const lookupCloudfrontDomain = async (landscape:string):Promise<string|un
   return undefined;
 }
 
+export const bytesToBase64 = (bytes:Uint8Array) => {
+  const binString = Array.from(bytes, (byte) =>
+    String.fromCodePoint(byte),
+  ).join("");
+  return btoa(binString);
+}
+
 export const debugLog = (o:any) => {
   if(process.env.DEBUG == 'true') {
     log(o);

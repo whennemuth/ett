@@ -65,6 +65,8 @@ jest.mock('../../_lib/dao/dao.ts', () => {
             return null;
           case 'invitation':
             return null;
+          case 'consenter':
+            return null;
         }
       })
     }

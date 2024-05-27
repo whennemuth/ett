@@ -1,12 +1,9 @@
 import { AttributeValue, DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, QueryCommand, QueryCommandInput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
-import { DynamoDbConstruct } from '../../../DynamoDb';
 import { DAOInvitation } from './dao';
 import { convertFromApiObject } from './db-object-builder';
-import { Builder, getUpdateCommandBuilderInstance } from './db-update-builder';
+import { invitationUpdate } from './db-update-builder.invitation';
 import { Invitation, InvitationFields } from './entity';
-
-const dbclient = new DynamoDBClient({ region: process.env.REGION });
 
 /**
  * Basic CRUD operations for the invitations table.
@@ -14,6 +11,9 @@ const dbclient = new DynamoDBClient({ region: process.env.REGION });
  * @returns 
  */
 export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false): DAOInvitation {
+  const dbclient = new DynamoDBClient({ region: process.env.REGION });
+  const TableName = process.env.DYNAMODB_INVITATION_TABLE_NAME || '';
+  const TableEntityIndex = process.env.DYNAMODB_INVITATION_ENTITY_INDEX || '';
 
   let { code:_code, entity_id, role, email } = invitationInfo;
 
@@ -44,10 +44,9 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
       _code = uuidv4();
       invitationInfo.code = _code;
     }
-
+    
     console.log(`Creating invitation ${entity_id ? `to ${entity_id} ` : ''}for: ${role}`);
-    const builder:Builder = getUpdateCommandBuilderInstance(invitationInfo, 'invitation', process.env.DYNAMODB_INVITATION_TABLE_NAME || '');
-    const input:UpdateItemCommandInput = builder.buildUpdateItem();
+    const input = invitationUpdate(TableName, invitationInfo).buildUpdateItem() as UpdateItemCommandInput;
     command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
@@ -78,7 +77,7 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
 
     console.log(`Reading invitation ${_code}`);
     const params = {
-      TableName: process.env.DYNAMODB_INVITATION_TABLE_NAME,
+      TableName,
       Key: { 
         [InvitationFields.code]: { S: _code },
       }
@@ -124,12 +123,12 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
       else {
         cdns = `${InvitationFields.entity_id} = :v2`;
       }
-      if( ! email) index = DynamoDbConstruct.DYNAMODB_INVITATION_ENTITY_INDEX;
+      if( ! email) index = TableEntityIndex;
     }
 
     // Declare QueryCommandInput
     const params = {
-      TableName: process.env.DYNAMODB_INVITATION_TABLE_NAME,
+      TableName,
       IndexName: index,
       ExpressionAttributeValues: vals,
       KeyConditionExpression: cdns
@@ -155,8 +154,7 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
     }
     
     console.log(`Updating existing invitation in: ${_code}/${entity_id}`);
-    const builder:Builder = getUpdateCommandBuilderInstance(invitationInfo, 'invitation', process.env.DYNAMODB_INVITATION_TABLE_NAME || '');
-    const input:UpdateItemCommandInput = builder.buildUpdateItem();
+    const input = invitationUpdate(TableName, invitationInfo).buildUpdateItem() as UpdateItemCommandInput;
     command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
@@ -169,7 +167,7 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
       throwMissingError('delete', InvitationFields.code);
     }
     const input = {
-      TableName: process.env.DYNAMODB_INVITATION_TABLE_NAME,
+      TableName,
       Key: { 
          [InvitationFields.entity_id]: { S: entity_id, },
       },
@@ -188,7 +186,7 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
     if( ! entity_id) throwMissingError('delete-entity', InvitationFields.entity_id);
 
     const input = {
-      TableName: process.env.DYNAMODB_INVITATION_TABLE_NAME,
+      TableName,
       Key: { 
         [InvitationFields.entity_id]: { S: entity_id, },
       } as Record<string, AttributeValue>

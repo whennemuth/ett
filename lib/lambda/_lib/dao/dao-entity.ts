@@ -2,14 +2,15 @@ import { DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, Dyn
 import { v4 as uuidv4 } from 'uuid';
 import { DAOEntity } from './dao';
 import { convertFromApiObject } from './db-object-builder';
-import { Builder, getUpdateCommandBuilderInstance } from './db-update-builder';
+import { entityUpdate } from './db-update-builder.entity';
 import { Entity, EntityFields, YN } from './entity';
 
 export const ENTITY_WAITING_ROOM:string = '__UNASSIGNED__';
 
-const dbclient = new DynamoDBClient({ region: process.env.REGION });
-
 export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity {
+
+  const dbclient = new DynamoDBClient({ region: process.env.REGION });
+  const TableName = process.env.DYNAMODB_ENTITY_TABLE_NAME || '';
 
   let { entity_id, entity_name, create_timestamp, update_timestamp, active=YN.Yes } = entityInfo;
 
@@ -53,9 +54,8 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
       update_timestamp = create_timestamp;
       entityInfo.update_timestamp = update_timestamp;
     }
-    
-    const builder:Builder = getUpdateCommandBuilderInstance(entityInfo, 'entity', process.env.DYNAMODB_ENTITY_TABLE_NAME || '');
-    const input:UpdateItemCommandInput = builder.buildUpdateItem();
+
+    const input = entityUpdate(TableName, entityInfo).buildUpdateItem() as UpdateItemCommandInput;
     command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
@@ -70,7 +70,7 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
 
     console.log(`Reading entity ${entity_id}`);
     const params = {
-      TableName: process.env.DYNAMODB_ENTITY_TABLE_NAME,
+      TableName,
       Key: {
         [EntityFields.entity_id]: { S: entity_id }
       }
@@ -95,8 +95,7 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
       throw new Error(`Entity update error: No fields to update for ${entity_id}`);
     }
     console.log(`Updating entity: ${entity_id}`);
-    const builder:Builder = getUpdateCommandBuilderInstance(entityInfo, 'entity', process.env.DYNAMODB_ENTITY_TABLE_NAME || '');
-    const input:UpdateItemCommandInput = builder.buildUpdateItem();
+    const input = entityUpdate(TableName, entityInfo).buildUpdateItem() as UpdateItemCommandInput;
     command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
@@ -108,7 +107,7 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
    */
   const Delete = async ():Promise<DeleteItemCommandOutput> => {
     const input = {
-      TableName: process.env.DYNAMODB_ENTITY_TABLE_NAME,
+      TableName,
       Key: { 
          [EntityFields.entity_id]: { S: entity_id, },
       },

@@ -1,12 +1,9 @@
-import { DynamoDBClient, PutItemCommand, GetItemCommand, QueryCommand, UpdateItemCommand, AttributeValue, UpdateItemCommandInput, DeleteItemCommand, GetItemCommandInput, GetItemCommandOutput, UpdateItemCommandOutput, DeleteItemCommandInput, DeleteItemCommandOutput, QueryCommandInput, PutItemCommandOutput, TransactWriteItemsCommand, TransactWriteItemsCommandInput, TransactWriteItemsCommandOutput } from '@aws-sdk/client-dynamodb'
-import { marshall} from '@aws-sdk/util-dynamodb';
-import { Roles, User, UserFields, YN } from './entity';
-import { Builder, getUpdateCommandBuilderInstance } from './db-update-builder'; 
-import { convertFromApiObject } from './db-object-builder';
+import { AttributeValue, DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, PutItemCommand, PutItemCommandOutput, QueryCommand, QueryCommandInput, TransactWriteItemsCommand, TransactWriteItemsCommandInput, TransactWriteItemsCommandOutput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
+import { marshall } from '@aws-sdk/util-dynamodb';
 import { DAOFactory, DAOUser } from './dao';
-import { DynamoDbConstruct } from '../../../DynamoDb';
-
-const dbclient = new DynamoDBClient({ region: process.env.REGION });
+import { convertFromApiObject } from './db-object-builder';
+import { Roles, User, UserFields, YN } from './entity';
+import { userUpdate } from './db-update-builder.user';
 
 /**
  * Basic CRUD operations for the dynamodb table behind the user base.
@@ -15,7 +12,11 @@ const dbclient = new DynamoDBClient({ region: process.env.REGION });
  */
 export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
 
-  let { email, entity_id, role, sub, active=YN.Yes, create_timestamp=(new Date().toDateString()), 
+  const dbclient = new DynamoDBClient({ region: process.env.REGION });
+  const TableName = process.env.DYNAMODB_USER_TABLE_NAME || '';
+  const TableEntityIndex = process.env.DYNAMODB_USER_ENTITY_INDEX || '';
+
+  let { email, entity_id, role, sub, active=YN.Yes, create_timestamp=(new Date().toISOString()), 
     fullname, phone_number, title } = userinfo;
 
   let command:any;
@@ -68,10 +69,7 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
     if(phone_number) ItemToCreate[UserFields.phone_number] = { S: phone_number };
 
     // Send the command
-    command = new PutItemCommand({
-      TableName: process.env.DYNAMODB_USER_TABLE_NAME,
-      Item: ItemToCreate
-    });
+    command = new PutItemCommand({ TableName, Item: ItemToCreate });
     return await sendCommand(command);
   }
 
@@ -83,7 +81,7 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
       return await _query({ v1: email, index: null } as IdxParms) as User[];
     }
     else {
-      return await _query({ v1: entity_id, index: DynamoDbConstruct.DYNAMODB_USER_ENTITY_INDEX } as IdxParms) as User[];
+      return await _query({ v1: entity_id, index: TableEntityIndex } as IdxParms) as User[];
     }
   }
 
@@ -94,7 +92,7 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
   const _read = async ():Promise<User|null> => {
     console.log(`Reading user ${email} / ${entity_id}`);
     const params = {
-      TableName: process.env.DYNAMODB_USER_TABLE_NAME,
+      TableName,
       ConsistentRead: true,
       Key: { 
         [UserFields.email]: { S: email, },
@@ -116,10 +114,10 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
   type IdxParms = { v1:string; index:string|null }
   const _query = async (idxParms:IdxParms):Promise<User[]> => {
     const { v1, index } = idxParms;
-    const key = DynamoDbConstruct.DYNAMODB_USER_ENTITY_INDEX == index ? UserFields.entity_id : UserFields.email;
+    const key = TableEntityIndex == index ? UserFields.entity_id : UserFields.email;
     console.log(`Reading users for ${key}: ${v1}`);
     const params = {
-      TableName: process.env.DYNAMODB_USER_TABLE_NAME,
+      TableName,
       // ConsistentRead: true,
       ExpressionAttributeValues: {
         ':v1': { S: v1 }
@@ -156,8 +154,7 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
       throw new Error(`User update error: No fields to update for ${entity_id}: ${email}`);
     }
     console.log(`Updating user: ${email} / ${entity_id}`);
-    const builder:Builder = getUpdateCommandBuilderInstance(userinfo, 'user', process.env.DYNAMODB_USER_TABLE_NAME || '');
-    const input:UpdateItemCommandInput = builder.buildUpdateItem();
+    const input = userUpdate(TableName, userinfo).buildUpdateItem() as UpdateItemCommandInput;
     command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
@@ -190,7 +187,6 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
     }
 
     // Define the transaction to execute (delete of original user followed by put of same user in different entity)
-    const TableName = process.env.DYNAMODB_USER_TABLE_NAME || ''
     const Key = marshall({ [ UserFields.email ]: email, [ UserFields.entity_id ]: old_entity_id }) as Record<string, AttributeValue>;
     const Item = marshall(user);
     const input = {
@@ -219,7 +215,7 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
     if( ! entity_id) throwMissingError('delete', UserFields.entity_id);
 
     const input = {
-      TableName: process.env.DYNAMODB_USER_TABLE_NAME,
+      TableName,
       Key: { 
         [UserFields.email]: { S: email, },
       } as Record<string, AttributeValue>
@@ -243,7 +239,7 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
     if( ! entity_id) throwMissingError('delete-entity', UserFields.entity_id);
 
     const input = {
-      TableName: process.env.DYNAMODB_USER_TABLE_NAME,
+      TableName,
       Key: { 
         [UserFields.entity_id]: { S: entity_id, },
       } as Record<string, AttributeValue>

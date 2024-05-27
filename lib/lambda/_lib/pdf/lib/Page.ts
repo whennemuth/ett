@@ -1,35 +1,44 @@
-import { PDFPage, PDFPageDrawTextOptions } from 'pdf-lib';
+import { PDFFont, PDFPage, PDFPageDrawTextOptions, StandardFonts } from 'pdf-lib';
+import { EmbeddedFonts } from './EmbeddedFonts';
 import { Rectangle, RectangleOptions } from './Rectangle';
-import { Text } from './Text';
+import { DrawWrappedTextParameters, Text } from './Text';
 import { Margins } from './Utils';
 
+/**
+ * This class represents a pdf page
+ */
 export class Page {
   private page:PDFPage;
   private _margins:Margins;
   private text:Text;
-
-  constructor(page:PDFPage, margins:Margins) {
+  private embeddedFonts:EmbeddedFonts;
+  
+  constructor(page:PDFPage, margins:Margins, embeddedFonts:EmbeddedFonts) {
     this.page = page;
     this._margins = margins;
-    this.text = new Text(page, margins);
+    this.embeddedFonts = embeddedFonts;
+    this.text = new Text(this, margins);
     this.page.moveTo(margins.left, (page.getHeight() - margins.top));
   }
 
-  public drawText(text:string, options:PDFPageDrawTextOptions, padBottom?:number) {
-    this.text.drawText(text, options, padBottom);
+  public drawText = async (text:string, options:PDFPageDrawTextOptions, padBottom?:number) => {
+    await this.text.drawText(text, options, padBottom);
   }
-  public drawTextOffset(text:string|string[], options:PDFPageDrawTextOptions, offsetX:number, offsetY:number, padBottom?:number) {
-    this.text.drawTextOffset(text, options, offsetX, offsetY, padBottom);
+  public drawTextOffset = async (text:string|string[], options:PDFPageDrawTextOptions, getOffsetX:Function, offsetY:number, padBottom?:number) => {
+    await this.text.drawTextOffset(text, options, getOffsetX, offsetY, padBottom);
   }
-  public drawCenteredText(text:string, options:PDFPageDrawTextOptions, padBottom?:number) {
-    this.text.drawCenteredText(text, options, padBottom);
+  public drawCenteredText = async (text:string, options:PDFPageDrawTextOptions, padBottom?:number) => {
+    await this.text.drawCenteredText(text, options, padBottom);
   }
-  public drawWrappedText(text:string, options:PDFPageDrawTextOptions, linePad:number, padBottom?:number) {
-    this.text.drawWrappedText(text, options, linePad, padBottom);
+  public drawWrappedText = async (parms:DrawWrappedTextParameters) => {
+    await this.text.drawWrappedText(parms);
+  }
+  public getFont = async (name:StandardFonts|string):Promise<PDFFont> => {
+    return this.embeddedFonts.getFont(name);
   }
 
-  public drawRectangle(options:RectangleOptions) {
-    new Rectangle(options)
+  public drawRectangle = async (options:RectangleOptions) => {
+    await new Rectangle(options).draw();
   }
 
   public get basePage():PDFPage {

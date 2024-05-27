@@ -191,13 +191,106 @@
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
         "${workspaceFolder}/lib/lambda/functions/consenting-person/ExhibitEmail.ts",
-        "RUN_MANUALLY"
+        "RUN_MANUALLY_SEND_EXHIBIT_FORM"
       ],
       "env": {
         "AWS_PROFILE": "bu",
         "REGION": "us-east-2"
       },
       "envFile": "${workspaceFolder}/.env",
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF disclosure form",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/pdf/DisclosureForm.ts",
+        "RUN_MANUALLY_DISCLOSURE_FORM"
+      ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF send disclosure form",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/authorized-individual/DisclosureRequestEmail.ts",
+        "RUN_MANUALLY_SEND_DISCLOSURE_FORM"
+      ],
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      },
+      "envFile": "${workspaceFolder}/.env",
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF disclosure form Page 1",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/pdf/DisclosureFormPage1.ts",
+        "RUN_MANUALLY_DISCLOSURE_FORM_PAGE_1"
+      ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF disclosure form Page 2",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/pdf/DisclosureFormPage2.ts",
+        "RUN_MANUALLY_DISCLOSURE_FORM_PAGE_2"
+      ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF disclosure form Page 3",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/pdf/DisclosureFormPage3.ts",
+        "RUN_MANUALLY_DISCLOSURE_FORM_PAGE_3"
+      ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF disclosure form Page 4",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/pdf/DisclosureFormPage4.ts",
+        "RUN_MANUALLY_DISCLOSURE_FORM_PAGE_4"
+      ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF disclosure form Page 5",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/pdf/DisclosureFormPage5.ts",
+        "RUN_MANUALLY_DISCLOSURE_FORM_PAGE_5"
+      ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF TextLine",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/pdf/lib/TextLine.ts",
+        "RUN_MANUALLY_TEXTLINE"
+      ],
     },
 
     // JEST TESTS
@@ -532,6 +625,22 @@
         "--silent",
         "-i", 
         "${workspaceFolder}/lib/lambda/functions/consenting-person/ConsentingPerson.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest PDF TextLine",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "killBehavior": "forceful",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/_lib/pdf/lib/TextLine.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",

@@ -8,7 +8,8 @@ const update_timestamp = dte;
 export const tables = {
   user: 'ett-users',
   invitation: 'ett-invitation',
-  entity: 'ett-entities'
+  entity: 'ett-entities',
+  consenter: 'ett-consenters',
 };
 
 export const bugsbunny = {

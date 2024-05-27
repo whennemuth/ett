@@ -80,9 +80,9 @@ export class LambdaFunction extends AbstractFunction {
             statements: [
               new PolicyStatement({
                 actions: [ 'ses:Send*', 'ses:Get*' ],
-                resources: context.SES_IDENTITIES.map((identity:string) => {
-                  return `arn:aws:ses:${context.REGION}:${context.ACCOUNT}:identity/${identity}`
-                }),
+                resources: [
+                  `arn:aws:ses:${context.REGION}:${context.ACCOUNT}:identity/*`
+                ],
                 effect: Effect.ALLOW
               })
             ]
@@ -108,6 +108,7 @@ export class LambdaFunction extends AbstractFunction {
         DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
         DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME,
         DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
+        DYNAMODB_CONSENTER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME,
         USERPOOL_ID: userPoolId
       }
     });

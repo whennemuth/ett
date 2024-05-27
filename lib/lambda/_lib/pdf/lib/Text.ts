@@ -1,13 +1,26 @@
-import { PDFPage, PDFPageDrawTextOptions } from "pdf-lib";
+import { PDFPageDrawTextOptions } from "pdf-lib";
+import { Page } from "./Page";
+import { TextLine } from "./TextLine";
 import { Margins } from "./Utils";
 
+export type DrawWrappedTextParameters = {
+  text:string, options:PDFPageDrawTextOptions, linePad:number, horizontalRoom?:number, padBottom?:number
+}
 export class Text {
-  private page:PDFPage;
+  private page:Page;
   private pageMargins:Margins;
 
-  constructor(page:PDFPage, pageMargins:Margins) {
+  constructor(page:Page, pageMargins:Margins) {
     this.page = page;
     this.pageMargins = pageMargins;
+  }
+
+  private drawTextLine = async (text:string, options:PDFPageDrawTextOptions):Promise<void> => {
+    await new TextLine(this.page, options).drawFormattedText(text);
+  }
+
+  private getCombinedWidthOfText = async (text:string, options:PDFPageDrawTextOptions):Promise<number> => {
+    return new TextLine(this.page, options).getCombinedWidthOfText(text);
   }
 
   /**
@@ -16,24 +29,27 @@ export class Text {
    * @param options 
    * @param padBottom optionally pad the bottom with some vertical space.
    */
-  public drawText(text:string, options:PDFPageDrawTextOptions, padBottom?:number) {
-    this.page.drawText(text, options);
-    this.page.moveDown(options.size!);
-    this.page.moveDown(padBottom || 0);
+  public drawText = async (text:string, options:PDFPageDrawTextOptions, padBottom?:number) => {
+    const { page: { basePage }, drawTextLine } = this;
+    await drawTextLine(text, options);
+    basePage.moveDown(options.size!);
+    basePage.moveDown(padBottom || 0);
   }
 
-  public drawTextOffset(text:string|string[], options:PDFPageDrawTextOptions, offsetX:number, offsetY:number, padBottom?:number) {
-    this.page.moveRight(offsetX);
-    this.page.moveDown(offsetY);    
+  public drawTextOffset = async (text:string|string[], options:PDFPageDrawTextOptions, getXOffset:Function, offsetY:number, padBottom?:number) => {
+    const { page: { basePage }, drawTextLine } = this;
+    basePage.moveDown(offsetY);    
     const lines:string[] = text instanceof Array ? text : [ text ];
     for(var i=0; i<lines.length; i++) {
+      var offsetX = await getXOffset(lines[i]);
+      basePage.moveRight(offsetX);
       if(i > 0) {
-        this.page.moveDown(options.size!);
+        basePage.moveDown(options.size!);
       }
-      this.page.drawText(lines[i], options);
+      await drawTextLine(lines[i], options);
+      basePage.moveLeft(offsetX);
     }
-    this.page.moveLeft(offsetX);
-    this.page.moveUp(offsetY);
+    basePage.moveUp(offsetY);
   }
 
   /**
@@ -41,15 +57,15 @@ export class Text {
    * @param text 
    * @param options 
    */
-  public drawCenteredText(text:string, options:PDFPageDrawTextOptions, padBottom?:number) {
-    const { font, size } = options;
-    const textWidth = font?.widthOfTextAtSize(text, size!);
-    const centerX = (this.page.getWidth() - textWidth!) / 2;
+  public drawCenteredText = async (text:string, options:PDFPageDrawTextOptions, padBottom?:number) => {
+    const { page: { basePage }, drawTextLine, getCombinedWidthOfText } = this;
+    const textWidth = await getCombinedWidthOfText(text, options);
+    const centerX = (basePage.getWidth() - textWidth!) / 2;
     const newOptions = Object.assign({}, options);
     newOptions.x = centerX;
-    this.page.drawText(text, newOptions);
-    this.page.moveDown(options.size!);
-    this.page.moveDown(padBottom || 0);
+    await drawTextLine(text, newOptions);
+    basePage.moveDown(options.size!);
+    basePage.moveDown(padBottom || 0);
   }
 
   /**
@@ -58,25 +74,32 @@ export class Text {
    * @param text 
    * @param options 
    */
-  public drawWrappedText(text:string, options:PDFPageDrawTextOptions, linePad:number, padBottom?:number) {
-    const { font, size } = options;
-    const horizontalRoom = this.page.getWidth() - this.pageMargins.left - this.pageMargins.right;
+  public drawWrappedText = async (parms:DrawWrappedTextParameters) => {
+    let { text, options, linePad, horizontalRoom, padBottom} = parms;
+    const { page: { basePage }, pageMargins, drawText, getCombinedWidthOfText } = this;
+    if( ! horizontalRoom) {
+      horizontalRoom = basePage.getWidth() - pageMargins.left - pageMargins.right;
+    }
     const words:string[] = [...text.matchAll(/\s*[^\s]+/g)].map(a => a[0]);
 
-    const tooWide = (s:string) => (font?.widthOfTextAtSize(s, size!) || 0) > horizontalRoom;
+    const tooWide = async (s:string) => {
+      const textWidth = await getCombinedWidthOfText(s, options) || 0;
+      return textWidth > (horizontalRoom || textWidth);
+    }
     
     let line = '';
-    words.forEach(word => {
+    for(let i=0; i<words.length; i++) {
+      const word = words[i];
       const longerLine = line + word;
-      if(tooWide(longerLine)) {
-        this.drawText(line, options, linePad);
+      if(await tooWide(longerLine)) {
+        await drawText(line, options, linePad);
         line = word.trim();
       }
       else {
         line = longerLine;
       }
-    });
-    this.drawText(line, options, padBottom);
+    }
+    await drawText(line, options, padBottom);
   }
 
 }

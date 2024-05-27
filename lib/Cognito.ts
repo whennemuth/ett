@@ -28,6 +28,24 @@ export class CognitoConstruct extends Construct {
 
   buildResources(): void {
 
+    const dynamodbResources = [
+      `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME}`,
+      `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME}/*`,
+      `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME}`,
+      `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME}/*`,
+      `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME}`,
+      `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME}/*`,
+      `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME}`,
+      `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME}/*`,
+    ] as string[];
+
+    const environment = {
+      DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
+      DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
+      DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME,
+      DYNAMODB_CONSENTER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME,
+    };
+
     const preSignupFunction = new AbstractFunction(this, 'PreSignupFunction', {
       functionName: `ett-${this.constructId.toLowerCase()}-pre-signup`,
       description: 'Intercepts cognito account creation to ensure proper registration pre-requisites have been met first.',
@@ -59,24 +77,13 @@ export class CognitoConstruct extends Construct {
               actions: [
                 'dynamodb:*'
               ],
-              resources: [
-                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME}`,
-                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME}/*`,
-                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME}`,
-                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME}/*`,
-                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME}`,
-                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME}/*`
-              ],
+              resources: dynamodbResources,
               effect: Effect.ALLOW
             })],
           }),
         }
       }),
-      environment: {
-        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
-        DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
-        DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME
-      }
+      environment
     });
 
     const postSignupFunction = new AbstractFunction(this, 'PostSignupFunction', {
@@ -119,24 +126,13 @@ export class CognitoConstruct extends Construct {
               actions: [
                 'dynamodb:*'
               ],
-              resources: [
-                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME}`,
-                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME}/*`,
-                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME}`,
-                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME}/*`,
-                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME}`,
-                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME}/*`
-              ],
+              resources: dynamodbResources,
               effect: Effect.ALLOW
             })],
           }),
         }
       }),
-      environment: {
-        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
-        DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
-        DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME
-      }
+      environment
     });
 
     const preAuthenticationFunction = new AbstractFunction(this, 'PreAuthenticationFunction', {
@@ -170,24 +166,13 @@ export class CognitoConstruct extends Construct {
               actions: [
                 'dynamodb:*'
               ],
-              resources: [
-                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME}`,
-                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME}/*`,
-                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME}`,
-                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME}/*`,
-                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME}`,
-                `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME}/*`
-              ],
+              resources: dynamodbResources,
               effect: Effect.ALLOW
             })],
           }),
         }
       }),
-      environment: {
-        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
-        DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
-        DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME
-      }
+      environment
     });
 
     this.userPool = new UserPool(this, 'UserPool', {

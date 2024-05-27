@@ -1,8 +1,7 @@
 import { mock } from "node:test";
 import { IncomingPayload, OutgoingBody } from "../../../role/AbstractRole";
-import { DAOEntity, DAOInvitation, DAOUser, FactoryParms } from "../../_lib/dao/dao";
-import { Entity, Roles, User, YN } from "../../_lib/dao/entity";
-import { Affiliate, AffiliateTypes, ExhibitData } from "../../_lib/pdf/ExhibitForm";
+import { DAOConsenter, DAOEntity, DAOInvitation, DAOUser, FactoryParms } from "../../_lib/dao/dao";
+import { AffiliateTypes, Entity, Roles, User, YN, Affiliate, ExhibitForm as ExhibitFormData, Consenter } from "../../_lib/dao/entity";
 import { MockCalls, TestParms, invokeAndAssert } from "../UtilsTest";
 import { FormType, FormTypes } from "./ExhibitEmail";
 
@@ -19,7 +18,7 @@ const deepClone = (obj:any) => JSON.parse(JSON.stringify(obj));
  */
 export function ExhibitEmailMock() {
   return {
-    ExhibitEmail: jest.fn().mockImplementation((data:ExhibitData, formType:FormType, entity:Entity) => {
+    ExhibitEmail: jest.fn().mockImplementation((data:ExhibitFormData, formType:FormType, entity:Entity) => {
       return {
         send: async (email:string):Promise<boolean> => {
           mockCalls.update(`email.send`);
@@ -44,8 +43,9 @@ export const daffyduck = { email: 'daffyduck@warnerbros.com', entity_id: entity1
 export const porkypig = { email: 'porkypig@warnerbros.com', entity_id: entity1.entity_id, role: Roles.RE_AUTH_IND, active: YN.Yes } as User;
 export const bugsbunny = { email: 'bugs@warnerbros.com', entity_id: entity1.entity_id, role: Roles.RE_AUTH_IND, active: YN.Yes } as User;
 export const badUser = { email: BAD_EXHIBIT_RECIPIENT_EMAIL, entity_id: entity1.entity_id, role:Roles.RE_AUTH_IND, active: YN.Yes } as User;
-export const foghorLeghorn = { email: 'foghorn@looneyTunes.com', type: AffiliateTypes.ACADEMIC, fullname: 'Foghorn Leghorn', organization: 'Looney Tunes', phone: '781-444-6666', title:'Head Rooster' } as Affiliate;
-export const wileECoyote = { email: 'coyote@acme.com', type: AffiliateTypes.EMPLOYER, fullname: 'Wile E. Coyote', organization: 'ACME', phone: '617-333-5555', title:'Acme. tester' } as Affiliate;
+export const sylvesterTheCat = { email: 'sylvester@looneyTunes.com', fullname: 'Sylvester the Cat', title: 'Cat', active: YN.Yes } as Consenter;
+export const foghorLeghorn = { email: 'foghorn@looneyTunes.com', affiliateType: AffiliateTypes.ACADEMIC, fullname: 'Foghorn Leghorn', org: 'Looney Tunes', phone_number: '781-444-6666', title:'Head Rooster' } as Affiliate;
+export const wileECoyote = { email: 'coyote@acme.com', affiliateType: AffiliateTypes.EMPLOYER, fullname: 'Wile E. Coyote', org: 'ACME', phone_number: '617-333-5555', title:'Acme. tester' } as Affiliate;
 export const affiliates = [ foghorLeghorn, wileECoyote ] as Affiliate[];
 export function DaoMock(originalModule: any) {
   return {
@@ -87,6 +87,11 @@ export function DaoMock(originalModule: any) {
           case "invitation":
             mockCalls.update('invitation.read');
             return {} as DAOInvitation;
+          case "consenter":
+            mockCalls.update('consenter.read');
+            return { read: async ():Promise<Consenter|Consenter[]> => {
+              return sylvesterTheCat;
+            }} as DAOConsenter;
         }
       })
     }
@@ -180,11 +185,11 @@ export const SendAffiliateData = {
       _handler, mockEvent,
       incomingPayload: { 
         task, 
-        parameters: { exhibit_data: { affiliates:{ type: AffiliateTypes.EMPLOYER } as Affiliate } } 
+        parameters: { exhibit_data: { affiliates:{ affiliateType: AffiliateTypes.EMPLOYER } as Affiliate } } 
       } as IncomingPayload
     });
   },
-  missingFullname: async(_handler:any, mockEvent:any, task:string, message:string) => {
+  missingEmail: async(_handler:any, mockEvent:any, task:string, message:string) => {
     await invokeAndAssert({
       expectedResponse: {
         statusCode: 400,
@@ -197,9 +202,9 @@ export const SendAffiliateData = {
       incomingPayload: { 
         task, 
         parameters: { exhibit_data: { 
-          affiliates:{ type: AffiliateTypes.EMPLOYER } as Affiliate,
+          affiliates: [{ affiliateType: AffiliateTypes.EMPLOYER }] as Affiliate[],
           entity_id: entity1.entity_id,          
-        } as ExhibitData} 
+        } as ExhibitFormData} 
       } as IncomingPayload
     });
   },
@@ -217,12 +222,13 @@ export const SendAffiliateData = {
       incomingPayload: { 
         task, 
         parameters: {
+          email: sylvesterTheCat.email,
           exhibit_data: {
             email: 'yosemitesam@warnerbros.com',
             entity_id: BAD_ENTITY_ID1,
             fullname: 'Yosemite Sam',
             affiliates
-          } as ExhibitData
+          } as ExhibitFormData
         } 
       } as IncomingPayload
     } as TestParms);
@@ -244,12 +250,13 @@ export const SendAffiliateData = {
       incomingPayload: { 
         task, 
         parameters: {
+          email: sylvesterTheCat.email,
           exhibit_data: {
             email: 'yosemitesam@warnerbros.com',
             entity_id: BAD_ENTITY_ID2,
             fullname: 'Yosemite Sam',
             affiliates
-          } as ExhibitData
+          } as ExhibitFormData
         } 
       } as IncomingPayload
     } as TestParms);
@@ -272,12 +279,13 @@ export const SendAffiliateData = {
       incomingPayload: { 
         task, 
         parameters: {
+          email: sylvesterTheCat.email,
           exhibit_data: {
             email: 'yosemitesam@warnerbros.com',
             entity_id: BAD_ENTITY_ID3,
             fullname: 'Yosemite Sam',
             affiliates: _affiliates
-          } as ExhibitData
+          } as ExhibitFormData
         } 
       } as IncomingPayload
     } as TestParms;
@@ -324,12 +332,13 @@ export const SendAffiliateData = {
       incomingPayload: { 
         task, 
         parameters: {
+          email: sylvesterTheCat.email,
           exhibit_data: {
             email: 'yosemitesam@warnerbros.com',
             entity_id: entity1.entity_id,
             fullname: 'Yosemite Sam',
             affiliates: _affiliates
-          } as ExhibitData
+          } as ExhibitFormData
         } 
       } as IncomingPayload
     } as TestParms;
