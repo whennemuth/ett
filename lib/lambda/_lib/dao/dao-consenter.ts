@@ -10,7 +10,7 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
   const docClient = DynamoDBDocumentClient.from(dbclient);
   const TableName = process.env.DYNAMODB_CONSENTER_TABLE_NAME || '';
   
-  let { email, active=YN.Yes, fullname, exhibit_form, 
+  let { email, active=YN.Yes, fullname, exhibit_forms, 
     create_timestamp=(new Date().toISOString()), consented_timestamp, renewed_timestamp, rescinded_timestamp
   } = consenterInfo;
 
@@ -48,7 +48,7 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
     if(consented_timestamp) throwIllegalParm('create', ConsenterFields.consented_timestamp);
     if(rescinded_timestamp) throwIllegalParm('create', ConsenterFields.rescinded_timestamp);
     if(renewed_timestamp) throwIllegalParm('create', ConsenterFields.renewed_timestamp);
-    if(exhibit_form) throwIllegalParm('create', ConsenterFields.exhibit_form);
+    if(exhibit_forms) throwIllegalParm('create', ConsenterFields.exhibit_forms);
 
     // Make sure the original userinfo object gets a create_timestamp value if a default value is invoked.
     if( ! consenterInfo.create_timestamp) consenterInfo.create_timestamp = create_timestamp;
@@ -141,7 +141,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
         case UPDATE_TYPE.exhibit:
           consenter = {
             email,
-            exhibit_form: {
+            exhibit_forms: [{
               entity_id: 'abc-123',
               affiliates: [
                 {
@@ -161,7 +161,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
                   title: 'Researcher'
                 }
               ]
-            }
+            }]
           };
       }
       var dao = ConsenterCrud(consenter);
