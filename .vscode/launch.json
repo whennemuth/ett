@@ -213,6 +213,22 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "PDF send disclosure form",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/authorized-individual/DisclosureRequestEmail.ts",
+        "RUN_MANUALLY_SEND_DISCLOSURE_FORM"
+      ],
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      },
+      "envFile": "${workspaceFolder}/.env",
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "PDF disclosure form Page 1",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
