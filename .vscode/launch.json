@@ -191,7 +191,7 @@
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
         "${workspaceFolder}/lib/lambda/functions/consenting-person/ExhibitEmail.ts",
-        "RUN_MANUALLY"
+        "RUN_MANUALLY_SEND_EXHIBIT_FORM"
       ],
       "env": {
         "AWS_PROFILE": "bu",
