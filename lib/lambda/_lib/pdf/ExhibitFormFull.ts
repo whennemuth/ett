@@ -1,44 +1,57 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, PDFFont, PDFPage } from 'pdf-lib';
 import { Affiliate, AffiliateType, AffiliateTypes, Consenter, ExhibitForm as ExhibitFormData } from '../dao/entity';
 import { ExhibitForm, blue, white } from './ExhibitForm';
-import { IPdfForm } from './PdfForm';
-import { Align, Rectangle, VAlign } from './lib/Rectangle';
-import { Margins } from './lib/Utils';
+import { IPdfForm, PdfForm } from './PdfForm';
+import { Page } from './lib/Page';
+import { Rectangle } from './lib/Rectangle';
+import { Align, Margins, VAlign } from './lib/Utils';
 
 /**
  * This class represents an exhibit pdf form that can be dynamically generated around the provided exhibit data.
  */
-export class ExhibitFormFull implements IPdfForm {
+export class ExhibitFormFull extends PdfForm implements IPdfForm {
   private baseForm:ExhibitForm
   private consenter:Consenter;
+  private font:PDFFont;
+  private boldfont:PDFFont;
 
   constructor(baseForm:ExhibitForm, consenter:Consenter) {
+    super();
     this.baseForm = baseForm;
     this.consenter = consenter;
+    this.page = baseForm.page;
   }
 
   /**
    * @returns The bytes for the entire pdf form.
    */
   public async getBytes():Promise<Uint8Array> {
-    const { baseForm, drawTitle, drawIntro, drawAffiliateGroup } = this;
+    const { baseForm, drawTitle, drawIntro, drawAffiliateGroup, drawLogo } = this;
 
     await baseForm.initialize();
 
-    const { doc, drawLogo } = baseForm;
+    const { doc, embeddedFonts, pageMargins, font, boldfont } = baseForm;
+    
+    this.doc = doc;
+    this.embeddedFonts = embeddedFonts;
+    this.pageMargins = pageMargins;
+    this.font = font;
+    this.boldfont = boldfont;
+    this.page = new Page(doc.addPage([620, 785]) as PDFPage, this.pageMargins, this.embeddedFonts);
+    baseForm.page = this.page;
+    
+    await drawLogo(this.page);
 
-    drawLogo();
+    await drawTitle();
 
-    drawTitle();
+    await drawIntro();
 
-    drawIntro();
+    await drawAffiliateGroup(AffiliateTypes.EMPLOYER, 'Employers');
 
-    drawAffiliateGroup(AffiliateTypes.EMPLOYER, 'Employers');
+    await drawAffiliateGroup(AffiliateTypes.ACADEMIC, 'Academic / Professional Societies & Organizations');
 
-    drawAffiliateGroup(AffiliateTypes.ACADEMIC, 'Academic / Professional Societies & Organizations');
-
-    drawAffiliateGroup(AffiliateTypes.OTHER, 'Other Affiliated Organizations');
+    await drawAffiliateGroup(AffiliateTypes.OTHER, 'Other Affiliated Organizations');
 
     const pdfBytes = await doc.save();
     return pdfBytes;
@@ -47,28 +60,38 @@ export class ExhibitFormFull implements IPdfForm {
   /**
    * Draw the title and subtitle
    */
-  private drawTitle = () => {
-    const { page, boldfont, font } = this.baseForm;
-    page.drawCenteredText('ETHICAL TRANSPARENCY TOOL (ETT)', { size: 12, font:boldfont }, 4);
-    page.drawCenteredText('Full Exhibit Form – Consent Recipients/Affiliates', { size:10, font }, 8);
+  private drawTitle = async () => {
+    const { page, boldfont, font } = this;
+    await page.drawCenteredText('ETHICAL TRANSPARENCY TOOL (ETT)', { size: 12, font:boldfont }, 4);
+    await page.drawCenteredText('Full Exhibit Form – Consent Recipients/Affiliates', { size:10, font }, 8);
   }
 
   /**
    * Draw the introductory language
    */
-  private drawIntro = () => {
-    const { consenter, baseForm: { page, boldfont }} = this;
+  private drawIntro = async () => {
+    const { consenter, page, boldfont } = this;
     const size = 10;
-    page.drawWrappedText(`This Full Exhibit Form was prepared by ${consenter.fullname} and provides ` + 
-      `an up-to-date list of the names and contacts for their known Consent Recipients on the ` +
-      `date of this Exhibit.  The definitions in their Consent Form also apply to this Full ` + 
-      `Exhibit Form.`,
-      { size, font:boldfont }, 4, 8
-    );
-    page.drawWrappedText('Each consent recipient below has received a copy of this form with ' +
-      'the details of the other recipients redacted.',
-      { size, font:boldfont }, 4, 8);
-    page.drawText('Full known Consent Recipient(s) list:', { size, font:boldfont }, 16);
+    await page.drawWrappedText(
+      {
+        text: `This Full Exhibit Form was prepared by ${consenter.fullname} and provides ` + 
+          `an up-to-date list of the names and contacts for their known Consent Recipients on the ` +
+          `date of this Exhibit.  The definitions in their Consent Form also apply to this Full ` + 
+          `Exhibit Form.`,
+        options: { size, font:boldfont },
+        linePad: 4,
+        padBottom: 8
+      });
+    await page.drawWrappedText(
+      {
+        text: 'Each consent recipient below has received a copy of this form with ' +
+          'the details of the other recipients redacted.',
+        options: { size, font:boldfont },
+        linePad: 4,
+        padBottom: 8
+      });
+      
+    await page.drawText('Full known Consent Recipient(s) list:', { size, font:boldfont }, 16);
   }
 
   /**
@@ -76,11 +99,11 @@ export class ExhibitFormFull implements IPdfForm {
    * @param affiliateType 
    * @param title 
    */
-  private drawAffiliateGroup = (affiliateType:AffiliateType, title:string) => {
-    const { page, font, boldfont, data, _return, drawAffliate } = this.baseForm;
+  private drawAffiliateGroup = async (affiliateType:AffiliateType, title:string) => {
+    const { page, font, boldfont, baseForm: { data, _return, drawAffliate } } = this;
     let size = 10;
 
-    new Rectangle({
+    await new Rectangle({
       text: title,
       page,
       align: Align.center,
@@ -88,24 +111,26 @@ export class ExhibitFormFull implements IPdfForm {
       options: { borderWidth:1, borderColor:blue, color:blue, width:page.bodyWidth, height:16 },
       textOptions: { size, font:boldfont, color: white },
       margins: { left: 8 } as Margins
-    }).draw(() => {
-      page.basePage.moveDown(16);
-      const affiliates = (data.affiliates as Affiliate[]).filter(affiliate => affiliate.affiliateType == affiliateType);
-      affiliates.forEach(a => {
-        drawAffliate(a, size);
-        _return(4);
-      });
-      if(affiliates.length == 0) {
-        new Rectangle({
-          text: 'None',
-          page,
-          align: Align.center, valign: VAlign.middle,
-          options: { borderWidth:1, borderColor:blue, width:page.bodyWidth, height:16 },
-          textOptions: { size, font }
-        }).draw(() => {});
-      }
-      _return(16);
-    });
+    }).draw();
+    page.basePage.moveDown(16);
+
+    const affiliates = (data.affiliates as Affiliate[]).filter(affiliate => affiliate.affiliateType == affiliateType);
+    for(let i=0; i<affiliates.length; i++) {
+      const a = affiliates[i];
+      await drawAffliate(a, size);
+      _return(4);
+    };
+
+    if(affiliates.length == 0) {
+      await new Rectangle({
+        text: 'None',
+        page,
+        align: Align.center, valign: VAlign.middle,
+        options: { borderWidth:1, borderColor:blue, width:page.bodyWidth, height:16 },
+        textOptions: { size, font }
+      }).draw();
+    }
+    _return(16);
   }
 
   public async writeToDisk(path:string) {

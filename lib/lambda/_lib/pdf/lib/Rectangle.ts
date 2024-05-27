@@ -1,12 +1,10 @@
 import { PDFPageDrawRectangleOptions, PDFPageDrawTextOptions } from "pdf-lib";
-import { Margins } from "./Utils";
+import { Align, Margins, VAlign } from "./Utils";
 import { Page } from "./Page";
-
-export enum Align { left, right, center };
-export enum VAlign { top, bottom, middle };
+import { TextLine } from "./TextLine";
 
 export type RectangleOptions = {
-  page: Page, 
+  page: Page,
   options: PDFPageDrawRectangleOptions, 
   text: string|string[], 
   textOptions: PDFPageDrawTextOptions,
@@ -22,26 +20,31 @@ export class Rectangle {
     this.options = options;
   }
 
-  public draw(reposition:any) {
+  public draw = async () => {
     const { page, text, options } = this.options;
     page.basePage.drawRectangle(options);
     if(text) {
-      this.drawInnerText();
+      await this.drawInnerText();
     }
-    reposition();
   }
 
-  private drawInnerText() {
-    const { page, text, textOptions } = this.options;
+  private drawInnerText = async () => {
+    const { page, page: { basePage }, text, textOptions } = this.options;
+    const startY = page.basePage.getY();
     const lines:string[] = text instanceof Array ? text : [ text ];
-    page.drawTextOffset(lines, textOptions, this.getXOffset(lines[0]), this.getYOffset(text));
+    // const xOffset = await this.getXOffset(lines[0]);
+    const yOffset = this.getYOffset(text);
+    const getXOffsetForLine = async (line:string) => {
+      return this.getXOffset(line);
+    }
+    await page.drawTextOffset(lines, textOptions, getXOffsetForLine, yOffset);
+    basePage.moveTo(basePage.getX(), startY);
   }
 
-  private getXOffset(text:string):number {
-    const { options, textOptions, align=Align.left, margins } = this.options;
+  private getXOffset = async (text:string):Promise<number> => {
+    const { page, options, textOptions, align=Align.left, margins } = this.options;
     const { left=0, right=0 } = margins || {};
-    const { font, size } = textOptions;
-    const textWidth:number = font?.widthOfTextAtSize(text as string, size!) || 0;
+    const textWidth = await new TextLine(page, textOptions).getCombinedWidthOfText(text);
     switch(align) {
       case Align.left:
         return left;

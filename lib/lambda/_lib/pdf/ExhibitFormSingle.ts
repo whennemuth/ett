@@ -1,34 +1,48 @@
 import { writeFile } from "node:fs/promises";
+import { PDFFont, PDFPage } from "pdf-lib";
 import { Affiliate, AffiliateTypes, Consenter, ExhibitForm as ExhibitFormData } from "../dao/entity";
-import { IPdfForm } from './PdfForm';
 import { ExhibitForm } from './ExhibitForm';
+import { IPdfForm, PdfForm } from './PdfForm';
+import { Page } from "./lib/Page";
 
-export class ExhibitFormSingle implements IPdfForm {
+export class ExhibitFormSingle extends PdfForm implements IPdfForm {
   private baseForm:ExhibitForm
   private consenter:Consenter;
-
+  private font:PDFFont;
+  private boldfont:PDFFont;
+  
   constructor(baseForm:ExhibitForm, consenter:Consenter) {
+    super();
     this.baseForm = baseForm;
     this.consenter = consenter;
+    this.page = baseForm.page;
   }
 
   /**
    * @returns The bytes for the entire pdf form.
    */
   public async getBytes():Promise<Uint8Array> {
-    const { baseForm, drawTitle, drawIntro } = this;
+    const { baseForm, drawTitle, drawIntro, drawLogo } = this;
 
     await baseForm.initialize();
+    
+    const { doc, data, embeddedFonts, pageMargins, font, boldfont, drawAffliate } = baseForm;
 
-    const { doc, data, drawLogo, drawAffliate } = baseForm;
+    this.doc = doc;
+    this.embeddedFonts = embeddedFonts;
+    this.pageMargins = pageMargins;
+    this.font = font;
+    this.boldfont = boldfont;
+    this.page = new Page(doc.addPage([620, 785]) as PDFPage, pageMargins, embeddedFonts);
+    baseForm.page = this.page;
 
-    drawLogo();
+    await drawLogo(this.page);
 
-    drawTitle();
+    await drawTitle();
 
-    drawIntro();
+    await drawIntro();
 
-    drawAffliate(data.affiliates![0] as Affiliate, 10);
+    await drawAffliate(data.affiliates![0] as Affiliate, 10);
 
     const pdfBytes = await doc.save();
     return pdfBytes;
@@ -37,26 +51,37 @@ export class ExhibitFormSingle implements IPdfForm {
   /**
    * Draw the title and subtitle
    */
-  private drawTitle = () => {
-    const { page, boldfont, font } = this.baseForm;
-    page.drawCenteredText('ETHICAL TRANSPARENCY TOOL (ETT)', { size: 12, font:boldfont }, 4);
-    page.drawCenteredText('Single Exhibit Form – Consent Recipients/Affiliates', { size:10, font }, 8);
+  private drawTitle = async () => {
+    const { boldfont, font, page } = this;
+    await page.drawCenteredText('ETHICAL TRANSPARENCY TOOL (ETT)', { size: 12, font:boldfont }, 4);
+    await page.drawCenteredText('Single Exhibit Form – Consent Recipients/Affiliates', { size:10, font }, 8);
   }
 
   /**
    * Draw the introductory language
    */
-  private drawIntro = () => {
-    const { consenter, baseForm: { page, boldfont }} = this;
+  private drawIntro = async () => {
+    const { consenter, page, font} = this;
     const size = 10;
-    page.drawWrappedText(`This Single Exhibit Form was prepared by ${consenter.fullname} as part of ` + 
-      `an exhibit form provided to an ETT authorized individual listing you as a known Consent Recipient. ` +
-      `The definitions in their Consent Form also apply to this single Exhibit Form.`,
-      { size, font:boldfont }, 4, 8
-    );
-    page.drawWrappedText('Yours may be one of a number of consent recipients provided to the ETT authorized individual.',
-      { size, font:boldfont }, 4, 8);
-    page.drawText('Your full details as Consent Recipient:', { size, font:boldfont }, 16);
+    await page.drawWrappedText(
+      {
+        text: `This Single Exhibit Form was prepared by <b>${consenter.fullname}</b> as part of ` + 
+          `an exhibit form provided to an ETT authorized individual listing you as a known Consent Recipient. ` +
+          `The definitions in their Consent Form also apply to this single Exhibit Form.`,
+        options: { size, font },
+        linePad: 4,
+        padBottom: 8
+      });
+
+    await page.drawWrappedText(
+      {
+        text: `Yours may be one of a number of consent recipients provided to the ETT authorized individual.`,
+        options: { size, font },
+        linePad: 4,
+        padBottom: 8
+      })
+      ;
+      await page.drawText('Your full details as Consent Recipient:', { size, font }, 16);
   }
 
   public async writeToDisk(path:string) {
