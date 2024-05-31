@@ -1,10 +1,11 @@
-import { DisclosureForm, DisclosureFormData } from "../../_lib/pdf/DisclosureForm";
-import { sendEmail } from "../EmailWithAttachments";
-import { bugsbunny, daffyduck, yosemitesam } from "./MockObjects";
-import { test_data as test_exhibit_data } from '../consenting-person/ExhibitEmail';
-import { ExhibitFormSingle } from '../../_lib/pdf/ExhibitFormSingle'
 import { ExhibitForm as ExhibitFormData } from "../../_lib/dao/entity";
+import { ConsentForm } from "../../_lib/pdf/ConsentForm";
+import { DisclosureForm, DisclosureFormData } from "../../_lib/pdf/DisclosureForm";
 import { ExhibitForm } from "../../_lib/pdf/ExhibitForm";
+import { ExhibitFormSingle } from '../../_lib/pdf/ExhibitFormSingle';
+import { sendEmail } from "../EmailWithAttachments";
+import { test_data as test_exhibit_data } from '../consenting-person/ExhibitEmail';
+import { bugsbunny, daffyduck, yosemitesam } from "./MockObjects";
 
 /**
  * This class represents an email that is issued to an affilliate for soliciting disclosure information.
@@ -20,11 +21,12 @@ export class DisclosureRequestEmail {
   }
 
   public send = async (emailAddress:string):Promise<boolean> => { 
-    const { data, exhibitData, data: { requestingEntity: { name:entity }}, data: { consenter: { fullname }} } = this;
+    const { data, exhibitData, data: { requestingEntity: { name:entityName }}, 
+    data: { consenter, consenter: { fullname }} } = this;
 
     return await sendEmail({
       subject: 'ETT Disclosure Request',
-      message: `Please find enclosed a disclosure form from ${entity}, including a consent form from ` +
+      message: `Please find enclosed a disclosure form from ${entityName}, including a consent form from ` +
         `${fullname} who is the subject of the disclosure and their original original exhibit form ` +
         `naming you to disclose.`,
       emailAddress,
@@ -35,11 +37,15 @@ export class DisclosureRequestEmail {
           description: 'disclosure-form.pdf'
         },
         {
-          pdf: new ExhibitFormSingle(new ExhibitForm(exhibitData), data.consenter),
+          pdf: new ExhibitFormSingle(new ExhibitForm(exhibitData), consenter),
           name: 'exhibit-form-single.pdf',
           description: 'exhibit-form-single.pdf'
         },
-        // TODO: Add consent form to this array
+        {
+          pdf: new ConsentForm({ consenter, entityName }),
+          name: 'consent-form.pdf',
+          description: 'consent-form.pdf'
+        }
       ]  
     });
   }
