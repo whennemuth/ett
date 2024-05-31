@@ -32,7 +32,6 @@ export class Rectangle {
     const { page, page: { basePage }, text, textOptions } = this.options;
     const startY = page.basePage.getY();
     const lines:string[] = text instanceof Array ? text : [ text ];
-    // const xOffset = await this.getXOffset(lines[0]);
     const yOffset = this.getYOffset(text);
     const getXOffsetForLine = async (line:string) => {
       return this.getXOffset(line);
@@ -42,33 +41,33 @@ export class Rectangle {
   }
 
   private getXOffset = async (text:string):Promise<number> => {
-    const { page, options, textOptions, align=Align.left, margins } = this.options;
+    const { page, options: { x, width=page.bodyWidth }, textOptions, align=Align.left, margins } = this.options;
     const { left=0, right=0 } = margins || {};
     const textWidth = await new TextLine(page, textOptions).getCombinedWidthOfText(text);
     switch(align) {
       case Align.left:
-        return left;
+        return left + (x ? x - (page.basePage.getX()) : 0);
       case Align.right:
-        return options.width! - textWidth - right;
+        return (x ? x - (page.basePage.getX()) : 0) + (width - textWidth - right);
       case Align.center:
-        return (options.width! - textWidth) / 2;
+        return (x ?? 0) + (width - textWidth) / 2;
     }
   }
 
   private getYOffset(text:string|string[]):number {
-    const { textOptions, options, valign=VAlign.middle, margins } = this.options;
-    const { top=0, bottom=0 } = margins || {};
-    const { font, size } = textOptions;
+    const { textOptions, options: { height }, valign=VAlign.middle, margins } = this.options;
+    const { top=0 } = margins || {};
+    const { font, size, lineHeight } = textOptions;
     const lines:string[] = text instanceof Array ? text : [ text ];
-    const textHeight:number = font?.heightAtSize(size!) || 0;
+    const textHeight:number = lineHeight ?? (font?.heightAtSize(size!) || 0);
     const fullHeight = textHeight * lines.length;
     switch(valign) {
       case VAlign.top:
-        return 0 - (options.height! - (fullHeight + top));
+        return 0 - (height! - ((size ?? 0) + (top!)));
       case VAlign.bottom:
-        return 0 - bottom;
+        return 0 - (fullHeight);
       case VAlign.middle:
-        return 0 - (fullHeight + ((options.height! - fullHeight) / 2) - textHeight);
+        return 0 - (fullHeight + (((height ?? (fullHeight * 2)) - fullHeight) / 2) - textHeight);
     }
   }
 }
