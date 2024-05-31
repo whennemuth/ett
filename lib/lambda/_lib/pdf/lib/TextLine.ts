@@ -4,7 +4,10 @@ import { Page } from "./Page";
 import { Margins } from "./Utils";
 
 /** Represents, within the line of text, a segment with its own formatting */
-export type ParsedItem = { text:string, italics:boolean, bold:boolean, newfont:PDFFont, width:number, fontSize:number };
+export type ParsedItem = { 
+  text:string, italics:boolean, bold:boolean, underline:boolean, newfont:PDFFont, width:number, 
+  fontSize:number, yOffset:number 
+};
 
 /**
  * This class represents a line of text, which can have some rudimentary markup in it as an inline way
@@ -30,9 +33,39 @@ export class TextLine {
     const { page: { basePage }, options, options: { font:originalFont }, parse, getFont } = this;
     const parsed = await parse(text);
     let movedRight:number = 0;
+    let { x } = options;
 
+    const moveRight = (width:number) => {
+      basePage.moveRight(width);
+      movedRight += width;
+      if(x) {
+        x += width; // Centered or offset text will have x set in options, so advance it.
+      }
+    }
+
+    const drawUnderline = (width:number, opts:PDFPageDrawTextOptions) => {
+      const { x, y, size } = opts;
+      const Y = (y ?? basePage.getY()) - (size ? size/4 : 0);
+      const xStart = x ?? basePage.getX();
+      const xEnd = xStart + (width ?? 0);
+      basePage.drawLine({
+        start: { x:xStart, y:Y },
+        end: { x:xEnd, y:Y },
+        thickness:1,
+      });  
+    }
+
+    const drawText = (item:ParsedItem, opts:PDFPageDrawTextOptions) => {
+      const { text, width, underline } = item;
+      basePage.drawText(text, opts);
+      if(underline) {
+        drawUnderline(width, opts)
+      }
+    }
+
+    let newopts = Object.assign({}, options);
     for(let i=0; i<parsed.length; i++) {
-      const item:ParsedItem = parsed[i];
+      const item = parsed[i];
       const newfont = await getFont(originalFont!, item);
       
       const addopts = {
@@ -40,12 +73,32 @@ export class TextLine {
         size: item.fontSize
       } as PDFPageDrawTextOptions;
 
-      let newopts = Object.assign({}, options);
+      if(x) {
+        addopts.x = x;
+      }
+
       newopts = Object.assign(newopts, addopts);
-      basePage.drawText(item.text, newopts);
+
+      // "Jog" up or down for subscript or superscript
+      if(item.yOffset > 0) {
+        basePage.moveUp(item.yOffset)
+      }
+      if(item.yOffset < 0) {
+        basePage.moveDown(item.yOffset);
+      }
+
+      drawText(item, newopts);
+
+      // "Unjog" up or down for subscript or superscript
+      if(item.yOffset > 0) {
+        basePage.moveDown(item.yOffset)
+      }
+      if(item.yOffset < 0) {
+        basePage.moveUp(item.yOffset);
+      }
+
       if(i+1 < parsed.length) {
-        basePage.moveRight(item.width);
-        movedRight += item.width;
+        moveRight(item.width);
       }
     };
     basePage.moveLeft(movedRight);
@@ -61,7 +114,7 @@ export class TextLine {
     const tagRegex = /(<[^<>]+>)/g; // Match an element like <i> or </i>
     // Since the split separator is a regex, the separators are included in the output array.
     const items = text.split(tagRegex); 
-    let italics = false, bold = false, sizeDiff = 0;
+    let italics = false, bold = false, underline = false, sizeDiff = 0, subSizeDiff = 0, yOffset = 0;
     const parsedItems = [] as ParsedItem[];
 
     for(let i=0; i<items.length; i++) {
@@ -71,18 +124,24 @@ export class TextLine {
         case '<b>': bold = true; break;
         case '</i>': italics = false; break;
         case '</b>': bold = false; break;
+        case '<u>': underline = true; break;
+        case '</u>': underline = false; break;
+        case '<sub>': subSizeDiff = -2; yOffset = 4; break;
+        case '<sup>': subSizeDiff = -2; yOffset = 4; break;
+        case '</sub>': subSizeDiff = 0; yOffset = 0; break;
+        case '</sup>': subSizeDiff = 0; yOffset = 0; break
         default:
           if(`${item}`.trim().length > 0 || /^\x20+$/.test(item)) {
-            const matches = /^<\/?(\-?\d{1,2})>$/.exec(item);
-            if(matches) {
-              sizeDiff = item.includes('/') ? 0 : parseInt(matches[1]);
+            const matchesSizeChange = /^<\/?(\-?\d{1,2})>$/.exec(item);
+            if(matchesSizeChange) {
+              sizeDiff = item.includes('/') ? 0 : parseInt(matchesSizeChange[1]);
             }
             else {
-              const parsed = { text:item, bold, italics } as ParsedItem;
+              const parsed = { text:item, bold, italics, underline, yOffset } as ParsedItem;
               const newfont = await getFont(originalFont!, parsed);
               parsed.newfont = newfont;
               const width = newfont.widthOfTextAtSize(item, (size! + sizeDiff));
-              parsed.fontSize = (size! + sizeDiff);
+              parsed.fontSize = (size! + sizeDiff + subSizeDiff);
               parsed.width = width;
               this.combinedWidthOfTextAtSize += width;
               parsedItems.push(parsed);   
@@ -122,20 +181,21 @@ export class TextLine {
     
     // Split the original font name into its formatting parts.
     const regex = /(Courier)|(Helvetica)|(TimesRoman)|(Bold)|(Oblique)|(Italic)/g;
-    const parts = (originalFont.name.match(regex) || []) as string[];
+    let parts = (originalFont.name.match(regex) || []) as string[];
+    const { bold, italics } = item;
 
     // Extend the formatting parts with any new formats
-    if(item.bold && ! parts.includes('Bold')) {
+    if(bold && ! parts.includes('Bold')) {
       parts.push('Bold');
     }
     switch(parts[0]) {
       case 'Courier': case 'Helvetica':
-        if(item.italics && ! parts.includes('Oblique')) {
+        if(italics && ! parts.includes('Oblique')) {
           parts.push('Oblique');
         }
         break;
       case 'TimesRoman':
-        if(item.italics && ! parts.includes('Italic')) {
+        if(italics && ! parts.includes('Italic')) {
           parts.push('Italic');
         }
         break;
@@ -181,7 +241,10 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_TEXTLINE') {
       size: 10,
     } as PDFPageDrawTextOptions);
     // return textline.parse('Draw this <i>italisized <b>and < bolded</b> text</i> now');
-    return textline.parse('Draw this <i><b>italisized and < bolded text</b></i> now');
+    return textline.parse(
+      'Draw this <i><b>italisized and < bolded text</b></i> now with ' +
+      'one<sup>1</sup> superscript and one<sub>2</sub> subscript'
+    );
   })
   .then((parsed:ParsedItem[]) => {
     const own = Object.getOwnPropertyNames(parsed[0]);
