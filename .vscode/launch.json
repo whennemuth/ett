@@ -164,6 +164,61 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "PDF consent form",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/pdf/ConsentForm.ts",
+        "RUN_MANUALLY_CONSENT_FORM"
+      ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF consent form page 1",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/pdf/ConsentFormPage1.ts",
+        "RUN_MANUALLY_CONSENT_FORM_PAGE_1"
+      ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF consent form page 2",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/pdf/ConsentFormPage2.ts",
+        "RUN_MANUALLY_CONSENT_FORM_PAGE_2"
+      ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF consent form page 3",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/pdf/ConsentFormPage3.ts",
+        "RUN_MANUALLY_CONSENT_FORM_PAGE_3"
+      ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF consent form page 4",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/pdf/ConsentFormPage4.ts",
+        "RUN_MANUALLY_CONSENT_FORM_PAGE_4"
+      ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "PDF full exhibit form",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
