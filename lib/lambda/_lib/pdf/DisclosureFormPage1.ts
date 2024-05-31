@@ -350,7 +350,7 @@ export class DisclosureFormPage1 extends PdfForm implements IPdfForm {
       valign: VAlign.top,
       options: { color:grey, opacity:.2, borderWidth:1, borderColor:blue, width:bodyWidth, height:96 },
       textOptions: { size, font },
-      margins: { left: 8 } as Margins
+      margins: { left: 8, top:6 } as Margins
     }).draw();
     _return();
 
