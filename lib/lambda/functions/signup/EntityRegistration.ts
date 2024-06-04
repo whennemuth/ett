@@ -14,7 +14,7 @@ export enum Task {
 }
 
 /**
- * This handler is for the consent lambda function which takes all api calls related to activity that 
+ * This handler is for the entity registration lambda function which takes all api calls related to activity that 
  * happens on the second screen of registration for RE_ADMIN and AUTH_IND users.
  * @param event 
  * @returns 
@@ -48,7 +48,7 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
 
     switch(task) {
 
-      // Just want the invitation, probably to know its acknowledge and consent statuses.
+      // Just want the invitation, probably to know its acknowledge and registration statuses.
       case Task.LOOKUP_INVITATION:
         return okResponse('Ok', invitation);
 
@@ -70,7 +70,7 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         }
         return okResponse('Ok', { entity:(entity||null), users, invitation });
 
-      // Officially set the invitation as consented, replace its dummy email with the true value, and set its fullname.
+      // Officially set the invitation as registered, replace its dummy email with the true value, and set its fullname.
       // The PostSignup trigger lambda will come by later and "scrape" these out of the invitation for its own needs.
       case Task.REGISTER:
         if( ! event.queryStringParameters) {
@@ -91,18 +91,18 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
           title = decodeURIComponent(title);
         }
         
-        const { acknowledged_timestamp, consented_timestamp } = invitation;
+        const { acknowledged_timestamp, registered_timestamp } = invitation;
         if( ! acknowledged_timestamp) {
           return unauthorizedResponse('Unauthorized: Privacy policy has not yet been acknowledged');
         }
-        if(consented_timestamp) {
-          return okResponse(`Ok: Already consented at ${consented_timestamp}`);
+        if(registered_timestamp) {
+          return okResponse(`Ok: Already registered at ${registered_timestamp}`);
         }
-        if( await registration.registerConsent({ email, fullname, title } as Invitation)) {
-          return okResponse(`Ok: Consent registered for ${code}`);
+        if( await registration.registerUser({ email, fullname, title } as Invitation)) {
+          return okResponse(`Ok: Registration completed for ${code}`);
         }
 
-        return errorResponse('Error: Consent failed!');
+        return errorResponse('Error: Registration failed!');
 
       // This is the "nuclear option" - demolish the entire entity (users, invitations, entity, related cognito items)
       case Task.TERMINATE:

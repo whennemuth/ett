@@ -1,8 +1,8 @@
 import { OutgoingBody } from '../../../role/AbstractRole';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
 import { Invitation, Roles } from '../../_lib/dao/entity';
-import { Task, handler } from './Acknowledgement';
-import * as event from './AcknowledgementEventMock.json';
+import { Task, handler } from './EntityAcknowledgement';
+import * as event from './EntityAcknowledgementEventMock.json';
 
 let goodCode:string;
 let code = event.pathParameters['invitation-code'];

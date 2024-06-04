@@ -1,5 +1,5 @@
-import * as event from './ConsentEventMock.json';
-import { Task, handler } from './Consent';
+import * as event from './EntityRegistrationEventMock.json';
+import { Task, handler } from './EntityRegistration';
 import { Entity, Invitation, Roles, User, YN } from '../../_lib/dao/entity';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
 import { LambdaProxyIntegrationResponse, OutgoingBody } from '../../../role/AbstractRole';
@@ -11,7 +11,7 @@ let invitationCodeForEntityMismatch:string|undefined;
 let code = event.pathParameters['invitation-code'];
 let dte = new Date().toISOString();
 let alreadyAcknowledged:boolean = true;
-let alreadyConsented:boolean = true;
+let alreadyRegistered:boolean = true;
 
 const waitingroom = {
   entity_id: ENTITY_WAITING_ROOM, 
@@ -82,7 +82,7 @@ jest.mock('../../_lib/invitation/Registration', () => {
           let retval = null;
           if(goodCode == code) {
             const payload = {
-              code: goodCode, email: alreadyConsented ? bugs.email : goodCode
+              code: goodCode, email: alreadyRegistered ? bugs.email : goodCode
             } as Invitation
             Object.assign(payload, goodWaitingRoomInvitationPayload);
             if( ! inviteToWaitingRoom) {
@@ -92,13 +92,13 @@ jest.mock('../../_lib/invitation/Registration', () => {
             if(alreadyAcknowledged) {
               retval.acknowledged_timestamp = dte;
             }
-            if(alreadyConsented) {
-              retval.consented_timestamp = dte;
+            if(alreadyRegistered) {
+              retval.registered_timestamp = dte;
             }
           }
           if(invitationCodeForEntityMismatch == code) {
             const payload = {
-              code: invitationCodeForEntityMismatch, email: alreadyConsented ? bugs.email : invitationCodeForEntityMismatch
+              code: invitationCodeForEntityMismatch, email: alreadyRegistered ? bugs.email : invitationCodeForEntityMismatch
             } as Invitation
             Object.assign(payload, goodWaitingRoomInvitationPayload);
             payload.entity_id = 'unknown_entity_id';
@@ -110,7 +110,7 @@ jest.mock('../../_lib/invitation/Registration', () => {
         hasInvitation: async (): Promise<boolean> => {
           return true;
         },
-        registerConsent: async (invitation:Invitation, timestamp?:string):Promise<boolean> => {
+        registerUser: async (invitation:Invitation, timestamp?:string):Promise<boolean> => {
           return true;
         }
       };
@@ -192,7 +192,7 @@ const invokeAndAssert = async (testParms:TestParms) => {
   return bodyObj;
 }
 
-describe('Consent lambda trigger: handler validation', () => {
+describe('Entity Registration lambda trigger: handler validation', () => {
 
   it('Should return 400 response with message if task is not specified', async () => {
     await invokeAndAssert({
@@ -237,7 +237,7 @@ describe('Consent lambda trigger: handler validation', () => {
   });  
 });
 
-describe(`Consent lambda trigger: handler ${Task.LOOKUP_INVITATION}`, () => {
+describe(`Entity Registration lambda trigger: handler ${Task.LOOKUP_INVITATION}`, () => {
 
   it('Should return 401 response with message with no payload if inivtation code is unmatchable', async () => {
     goodCode = 'good_code';
@@ -256,7 +256,7 @@ describe(`Consent lambda trigger: handler ${Task.LOOKUP_INVITATION}`, () => {
   
   it('Should return a message_id in the payload if the invitation code is matched', async () => {
     goodCode = code;
-    const expectedPayload = { ok: true, code, email:bugs.email, acknowledged_timestamp:dte, consented_timestamp:dte };
+    const expectedPayload = { ok: true, code, email:bugs.email, acknowledged_timestamp:dte, registered_timestamp:dte };
     Object.assign(expectedPayload, goodWaitingRoomInvitationPayload);
     await invokeAndAssert({
       _handler:handler, code, task: Task.LOOKUP_INVITATION,
@@ -272,7 +272,7 @@ describe(`Consent lambda trigger: handler ${Task.LOOKUP_INVITATION}`, () => {
   });
 });
 
-describe(`Consent lambda trigger: handler ${Task.LOOKUP_ENTITY}`, () => {
+describe(`Entity Registration lambda trigger: handler ${Task.LOOKUP_ENTITY}`, () => {
 
   it('Should return 400 response with message entity cannot be determined from invitation lookup', async () => {
     goodCode = 'some_other_code';
@@ -311,7 +311,7 @@ describe(`Consent lambda trigger: handler ${Task.LOOKUP_ENTITY}`, () => {
     const expectedPayload = { ok: true };
     const expectedInvitation = Object.assign({}, goodNonWaitingRoomInvitationPayload);
     expectedInvitation.acknowledged_timestamp = dte;
-    expectedInvitation.consented_timestamp = dte;
+    expectedInvitation.registered_timestamp = dte;
     expectedInvitation.code = 'my_invitation_code2',
     expectedInvitation.email = bugs.email;
 
@@ -331,12 +331,12 @@ describe(`Consent lambda trigger: handler ${Task.LOOKUP_ENTITY}`, () => {
   inviteToWaitingRoom = true;
 });
 
-describe(`Consent lambda trigger: handler ${Task.REGISTER}`, () => {
+describe(`Entity Registration lambda trigger: handler ${Task.REGISTER}`, () => {
 
   it('Should NOT attempt to update if email querystring parameter is missing', async () => {
     goodCode = code;
     alreadyAcknowledged = true;
-    alreadyConsented = false;
+    alreadyRegistered = false;
     await invokeAndAssert({
       _handler:handler, code, task: Task.REGISTER,
       queryStringParameters: { entity_id:bugs.entity_id, fullname:bugs.fullname },
@@ -353,7 +353,7 @@ describe(`Consent lambda trigger: handler ${Task.REGISTER}`, () => {
   it('Should NOT attempt to update if fullname querystring parameter is missing', async () => {
     goodCode = code;
     alreadyAcknowledged = true;
-    alreadyConsented = false;
+    alreadyRegistered = false;
     await invokeAndAssert({
       _handler:handler, code, task: Task.REGISTER,
       queryStringParameters: { entity_id:bugs.entity_id, email:bugs.email },
@@ -370,7 +370,7 @@ describe(`Consent lambda trigger: handler ${Task.REGISTER}`, () => {
   it('Should NOT attempt to update the inviation if successfully found without existing acknowledgement', async () => {
     goodCode = code;
     alreadyAcknowledged = false;
-    alreadyConsented = false;
+    alreadyRegistered = false;
     await invokeAndAssert({
       _handler:handler, code, task: Task.REGISTER,
       queryStringParameters: { entity_id:bugs.entity_id, email:bugs.email, fullname:bugs.fullname },
@@ -384,34 +384,34 @@ describe(`Consent lambda trigger: handler ${Task.REGISTER}`, () => {
     });
   });
   
-  it('Should NOT attempt to update the inviation if successfully found with existing consent', async () => {
+  it('Should NOT attempt to update the inviation if successfully found with existing registration', async () => {
     goodCode = code;
     alreadyAcknowledged = true;
-    alreadyConsented = true;
+    alreadyRegistered = true;
     await invokeAndAssert({
       _handler:handler, code, task: Task.REGISTER,
       queryStringParameters: { entity_id:bugs.entity_id, email:bugs.email, fullname:bugs.fullname },
       expectedResponse: {
         statusCode: 200,
         outgoingBody: {
-          message: `Ok: Already consented at ${dte}`,
+          message: `Ok: Already registered at ${dte}`,
           payload: { ok: true }
         } as OutgoingBody
       }
     });
   });
   
-  it('Should attempt to update the inviation if successfully found needing consent', async () => {
+  it('Should attempt to update the inviation if successfully found needing registration', async () => {
     goodCode = code;
     alreadyAcknowledged = true;
-    alreadyConsented = false;
+    alreadyRegistered = false;
     await invokeAndAssert({
       _handler:handler, code, task: Task.REGISTER,
       queryStringParameters: { entity_id:bugs.entity_id, email:bugs.email, fullname:bugs.fullname },
       expectedResponse: {
         statusCode: 200,
         outgoingBody: {
-          message: `Ok: Consent registered for ${code}`,
+          message: `Ok: Registration completed for ${code}`,
           payload: { ok: true }
         } as OutgoingBody
       }
@@ -423,7 +423,7 @@ describe(`Consent lambda trigger: handler ${Task.REGISTER}`, () => {
       expectedResponse: {
         statusCode: 200,
         outgoingBody: {
-          message: `Ok: Consent registered for ${code}`,
+          message: `Ok: Registration completed for ${code}`,
           payload: { ok: true }
         } as OutgoingBody
       }

@@ -3,7 +3,7 @@ import { Invitation, InvitationFields } from "../dao/entity";
 
 /**
  * The invitation has already been sent. That invitation now serves to register changes in state with regard
- * to the invited users registration (acknowledgement of privacy policy and consent with signature).
+ * to the invited users registration (acknowledgement of privacy policy and registration with signature).
  */
 export class Registration {
 
@@ -47,11 +47,11 @@ export class Registration {
   }
 
   /**
-   * Update the database item for an invitation to reflect the consent time along with the
+   * Update the database item for an invitation to reflect the registration time along with the
    * email address and fullname values.
    * @returns 
    */
-  public registerConsent = async (invitation:Invitation, timestamp?:string):Promise<boolean> => {
+  public registerUser = async (invitation:Invitation, timestamp?:string):Promise<boolean> => {
     try {
       if( ! timestamp) {
         timestamp = new Date().toISOString();
@@ -59,7 +59,7 @@ export class Registration {
 
       const dao = DAOFactory.getInstance({ DAOType: 'invitation', Payload: {
         code:this.code, 
-        [InvitationFields.consented_timestamp]: timestamp,
+        [InvitationFields.registered_timestamp]: timestamp,
         [InvitationFields.email]: invitation.email,
         [InvitationFields.fullname]: invitation.fullname,
         [InvitationFields.title]: invitation.title,

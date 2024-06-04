@@ -20,8 +20,8 @@ export interface StaticSiteCustomInConstructParms {
   cloudfrontDomain: string,
   cognitoDomain: string,
   cognitoUserpoolRegion: string,
-  acknowledgementApiUri: string,
-  consentApiUri: string,
+  entityAcknowledgeApiUri: string,
+  registerEntityApiUri: string,
   apis: AbstractRoleApi[]
 }
 
@@ -36,8 +36,8 @@ const buildJsonEnvVar = (parms: StaticSiteCustomInConstructParms) => {
     COGNITO_DOMAIN: parms.cognitoDomain,
     USER_POOL_REGION: parms.cognitoUserpoolRegion,
     PAYLOAD_HEADER: AbstractRoleApi.ETTPayloadHeader,
-    ACKNOWLEDGE_API_URI: parms.acknowledgementApiUri,
-    CONSENT_API_URI: parms.consentApiUri,
+    ACKNOWLEDGE_ENTITY_API_URI: parms.entityAcknowledgeApiUri,
+    REGISTER_ENTITY_API_URI: parms.registerEntityApiUri,
     ROLES: { } as any
   };
   parms.apis.forEach((api:AbstractRoleApi) => {

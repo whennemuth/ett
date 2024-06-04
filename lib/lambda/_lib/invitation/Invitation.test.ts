@@ -15,15 +15,15 @@ const link = 'https://some/path/to/index.htm?action=acknowledge';
 
 let daoInviteAttempts = 0;
 let acknowledged:boolean = false;
-let consented = false;
-let preRegistered = ():boolean => acknowledged && consented;
+let registered = false;
+let preRegistered = ():boolean => acknowledged && registered;
 jest.mock('../../_lib/dao/dao.ts', () => {
   return {
     __esModule: true,
     DAOFactory: {
       getInstance: jest.fn().mockImplementation((parms:any) => {
         acknowledged = parms?.Payload?.acknowledged_timestamp ? true : false;
-        consented = parms?.Payload?.consented_timestamp ? true : false;
+        registered = parms?.Payload?.registered_timestamp ? true : false;
         return {
           create: async ():Promise<any> => {
             daoInviteAttempts++;

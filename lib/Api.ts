@@ -24,7 +24,7 @@ export class ApiConstruct extends Construct {
   private _sysAdminApi: SysAdminApi;
   private _reAdminApi: ReAdminUserApi;
   private _authIndApi: AuthorizedIndividualApi;
-  private _consentPersonApi: ConsentingPersonApi;
+  private _consentingPersonApi: ConsentingPersonApi;
 
   constructor(scope: Construct, constructId: string, apiParms:ApiConstructParms) {
     super(scope, constructId);
@@ -37,7 +37,7 @@ export class ApiConstruct extends Construct {
 
     this._authIndApi = new AuthorizedIndividualApi(this, 'AuthIndUser', apiParms);
 
-    this._consentPersonApi = new ConsentingPersonApi(this, 'ConsentPersonUser', apiParms);
+    this._consentingPersonApi = new ConsentingPersonApi(this, 'ConsentPersonUser', apiParms);
   }
 
   public grantPermissionsTo = (dynamodb:DynamoDbConstruct, cognito:CognitoConstruct) => {
@@ -73,6 +73,6 @@ export class ApiConstruct extends Construct {
     return this._authIndApi;
   }
   public get consentingPersonApi(): ConsentingPersonApi {
-    return this._consentPersonApi;
+    return this._consentingPersonApi;
   }
 }

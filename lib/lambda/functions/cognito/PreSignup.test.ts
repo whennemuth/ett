@@ -48,7 +48,7 @@ describe('Pre signup lambda trigger: handler', () => {
     expect(retval).toEqual(event);
   });
 
-  it('Should error out if there are no matching consented invitations', async () => {
+  it('Should error out if there are no matching registered invitations', async () => {
     role = Roles.RE_ADMIN;
     invitationLookupResults = [] as Invitation[];
     expect(async () => {
@@ -56,12 +56,12 @@ describe('Pre signup lambda trigger: handler', () => {
     }).rejects.toThrow(new Error(Messages.UNINVITED + role));
   });
 
-  it('Should error out if there are matching consented invitations, but none that match by role', async () => {
+  it('Should error out if there are matching registered invitations, but none that match by role', async () => {
     role = Roles.RE_ADMIN;
     const dte = new Date().toISOString();
     invitationLookupResults = [
-      { role: Roles.SYS_ADMIN, acknowledged_timestamp: dte, consented_timestamp: dte },
-      { role: Roles.RE_AUTH_IND, acknowledged_timestamp: dte, consented_timestamp: dte },      
+      { role: Roles.SYS_ADMIN, acknowledged_timestamp: dte, registered_timestamp: dte },
+      { role: Roles.RE_AUTH_IND, acknowledged_timestamp: dte, registered_timestamp: dte },      
     ] as Invitation[];
     expect(async () => {
       await handler(event);
@@ -75,7 +75,7 @@ describe('Pre signup lambda trigger: handler', () => {
       { 
         role: Roles.RE_ADMIN, 
         acknowledged_timestamp: dte, 
-        consented_timestamp: dte, 
+        registered_timestamp: dte, 
         retracted_timestamp: dte 
       },      
     ] as Invitation[];
@@ -84,19 +84,19 @@ describe('Pre signup lambda trigger: handler', () => {
     }).rejects.toThrow(new Error(Messages.RETRACTED + role));
   });
 
-  it('Should return gracefully if finds one or more consented invitation attempts that match by role', async () => {
+  it('Should return gracefully if finds one or more registered invitation attempts that match by role', async () => {
     role = Roles.RE_ADMIN;
     const dte = new Date().toISOString();
     
     invitationLookupResults = [
-      { role: Roles.RE_ADMIN, acknowledged_timestamp: dte, consented_timestamp: dte },      
+      { role: Roles.RE_ADMIN, acknowledged_timestamp: dte, registered_timestamp: dte },      
     ] as Invitation[];
     let retval = await handler(event);
     expect(retval).toEqual(event);
     
     invitationLookupResults = [
-      { role: Roles.RE_ADMIN, acknowledged_timestamp: dte, consented_timestamp: dte },      
-      { role: Roles.RE_ADMIN, acknowledged_timestamp: dte, consented_timestamp: dte }   
+      { role: Roles.RE_ADMIN, acknowledged_timestamp: dte, registered_timestamp: dte },      
+      { role: Roles.RE_ADMIN, acknowledged_timestamp: dte, registered_timestamp: dte }   
     ] as Invitation[];
     retval = await handler(event);
     expect(retval).toEqual(event);

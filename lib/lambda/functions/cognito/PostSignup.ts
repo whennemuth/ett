@@ -132,11 +132,11 @@ const scrapeUserValuesFromInvitation = async (email:string, role:Role):Promise<I
   });
   let invitations = await daoInvitation.read() as Invitation[];
 
-  // Filter off invitations that are retracted, unconsented, for other roles, or not to the expected entity.
+  // Filter off invitations that are retracted, unregistered, for other roles, or not to the expected entity.
   invitations = invitations.filter((invitation) => {
     if(invitation.retracted_timestamp) return false;
     if( ! invitation.acknowledged_timestamp) return false;
-    if( ! invitation.consented_timestamp) return false;
+    if( ! invitation.registered_timestamp) return false;
     if( invitation.role != role) return false;
     // Should NEVER find these role and entity_id combinations for associated invitation directly after signup
     // An RE_ADMIN is always in the waiting room BEFORE they create their entity.
@@ -154,6 +154,6 @@ const scrapeUserValuesFromInvitation = async (email:string, role:Role):Promise<I
   }
 
   // There should be only one result, but multiple results just means a SYS_ADMIN sent a subsequent invitation
-  // to the same person before that person had a chance to consent to and setup an account against the first invitation.
+  // to the same person before that person had a chance to register to and setup an account against the first invitation.
   return invitations[0];
 }

@@ -121,7 +121,7 @@ export enum InvitationFields {
   fullname = 'fullname',
   title = 'title',
   acknowledged_timestamp = 'acknowledged_timestamp',
-  consented_timestamp = 'consented_timestamp',
+  registered_timestamp = 'registered_timestamp',
   retracted_timestamp = 'retracted_timestamp',
 }
 export type Invitation = {
@@ -134,7 +134,7 @@ export type Invitation = {
   fullname?: string,
   title?: string,
   acknowledged_timestamp?: string,
-  consented_timestamp?: string,
+  registered_timestamp?: string,
   retracted_timestamp?: string,
 }
 

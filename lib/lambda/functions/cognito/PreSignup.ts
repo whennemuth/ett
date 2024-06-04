@@ -62,12 +62,12 @@ export const handler = async (_event:any) => {
 
     // Check for illegal state.
     const illegalStateInvitations = qualifiedInvitations.filter((invitation) => {
-      if( ! invitation.acknowledged_timestamp || ! invitation.consented_timestamp) {
+      if( ! invitation.acknowledged_timestamp || ! invitation.registered_timestamp) {
         console.error(
           `INVALID STATE: an invitation has persisted its email address (${email}) BEFORE the legal 
           requirements for doing so have been met! Check the codebase for bugs or flaws that would 
           allow this to happen. The email field of an invitation should be set to the invitation code 
-          and NEVER the actual value before the user has acknowledged and consented as part of their 
+          and NEVER the actual value before the user has acknowledged and registered as part of their 
           registration.`);
       }
     });
