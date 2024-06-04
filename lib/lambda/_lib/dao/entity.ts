@@ -66,7 +66,9 @@ export type ExhibitForm = {
 export enum ConsenterFields {
   email = 'email',
   sub = 'sub',
-  fullname = 'fullname',
+  firstname = 'firstname',
+  middlename = 'middlename',
+  lastname = 'lastname',
   title = 'title',
   phone_number = 'phone_number',
   create_timestamp = 'create_timestamp',
@@ -80,7 +82,9 @@ export enum ConsenterFields {
 export type Consenter = {
   email: string,
   sub?: string,
-  fullname?: string,
+  firstname?: string,
+  middlename?: string,
+  lastname?: string,
   title?: string,
   phone_number?: string,
   create_timestamp?: string,

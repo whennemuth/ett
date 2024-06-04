@@ -11,7 +11,7 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
   const docClient = DynamoDBDocumentClient.from(dbclient);
   const TableName = process.env.DYNAMODB_CONSENTER_TABLE_NAME || '';
   
-  let { email, active=YN.Yes, fullname, exhibit_forms, 
+  let { email, active=YN.Yes, firstname, middlename, lastname, exhibit_forms, 
     create_timestamp=(new Date().toISOString()), consented_timestamp, renewed_timestamp, rescinded_timestamp
   } = consenterInfo;
 
@@ -40,7 +40,7 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
    * @returns 
    */
   const create = async (): Promise<PutItemCommandOutput> => {
-    console.log(`Creating ${Roles.CONSENTING_PERSON}: ${fullname}`);
+    console.log(`Creating ${Roles.CONSENTING_PERSON}: ${firstname} ${middlename} ${lastname}`);
 
     // Handle required field validation
     if( ! email) throwMissingError('create', ConsenterFields.email);
@@ -49,7 +49,7 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
     if(consented_timestamp) throwIllegalParm('create', ConsenterFields.consented_timestamp);
     if(rescinded_timestamp) throwIllegalParm('create', ConsenterFields.rescinded_timestamp);
     if(renewed_timestamp) throwIllegalParm('create', ConsenterFields.renewed_timestamp);
-    if(exhibit_forms!.length > 0) throwIllegalParm('create', ConsenterFields.exhibit_forms);
+    if(exhibit_forms && exhibit_forms.length > 0) throwIllegalParm('create', ConsenterFields.exhibit_forms);
 
     // Make sure the original userinfo object gets a create_timestamp value if a default value is invoked.
     if( ! consenterInfo.create_timestamp) consenterInfo.create_timestamp = create_timestamp;
@@ -125,8 +125,10 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
   switch(task as TASK) {
     case TASK.create:
       var dao = ConsenterCrud({
-        email: 'daffy@warnerbros.com',
-        fullname: 'Daffy Duck',
+        email,
+        firstname: 'Daffy',
+        middlename: 'D',
+        lastname: 'Duck',
         title: 'Aquatic fowl',
         phone_number: '617-333-5555',        
       } as Consenter);

@@ -8,6 +8,13 @@ export type IPdfForm = { getBytes():Promise<Uint8Array> };
 type MarkedPosition = { id:string, position:Position }
 export abstract class PdfForm {
 
+  public static fullName = (first:string|undefined, middle:string|undefined, last:string|undefined):string => {
+    const f = first ? `${first.trim()} ` : '';
+    const m = middle ? `${middle.trim()} `: '';
+    const l = last ? `${last.trim()}`: '';
+    return `${f}${m}${l}`.trim();
+  }
+
   doc:PDFDocument;
   form:PDFForm;
   embeddedFonts:EmbeddedFonts;
@@ -70,5 +77,9 @@ export abstract class PdfForm {
     await page.drawText('ETHICAL', { size, color: blue, font:boldfont });
     await page.drawText('TRANSPARENCY', { size, color: grey, opacity:.2, font:boldfont });
     await page.drawText('TOOL', { size, color: blue, font:boldfont }, 16);
+  }
+
+  public getFullName = (first:string|undefined, middle:string|undefined, last:string|undefined):string => {
+    return PdfForm.fullName(first, middle, last);
   }
 }

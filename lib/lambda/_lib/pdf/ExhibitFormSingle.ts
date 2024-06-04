@@ -61,11 +61,12 @@ export class ExhibitFormSingle extends PdfForm implements IPdfForm {
    * Draw the introductory language
    */
   private drawIntro = async () => {
-    const { consenter, page, font} = this;
+    const { consenter: { firstname, middlename, lastname }, page, font, getFullName } = this;
+    const fullname = getFullName(firstname, middlename, lastname);
     const size = 10;
     await page.drawWrappedText(
       {
-        text: `This Single Exhibit Form was prepared by <b>${consenter.fullname}</b> as part of ` + 
+        text: `This Single Exhibit Form was prepared by <b>${fullname}</b> as part of ` + 
           `an exhibit form provided to an ETT authorized individual listing you as a known Consent Recipient. ` +
           `The definitions in their Consent Form also apply to this single Exhibit Form.`,
         options: { size, font },
@@ -104,7 +105,9 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_EXHIBIT_FORM_SINGLE') {
     }]
   } as ExhibitFormData);
   
-  new ExhibitFormSingle(baseForm, { fullname:'Porky Pig' } as Consenter).writeToDisk('./lib/lambda/_lib/pdf/outputSingle.pdf')
+  new ExhibitFormSingle(baseForm, { 
+    firstname:'Pig', middlename: 'P', lastname: 'Pig'
+  } as Consenter).writeToDisk('./lib/lambda/_lib/pdf/outputSingle.pdf')
     .then((bytes) => {
       console.log('done');
     })

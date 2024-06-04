@@ -1,8 +1,9 @@
-import { ExhibitForm as ExhibitFormData } from "../../_lib/dao/entity";
+import { ExhibitForm as ExhibitFormData, YN } from "../../_lib/dao/entity";
 import { ConsentForm } from "../../_lib/pdf/ConsentForm";
 import { DisclosureForm, DisclosureFormData } from "../../_lib/pdf/DisclosureForm";
 import { ExhibitForm } from "../../_lib/pdf/ExhibitForm";
 import { ExhibitFormSingle } from '../../_lib/pdf/ExhibitFormSingle';
+import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { sendEmail } from "../EmailWithAttachments";
 import { test_data as test_exhibit_data } from '../consenting-person/ExhibitEmail';
 import { bugsbunny, daffyduck, yosemitesam } from "./MockObjects";
@@ -22,12 +23,14 @@ export class DisclosureRequestEmail {
 
   public send = async (emailAddress:string):Promise<boolean> => { 
     const { data, exhibitData, data: { requestingEntity: { name:entityName }}, 
-    data: { consenter, consenter: { fullname }} } = this;
+      data: { consenter, consenter: { firstname, middlename, lastname}} } = this;
+    const { fullName } = PdfForm;
+    const consenterFullName = fullName(firstname, middlename, lastname);
 
     return await sendEmail({
       subject: 'ETT Disclosure Request',
       message: `Please find enclosed a disclosure form from ${entityName}, including a consent form from ` +
-        `${fullname} who is the subject of the disclosure and their original original exhibit form ` +
+        `${consenterFullName} who is the subject of the disclosure and their original original exhibit form ` +
         `naming you to disclose.`,
       emailAddress,
       attachments: [
@@ -67,10 +70,11 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_SEND_DISCLOSURE_FORM') {
 
   const test_disclosure_data = {
     consenter: { 
-      email: 'foghorn@warnerbros.com', phone_number: '617-222-4444', fullname: 'Foghorn Leghorn' },
-      disclosingEntity: { name: 'Boston University', representatives: [ daffyduck, yosemitesam ] },
-      requestingEntity: { name: 'Northeastern University', authorizedIndividuals: [ bugsbunny ]
-    }
+      email: 'foghorn@warnerbros.com', phone_number: '617-222-4444', active: YN.Yes,
+      firstname: 'Foghorn', middlename: 'F', lastname: 'Leghorn', consented_timestamp: new Date().toISOString()
+    },
+    disclosingEntity: { name: 'Boston University', representatives: [ daffyduck, yosemitesam ] },
+    requestingEntity: { name: 'Northeastern University', authorizedIndividuals: [ bugsbunny ] }
   } as DisclosureFormData;
 
   new DisclosureRequestEmail(test_disclosure_data, test_exhibit_data).send(email)

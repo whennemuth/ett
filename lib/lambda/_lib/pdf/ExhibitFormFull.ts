@@ -70,11 +70,12 @@ export class ExhibitFormFull extends PdfForm implements IPdfForm {
    * Draw the introductory language
    */
   private drawIntro = async () => {
-    const { consenter, page, boldfont } = this;
+    const { consenter: {firstname, middlename, lastname }, page, boldfont, getFullName } = this;
+    const fullname = getFullName(firstname, middlename, lastname);
     const size = 10;
     await page.drawWrappedText(
       {
-        text: `This Full Exhibit Form was prepared by ${consenter.fullname} and provides ` + 
+        text: `This Full Exhibit Form was prepared by ${fullname} and provides ` + 
           `an up-to-date list of the names and contacts for their known Consent Recipients on the ` +
           `date of this Exhibit.  The definitions in their Consent Form also apply to this Full ` + 
           `Exhibit Form.`,
@@ -185,7 +186,9 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_EXHIBIT_FORM_FULL') {
     ]
   } as ExhibitFormData);
   
-  new ExhibitFormFull(baseForm, { fullname: 'Porky Pig' } as Consenter).writeToDisk('./lib/lambda/_lib/pdf/outputFull.pdf')
+  new ExhibitFormFull(baseForm, { 
+    firstname: 'Porky', middlename: 'P', lastname: 'Pig'
+  } as Consenter).writeToDisk('./lib/lambda/_lib/pdf/outputFull.pdf')
     .then((bytes) => {
       console.log('done');
     })

@@ -150,8 +150,8 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENT_FORM_PAGE_1') {
   new ConsentFormPage1({
     entityName: 'Boston University',
     consenter: { 
-      email: 'bugsbunny@warnerbros.com', fullname: 'Bugs Bunny', phone_number: '617-333-5555', 
-      consented_timestamp: new Date().toISOString(), active: YN.Yes
+      email: 'bugsbunny@warnerbros.com', firstname: 'Bugs', middlename: 'B', lastname: 'Bunny',
+      phone_number: '617-333-5555', consented_timestamp: new Date().toISOString(), active: YN.Yes
     } as Consenter
   } as ConsentFormData).writeToDisk('./lib/lambda/_lib/pdf/consentForm1.pdf')
   .then((bytes) => {
