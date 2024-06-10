@@ -185,7 +185,7 @@ const getSysAdminEmail = async ():Promise<string|null> => {
  * RUN MANUALLY: Modify the task, landscape, entity_id, and dryRun settings as needed.
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
+if(args.length > 2 && args[2] == 'RUN_MANUALLY_AUTH_IND') {
 
   const task = Task.DEMOLISH_ENTITY;
   const landscape = 'dev';

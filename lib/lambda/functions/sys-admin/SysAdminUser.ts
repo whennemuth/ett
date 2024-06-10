@@ -83,7 +83,7 @@ export const replaceAdmin = async (parms:any):Promise<LambdaProxyIntegrationResp
  * RUN MANUALLY: Modify the task, landscape, email & role as needed.
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
+if(args.length > 2 && args[2] == 'RUN_MANUALLY_SYS_ADMIN') {
 
   const task = ReAdminTasks.INVITE_USER;
   const landscape = 'dev';

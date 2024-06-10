@@ -126,7 +126,7 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
  * RUN MANUALLY: Modify the task, landscape, region, invitation-code, and queryStringParameters as needed.
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
+if(args.length > 2 && args[2] == 'RUN_MANUALLY_ENTITY_REGISTRATION') {
   
   const task = Task.REGISTER;
   const landscape = 'dev';

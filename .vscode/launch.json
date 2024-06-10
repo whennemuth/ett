@@ -17,7 +17,7 @@
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
         "${workspaceFolder}/lib/lambda/_lib/dao/dao-consenter.ts",
-        "RUN_MANUALLY",
+        "RUN_MANUALLY_DAO_CONSENTER",
         "create",
       ], 
       "env": {
@@ -32,7 +32,7 @@
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
         "${workspaceFolder}/lib/lambda/functions/sys-admin/SysAdminUser.ts",
-        "RUN_MANUALLY",
+        "RUN_MANUALLY_SYS_ADMIN",
       ], 
       "env": {
         "AWS_PROFILE": "bu",
@@ -47,7 +47,7 @@
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
         "${workspaceFolder}/lib/lambda/functions/re-admin/ReAdminUser.ts",
-        "RUN_MANUALLY",
+        "RUN_MANUALLY_RE_ADMIN",
       ], 
       "env": {
         "AWS_PROFILE": "bu",
@@ -62,7 +62,7 @@
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
         "${workspaceFolder}/lib/lambda/functions/authorized-individual/AuthorizedIndividual.ts",
-        "RUN_MANUALLY",
+        "RUN_MANUALLY_AUTH_IND",
       ], 
       "env": {
         "AWS_PROFILE": "bu",
@@ -77,7 +77,7 @@
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
         "${workspaceFolder}/lib/lambda/functions/signup/EntityAcknowledgement.ts",
-        "RUN_MANUALLY",
+        "RUN_MANUALLY_ACKNOWLEDGEMENT",
       ], 
       "env": {
         "AWS_PROFILE": "bu",
@@ -92,7 +92,7 @@
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
         "${workspaceFolder}/lib/lambda/functions/signup/EntityRegistration.ts",
-        "RUN_MANUALLY",
+        "RUN_MANUALLY_ENTITY_REGISTRATION",
       ], 
       "env": {
         "AWS_PROFILE": "bu",
@@ -107,7 +107,7 @@
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
         "${workspaceFolder}/lib/lambda/functions/authorized-individual/Demolition.ts",
-        "RUN_MANUALLY",
+        "RUN_MANUALLY_DEMOLITION",
       ], 
       "env": {
         "AWS_PROFILE": "bu",
@@ -122,7 +122,7 @@
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
         "${workspaceFolder}/lib/lambda/functions/cognito/PreSignup.ts",
-        "RUN_MANUALLY"
+        "RUN_MANUALLY_COGNITO_PRE_SIGNUP"
       ], 
       "env": {
         "AWS_PROFILE": "bu",

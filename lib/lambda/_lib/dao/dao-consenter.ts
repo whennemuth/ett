@@ -117,7 +117,7 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
  */
 const { argv:args } = process;
 enum TASK { create='create', update='update', read='read', Delete='delete' };
-if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
+if(args.length > 2 && args[2] == 'RUN_MANUALLY_DAO_CONSENTER') {
   process.env.DYNAMODB_CONSENTER_TABLE_NAME = DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME;
   process.env.REGION = 'us-east-2';
   const task = args.length > 3 ? args[3] : TASK.create;

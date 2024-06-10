@@ -110,7 +110,7 @@ export const handler = async (_event:any) => {
  * RUN MANUALLY: Modify the role, region, etc. as needed.
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
+if(args.length > 2 && args[2] == 'RUN_MANUALLY_COGNITO_PRE_SIGNUP') {
 
   const role:Role = Roles.SYS_ADMIN;
   const userpoolName:string = 'ett-cognito-userpool';

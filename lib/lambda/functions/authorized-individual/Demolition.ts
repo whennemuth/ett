@@ -148,7 +148,7 @@ export class EntityToDemolish {
  * RUN MANUALLY: Modify the task, landscape, entity_id, and dryRun settings as needed.
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
+if(args.length > 2 && args[2] == 'RUN_MANUALLY_DEMOLITION') {
   const region = 'us-east-2';
   const dryRun = false;
   const entity_id = 'db542060-7de0-4c55-be58-adc92671d63a';

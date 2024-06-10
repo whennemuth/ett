@@ -428,7 +428,7 @@ export const createEntityAndInviteUsers = async (parameters:any, callerSub?:stri
  * RUN MANUALLY: Modify the task, landscape, email, role, & entity_id as needed.
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
+if(args.length > 2 && args[2] == 'RUN_MANUALLY_RE_ADMIN') {
 
   // const task = Task.INVITE_USER;
   const task = Task.INVITE_USER;
