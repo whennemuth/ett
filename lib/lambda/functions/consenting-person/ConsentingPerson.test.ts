@@ -28,7 +28,7 @@ describe('Consenting Person lambda trigger: handler', () => {
   });
 });
 
-describe('Consenting Person lambda trigger: send-affliate-data', () => {
+describe('Consenting Person lambda trigger: send-affiliate-data', () => {
   const task = Task.SEND_AFFILIATE_DATA;
   it('Should return invalid response if exhibit data is missing', async () => {
     await SendAffiliateData.missingExhibitData(handler, mockEvent, task, msgs.missingExhibitData); 
