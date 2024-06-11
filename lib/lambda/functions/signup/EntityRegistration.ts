@@ -1,3 +1,4 @@
+import { DynamoDbConstruct } from "../../../DynamoDb";
 import { LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { DAOFactory } from "../../_lib/dao/dao";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
@@ -135,9 +136,11 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_ENTITY_REGISTRATION') {
     if( ! cloudfrontDomain) {
       throw('Cloudfront domain lookup failure');
     }
-    process.env.DYNAMODB_INVITATION_TABLE_NAME = 'ett-invitations';
-    process.env.DYNAMODB_USER_TABLE_NAME = 'ett-users';
-    process.env.DYNAMODB_ENTITY_TABLE_NAME = 'ett-entities'
+    process.env.DYNAMODB_INVITATION_TABLE_NAME = DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME;
+    process.env.DYNAMODB_USER_TABLE_NAME = DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME;
+    process.env.DYNAMODB_ENTITY_TABLE_NAME = DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME;
+    process.env.DYNAMODB_INVITATION_EMAIL_INDEX = DynamoDbConstruct.DYNAMODB_INVITATION_EMAIL_INDEX;
+    process.env.DYNAMODB_INVITATION_ENTITY_INDEX = DynamoDbConstruct.DYNAMODB_INVITATION_ENTITY_INDEX;
     process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
     process.env.REGION = 'us-east-2'
     process.env.DEBUG = 'true';

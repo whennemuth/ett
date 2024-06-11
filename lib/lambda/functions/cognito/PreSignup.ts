@@ -2,6 +2,7 @@ import { DAOFactory, DAOInvitation } from "../../_lib/dao/dao";
 import { Invitation, Role, Roles } from "../../_lib/dao/entity";
 import { PreSignupEventType } from "./PreSignupEventType";
 import { lookupRole, lookupUserPoolClientId, lookupUserPoolId } from "../../_lib/cognito/Lookup";
+import { DynamoDbConstruct } from "../../../DynamoDb";
 
 export enum Messages {
   UNINVITED = 'You are not on the invite list for signup as ',
@@ -118,8 +119,11 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_COGNITO_PRE_SIGNUP') {
   const email = 'wrh@bu.edu';
   let userPoolId:string|undefined;
 
-  process.env.DYNAMODB_INVITATION_TABLE_NAME = 'ett-invitations';
-  process.env.DYNAMODB_USER_TABLE_NAME = 'ett-users';
+  process.env.DYNAMODB_INVITATION_TABLE_NAME = DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME;
+  process.env.DYNAMODB_USER_TABLE_NAME = DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME;
+  process.env.DYNAMODB_ENTITY_TABLE_NAME = DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME;
+  process.env.DYNAMODB_INVITATION_EMAIL_INDEX = DynamoDbConstruct.DYNAMODB_INVITATION_EMAIL_INDEX;
+  process.env.DYNAMODB_INVITATION_ENTITY_INDEX = DynamoDbConstruct.DYNAMODB_INVITATION_ENTITY_INDEX;
 
   lookupUserPoolId(userpoolName, region)
   .then((id:string|undefined) => {

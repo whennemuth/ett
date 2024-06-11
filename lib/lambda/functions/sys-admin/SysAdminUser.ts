@@ -1,3 +1,4 @@
+import { DynamoDbConstruct } from '../../../DynamoDb';
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
 import { Role, Roles } from '../../_lib/dao/entity';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
@@ -86,10 +87,14 @@ const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY_SYS_ADMIN') {
 
   const task = ReAdminTasks.INVITE_USER;
-  const landscape = 'dev';
-  process.env.DYNAMODB_INVITATION_TABLE_NAME = 'ett-invitations';
-  process.env.DYNAMODB_USER_TABLE_NAME = 'ett-users';
-  process.env.DYNAMODB_ENTITY_TABLE_NAME = 'ett-entities';
+  const email = args[3];
+  const landscape = args[4];
+  process.env.DYNAMODB_INVITATION_TABLE_NAME = DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME;
+  process.env.DYNAMODB_USER_TABLE_NAME = DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME;
+  process.env.DYNAMODB_ENTITY_TABLE_NAME = DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME;
+  process.env.DYNAMODB_INVITATION_ENTITY_INDEX = DynamoDbConstruct.DYNAMODB_INVITATION_ENTITY_INDEX;
+  process.env.DYNAMODB_INVITATION_EMAIL_INDEX = DynamoDbConstruct.DYNAMODB_INVITATION_EMAIL_INDEX;
+  process.env.DYNAMODB_CONSENTER_TABLE_NAME = DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME;
   process.env.USERPOOL_NAME = 'ett-cognito-userpool'; 
   process.env.COGNITO_DOMAIN = 'ett-dev.auth.us-east-2.amazoncognito.com'; //  `${this.context.STACK_ID}-${this.context.TAGS.Landscape}.${REGION}.amazoncognito.com`
   process.env.REGION = 'us-east-2';

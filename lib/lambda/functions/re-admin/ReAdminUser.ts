@@ -1,3 +1,4 @@
+import { DynamoDbConstruct } from '../../../DynamoDb';
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
 import { lookupEmail, lookupUserPoolId } from '../../_lib/cognito/Lookup';
 import { DAOEntity, DAOFactory, DAOUser } from '../../_lib/dao/dao';
@@ -441,11 +442,15 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_RE_ADMIN') {
     }
     process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
     return lookupUserPoolId('ett-cognito-userpool', region);
-  }).then((userpoolId) => {
+  })
+  .then((userpoolId) => {
 
-    process.env.DYNAMODB_INVITATION_TABLE_NAME = 'ett-invitations';
-    process.env.DYNAMODB_USER_TABLE_NAME = 'ett-users';
-    process.env.DYNAMODB_ENTITY_TABLE_NAME = 'ett-entities'
+    process.env.DYNAMODB_INVITATION_TABLE_NAME = DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME;
+    process.env.DYNAMODB_USER_TABLE_NAME = DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME;
+    process.env.DYNAMODB_ENTITY_TABLE_NAME = DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME;
+    process.env.DYNAMODB_INVITATION_ENTITY_INDEX = DynamoDbConstruct.DYNAMODB_INVITATION_ENTITY_INDEX;
+    process.env.DYNAMODB_INVITATION_EMAIL_INDEX = DynamoDbConstruct.DYNAMODB_INVITATION_EMAIL_INDEX;
+    process.env.DYNAMODB_CONSENTER_TABLE_NAME = DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME;
     process.env.USERPOOL_ID = userpoolId;
     process.env.REGION = region;
     process.env.DEBUG = 'true';

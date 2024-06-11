@@ -4,6 +4,7 @@ import { DAOFactory } from "../../_lib/dao/dao";
 import { Entity, Invitation, User } from "../../_lib/dao/entity";
 import { CognitoIdentityProviderClient, AdminDeleteUserCommand, AdminDeleteUserRequest, AdminDeleteUserCommandOutput } from '@aws-sdk/client-cognito-identity-provider';
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
+import { DynamoDbConstruct } from "../../../DynamoDb";
 
 const dbclient = new DynamoDBClient({ region: process.env.REGION });
 const cognitoClient = new CognitoIdentityProviderClient({ region: process.env.REGION });
@@ -157,9 +158,11 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_DEMOLITION') {
   lookupUserPoolId('ett-cognito-userpool', region)
     .then((userpoolId) => {
 
-      process.env.DYNAMODB_INVITATION_TABLE_NAME = 'ett-invitations';
-      process.env.DYNAMODB_USER_TABLE_NAME = 'ett-users';
-      process.env.DYNAMODB_ENTITY_TABLE_NAME = 'ett-entities'
+      process.env.DYNAMODB_INVITATION_TABLE_NAME = DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME;
+      process.env.DYNAMODB_USER_TABLE_NAME = DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME;
+      process.env.DYNAMODB_ENTITY_TABLE_NAME = DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME;
+      process.env.DYNAMODB_INVITATION_EMAIL_INDEX = DynamoDbConstruct.DYNAMODB_INVITATION_EMAIL_INDEX;
+      process.env.DYNAMODB_INVITATION_ENTITY_INDEX = DynamoDbConstruct.DYNAMODB_INVITATION_ENTITY_INDEX;
       process.env.USERPOOL_ID = userpoolId;
       process.env.REGION = region;
       process.env.DEBUG = 'true';
