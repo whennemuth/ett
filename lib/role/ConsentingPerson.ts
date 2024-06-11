@@ -1,11 +1,10 @@
-import { Construct } from "constructs";
-import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
-import { ApiConstructParms } from "../Api";
-import { AbstractFunction } from "../AbstractFunction";
-import { Function, Runtime } from "aws-cdk-lib/aws-lambda";
-import { DynamoDbConstruct } from "../DynamoDb";
-import { Roles } from "../lambda/_lib/dao/entity";
 import { ResourceServerScope } from "aws-cdk-lib/aws-cognito";
+import { Function, Runtime } from "aws-cdk-lib/aws-lambda";
+import { Construct } from "constructs";
+import { AbstractFunction } from "../AbstractFunction";
+import { ApiConstructParms } from "../Api";
+import { Roles } from "../lambda/_lib/dao/entity";
+import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
 
 export class ConsentingPersonApi extends AbstractRole {
   private api: AbstractRoleApi
@@ -68,10 +67,6 @@ export class LambdaFunction extends AbstractFunction {
       },
       environment: {
         REGION: scope.node.getContext('stack-parms').REGION,
-        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
-        DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME,
-        DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
-        DYNAMODB_CONSENTER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME,
       }
     });
   }

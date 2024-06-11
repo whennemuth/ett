@@ -2,16 +2,12 @@ import { SESv2Client, SendEmailCommand, SendEmailCommandInput, SendEmailResponse
 import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest';
 import { Roles, User } from '../../_lib/dao/entity';
-import { entity, bugsbunny, daffyduck, tables, yosemitesam } from './MockObjects';
+import { entity, bugsbunny, daffyduck, yosemitesam } from './MockObjects';
 import * as mockCommandInput from './DemolitionCommandInputMock.json';
 import { Task, handler } from './AuthorizedIndividual';
 import { LambdaProxyIntegrationResponse } from '../Utils';
 import { AbstractRoleApi, IncomingPayload, OutgoingBody } from '../../../role/AbstractRole';
 import { DAOUser, FactoryParms } from '../../_lib/dao/dao';
-
-process.env.DYNAMODB_USER_TABLE_NAME = tables.user;
-process.env.DYNAMODB_INVITATION_TABLE_NAME = tables.invitation;
-process.env.DYNAMODB_ENTITY_TABLE_NAME = tables.entity;
 
 const deletedUsers = [ bugsbunny, daffyduck, yosemitesam ] as User[];
 const dryRun = false;

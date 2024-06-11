@@ -5,13 +5,6 @@ const dte = new Date().toISOString();
 const create_timestamp = dte; 
 const update_timestamp = dte;
 
-export const tables = {
-  user: 'ett-users',
-  invitation: 'ett-invitation',
-  entity: 'ett-entities',
-  consenter: 'ett-consenters',
-};
-
 export const bugsbunny = {
   email: 'bugsbunny@warnerbros.com',
   entity_id,

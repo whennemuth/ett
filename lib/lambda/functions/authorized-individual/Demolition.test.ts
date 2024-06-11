@@ -6,15 +6,10 @@ import { DAOConsenter, DAOEntity, DAOInvitation, DAOUser, FactoryParms } from '.
 import { Consenter, Invitation, User } from '../../_lib/dao/entity';
 import { EntityToDemolish } from './Demolition';
 import * as expectedCommandInput from './DemolitionCommandInputMock.json';
-import { tables, entity, bugsbunny, daffyduck, yosemitesam, bugbunny_invitation, daffyduck_invitation, yosemitesam_invitation } from './MockObjects';
+import { entity, bugsbunny, daffyduck, yosemitesam, bugbunny_invitation, daffyduck_invitation, yosemitesam_invitation } from './MockObjects';
 
 const dbMockClient = mockClient(DynamoDBClient);
 const cognitoMockClient = mockClient(CognitoIdentityProviderClient);
-
-process.env.DYNAMODB_USER_TABLE_NAME = tables.user;
-process.env.DYNAMODB_INVITATION_TABLE_NAME = tables.invitation;
-process.env.DYNAMODB_ENTITY_TABLE_NAME = tables.entity;
-process.env.DYNAMODB_CONSENTER_TABLE_NAME = tables.consenter;
 
 const mockUserRead = jest.fn(async ():Promise<User[]> => {
   return new Promise((resolve) => {

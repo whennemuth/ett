@@ -360,7 +360,6 @@
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "env": {
-        "DYNAMODB_USER_TABLE_NAME": "ett-users",
         "ACTION_TO_TEST": ""
       }
     },
@@ -379,7 +378,6 @@
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "env": {
-        "DYNAMODB_USER_TABLE_NAME": "ett-users",
         "ACTION_TO_TEST": ""
       }
     },    {
@@ -395,10 +393,7 @@
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "env": {
-        "DYNAMODB_INVITATION_TABLE_NAME": "ett-invitations"
-      }
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "type": "node",
@@ -413,10 +408,7 @@
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "env": {
-        "DYNAMODB_ENTITY_TABLE_NAME": "ett-entities"
-      }
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "type": "node",
@@ -430,10 +422,7 @@
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "env": { 
-        "DYNAMODB_USER_TABLE_NAME": "ett-users"
-      }
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "type": "node",
@@ -448,10 +437,7 @@
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "env": { 
-        "DYNAMODB_USER_TABLE_NAME": "ett-users"
-      }
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "type": "node",
@@ -466,10 +452,7 @@
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "env": { 
-        "DYNAMODB_USER_TABLE_NAME": "ett-users"
-      }
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "type": "node",
@@ -484,10 +467,7 @@
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "env": { 
-        "DYNAMODB_USER_TABLE_NAME": "ett-users"
-      }
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "type": "node",
@@ -611,10 +591,7 @@
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "env": { 
-        "DYNAMODB_USER_TABLE_NAME": "ett-users"
-      }
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "type": "node",
@@ -629,10 +606,7 @@
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "env": { 
-        "DYNAMODB_USER_TABLE_NAME": "ett-users",
-      }
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "type": "node",
@@ -647,10 +621,7 @@
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "env": { 
-        "DYNAMODB_USER_TABLE_NAME": "ett-users",
-      }
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "type": "node",
@@ -680,10 +651,7 @@
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "env": {
-        "DYNAMODB_USER_TABLE_NAME": "ett-users"
-      }
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "type": "node",

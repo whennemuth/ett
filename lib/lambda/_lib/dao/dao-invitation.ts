@@ -4,6 +4,7 @@ import { DAOInvitation } from './dao';
 import { convertFromApiObject } from './db-object-builder';
 import { invitationUpdate } from './db-update-builder.invitation';
 import { Invitation, InvitationFields } from './entity';
+import { DynamoDbConstruct } from '../../../DynamoDb';
 
 /**
  * Basic CRUD operations for the invitations table.
@@ -12,8 +13,8 @@ import { Invitation, InvitationFields } from './entity';
  */
 export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false): DAOInvitation {
   const dbclient = new DynamoDBClient({ region: process.env.REGION });
-  const TableName = process.env.DYNAMODB_INVITATION_TABLE_NAME || '';
-  const TableEntityIndex = process.env.DYNAMODB_INVITATION_ENTITY_INDEX || '';
+  const TableName = DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME;
+  const TableEntityIndex = DynamoDbConstruct.DYNAMODB_INVITATION_ENTITY_INDEX;
 
   let { code:_code, entity_id, role, email } = invitationInfo;
 

@@ -1,10 +1,9 @@
-import { IContext } from '../../contexts/IContext';
 import { ResourceServerScope, UserPool } from "aws-cdk-lib/aws-cognito";
 import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { Function, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from "constructs";
+import { IContext } from '../../contexts/IContext';
 import { AbstractFunction } from "../AbstractFunction";
-import { DynamoDbConstruct } from "../DynamoDb";
 import { Roles } from '../lambda/_lib/dao/entity';
 import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
 
@@ -110,12 +109,6 @@ export class LambdaFunction extends AbstractFunction {
       }),
       environment: {
         REGION: context.REGION,
-        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
-        DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME,
-        DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
-        DYNAMODB_INVITATION_ENTITY_INDEX: DynamoDbConstruct.DYNAMODB_INVITATION_ENTITY_INDEX,
-        DYNAMODB_INVITATION_EMAIL_INDEX: DynamoDbConstruct.DYNAMODB_INVITATION_EMAIL_INDEX,
-        DYNAMODB_CONSENTER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
         USERPOOL_ID: userPoolId
       }

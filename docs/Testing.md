@@ -51,8 +51,7 @@ The following [jest documentation](https://jestjs.io/docs/ecmascript-modules) wa
         ],
         "runtimeArgs": [ "--experimental-vm-modules" ],
         "console": "integratedTerminal",
-        "internalConsoleOptions": "neverOpen",
-        "env": { "DYNAMODB_USER_TABLE_NAME": "ett-users" }
+        "internalConsoleOptions": "neverOpen"
       },
     ]
   }

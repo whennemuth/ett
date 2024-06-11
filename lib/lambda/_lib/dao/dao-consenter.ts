@@ -9,7 +9,7 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
 
   const dbclient = new DynamoDBClient({ region: process.env.REGION });
   const docClient = DynamoDBDocumentClient.from(dbclient);
-  const TableName = process.env.DYNAMODB_CONSENTER_TABLE_NAME || '';
+  const TableName = DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME;
   
   let { email, active=YN.Yes, firstname, middlename, lastname, exhibit_forms, 
     create_timestamp=(new Date().toISOString()), consented_timestamp, renewed_timestamp, rescinded_timestamp
@@ -118,7 +118,6 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
 const { argv:args } = process;
 enum TASK { create='create', update='update', read='read', Delete='delete' };
 if(args.length > 2 && args[2] == 'RUN_MANUALLY_DAO_CONSENTER') {
-  process.env.DYNAMODB_CONSENTER_TABLE_NAME = DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME;
   process.env.REGION = 'us-east-2';
   const task = args.length > 3 ? args[3] : TASK.create;
   const email = 'daffy@warnerbros.com';

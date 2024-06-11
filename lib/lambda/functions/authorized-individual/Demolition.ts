@@ -41,7 +41,7 @@ export class EntityToDemolish {
     const TransactItems = [] as TransactWriteItem[];
   
     // Load commands to delete each item from the users table where the user belongs to the specified entity.
-    let TableName = process.env.DYNAMODB_USER_TABLE_NAME;
+    let TableName = DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME;
     const daoUser = DAOFactory.getInstance({ DAOType: 'user', Payload: { entity_id:this.entityId } as User });
     const users = await daoUser.read() as User[];
     users.forEach((user) => {
@@ -52,7 +52,7 @@ export class EntityToDemolish {
     });
   
     // Load commands to delete each item from the invitations table that invited somebody to the specified entity.
-    TableName = process.env.DYNAMODB_INVITATION_TABLE_NAME;
+    TableName = DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME;
     const daoInvitation = DAOFactory.getInstance({ DAOType: 'invitation', Payload: { entity_id:this.entityId } as Invitation });
     const invitations = await daoInvitation.read() as Invitation[];
     invitations.forEach((invitation) => {
@@ -62,7 +62,7 @@ export class EntityToDemolish {
     });
   
     // Load the one command to delete the entity itself from the entities table.
-    TableName = process.env.DYNAMODB_ENTITY_TABLE_NAME;
+    TableName = DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME;
     const daoEntity = DAOFactory.getInstance({ DAOType: 'entity', Payload: { entity_id:this.entityId } as Entity });
     this._entity = await daoEntity.read() as Entity;
     const Key = marshall({ entity_id: this.entityId } as Entity);
@@ -158,11 +158,6 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_DEMOLITION') {
   lookupUserPoolId('ett-cognito-userpool', region)
     .then((userpoolId) => {
 
-      process.env.DYNAMODB_INVITATION_TABLE_NAME = DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME;
-      process.env.DYNAMODB_USER_TABLE_NAME = DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME;
-      process.env.DYNAMODB_ENTITY_TABLE_NAME = DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME;
-      process.env.DYNAMODB_INVITATION_EMAIL_INDEX = DynamoDbConstruct.DYNAMODB_INVITATION_EMAIL_INDEX;
-      process.env.DYNAMODB_INVITATION_ENTITY_INDEX = DynamoDbConstruct.DYNAMODB_INVITATION_ENTITY_INDEX;
       process.env.USERPOOL_ID = userpoolId;
       process.env.REGION = region;
       process.env.DEBUG = 'true';

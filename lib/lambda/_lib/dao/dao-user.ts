@@ -4,6 +4,7 @@ import { DAOFactory, DAOUser } from './dao';
 import { convertFromApiObject } from './db-object-builder';
 import { Roles, User, UserFields, YN } from './entity';
 import { userUpdate } from './db-update-builder.user';
+import { DynamoDbConstruct } from '../../../DynamoDb';
 
 /**
  * Basic CRUD operations for the dynamodb table behind the user base.
@@ -13,8 +14,8 @@ import { userUpdate } from './db-update-builder.user';
 export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
 
   const dbclient = new DynamoDBClient({ region: process.env.REGION });
-  const TableName = process.env.DYNAMODB_USER_TABLE_NAME || '';
-  const TableEntityIndex = process.env.DYNAMODB_USER_ENTITY_INDEX || '';
+  const TableName = DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME;
+  const TableEntityIndex = DynamoDbConstruct.DYNAMODB_USER_ENTITY_INDEX;
 
   let { email, entity_id, role, sub, active=YN.Yes, create_timestamp=(new Date().toISOString()), 
     fullname, phone_number, title } = userinfo;

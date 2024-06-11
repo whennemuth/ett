@@ -4,13 +4,14 @@ import { DAOEntity } from './dao';
 import { convertFromApiObject } from './db-object-builder';
 import { entityUpdate } from './db-update-builder.entity';
 import { Entity, EntityFields, YN } from './entity';
+import { DynamoDbConstruct } from '../../../DynamoDb';
 
 export const ENTITY_WAITING_ROOM:string = '__UNASSIGNED__';
 
 export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity {
 
   const dbclient = new DynamoDBClient({ region: process.env.REGION });
-  const TableName = process.env.DYNAMODB_ENTITY_TABLE_NAME || '';
+  const TableName = DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME;
 
   let { entity_id, entity_name, create_timestamp, update_timestamp, active=YN.Yes } = entityInfo;
 

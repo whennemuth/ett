@@ -1,11 +1,10 @@
-import { DynamoDbConstruct } from '../../../DynamoDb';
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
 import { DAOEntity, DAOFactory } from '../../_lib/dao/dao';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
 import { Entity, EntityFields, Role, Roles, YN } from '../../_lib/dao/entity';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
 import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../Utils";
-import { Task as ReAdminTasks, lookupEntity, createEntity, deactivateEntity, inviteUser, updateEntity, createEntityAndInviteUsers } from '../re-admin/ReAdminUser';
+import { Task as ReAdminTasks, createEntity, createEntityAndInviteUsers, deactivateEntity, inviteUser, lookupEntity, updateEntity } from '../re-admin/ReAdminUser';
 
 export enum Task {
   REPLACE_RE_ADMIN = 'replace_re_admin'
@@ -91,12 +90,7 @@ if(args.length > 3 && args[2] == 'RUN_MANUALLY_SYS_ADMIN') {
   const task = ReAdminTasks.INVITE_USER;
   const email = args[3];
   const landscape = args[4];
-  process.env.DYNAMODB_INVITATION_TABLE_NAME = DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME;
-  process.env.DYNAMODB_USER_TABLE_NAME = DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME;
-  process.env.DYNAMODB_ENTITY_TABLE_NAME = DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME;
-  process.env.DYNAMODB_INVITATION_ENTITY_INDEX = DynamoDbConstruct.DYNAMODB_INVITATION_ENTITY_INDEX;
-  process.env.DYNAMODB_INVITATION_EMAIL_INDEX = DynamoDbConstruct.DYNAMODB_INVITATION_EMAIL_INDEX;
-  process.env.DYNAMODB_CONSENTER_TABLE_NAME = DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME;
+  
   process.env.USERPOOL_NAME = 'ett-cognito-userpool'; 
   process.env.COGNITO_DOMAIN = 'ett-dev.auth.us-east-2.amazoncognito.com'; //  `${this.context.STACK_ID}-${this.context.TAGS.Landscape}.${REGION}.amazoncognito.com`
   process.env.REGION = 'us-east-2';

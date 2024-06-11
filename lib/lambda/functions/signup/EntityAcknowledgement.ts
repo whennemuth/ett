@@ -1,4 +1,3 @@
-import { DynamoDbConstruct } from "../../../DynamoDb";
 import { Invitation } from "../../_lib/dao/entity";
 import { Registration } from "../../_lib/invitation/Registration";
 import { debugLog, errorResponse, invalidResponse, lookupCloudfrontDomain, okResponse, unauthorizedResponse } from "../Utils";
@@ -71,11 +70,6 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_ACKNOWLEDGEMENT') {
     if( ! cloudfrontDomain) {
       throw('Cloudfront domain lookup failure');
     }
-    process.env.DYNAMODB_INVITATION_TABLE_NAME = DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME;
-    process.env.DYNAMODB_USER_TABLE_NAME = DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME;
-    process.env.DYNAMODB_ENTITY_TABLE_NAME = DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME;
-    process.env.DYNAMODB_INVITATION_EMAIL_INDEX = DynamoDbConstruct.DYNAMODB_INVITATION_EMAIL_INDEX;
-    process.env.DYNAMODB_INVITATION_ENTITY_INDEX = DynamoDbConstruct.DYNAMODB_INVITATION_ENTITY_INDEX;
     process.env.CLOUDFRONT_DOMAIN = 'd2ccz25lye7ni0.cloudfront.net';
     process.env.REGION = 'us-east-2'
     process.env.DEBUG = 'true';
