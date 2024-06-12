@@ -13,22 +13,25 @@ type Baseline = {
   dryRun():any;
   test():Promise<any>;
 }
+export type ReadParms = {
+  convertDates:boolean
+};
 export type DAOUser = Baseline & { 
-  read():Promise<(User|null)|User[]>, 
+  read(parms?:ReadParms):Promise<(User|null)|User[]>, 
   migrate(old_entity_id:string):Promise<any>,
   deleteEntity():Promise<any>;
 };
 export type DAOInvitation = Baseline & { 
   code():string, 
-  read():Promise<(Invitation|null)|Invitation[]>
+  read(parms?:ReadParms):Promise<(Invitation|null)|Invitation[]>
   deleteEntity():Promise<any>;
 };
 export type DAOEntity = Baseline & { 
   id():string, 
-  read():Promise<Entity|null>
+  read(parms?:ReadParms):Promise<Entity|null>
 };
 export type DAOConsenter = Baseline & {
-  read():Promise<(Consenter|null)|Consenter[]>
+  read(parms?:ReadParms):Promise<(Consenter|null)|Consenter[]>
 }
 
 export type FactoryParms = {

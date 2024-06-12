@@ -1,6 +1,6 @@
 import { DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
-import { DAOEntity } from './dao';
+import { DAOEntity, ReadParms } from './dao';
 import { convertFromApiObject } from './db-object-builder';
 import { entityUpdate } from './db-update-builder.entity';
 import { Entity, EntityFields, YN } from './entity';
@@ -65,7 +65,7 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
    * Get a single entity record associated with the specified primary key value (entity_id)
    * @returns 
    */
-  const read = async ():Promise<Entity|null> => {
+  const read = async (readParms?:ReadParms):Promise<Entity|null> => {
     // Handle missing field validation
     if( ! entity_id) throwMissingError('read', EntityFields.entity_id);
 
@@ -81,7 +81,8 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
     if( ! retval.Item) {
       return null;
     }
-    return await loadUser(retval.Item) as Entity;
+    const { convertDates } = (readParms ?? {});
+    return await loadEntity(retval.Item, convertDates ?? true) as Entity;
   }
 
   /**
@@ -138,9 +139,9 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
     return response;
   }
 
-  const loadUser = async (entity:any):Promise<Entity> => {
+  const loadEntity = async (entity:any, convertDates:boolean):Promise<Entity> => {
     return new Promise( resolve => {
-      resolve(convertFromApiObject(entity) as Entity);
+      resolve(convertFromApiObject(entity, convertDates) as Entity);
     });
   }
 

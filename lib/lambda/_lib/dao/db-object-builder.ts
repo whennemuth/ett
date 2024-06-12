@@ -71,14 +71,17 @@ export const convertToApiObject = (obj:any, filter?:ConvertObjectFilter) => {
  * becomes...
  *   { fld: 'fld-value' }
  */
-export const convertFromApiObject = (obj:any) => {
+export const convertFromApiObject = (obj:any, convertISODates=true) => {
   const flatten = (obj:any) => {
     const isISODate = (d:string) => {
       return /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*)?)((-(\d{2}):(\d{2})|Z)?)$/.test(d);
     }
     let flat:any;
     if(obj.S) {
-      flat = isISODate(obj.S) ? new Date(Date.parse(obj.S)) : obj.S;
+      flat = obj.S;
+      if(convertISODates) {
+        flat = isISODate(obj.S) ? new Date(Date.parse(obj.S)) : obj.S;
+      }
     }
     else if(obj.N) {
       if(/\./.test(obj.N)) {
