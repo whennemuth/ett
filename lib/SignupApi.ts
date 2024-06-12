@@ -7,6 +7,7 @@ import { IContext } from "../contexts/IContext";
 import { AbstractFunction } from "./AbstractFunction";
 import { DynamoDbConstruct } from "./DynamoDb";
 import { UserPool } from "aws-cdk-lib/aws-cognito";
+import { Actions } from "./role/AbstractRole";
 
 export type SignupApiConstructParms = {
   userPool: UserPool,
@@ -78,13 +79,13 @@ export class SignupApiConstruct extends Construct {
       proxy: false
     });
 
-    // Add the root resource path element of "acknowledge-entity"
-    const acknowledgePath = api.root.addResource('acknowledge-entity');
+    // Add the root resource path element of ${Actions.acknowledge_entity}
+    const acknowledgePath = api.root.addResource(Actions.acknowledge_entity);
     // Add the task path element
     const taskPath = acknowledgePath.addResource('{task}')
     // Add the "invitation-code" parameter as the last path element.
     const invitationCodePath = taskPath.addResource('{invitation-code}');
-    invitationCodePath.addMethod('GET');   // GET /acknowledge-entity/task/{invitation-code}
+    invitationCodePath.addMethod('GET');   // GET /${Actions.acknowledge_entity}/task/{invitation-code}
     invitationCodePath.addMethod('POST');
     invitationCodePath.addCorsPreflight({
       allowOrigins: [ `https://${cloudfrontDomain}` ],
@@ -94,9 +95,12 @@ export class SignupApiConstruct extends Construct {
       // allowCredentials: true
     });
 
-    this._acknowledgeEntityApiUri = api.urlForPath(`/acknowledge-entity`);
+    this._acknowledgeEntityApiUri = api.urlForPath(`/${Actions.acknowledge_entity}`);
   }
 
+  /**
+   * Create the lambda function and api for for checking invitation code and registering a new user has signed and registered.
+   */
   private createRegisterEntityApi = () => {
     const { constructId, context: { REGION, ACCOUNT }, 
       parms: { cloudfrontDomain, userPool: { userPoolArn, userPoolId } }, stageName 
@@ -166,13 +170,13 @@ export class SignupApiConstruct extends Construct {
       proxy: false
     });
 
-    // Add the root resource path element of "register-entity"
-    const registerEntityPath = api.root.addResource('register-entity');
+    // Add the root resource path element of "${Actions.register_entity}"
+    const registerEntityPath = api.root.addResource(Actions.register_entity);
     // Add the task path element
     const taskPath = registerEntityPath.addResource('{task}')
     // Add the "invitation-code" parameter as the last path element.
     const invitationCodePath = taskPath.addResource('{invitation-code}');
-    invitationCodePath.addMethod('GET');   // GET /register-entity/task/{invitation-code}
+    invitationCodePath.addMethod('GET');   // GET /${Actions.register_entity}/task/{invitation-code}
     invitationCodePath.addMethod('POST');
     invitationCodePath.addCorsPreflight({
       allowOrigins: [ `https://${cloudfrontDomain}` ],
@@ -182,7 +186,7 @@ export class SignupApiConstruct extends Construct {
       // allowCredentials: true
     });
 
-    this._registerEntityApiUri = api.urlForPath('/register-entity');
+    this._registerEntityApiUri = api.urlForPath(`/${Actions.register_entity}`);
   }
 
   public grantPermissionsTo = (dynamodb:DynamoDbConstruct) => {

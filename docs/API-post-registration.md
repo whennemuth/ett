@@ -69,7 +69,7 @@ where `"u4k2uilit9.execute-api.us-east-2.amazonaws.com"` identifies the API gate
           }
         }
         
-        # Where invitation_link resembles: "https://duqvs0kd8d3vj.cloudfront.net?action=acknowledge&entity_id=__UNASSIGNED__&code=14e91df7-66a0-488a-b1ed-11da545c07bf"
+        # Where invitation_link resembles: "https://duqvs0kd8d3vj.cloudfront.net?action=acknowledge-entity&entity_id=__UNASSIGNED__&code=14e91df7-66a0-488a-b1ed-11da545c07bf"
         ```
 
       - Create an entity

@@ -1,6 +1,7 @@
 import exp = require('constants');
 import { Role, Roles } from '../dao/entity';
 import { SignupLink } from './SignupLink';
+import { Actions } from '../../../role/AbstractRole';
 
 const userPoolId = 'us-east-2_J9AbymKIz';
 const userPoolName = 'EttCognito-userpool'
@@ -50,7 +51,7 @@ describe('Cognito signup link ', () => {
   it('Should return the expected signup link', async () => {
     clientIdScenario = 'match';
     const signupLink = new SignupLink({userPoolName}); 
-    const expectedRedirectParm = encodeURIComponent(`https://${redirectURI}?action=signedup`);
+    const expectedRedirectParm = encodeURIComponent(`https://${redirectURI}?action=${Actions.post_signup}`);
     const expectedLink = `https://${cognitoDomain}/signup?client_id=${clientId1}&response_type=code&scope=email+openid+phone&redirect_uri=${expectedRedirectParm}`;
     const link = await signupLink.getCognitoLinkForRole(Roles.RE_ADMIN);
     expect(link).toEqual(expectedLink);
@@ -61,7 +62,7 @@ describe('Registration signup link', () => {
 
   it('Should incorporate produce the expected registration link value', async () => {
     const signupLink = new SignupLink({userPoolName}); 
-    let expectedLink = `https://${cloudfrontDomain}?action=acknowledge`;
+    let expectedLink = `https://${cloudfrontDomain}?action=${Actions.acknowledge_entity}`;
     let link = await signupLink.getRegistrationLink();
     expect(link).toEqual(expectedLink);
 

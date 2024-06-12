@@ -4,6 +4,7 @@ import { mockClient } from 'aws-sdk-client-mock';
 import { SESv2Client, SendEmailCommand, SendEmailCommandInput, SendEmailResponse } from '@aws-sdk/client-sesv2';
 import { Invitation, Roles } from '../dao/entity';
 import { DAOInvitation } from '../dao/dao';
+import { Actions } from '../../../role/AbstractRole';
 
 const invitationParms = {
   email: 'somebody@gmail.com',
@@ -11,7 +12,7 @@ const invitationParms = {
 } as Invitation;
 
 const entity_name = 'Boston University';
-const link = 'https://some/path/to/index.htm?action=acknowledge';
+const link = `https://some/path/to/index.htm?action=${Actions.acknowledge_entity}`;
 
 let daoInviteAttempts = 0;
 let acknowledged:boolean = false;
