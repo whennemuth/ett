@@ -132,7 +132,7 @@ const addExhibitFormChangesToUpdateItem = (_new:Consenter, old:Consenter, item:U
  * @param old 
  * @returns 
  */
-export const consenterUpdate = (TableName:string, _new:Consenter, old:Consenter):Builder => {
+export const consenterUpdate = (TableName:string, _new:Consenter, old:Consenter={} as Consenter):Builder => {
 
   const buildUpdateItem = () => {
     if( ! _new.update_timestamp) {
