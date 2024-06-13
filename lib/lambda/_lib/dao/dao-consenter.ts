@@ -1,9 +1,10 @@
-import { DeleteItemCommandOutput, DynamoDBClient, PutItemCommandOutput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from "@aws-sdk/client-dynamodb";
+import { DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, PutItemCommandOutput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { DynamoDbConstruct } from "../../../DynamoDb";
 import { DAOConsenter } from "./dao";
 import { AffiliateTypes, Consenter, ConsenterFields, Roles, YN } from "./entity";
 import { consenterUpdate } from "./db-update-builder.consenter";
+import { convertFromApiObject } from "./db-object-builder";
 
 export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): DAOConsenter {
 
@@ -62,9 +63,28 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
   }
 
   const read = async ():Promise<(Consenter|null)|Consenter[]> => {
-    return await sendCommand(command);
+    // Handle missing field validation
+    if( ! email) throwMissingError('read', ConsenterFields.email);
+
+    console.log(`Reading email ${email}`);
+    const params = {
+      TableName,
+      Key: {
+        [ConsenterFields.email]: { S: email }
+      }
+    } as GetItemCommandInput
+    command = new GetItemCommand(params);
+    const retval:GetItemCommandOutput = await sendCommand(command);
+    if( ! retval.Item) {
+      return null;
+    }
+
+    return await loadConsenter(command);
   }
 
+  /**
+   * Update a specific consenter record associated with the specified primary key (email)
+   */
   const update = async (oldConsenterInfo:Consenter):Promise<UpdateItemCommandOutput> => {
     // Handle field validation
     if( ! email) {
@@ -79,7 +99,19 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
     return await sendCommand(command);
   }
 
+  /**
+   * Delete a consenter from the dynamodb table.
+   * This is probably not a function you want to expose too publicly, favoring a deactivate method in client
+   * code that calls the update function to toggle the active field to "N".
+   */
   const Delete = async ():Promise<DeleteItemCommandOutput> => {
+    const input = {
+      TableName,
+      Key: { 
+         [ConsenterFields.email]: { S: email, },
+      },
+    } as DeleteItemCommandInput;
+    command = new DeleteItemCommand(input);
     return await sendCommand(command);
   }
   
@@ -102,6 +134,12 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
       console.error(e);
     }          
     return response;
+  }
+
+  const loadConsenter = async (consenter:any):Promise<Consenter> => {
+    return new Promise( resolve => {
+      resolve(convertFromApiObject(consenter) as Consenter);
+    });
   }
 
   const test = async () => {
