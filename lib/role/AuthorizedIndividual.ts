@@ -61,6 +61,7 @@ export class LambdaFunction extends AbstractFunction {
     const { userPoolId, userPoolArn } = userPool;
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
+      memorySize: 1024,
       entry: 'lib/lambda/functions/authorized-individual/AuthorizedIndividual.ts',
       // handler: 'handler',
       functionName: `Ett${constructId}`,

@@ -52,6 +52,7 @@ export class SignupApiConstruct extends Construct {
     // Create the lambda function
     this.acknowledgeEntityLambda = new class extends AbstractFunction { }(this, basename, {
       runtime: Runtime.NODEJS_18_X,
+      memorySize: 1024,
       entry: 'lib/lambda/functions/signup/EntityAcknowledgement.ts',
       // handler: 'handler',
       functionName: `Ett${basename}`,
@@ -111,6 +112,7 @@ export class SignupApiConstruct extends Construct {
     // Create the lambda function
     this.registerEntityLambda = new class extends AbstractFunction { }(this, basename, {
       runtime: Runtime.NODEJS_18_X,
+      memorySize: 1024,
       entry: 'lib/lambda/functions/signup/EntityRegistration.ts',
       // handler: 'handler',
       functionName: `Ett${basename}`,

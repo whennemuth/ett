@@ -66,6 +66,7 @@ export class StaticSiteCustomInConstruct extends StaticSiteConstruct {
       description: 'Function for modifying content being loaded into the static website bucket so that \
         certain placeholders are replaced with resource attribute values, like cognito userpool client attributes.',
       runtime: Runtime.NODEJS_18_X,
+      memorySize: 1024,
       // handler: 'Injector.handler',
       handler: 'handler',
       logRetention: 7,

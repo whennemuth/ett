@@ -55,6 +55,7 @@ export class LambdaFunction extends AbstractFunction {
   constructor(scope: Construct, constructId: string, parms:ApiConstructParms) {
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
+      memorySize: 1024,
       entry: 'lib/lambda/functions/consenting-person/ConsentingPerson.ts',
       // handler: 'handler',
       functionName: `Ett${constructId}`,

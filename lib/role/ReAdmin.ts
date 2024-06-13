@@ -68,7 +68,7 @@ export class LambdaFunction extends AbstractFunction {
       entry: 'lib/lambda/functions/re-admin/ReAdminUser.ts',
       // handler: 'handler',
       functionName: `Ett${constructId}`,
-      memorySize: 512,
+      memorySize: 1024,
       description: 'Function for all re admin user activity.',
       cleanup: true,
       bundling: {
