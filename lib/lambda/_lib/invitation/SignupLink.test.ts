@@ -51,7 +51,7 @@ describe('Cognito signup link ', () => {
   it('Should return the expected signup link', async () => {
     clientIdScenario = 'match';
     const signupLink = new SignupLink({userPoolName}); 
-    const expectedRedirectParm = encodeURIComponent(`https://${redirectURI}?action=${Actions.post_signup}`);
+    const expectedRedirectParm = encodeURIComponent(`https://${redirectURI}?action=${Actions.post_signup}&selected_role=${Roles.RE_ADMIN}`);
     const expectedLink = `https://${cognitoDomain}/signup?client_id=${clientId1}&response_type=code&scope=email+openid+phone&redirect_uri=${expectedRedirectParm}`;
     const link = await signupLink.getCognitoLinkForRole(Roles.RE_ADMIN);
     expect(link).toEqual(expectedLink);

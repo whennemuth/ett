@@ -1385,7 +1385,7 @@
         client_id: clientId(),
         response_type: 'code',
         scope: 'email+openid+phone',
-        redirect_uri: encodeURIComponent(`https://${redirectUri()}?action=signedup`)
+        redirect_uri: encodeURIComponent(`https://${redirectUri()}?action=post-signup&selected_role=${selected_role}`)
       };
 
       if(email) {

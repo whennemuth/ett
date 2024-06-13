@@ -41,7 +41,7 @@ export class EttUserPoolClient extends UserPoolClient {
         callbackUrls: [
           `https://${callbackDomainName}/index.htm`,
           `https://${callbackDomainName}/index.htm?action=${Actions.login}&selected_role=${role}`,
-          `https://${callbackDomainName}/index.htm?action=${Actions.post_signup}`,
+          `https://${callbackDomainName}/index.htm?action=${Actions.post_signup}&selected_role=${role}`,
         ],
         logoutUrls: [
           `https://${callbackDomainName}/index.htm?action=${Actions.logout}`,
