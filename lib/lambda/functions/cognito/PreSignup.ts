@@ -1,6 +1,7 @@
 import { lookupRole, lookupUserPoolClientId, lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { DAOFactory, DAOInvitation } from "../../_lib/dao/dao";
-import { Invitation, Role, Roles } from "../../_lib/dao/entity";
+import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
+import { Consenter, Invitation, Role, Roles } from "../../_lib/dao/entity";
 import { PreSignupEventType } from "./PreSignupEventType";
 
 export enum Messages {
@@ -48,13 +49,22 @@ export const handler = async (_event:any) => {
     if( ! role){
       throw new Error(Messages.ROLE_LOOKUP_FAILURE);
     }
+    
+    const { email } = event?.request?.userAttributes;
 
     if(role == Roles.CONSENTING_PERSON) {
-      // Consenting persons do not need to be invited to signup
+      // Lookup the consenter in the database to ensure they already exist.
+      let dao = ConsenterCrud({ email } as Consenter);
+      console.log(`Checking ${email} already exists as a consenter in the database`);
+      let consenter = await dao.read();
+      if( ! consenter) {
+        throw new Error(`Error: ${email} does not exist`);
+      }
+
+      // Consenting persons do not need to be invited to signup, so exit here.
       return event;
     }
 
-    const { email } = event?.request?.userAttributes;
     const dao = DAOFactory.getInstance({ DAOType: 'invitation', Payload: { email } }) as DAOInvitation;
 
     // All invitations associated with the email.

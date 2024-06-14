@@ -22,6 +22,7 @@ export interface StaticSiteCustomInConstructParms {
   cognitoUserpoolRegion: string,
   entityAcknowledgeApiUri: string,
   registerEntityApiUri: string,
+  registerConsenterApiUri: string,
   apis: AbstractRoleApi[]
 }
 
@@ -38,6 +39,7 @@ const buildJsonEnvVar = (parms: StaticSiteCustomInConstructParms) => {
     PAYLOAD_HEADER: AbstractRoleApi.ETTPayloadHeader,
     ACKNOWLEDGE_ENTITY_API_URI: parms.entityAcknowledgeApiUri,
     REGISTER_ENTITY_API_URI: parms.registerEntityApiUri,
+    REGISTER_CONSENTER_API_URI: parms.registerConsenterApiUri,
     ROLES: { } as any
   };
   parms.apis.forEach((api:AbstractRoleApi) => {

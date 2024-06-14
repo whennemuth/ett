@@ -82,6 +82,7 @@ const buildAll = () => {
     cognitoUserpoolRegion: context.REGION,
     entityAcknowledgeApiUri: signupApi.entityAcknowledgeApiUri,
     registerEntityApiUri: signupApi.registerEntityApiUri,
+    registerConsenterApiUri: signupApi.registerConsenterApiUri,
     apis: [ 
       api.helloWorldApi.getApi(), 
       api.sysAdminApi.getApi(), 

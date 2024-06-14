@@ -18,7 +18,8 @@
       "args": [
         "${workspaceFolder}/lib/lambda/_lib/dao/dao-consenter.ts",
         "RUN_MANUALLY_DAO_CONSENTER",
-        "create",
+        "update",
+        "consent"
       ], 
       "env": {
         "AWS_PROFILE": "bu"
@@ -33,6 +34,8 @@
       "args": [
         "${workspaceFolder}/lib/lambda/functions/sys-admin/SysAdminUser.ts",
         "RUN_MANUALLY_SYS_ADMIN",
+        "sysadmin1@warhen.work",
+        "dev"
       ], 
       "env": {
         "AWS_PROFILE": "bu",

@@ -15,6 +15,9 @@
     <!-- download bootstrap icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
+    <!-- download popper for tooltips -->
+    <script defer src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js"></script>
+
     <!-- Favicons -->
     <meta name="theme-color" content="#712cf9">
 
@@ -243,6 +246,54 @@
         vertical-align: middle;
         height: 100%;
       }
+
+      .consenterFields {
+        float:left; 
+        clear: none; 
+        padding-right:10px;
+        padding-top:10px;
+      }
+
+      span[data-toggle="tooltip"] {
+        text-decoration: underline;
+      }
+
+      /* ol {
+        text-align: left;
+      } */
+
+      ol > li::marker {
+        font-weight: bold;
+      }
+
+      /* background-color: rgb(217, 225, 242); */
+      /* background-color:rgb(84, 123, 196); */
+      /* background-color:rgb(33, 54, 95); */
+      #tblPoc > thead > tr > td {
+        font-weight:bold;
+        color: white;
+        text-align:center;
+        vertical-align: middle;
+        background-color:rgb(84, 123, 196);
+        border-style: solid;
+        border-color: white;
+        padding: 10px;
+      }
+
+      #tblPoc > tbody > tr > td {
+        background-color: rgb(217, 225, 242);
+        border-style: none;
+        padding: 10px;
+      }
+
+      .tooltip-inner {
+        max-width: 500px;
+        text-align:left;
+      }
+
+      /* .text-left {
+        text-align: left;
+      } */
     </style>
 
   </head>
@@ -561,9 +612,9 @@
                 and to agree to these terms, register, and confirm your authority to do so.
                 <button id="btnRegisterEntitySubmit" class="btn btn-primary btn-lg" type="button" disabled>SUBMIT</button>
                 <br><br>
-                <div id="divTerminate">
+                <div id="divTerminateEntity">
                   You may terminate your registration at any time 
-                  <button id="btnTerminate" class="btn btn-danger btn-lg" type="button">Terminate</button>                
+                  <button id="btnTerminateEntity" class="btn btn-danger btn-lg" type="button">Terminate</button>                
                 </div>
               </div>
             </div>
@@ -572,8 +623,58 @@
           <!---------------------------------------------------->
           <!--         CONSENTER REGISTRATION SECTION         -->
           <!---------------------------------------------------->
-          <div id="register-consenter-section" class="container-fluid py-5" style="display: none">
+          <div id="register-consenter-section" class="container-fluid py-5" style="display: none;">
             <h3 class="display-7 fw-bold">Individual Registration Form</h3>
+            <p class="text-justify fs-4" style="text-align:justify;">
+              <p style="font-weight: bold;">
+                This Registration Form enables ETT to connect an individual and their Consent Form.
+              </p>
+              <p style="font-weight: bold;">
+                Individual Registration and Initial Consent Form:
+              </p>
+              <div style="overflow: auto;">
+                <div class="consenterFields">
+                  <div class='tdHeading'>Full First<br>Name(s)*</div>
+                  <div><input type="text" class="form-control" id="txtConsenterFirstName"></div>
+                </div>
+                <div class="consenterFields">
+                  <div class='tdHeading'>Full Middle<br>Name(s)</div>
+                  <div><input type="text" class="form-control" id="txtConsenterMiddleName"></div>
+                </div>
+                <div class="consenterFields">
+                  <div class='tdHeading'>Full Last<br>Name(s)*</div>
+                  <div><input type="text" class="form-control" id="txtConsenterLastName"></div>
+                </div>
+                <div class="consenterFields" style="padding-left:50px;">
+                  <div class='tdHeading'>Email<br>Address*</div>
+                  <div><input type="text" class="form-control" id="txtConsenterEmail"></div>
+                </div>
+
+                <div style="float:left; padding-top:20px;">
+                  <p>
+                    * Required field<br> 
+                    Name, email and phone number will be used to authenticate your account.
+                  </p>
+                  <p style="font-weight: bold; font-style: italic;">
+                    Registering on ETT means that you have read and agree to the ETT Privacy Policy [link] and 
+                    <span style="color: red;">
+                      consent to inclusion of your name (as you reflect it above) on the ETT database and in ETT-related communications made under the ETT process.  The Consent Form [link] provides information on how to rescind your Consent to disclosures.  When the period of your Consent expires—or when it is rescinded and ends for all purposes—your registration will also end automatically.
+                    </span>
+                  </p>
+                  <div style="overflow: auto; min-height: 200px;">
+                    <div style="float:left; max-width: 50%; text-align: right; font-weight: bold; border-right-style: solid; height:100%; padding:10px;">
+                      To complete registration, type your name here as your Electronic Signature with the same effect as a handwritten signature:
+                    </div>
+                    <div style="float:left; padding:10px; overflow: auto; display:flex; align-items: center; height:100%;">
+                      <input type="text" class="form-control" id="txtConsenterSignature" style="max-width: 200px; height:48px; float:left; margin-right:10px;">
+                      <button id="btnRegisterConsenterSubmit" class="btn btn-primary btn-lg" style="float: left;" type="button" disabled>SUBMIT</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+
+            </p>
           </div>
   
           <!---------------------------------------------------->
@@ -703,7 +804,7 @@
               <div class="tab-content" id="reAdminContent">
                 <div class="tab-pane fade show active" id="re-admin-entity" role="tabpanel" aria-labelledby="re-admin-entity-link">
                   <div id="divCreateEntity">
-                    <h3 class="display-7 fw-bold">Create your entity and invite authorized individuals</h3>
+                    <h5 class="display-7 fw-bold" style="text-align:center;">Create your entity and invite authorized individuals</h5>
                     <div id="divReAdminEntityName" class="divSysAdminOption" style="text-align: right;">
                       Entity Name:
                       <input id="txtReAdminEntityName" type="text" class="form-control" style="width:fit-content; display:inline-block;">
@@ -823,8 +924,270 @@
             <!--               CONSENTING_PERSON                -->
             <!---------------------------------------------------->
             <div id="app-section-CONSENTING_PERSON" style="display:none">
-              
-            </div>
+              <div style="font-weight: bold; position: relative; top: -40px;">Welcome <span id="CONSENTING_PERSON_username">[Insert Username]</span></div>
+              <div style="overflow:auto">
+                <ul class="nav nav-tabs" id="consenter" role="tablist">
+                  <li class="nav-item">
+                    <a class="nav-link active" id="consenter-consent-link" data-toggle="tab" href="#consenter-consent" role="tab" aria-controls="consenter-consent" aria-selected="true">Your Consent</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" id="consenter-exhibit-link" data-toggle="tab" href="#consenter-exhibit" role="tab" aria-controls="consenter-exhibit" aria-selected="false">Exhibit Form Submission</a>
+                  </li>
+                </ul>
+                <div class="tab-content" id="consenterContent">
+                  <div class="tab-pane fade show active" id="consenter-consent" role="tabpanel" aria-labelledby="consenter-consent-link">
+                    <h3 class="display-7 fw-bold">ETT Consent Form</h3>
+                    <div id="divConsenterConsent" class="divSysAdminOption" style="overflow: auto; width:100%">
+                      <p style="text-align: left;">
+                        <b>A. FUNDAMENTAL PRINCIPLES (<span id='consent-tooltip-1' data-toggle="tooltip">Principles</span>):</b><br>
+                        <span id='entityName1'>[Insert entity name]</span> is committed to providing a climate and culture where all are welcome and able to thrive, for the sake of our community members and to advance our integrity, excellence, and earned public trust. While people found responsible for misconduct may learn lessons, change conduct, and regain trust, transparency is important.  Not knowing about findings of sexual, gender, and racial/ethnic misconduct, along with certain other types of misconduct, prevents us from achieving the climate and culture we value. <b>(Hover on underlined terms in this form for definitions.)</b>
+                      </p>
+                      <p style="text-align: left;">
+                        <b>B. GIVE YOUR CONSENT:</b><br>
+                        This <span id='consent-tooltip-0' data-toggle="tooltip">Consent Form</span> is part of the <span id='consent-tooltip-0' data-toggle="tooltip">Ethical Transparency Tool</span>, which is a tool to advance the <span id='consent-tooltip-1' data-toggle="tooltip">Principles</span>.<br>
+                        As a condition to being considered by [insert entity name] for <span id='consent-tooltip-2' data-toggle="tooltip">Privileges or Honors</span>, <span id='consent-tooltip-3' data-toggle="tooltip">Employment or Roles</span>, now or in the future, and by submitting this <span id='consent-tooltip-2' data-toggle="tooltip">Consent Form</span>, I give my consent to any <span id='consent-tooltip-4' data-toggle="tooltip">Consent Recipient(s)</span> to complete a <span id='consent-tooltip-5' data-toggle="tooltip">Disclosure Form</span> about me and to provide it to any <span id='consent-tooltip-6' data-toggle="tooltip">ETT-Registered Entit(ies)</span> that make(s) a request during the life of this Consent Form.
+                      </p>
+                      <div style="border-style:solid; border-width:4px; border-color:rgb(84, 123, 196); padding:20px; text-align: left;">
+                        <span id='consent-tooltip-4' data-toggle="tooltip">Consent Recipient(s)</span> are my :
+                        <ol style="margin-top: 10px;">
+                          <li style="margin-top: 5px;">Current employers and former employers (the look-back period for former employers will be determined by each <span id='consent-tooltip-6' data-toggle="tooltip">ETT-Registered Entity</span> at the time it uses this Consent Form to request a disclosure);</li>
+                          <li style="margin-top: 5px;">Current and former academic, professional, and field-related honorary and membership societies and organizations (same look-back period as in #1);</li>
+                          <li style="margin-top: 5px;">Current and former entities and organizations where I have or had emeritus/emerita, visiting, or other teaching, research, or administrative appointments or that have given me an honor or award (same look-back period as in #1); and</li>
+                          <li style="margin-top: 5px;">The entities and organizations where I have any of the above-listed kinds of affiliations in the future.</li>
+                        </ol>  
+                      </div>
+                      <p style="text-align: left; margin-top:20px;">
+                        To provide an up-to-date list, <b>I will submit <span id='consent-tooltip-4' data-toggle="tooltip">Exhibit Forms</span> listing the name and a contact for each of my Consent Recipients each time any <span id='consent-tooltip-6' data-toggle="tooltip">ETT-Registered Entity</span></b> makes a request.  (See Process Diagram.) 
+                        <span id='consent-tooltip-0' data-toggle="tooltip">This Consent Form</span>, any <span id='consent-tooltip-4' data-toggle="tooltip">Exhibit Forms</span> and any completed <span id='consent-tooltip-5' data-toggle="tooltip">Disclosure Form</span> about me may only be used in connection with <span id='consent-tooltip-2' data-toggle="tooltip">Privileges or Honors</span> and <span id='consent-tooltip-5' data-toggle="tooltip">Employment or Roles</span>.  Other policies or laws may provide for additional disclosures (beyond those covered by the <span id='consent-tooltip-0' data-toggle="tooltip">Ethical Transparency Tool</span>).
+                      </p>
+
+                      <hr style="width:90%; margin-top:50px;" />
+
+                      <div style="margin-top:50px; text-align: left;">
+                        <b>To the maximum extent that law allows me to knowingly give a waiver/release:</b>
+                        <div>
+                          <ol>
+                            <li style="margin-top:20px;">
+                              <b>I waive any non-disclosure, non-disparagement, confidentiality and other limitations that would otherwise apply to a completed <span id='consent-tooltip-5' data-toggle="tooltip">Disclosure Form</span> about me which are imposed by —</b>
+                              <ul>
+                                <li>any current or future agreement or</li>
+                                <li>any law or policy in effect when a completed <span id='consent-tooltip-5' data-toggle="tooltip">Disclosure Form</span> is provided; </li>
+                              </ul>
+                              <b><br>and</b>
+                            </li>
+                            <li style="margin-top:20px;">
+                              <b>I waive and release all claims and liabilities of every kind, that are associated with this <span id='consent-tooltip-0' data-toggle="tooltip">Consent Form</span>, any <span id='consent-tooltip-4' data-toggle="tooltip">Exhibit Forms</span>, or the disclosures and use of disclosures to which I am consenting, against any <span id='consent-tooltip-4' data-toggle="tooltip">Consent Recipient(s)</span>, <span id='consent-tooltip-6' data-toggle="tooltip">ETT-Registered Entit(ies)</span>, and/or developer(s), host(s), administrator(s), operator(s), governing bodies, sponsor(s), or advisor(s) for the <span id='consent-tooltip-0' data-toggle="tooltip">Ethical Transparency Tool</span></b> (and their respective prior, current, and future directors/trustees/managers, officers, partners/members/stockholders, personnel, agents, and representatives).
+                            </li>
+                          </ol>
+                        </div>
+                      </div>
+                      <div style="border-style:solid; border-width:4px; border-color:rgb(84, 123, 196); padding:20px; text-align: left; font-weight: bold;">
+                        This <span id='consent-tooltip-0' data-toggle="tooltip">Consent Form</span> will expire in 10 years (after the date I submit it) unless I renew it.  I may rescind this <span id='consent-tooltip-0' data-toggle="tooltip">Consent Form</span> by clicking on the link below — the link explains one exception.
+                      </div>
+                      <p style="text-align: left; margin-top:50px;">
+                        I agree that a copy of this <span id='consent-tooltip-0' data-toggle="tooltip">Consent Form</span> may be given at any time to any <span id='consent-tooltip-4' data-toggle="tooltip">Consent Recipient(s)</span> and <span id='consent-tooltip-6' data-toggle="tooltip">ETT-Registered Entit(ies)</span>. I agree that this electronic <span id='consent-tooltip-0' data-toggle="tooltip">Consent Form</span>, my electronic (digital) signature, and any copy will have the same effect as originals for all purposes. <b>I have read this <span id='consent-tooltip-0' data-toggle="tooltip">Consent Form</span> (including the definitions) and read and agree to the ETT Privacy Policy [link]. I have had the time to consider and consult anyone I wish on whether to provide this <span id='consent-tooltip-0' data-toggle="tooltip">Consent Form</span>.  I am at least 18 years old and it is my knowing and voluntary decision to sign and deliver this <span id='consent-tooltip-0' data-toggle="tooltip">Consent Form</span>.</b>
+                      </p>
+
+                      <hr style="width:90%; margin-top:50px; margin-bottom: 50px;" />
+                      
+                      <div class="consenterFields" style="min-width: 300px;">
+                        <div class='tdHeading'>Full Name<br><span style="font-size: 10px;">(first, middle, last)</span></div>
+                        <div><input type="text" class="form-control" id="txtConsentFullname"></div>
+                      </div>
+                      <div class="consenterFields">
+                        <div class='tdHeading'>Email<br>Address</div>
+                        <div><input type="text" class="form-control" id="txtConsentEmail"></div>
+                      </div>
+                      <div class="consenterFields">
+                        <div class='tdHeading'>Cell<br>Phone</div>
+                        <div><input type="text" class="form-control" id="txtConsentPhone"></div>
+                      </div>      
+                      <div style="float:left; padding-top:20px;">
+                        <div style="overflow: auto; min-height: 200px;">
+                          <div style="float:left; max-width: 50%; text-align: right; font-weight: bold; border-right-style: solid; height:100%; padding:10px;">
+                            Please type your full name (First Middle Last) to digitally sign this Consent Form:
+                          </div>
+                          <div style="float:left; padding:10px; overflow: auto; display:flex; align-items: center; height:100%;">
+                            <input type="text" class="form-control" id="txtConsentSignature" style="max-width: 200px; height:48px; float:left; margin-right:10px;">
+                            <button id="btnRegisterConsentSubmit" class="btn btn-primary btn-lg" style="float: left;" type="button" disabled>SUBMIT</button>
+                          </div>
+                        </div>
+                      </div>
+                      <div style="float:left; clear: both; overflow: auto;">
+                        <div style="display: flex; flex-direction: row; float:left; overflow: auto; padding-right:25px; margin-right:25px; border-right-style: solid;">
+                          <div style="display: flex; width:220px; margin-right: 5px;">To rescind this Consent Form (or review the exception), click</div>
+                          <div style="display: flex; align-items: center; height: 100%; overflow:auto;">
+                            <button id="btnRescindConsent" class="btn btn-danger" type="button" style="margin-top:6px;" disabled>RESCIND</button>
+                          </div>                                                 
+                        </div>
+                        <div style="display: flex; flex-direction: row; float:left; overflow: auto; vertical-align: middle; margin-right:10px;">
+                          <div style="display: flex; width:140px; margin-right: 5px;">To renew this Consent Form click</div>
+                          <div style="display: flex; align-items: center; height: 100%; overflow:auto;">
+                            <button id="btnRenewConsent" class="btn btn-primary" type="button" style="margin-top:6px;" disabled>RENEW</button>
+                          </div>                                                 
+                        </div>
+                        <div style="display: flex; flex-direction: row; float:left; overflow: auto; vertical-align: middle; ">
+                          <div style="display: flex; width:140px; margin-right: 5px;">To correct this Consent Form, click</div>
+                          <div style="display: flex; align-items: center; height: 100%; overflow:auto;">
+                            <button id="btnCorrectConsent" class="btn btn-primary" type="button" style="margin-top:6px;" disabled>CORRECT</button>
+                          </div>                                                 
+                        </div>
+                      </div>                  
+                    </div>
+                  </div>
+
+                  <div class="tab-pane fade" id="consenter-exhibit" role="tabpanel" aria-labelledby="consenter-exhibit-link" style="overflow:auto;">
+                    <h3 class="display-7 fw-bold">Full Exhibit Form - Consent Recipients/Affiliates</h3>
+
+                    <p style="margin-top:40px; margin-bottom:40px;">
+                      <b>This Full Exhibit Form is incorporated into my Consent Form, at link. This Exhibit Form provides an up-to-date 
+                      list of the names and contacts for my known Consent Recipients on the date of this Exhibit. The definitions 
+                      in the Consent Form also apply to this Full Exhibit Form.</b> My known Consent Recipient(s) are listed below: 
+                    </p>
+
+                    <div style="float:left; clear:both; overflow:auto;">
+                      <div style="float:left; margin-right:10px; text-align: right;" ><span id='exhibit-tooltip-0' data-toggle="tooltip">Requesting<br>Organizations/Entities</span></div>
+                      <div style="float:left;">
+                        <select id="lbxRequestingEntity" class="form-control" style="width:300px; height:48px; margin-right: 10px;">
+                          <option><- Select One -></option>
+                          <option value="bu">Boston University</option>
+                          <option value="tu">Tufts University</option>
+                          <option value="nu">Northeastern University</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style="float:left; clear:both; margin-top: 20px; overflow: auto;">
+                      <table id="tblPoc">
+                        <thead>
+                          <tr>
+                            <td colspan="2">Organization</td>
+                            <td colspan="5">Point of Contact</td>
+                          </tr>
+                          <tr>
+                            <td>Name (No acronyms) </td>
+                            <td><span id='exhibit-tooltip-1' data-toggle="tooltip">Type</span></td>
+                            <td>Name (First and Last Name)</td>
+                            <td>Job Title</td>
+                            <td>Email</td>
+                            <td>Phone Number</td>
+                            <td style="width:fit-content; width:1px;">&nbsp;</td>
+                          </tr>
+                        </thead>
+                        <tbody id="tbPoc">
+                          <tr id="trPoc">
+                            <td><input id="org-name" type="text" class="form-control"></td>
+                            <td>
+                              <span id='exhibit-tooltip-1' data-toggle="tooltip">
+                                <select id="org-type" class="form-control">
+                                  <option><- Select One -></option>
+                                  <option value="employer">1) Employers</option>
+                                  <option value="academic">2) Academic / Professional Societies & Organizations</option>
+                                  <option value="other">3) Other Affiliated Organizations</option>
+                                </select>
+                              </span>
+                            </td>
+                            <td><input id="poc-name" type="text" class="form-control"></td>
+                            <td><input id="poc-title" type="text" class="form-control"></td>
+                            <td><input id="poc-email" type="text" class="form-control"></td>
+                            <td><input id="poc-phone" type="text" class="form-control"></td>
+                            <td style="width:fit-content;">
+                              <span id='exhibit-tooltip-2' data-toggle="tooltip">
+                                <button id="btnAddPoc" class="btn btn-primary btn-sm" type="button" style="width:68px;" onclick="changePoc('add')">Add</button>                                
+                              </span>
+                              <span id='exhibit-tooltip-3' data-toggle="tooltip">
+                                <button id="btnRemovePoc" class="btn btn-primary btn-sm" type="button" style="width:68px; margin-top:4px;"  onclick="changePoc('remove')">Remove</button>                                
+                              </span>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <hr style="width:90%; margin-top:50px; margin-bottom: 50px;" />
+                    </div>
+
+                    <div style="float:left; clear:both; ">
+                      <p style="font-weight:bold;">I direct the Ethical Transparency Tool (“ETT”) to do the following and consent to it doing so: </p>
+                      <div style="margin-top: 10px;">
+                        <ol>
+                          <li>
+                            <p style="font-weight:bold;">
+                              Transmit this “Full Exhibit Form” and my accompanying “Single-Entity Exhibit Forms” on my behalf to my private page on ETT.
+                            </p>                            
+                          </li>
+                          <li>
+                            <p>
+                              <b>Also transmit this Full Exhibit Form on my behalf to <span id="spanRequestingEntity">[INSERT NAME]</span></b>, which is the ETT-Registered 
+                              Entity that requested it (“Registered Entity”) in connection with considering me for a Privilege or 
+                              Honor, Employment or Role
+                            </p>
+                          </li>
+                          <li>
+                            <p>
+                              <b>Within the next 60 days—if the Registered Entity initiates transmittals via ETT to my Consent 
+                              Recipients, asking them to complete Disclosure Forms about me (“Disclosure Requests”), transmit 
+                              the Disclosure Requests</b> (including the relevant <b>Single-Entity Exhibit Form</b>, my Consent Form, and a 
+                              blank Disclosure Form), copying the Registered Entity. <b>I agree that my Consent Form will remain in 
+                              effect for use with Disclosure Forms provided in response to these Disclosure Requests (even if my 
+                              Consent would otherwise expire or is rescinded)</b>.
+                            </p>
+                            <p>
+                              <b>Within the 21 days after sending the initial Disclosure Requests—resend the Registered Entity’s 
+                              Disclosure Requests twice (as reminders) to my Consent Recipients, copying the Registered Entity. 
+                              Then promptly delete all of my Exhibit Forms from ETT (as ETT will have completed its transmittal 
+                              role).</b>
+                            </p>
+                          </li>
+                          <li>
+                            <p>
+                              If the Registered Entity does not initiate Disclosure Requests within this 60-day period, delete all of 
+                              my Exhibit Forms from ETT.
+                            </p>
+                          </li>
+                        </ol>
+                      </div>
+                    </div>
+
+                    <div style="float:left; clear:both; margin-top:30px; margin-bottom:30px;">
+                      I agree that this electronic Full Exhibit Form and my electronic (digital) signature, and any copy will have the 
+                      same effect as originals for all purposes. <b>I have had the time to consider and consult anyone I wish on whether 
+                      to provide this Full Exhibit Form. I am at least 18 years old and it is my knowing and voluntary decision to 
+                      sign and deliver this Full Exhibit Form.</b>
+                    </div>
+
+                    <div style="float:left; clear:both;">
+                      <div style="overflow: auto;">
+                        <div style="float:left; max-width: 50%; text-align: right; font-weight: bold; font-style: italic; border-right-style: solid; height:100%; padding:10px;">
+                          Please type your full name (First Middle Last) to digitally sign this Exhibit Form:
+                        </div>
+                        <div style="float:left; padding:10px; overflow: auto; display:flex; align-items: center; height:100%;">
+                          <input type="text" class="form-control" id="txtExhibitSignature" style="max-width: 200px; height:48px; float:left; margin-right:10px;">
+                        </div>
+                      </div>
+                    </div>
+                    <div class="consenterFields" style="min-width: 300px; clear:both;">
+                      <div class='tdHeading'>Full Name<br><span style="font-size: 10px;">(first, middle, last)</span></div>
+                      <div><input type="text" class="form-control" id="txtExhibitFullname"></div>
+                    </div>
+                    <div class="consenterFields">
+                      <div class='tdHeading'>Email<br>Address</div>
+                      <div><input type="text" class="form-control" id="txtExhibitEmail"></div>
+                    </div>
+                    <div class="consenterFields">
+                      <div class='tdHeading'>Cell<br>Phone</div>
+                      <div><input type="text" class="form-control" id="txtExhibitPhone"></div>
+                    </div>      
+
+                    <div style="display:flex; flex-direction: row; overflow: auto; justify-content: flex-start; float:left; clear:both; margin-top:40px; width:100%;">
+                      <button id="btnExhibitNext" class="btn btn-danger btn-lg" style="margin-right:8px;" type="button">NEXT</button>
+                      <span style="font-style: italic; font-weight: bold;">
+                        Click the Next button to create, review, and sign a Single-Entity Exhibit Form for each of your listed consent 
+                        Recipients. You will not be able to submit any of your Exhibit Forms until you digitally sign all of them.
+                      </span> 
+                    </div>                                      
+                  </div>
+                </div>
+              </div>
+          </div>
 
           <!-- Signout button -->
           <p>&nbsp;</p>              
@@ -832,8 +1195,7 @@
           <p>&nbsp;</p>              
           <p>&nbsp;</p>              
           <div>
-              <button id="btnSignout" type="button" class="btn btn-danger">Sign out</button>
-            </div>            
+            <button id="btnSignout" type="button" class="btn btn-danger">Sign out</button>           
           </div>
         </div>
 
@@ -1033,7 +1395,7 @@
      * Lookup the invitation with an api call. The invitation will also contain information as whether or not
      * the user has acknowledged privacy policy or registered already. Reflect the findings in the current screen.
      */
-    function showRegistrationScreen(step, invitationCode, callback) {
+    function showEntityRegistrationScreen(step, invitationCode, callback) {
       const msg = document.getElementById('apiResponse');
       msg.innerHTML = '';
 
@@ -1075,7 +1437,7 @@
     }
 
     /**
-     * This function is triggered as a callback from showRegistrationScreen with the returned invitation.
+     * This function is triggered as a callback from showEntityRegistrationScreen with the returned invitation.
      * If the invitation shows an acknowledgement timestamp, then enable buttons to goto the register-entity screen.
      */
     function showAcknowledgeEntityScreen(payload) {
@@ -1104,7 +1466,7 @@
     }
 
     /**
-     * This function is triggered as a callback from showRegistrationScreen with the returned invitation.
+     * This function is triggered as a callback from showEntityRegistrationScreen with the returned invitation.
      * If the invitation shows a register-entity timestamp, then enable buttons to goto cognito login.
      */
     function showRegisterEntityScreen(payload) {
@@ -1117,13 +1479,13 @@
         selected_role = role;
         const chk = document.getElementById('chkRegisterEntity');
         const btnSubmit = document.getElementById('btnRegisterEntitySubmit');
-        const divTerminate = document.getElementById('divTerminate');
+        const divTerminateEntity = document.getElementById('divTerminateEntity');
 
         if(selected_role == 'RE_ADMIN') {
-          divTerminate.style.display = 'none';
+          divTerminateEntity.style.display = 'none';
         }
         else {
-          divTerminate.style.display = 'inline';
+          divTerminateEntity.style.display = 'inline';
         }
         if( ! acknowledged_timestamp) {
           showAcknowledgeEntityScreen(invitation);
@@ -1303,7 +1665,7 @@
      * This is the "nuclear option".
      * Demolish the entire entity (users, invitations, entity, related cognito items)
      */
-    const terminate = async (invitationCode) => {
+    const terminateEntity = async (invitationCode) => {
       if( ! confirm("This removal includes all other personnel registered with the entity and CANNOT BE UNDONE.\n\n" +
       "Click 'Ok' to proceed,\n" +
       "Click 'Cancel' to abort")) {
@@ -1375,6 +1737,208 @@
       .catch((e) => {
         msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
       });      
+    }
+
+    /**
+     * Register the consenter. 
+     */
+    function registerConsenter() {
+      const email = document.getElementById('txtConsenterEmail').value ?? '';
+      const firstname = document.getElementById('txtConsenterFirstName').value ?? '';
+      const middlename = document.getElementById('txtConsenterMiddleName').value ?? '';
+      const lastname = document.getElementById('txtConsenterLastName').value ?? '';
+      const msg = document.getElementById('apiResponse');
+
+      if( ! firstname) {
+        alert('First name required'); return;
+      }
+      if( ! lastname) {
+        alert('Last name required'); return;
+      }
+      if( ! email) {
+        alert('Email address required'); return;
+      }
+
+      msg.innerHTML = '';
+      try {
+        // Register consenters name and email to the backend.
+        const payload = {
+          parameters: { email, firstname, middlename, lastname }
+        }
+        fetch(STATIC_PARAMETERS.REGISTER_CONSENTER_API_URI, {
+          method: 'GET',
+          credentials: 'omit',
+          mode: 'cors',
+          headers: {
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify(payload)
+          }
+        })
+        .then(response => response.json())
+        .then((json) => {
+          const { message, payload } = json;
+          if(payload.ok) {
+            signUp(email); // Bring up the cognito signup hosted ui.
+          }
+          else {
+            msg.innerHTML = `<pre>${message}</pre>`;
+          }
+        })
+        .catch((e) => {
+          msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+        }); 
+      }
+      catch(err) {
+        msg.innerHTML = `<pre>${JSON.stringify(err, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
+    /**
+     * Get the consenters consent into the database.
+     */
+    function registerConsent() {
+      const signature = document.getElementById('txtConsentSignature').value ?? '';
+      const fullname = document.getElementById('txtConsentFullname').value ?? '';
+      const email = document.getElementById('txtConsentEmail').value ?? '';
+      const phone = document.getElementById('txtConsentPhone').value ?? '';
+      const msg = document.getElementById('apiResponse');
+
+      if( ! signature) {
+        alert('Signature required'); return;
+      }
+      if( ! fullname) {
+        alert('Fullname required'); return;
+      }
+      if( ! email) {
+        alert('Email address required'); return;
+      }
+      if( ! phone) {
+        alert('Phone number required'); return;
+      }
+
+      msg.innerHTML = '';
+      try {
+        // Register consenters name and email to the backend.
+        const payload = {
+          parameters: { signature, fullname, email, phone }
+        }
+        fetch(STATIC_PARAMETERS.ROLES['CONSENTING_PERSON'].API_URI, {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify(payload)
+          }
+        })
+        .then(response => response.json())
+        .then((json) => {
+          const { message, payload } = json;
+          if(payload.ok) {
+            signUp(email);
+          }
+          else {
+            msg.innerHTML = `<pre>${message}</pre>`;
+          }
+        })
+        .catch((e) => {
+          msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+        }); 
+      }
+      catch(err) {
+        msg.innerHTML = `<pre>${JSON.stringify(err, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
+    /**
+     * Add or remove a red border of a field depending on whether it has a selection/value or not.
+     */
+    function toggleHighlight(fld, on_off) {
+      let _on_off = on_off;
+      if(on_off == undefined) {
+        _on_off = fld.nodeName == 'SELECT' && fld.selectedIndex == 0;
+        _on_off |= fld.nodeName == 'INPUT' && ! fld.value;
+      }
+      fld.style.borderStyle = _on_off ? 'solid' : '';
+      fld.style.borderWidth = _on_off ? '2px' : '';
+      fld.style.borderColor = _on_off ? 'red' : '';
+      return _on_off;
+    }
+
+    /**
+     * Apply and process event to any field within an affiliate row for handling empty values.
+     */
+    function validateAffiliateRow(row) {
+      [ 'select', 'input'].forEach(tagname => {
+        const flds = row.getElementsByTagName(tagname);
+        for (const fld of flds) {
+          toggleHighlight(fld, false);
+          const _event = tagname == 'select' ? 'change' : 'keyup';
+          fld.addEventListener(_event, () => { 
+            toggleHighlight(fld); 
+          })
+        };
+      })
+    }
+
+    /**
+     * Add or remove a point of contact from the exhibit form
+     */
+    function changePoc(task) {
+      if(task == 'add') {
+        const tbl = document.getElementById('tblPoc');
+        const tr = document.getElementById('trPoc');
+        const newrow = tbl.insertRow();
+        newrow.innerHTML = tr.innerHTML;
+
+        // Remove red borders of any of the rows child fields if they have them.
+        validateAffiliateRow(newrow);
+        
+        // Call the tooltip activation command globally to enable tooltips for the new fields of the new row.
+        $('[data-toggle="tooltip"]').tooltip({ 
+          html:true,
+        })
+      }
+      if(task == 'remove') {
+        const tb = document.getElementById('tbPoc');
+        if(tb.childElementCount > 1) {
+          // $('#exhibit-tooltip-3').tooltip('hide');
+          $('[data-toggle="tooltip"]').tooltip('hide');
+          const row = event.srcElement.parentElement.parentElement.parentElement;
+          tb.removeChild(row);
+        }
+      }
+    }
+
+    /**
+     * Return a boolean indicating if all exhibit form fields are filled out with valid values.
+     */
+    function validExhibitForm() {
+      let empty = false;
+
+      // Put a red border on the requesting entity picklist if no entity is selected from it.
+      empty |= toggleHighlight(document.getElementById('lbxRequestingEntity'));
+
+      // Put red borders on any affliate field that is empty.
+      [ 'select', 'input'].forEach(tagname => {
+        const flds = document.getElementById('tblPoc').getElementsByTagName(tagname);
+        for (const fld of flds) {
+          toggleHighlight(fld);
+        };
+      });
+      [ 'txtExhibitSignature', 'txtExhibitFullname', 'txtExhibitEmail', 'txtExhibitPhone' ].forEach(fldId => {
+        toggleHighlight(document.getElementById(fldId));
+      });
+      return empty;
+    }
+
+    /**
+     * Put each affliate in a modal dialog in the form of a single exhibit form with the ability 
+     * to sign each of them in order using another next button.
+     */
+    function signSingleExhibitForms() {
+      console.log('not implemented yet');
     }
 
     /**
@@ -1761,7 +2325,12 @@
         signIn();
       });
       document.getElementById('btnSignup').addEventListener('click', () => {
-        signUp();
+        if(selected_role = 'CONSENTING_PERSON') {
+          showSection('acknowledge-consenter');
+        }
+        else {
+          signUp();
+        }
       });
       document.getElementById('btnPingApi').addEventListener('click', () => {
         pingApi();
@@ -1775,8 +2344,8 @@
       document.getElementById('btnRegisterEntitySubmit').addEventListener('click', () => {
         registerEntity(invitationCode);
       });
-      document.getElementById('btnTerminate').addEventListener('click', async () => {
-        await terminate(invitationCode);
+      document.getElementById('btnTerminateEntity').addEventListener('click', async () => {
+        await terminateEntity(invitationCode);
       });
       document.getElementById('btnSysAdminInvite').addEventListener('click', () => {
         const role = $("input[name='rdoSysAdminInvite']:checked").val();
@@ -1802,6 +2371,43 @@
       document.getElementById('btnAcknowledgeConsenterSubmit').addEventListener('click', () => {
         showSection('register-consenter');
       });
+      document.getElementById('txtConsenterSignature').addEventListener('keyup', (event) => {
+        let val = event.srcElement.value;
+        document.getElementById('btnRegisterConsenterSubmit').disabled = val ? false : true;
+      });
+      document.getElementById('btnRegisterConsenterSubmit').addEventListener('click', () => {
+        registerConsenter();
+      });
+      document.getElementById('txtConsentSignature').addEventListener('keyup', (event) => {
+        let val = event.srcElement.value;
+        document.getElementById('btnRegisterConsentSubmit').disabled = val ? false : true;
+      });
+      document.getElementById('btnRegisterConsentSubmit').addEventListener('click', () => {
+        registerConsent();
+      });
+      document.getElementById('lbxRequestingEntity').addEventListener('change', (event) => {
+        const lbx = event.srcElement;
+        toggleHighlight(lbx);
+        document.getElementById('spanRequestingEntity').innerText = lbx.options[lbx.selectedIndex].innerText;
+      });
+      document.getElementById('btnExhibitNext').addEventListener('click', () => {
+        if(validExhibitForm()) {
+          signSingleExhibitForms();
+        }
+      });
+      document.getElementById('txtExhibitSignature').addEventListener('keyup', () => {
+        toggleHighlight(event.srcElement);
+      });
+      document.getElementById('txtExhibitFullname').addEventListener('keyup', () => {
+        toggleHighlight(event.srcElement);
+      });
+      document.getElementById('txtExhibitEmail').addEventListener('keyup', () => {
+        toggleHighlight(event.srcElement);
+      });
+      document.getElementById('txtExhibitPhone').addEventListener('keyup', () => {
+        toggleHighlight(event.srcElement);
+      });
+      validateAffiliateRow(document.getElementById('trPoc'));
 
       // Add show/hide behavior to the SYS_ADMIN tabstrip
       $('#sysAdmin a').on('click', function (e) {
@@ -1813,6 +2419,49 @@
       $('#reAdmin a').on('click', function (e) {
         e.preventDefault()
         $(this).tab('show')
+      });
+
+      // Add show/hide behavior to the RE_ADMIN tabstrip
+      $('#consenter a').on('click', function (e) {
+        e.preventDefault()
+        $(this).tab('show')
+      });
+
+      const tooltips = {
+        consent: [
+          '<b>Ethical Transparency Tool</b> (or ETT) means a tool that enables each Consent Recipient to provide a completed Disclosure Form about a person who has signed and delivered a Consent Form (this form), to any ETT-Registered Entit(ies) that make(s) a request.  Each entity retains its independence in policymaking and decision-making (e.g., when to use the ETT and how to respond to disclosures).',
+          '<b>Principles</b> mean the statements in “Part A. FUNDAMENTAL PRINCIPLES” of the Consent Form.',
+          '<b>Privilege(s) or Honor(s)</b> — Examples include but are not limited to: elected fellow, elected or life membership; recipient of an honor, award, or an emeritus or endowed role; elected or appointed governance, committee, officer, or leadership role. However, Privilege(s) or Honor(s) <b>DO NOT</b> include basic membership in an academic, professional, or honorary society at an individual’s initiative (i.e., when not elected or awarded).  Other Privilege(s) or Honor(s) that an ETT-Registered Entity identifies as affecting climate and culture or enterprise risk may be included (e.g., volunteer roles).',
+          '<b>Employment or Role(s)</b> — Examples include but are not limited to: employment; employee appointment or assignment to a supervisory, evaluative, or mentoring role. Other employment related roles or decisions that an ETT-Registered Entity identifies as affecting climate and culture or enterprise risk may be included.',
+          '<b>Consent Recipient(s)</b> mean the entities referenced in Part B. 1, 2, 3, 4 of the Consent Form.  A Consent Recipient is the “Disclosing Entity” that completes a Disclosure Form when requested.  For up-to-date information, the person who submits a Consent Form also provides a list of the names of their Consent Recipients, with contacts, using Exhibit Forms at this link each time any ETT-Registered Entity is considering the person for a Privilege or Honor, Employment or Role and makes a request. (The Exhibit Forms template may be amended for amplification or clarity over time and re-posted.)',
+          '<b>The Disclosure Form</b> is the form at this link (and may be amended for amplification or clarity over time and re-posted).  Finding of Responsibility is a finding of any one or more of the generic types of misconduct listed/referenced on the Disclosure Form.  A Finding of Responsibility is defined by the Consent Recipient that made or adopted the finding under its own policy (see the Disclosure Form for details).  A Disclosure Form is completed when a Consent Recipient checks one or more Finding(s) of Responsibility that it has made or adopted against a person or when it checks “No Finding of Responsibility” or “Will Not Be Responding”. ',
+          '<b>ETT-Registered Entit(ies)</b> mean the entities and organizations now or in the future registered to use the Ethical Transparency Tool.  See this link for a list, which will be updated over time. ETT-Registered Entities are the only entities that may request completed Disclosure Forms from Consent Recipients.',
+        ],
+        exhibit: [
+          'The organization/entity you select here will receive your completed exhibit form via email',
+          '<br><ol><li><b>Employers</b><br>List your current employers and former employers for the period specified by the ETT-Registered Entity that requested this Exhibit Form (“Registered Entity”) in connection with considering you for a Privilege or Honor, Employment or Role. List up to date contacts of the type specified by the ETT-Registered Entity (e.g., HR, supervisor, department head)</li><li><b>Academic / Professional Societies & Organizations</b><br>List your current and former academic, professional, and field-related honorary and membership societies and organizations (same period as under 1 above). Contact should be the Executive Director/CEO.</li><li><b>Other Affiliated Organizations</b><br>List the current and former organizations where you have or had emeritus/emerita, visiting, or other teaching, research, or administrative appointments—or that have given you an honor or award (same period and contact as under 1 above)</li></ol>',
+          'Add another affiliate',
+          'Remove this affiliate'
+        ]
+      }
+
+      // Set the tooltips for every qualifying element
+      $('span[data-toggle="tooltip"]').each(function() {
+        const idx = /\d+$/.exec(this.id)[0];        
+        if(idx) {
+          const subject = /^[^\-]+/.exec(this.id)[0];
+          if(subject) {
+            // Define the text of the tooltip. Inline styles do not seem to work, so using class instead for alignment.
+            this.title = tooltips[subject][parseInt(idx)];
+          }
+        }
+      })
+
+      // Enable tooltips globally
+      $(function () {
+        $('[data-toggle="tooltip"]').tooltip({ 
+          html:true
+        })
       });
 
       // Function for checking the users login status and selecting the correct view based on the JWT content.
@@ -1877,11 +2526,11 @@
       switch(action) {
 
         case 'acknowledge-entity':
-          showRegistrationScreen(action, invitationCode, showAcknowledgeEntityScreen);
+          showEntityRegistrationScreen(action, invitationCode, showAcknowledgeEntityScreen);
           break;
 
         case 'register-entity':
-          showRegistrationScreen(action, invitationCode, showRegisterEntityScreen);
+          showEntityRegistrationScreen(action, invitationCode, showRegisterEntityScreen);
           break;
 
         case 'acknowledge-consenter': 
@@ -1898,9 +2547,9 @@
           await exchangeAuthorizationCode(checkAuth);
           break;
 
-        case 'signedup':
+        case 'post-signup':
           document.getElementById('btnSignup').style.display = 'none';
-          await checkAuth();
+          signIn();
           break;
 
         case 'logout':
