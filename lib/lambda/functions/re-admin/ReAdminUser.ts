@@ -430,8 +430,7 @@ export const createEntityAndInviteUsers = async (parameters:any, callerSub?:stri
 const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY_RE_ADMIN') {
 
-  // const task = Task.INVITE_USER;
-  const task = Task.INVITE_USER;
+  const task = Task.CREATE_ENTITY_INVITE as Task;
   const landscape = 'dev';
   const region = 'us-east-2';
 
@@ -448,27 +447,65 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_RE_ADMIN') {
     process.env.REGION = region;
     process.env.DEBUG = 'true';
 
-    const payload = {
-      task,
-      parameters: {
-        email: 'warhen8@gmail.com',
-        role: Roles.RE_AUTH_IND,
-      }
-    } as IncomingPayload;
-
-    const _event = {
-      headers: {
-        [AbstractRoleApi.ETTPayloadHeader]: JSON.stringify(payload)
-      },
-      requestContext: {
-        authorizer: {
-          claims: {
-            username: '417bd590-f021-70f6-151f-310c0a83985c',
-            sub: '417bd590-f021-70f6-151f-310c0a83985c'
+    let payload = {};
+    let _event = {};
+    switch(task) {
+      case Task.INVITE_USER:
+        payload = {
+          task,
+          parameters: {
+            email: 'warhen8@gmail.com',
+            role: Roles.RE_AUTH_IND,
           }
-        }
-      }
-    } as any
+        } as IncomingPayload;
+        _event = {
+          headers: {
+            [AbstractRoleApi.ETTPayloadHeader]: JSON.stringify(payload)
+          },
+          requestContext: {
+            authorizer: {
+              claims: {
+                username: '417bd590-f021-70f6-151f-310c0a83985c',
+                sub: '417bd590-f021-70f6-151f-310c0a83985c'
+              }
+            }
+          }
+        } as any;
+        break;
+      case Task.CREATE_ENTITY_INVITE:
+        payload = {
+          task,
+          parameters: {
+            entity: {
+              name: 'Somewhere State University'
+            },
+            invitations: {
+              invitee1: {
+                email: 'auth1.ssu.edu@warhen.work',
+                role: Roles.RE_AUTH_IND
+              },
+              invitee2: {
+                email: 'auth2.ssu.edu@warhen.work',
+                role: Roles.RE_AUTH_IND
+              }
+            }
+          }
+        } as IncomingPayload;
+        _event = {
+          headers: {
+            [AbstractRoleApi.ETTPayloadHeader]: JSON.stringify(payload)
+          },
+          requestContext: {
+            authorizer: {
+              claims: {
+                username: '214b8500-c0b1-70ac-086f-b6fe744794a5',
+                sub: '214b8500-c0b1-70ac-086f-b6fe744794a5'
+              }
+            }
+          }
+        } as any;
+        break;
+    }
 
     return handler(_event);
   }).then(() => {

@@ -128,8 +128,9 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
 const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY_ENTITY_REGISTRATION') {
   
-  const task = Task.REGISTER;
+  const task = Task.LOOKUP_ENTITY as Task;
   const landscape = 'dev';
+  const invitation_code = 'ea14dcfd-2f5a-40e1-9bc1-48a3afeec996';
 
   lookupCloudfrontDomain(landscape).then((cloudfrontDomain) => {
     if( ! cloudfrontDomain) {
@@ -140,16 +141,29 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_ENTITY_REGISTRATION') {
     process.env.REGION = 'us-east-2'
     process.env.DEBUG = 'true';
 
-    const _event = {
-      pathParameters: {
-        task,
-        ['invitation-code']: '4c738e91-08ba-437b-93ed-e9dd73ff64f5'
-      },
-      queryStringParameters: {
-        email: "wrh@bu.edu",
-        fullname: "Warren Hennemuth",
-        title: "ETT developer/architect"  
-      }
+    const pathParameters = {
+      task,
+      ['invitation-code']: invitation_code
+    };
+
+    let _event = {};
+    switch(task) {
+      case Task.LOOKUP_INVITATION:
+        _event = { pathParameters };
+        break;
+      case Task.LOOKUP_ENTITY:
+        _event = { pathParameters };
+        break;
+      case Task.REGISTER:
+        _event = {
+          pathParameters,
+          queryStringParameters: {
+            email: "wrh@bu.edu",
+            fullname: "Warren Hennemuth",
+            title: "ETT developer/architect"  
+          }
+        };
+        break;
     }
 
     return handler(_event);
