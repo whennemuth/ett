@@ -1,11 +1,12 @@
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { DAOFactory } from "../../_lib/dao/dao";
-import { Entity, Roles, User, YN, Affiliate, ExhibitForm as ExhibitFormData, Consenter } from "../../_lib/dao/entity";
+import { Entity, Roles, User, YN, Affiliate, ExhibitForm as ExhibitFormData, Consenter, AffiliateTypes } from "../../_lib/dao/entity";
 import { debugLog, errorResponse, invalidResponse, log, okResponse } from "../Utils";
 import { ExhibitEmail, FormTypes } from "./ExhibitEmail";
 
 export enum Task {
-  SEND_AFFILIATE_DATA = 'send-affliate-data',
+  SAVE_AFFILIATE_DATA = 'save-affiliate-data',
+  SEND_AFFILIATE_DATA = 'send-affiliate-data',
   PING = 'ping'
 }
 
@@ -13,7 +14,8 @@ export const INVALID_RESPONSE_MESSAGES = {
   missingOrInvalidTask: 'Invalid/Missing task parameter!',
   missingTaskParms: 'Missing parameters parameter for:',
   missingExhibitData: 'Missing exhibit form data!',
-  missingAffiliateRecords: 'Missing affiliate records in exhibit form data!',
+  missingAffiliateRecords: 'Missing affiliates in exhibit form data!',
+  invalidAffiliateRecords: 'Affiliate item with missing/invalid value',
   missingEntityId: 'Missing entity_id!',
   missingEmail: 'Missing email of exhibit form issuer!',
   emailFailure: 'Email failed for one or more recipients!'
@@ -42,9 +44,11 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
       log(`Performing task: ${task}`);
       const callerUsername = event?.requestContext?.authorizer?.claims?.username;
       const callerSub = callerUsername || event?.requestContext?.authorizer?.claims?.sub;
+      const { email, exhibit_data } = parameters;
       switch(task as Task) {
+        case Task.SAVE_AFFILIATE_DATA:
+          return await saveExhibitData(email, exhibit_data);
         case Task.SEND_AFFILIATE_DATA:
-          const { email, exhibit_data } = parameters;
           return await processExhibitData(email, exhibit_data);
         case Task.PING:
           return okResponse('Ping!', parameters); 
@@ -57,12 +61,24 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
   }
 }
 
+export const saveExhibitData = async (email:string, data:ExhibitFormData): Promise<LambdaProxyIntegrationResponse> => {
+  // Validate incoming data
+  if( ! data) {
+    return invalidResponse(INVALID_RESPONSE_MESSAGES.missingExhibitData);
+  }
+
+  // TODO: Make database record of exhibit form. Make sure it only lasts for 48 hours, enough time for 
+  // authorized individuals to make disclosure requests which will contain single exhibit form "extracts" 
+  // based on this db record as attachments.
+  return invalidResponse('Not implemented yet');
+};
+
 /**
  * Send full exhibit form to each authorized individual of the entity.
  * @param data 
  * @returns 
  */
-export const processExhibitData = async (email:string, data:ExhibitFormData):Promise<LambdaProxyIntegrationResponse> => {
+export const processExhibitData = async (email:string, data:ExhibitFormData): Promise<LambdaProxyIntegrationResponse> => {
   // Validate incoming data
   if( ! data) {
     return invalidResponse(INVALID_RESPONSE_MESSAGES.missingExhibitData);
@@ -71,11 +87,33 @@ export const processExhibitData = async (email:string, data:ExhibitFormData):Pro
   if( ! entity_id ) {
     return invalidResponse(INVALID_RESPONSE_MESSAGES.missingEntityId);
   }
-  if( ! affiliates) {
-    return invalidResponse(INVALID_RESPONSE_MESSAGES.missingAffiliateRecords);
-  }
   if( ! email) {
     return invalidResponse(INVALID_RESPONSE_MESSAGES.missingEmail);
+  }
+  if(affiliates) {
+    if(affiliates.length == 0) {
+      return invalidResponse(INVALID_RESPONSE_MESSAGES.missingAffiliateRecords);
+    }
+    for(const affiliate of affiliates) {
+      let { affiliateType, email, fullname, org, phone_number, title } = affiliate;
+
+      if( ! Object.values<string>(AffiliateTypes).includes(affiliateType)) {
+        return invalidResponse(`${INVALID_RESPONSE_MESSAGES.invalidAffiliateRecords} - affiliatetype: ${affiliateType}`);
+      }
+      if( ! email) {
+        return invalidResponse(`${INVALID_RESPONSE_MESSAGES.invalidAffiliateRecords}: email`);
+      }
+      if( ! fullname) {
+        return invalidResponse(`${INVALID_RESPONSE_MESSAGES.invalidAffiliateRecords}: fullname`);
+      }
+      if( ! org) {
+        return invalidResponse(`${INVALID_RESPONSE_MESSAGES.invalidAffiliateRecords}: org`);
+      }
+      // TODO: Should phone_number and title be left optional?            
+    };
+  }
+  else {
+    return invalidResponse(INVALID_RESPONSE_MESSAGES.missingAffiliateRecords);
   }
 
   // Get the consenter
@@ -98,11 +136,9 @@ export const processExhibitData = async (email:string, data:ExhibitFormData):Pro
     if( ! sent) {
       emailFailures.push(users[i].email);
     }
-    // TODO: Make database record of exhibit form. Make sure it only lasts for 48 hours, enough time for 
-    // authorized individuals to make disclosure requests which will contain single exhibit form "extracts" 
-    // based on this db record as attachments.
   }
-  
+
+
   // Make sure affiliates is always an array.
   if(affiliates instanceof Array) {
     affiliates = affiliates as Affiliate[];
@@ -117,9 +153,11 @@ export const processExhibitData = async (email:string, data:ExhibitFormData):Pro
     if( ! sent) {
       emailFailures.push(affiliates[i].email);
     }
-    // TODO: Include completed consent form as second attachment in the email.
-    // TODO: Include blank disclosure form as third attachment in the email.
+    // TODO: It may instead be ok to send a disclosure request instead of just the single exhibit form.
+    //       This is pending confirmation from the client.
     // TODO: Make database record of email
+    // TODO: Put some code here to make sure any database records of the same affiliate data that are
+    //       pending their 48 hour deletion timeout are deleted now instead.  
   }
 
   if(emailFailures.length > 0) {
@@ -127,3 +165,5 @@ export const processExhibitData = async (email:string, data:ExhibitFormData):Pro
   }
   return okResponse('Ok');
 }
+
+

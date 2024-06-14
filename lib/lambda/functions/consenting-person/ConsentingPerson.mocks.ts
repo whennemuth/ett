@@ -169,7 +169,7 @@ export const SendAffiliateData = {
       _handler, mockEvent,
       incomingPayload: { 
         task, 
-        parameters: { exhibit_data: { entity_id:entity1.entity_id } } 
+        parameters: { email: sylvesterTheCat.email, exhibit_data: { entity_id:entity1.entity_id } } 
       } as IncomingPayload
     });
   },
