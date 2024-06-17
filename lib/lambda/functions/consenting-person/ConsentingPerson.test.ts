@@ -40,7 +40,7 @@ describe('Consenting Person lambda trigger: send-affiliate-data', () => {
     await SendAffiliateData.missingAffiliateRecords(handler, mockEvent, task, msgs.missingAffiliateRecords); 
   });
   it('Should return invalid response if email of exhibit issuer is missing', async () => {
-    await SendAffiliateData.missingEmail(handler, mockEvent, task, msgs.missingEmail); 
+    await SendAffiliateData.missingEmail(handler, mockEvent, task, msgs.missingExhibitFormIssuerEmail); 
   });
   it('Should behave as expected if error is encountered looking up the entity', async () => {
     await SendAffiliateData.entityLookupFailure(handler, mockEvent, task);

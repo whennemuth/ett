@@ -28,7 +28,7 @@ export type DAOInvitation = Baseline & {
 };
 export type DAOEntity = Baseline & { 
   id():string, 
-  read(parms?:ReadParms):Promise<Entity|null>
+  read(parms?:ReadParms):Promise<(Entity|null)|Entity[]>
 };
 export type DAOConsenter = Baseline & {
   read(parms?:ReadParms):Promise<(Consenter|null)|Consenter[]>

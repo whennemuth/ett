@@ -990,46 +990,50 @@
 
                       <hr style="width:90%; margin-top:50px; margin-bottom: 50px;" />
                       
-                      <div class="consenterFields" style="min-width: 300px;">
-                        <div class='tdHeading'>Full Name<br><span style="font-size: 10px;">(first, middle, last)</span></div>
-                        <div><input type="text" class="form-control" id="txtConsentFullname"></div>
-                      </div>
-                      <div class="consenterFields">
-                        <div class='tdHeading'>Email<br>Address</div>
-                        <div><input type="text" class="form-control" id="txtConsentEmail"></div>
-                      </div>
-                      <div class="consenterFields">
-                        <div class='tdHeading'>Cell<br>Phone</div>
-                        <div><input type="text" class="form-control" id="txtConsentPhone"></div>
-                      </div>      
-                      <div style="float:left; padding-top:20px;">
-                        <div style="overflow: auto; min-height: 200px;">
-                          <div style="float:left; max-width: 50%; text-align: right; font-weight: bold; border-right-style: solid; height:100%; padding:10px;">
-                            Please type your full name (First Middle Last) to digitally sign this Consent Form:
-                          </div>
-                          <div style="float:left; padding:10px; overflow: auto; display:flex; align-items: center; height:100%;">
-                            <input type="text" class="form-control" id="txtConsentSignature" style="max-width: 200px; height:48px; float:left; margin-right:10px;">
-                            <button id="btnRegisterConsentSubmit" class="btn btn-primary btn-lg" style="float: left;" type="button" disabled>SUBMIT</button>
-                          </div>
+                      <div id="consentFieldSet" style="overflow: auto;">
+                        <div class="consenterFields" style="min-width: 300px;">
+                          <div class='tdHeading'>Full Name<br><span style="font-size: 10px;">(first, middle, last)</span></div>
+                          <div><input type="text" class="form-control" id="txtConsentFullname"></div>
                         </div>
+                        <div class="consenterFields">
+                          <div class='tdHeading'>Email<br>Address</div>
+                          <div><input type="text" class="form-control" id="txtConsentEmail"></div>
+                        </div>
+                        <div class="consenterFields">
+                          <div class='tdHeading'>Cell<br>Phone</div>
+                          <div><input type="text" class="form-control" id="txtConsentPhone"></div>
+                        </div>      
+                        <div style="float:left; padding-top:20px;">
+                          <div style="overflow: auto; min-height: 200px;">
+                            <div style="float:left; max-width: 50%; text-align: right; font-weight: bold; border-right-style: solid; height:100%; padding:10px;">
+                              Please type your full name (First Middle Last) to digitally sign this Consent Form:
+                            </div>
+                            <div style="float:left; padding:10px; overflow: auto; display:flex; align-items: center; height:100%;">
+                              <input type="text" class="form-control" id="txtConsentSignature" style="max-width: 200px; height:48px; float:left; margin-right:10px;">
+                              <button id="btnRegisterConsentSubmit" class="btn btn-primary btn-lg" style="float: left;" type="button" disabled>SUBMIT</button>
+                            </div>
+                          </div>
+                        </div>                        
                       </div>
-                      <div style="float:left; clear: both; overflow: auto;">
+
+                      <div id="consentOptions" style="float:left; clear: both; overflow: auto;">
+                        <p id="consentTimestamp" style="font-weight:bold; text-align:left;"></p>
                         <div style="display: flex; flex-direction: row; float:left; overflow: auto; padding-right:25px; margin-right:25px; border-right-style: solid;">
                           <div style="display: flex; width:220px; margin-right: 5px;">To rescind this Consent Form (or review the exception), click</div>
                           <div style="display: flex; align-items: center; height: 100%; overflow:auto;">
-                            <button id="btnRescindConsent" class="btn btn-danger" type="button" style="margin-top:6px;" disabled>RESCIND</button>
+                            <button id="btnRescindConsent" class="btn btn-danger" type="button" style="margin-top:6px;">RESCIND</button>
                           </div>                                                 
                         </div>
                         <div style="display: flex; flex-direction: row; float:left; overflow: auto; vertical-align: middle; margin-right:10px;">
                           <div style="display: flex; width:140px; margin-right: 5px;">To renew this Consent Form click</div>
                           <div style="display: flex; align-items: center; height: 100%; overflow:auto;">
-                            <button id="btnRenewConsent" class="btn btn-primary" type="button" style="margin-top:6px;" disabled>RENEW</button>
+                            <button id="btnRenewConsent" class="btn btn-primary" type="button" style="margin-top:6px;">RENEW</button>
                           </div>                                                 
                         </div>
                         <div style="display: flex; flex-direction: row; float:left; overflow: auto; vertical-align: middle; ">
                           <div style="display: flex; width:140px; margin-right: 5px;">To correct this Consent Form, click</div>
                           <div style="display: flex; align-items: center; height: 100%; overflow:auto;">
-                            <button id="btnCorrectConsent" class="btn btn-primary" type="button" style="margin-top:6px;" disabled>CORRECT</button>
+                            <button id="btnCorrectConsent" class="btn btn-primary" type="button" style="margin-top:6px;">CORRECT</button>
                           </div>                                                 
                         </div>
                       </div>                  
@@ -1793,10 +1797,75 @@
       }
     }
 
+    let consenterInfo;
+    /**
+     * Get the full record for the consenter
+     */
+    const getConsenter = async () => {
+      if(consenterInfo) {
+        return consenterInfo;
+      }
+
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+        // Obtain information about the consenter from the backend
+        const user = IDJwtCookie.getUser();
+        const response = await fetch(STATIC_PARAMETERS.ROLES['CONSENTING_PERSON'].API_URI, {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({
+               task:'get-consenter', 
+               parameters: { email:user.email }
+            })
+          }
+        });
+
+        // Set field values with the values obtained
+        const package = await response.json();
+        const { message, payload } = package;
+        if(payload.ok) {
+          consenterInfo = payload;
+          const { consenter, activeConsent, entities } = payload;
+          const { firstname, middlename, lastname, email, phone_number, consented_timestamp } = consenter ?? {};            
+          const fullname = `${firstname} ${middlename} ${lastname}`.replace(/\x20{2,}/, '').trim();
+          const user = fullname ? { getDisplayName: () => fullname } : IDJwtCookie.getUser();
+          document.getElementById('txtConsentFullname').value = fullname;
+          document.getElementById('txtConsentEmail').value = email;
+          document.getElementById('txtConsentPhone').value = phone_number;
+          setName(AccessJwtCookie.getRole(), user);
+          if(activeConsent) {
+            document.getElementById('consenter-exhibit-link').style.display = '';
+            document.getElementById('consentFieldSet').style.display = 'none';
+            document.getElementById('consentOptions').style.display = '';
+            document.getElementById('consentTimestamp').innerHTML = `<span style='color:green;'>Consent registered at: ${consented_timestamp}</span>`;
+          }
+          else {
+            document.getElementById('consenter-exhibit-link').style.display = 'none';
+            document.getElementById('consentFieldSet').style.display = '';
+            document.getElementById('consentOptions').style.display = 'none';
+          }
+        }
+        else {
+          msg.innerHTML = `<pre>${message}</pre>`;
+        }
+      }
+      catch(err) {
+        msg.innerHTML = `<pre>${JSON.stringify(err, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+      finally {
+        return consenterInfo;
+      }
+    }
+
     /**
      * Get the consenters consent into the database.
      */
-    function registerConsent() {
+    const registerConsent = async () => {
       const signature = document.getElementById('txtConsentSignature').value ?? '';
       const fullname = document.getElementById('txtConsentFullname').value ?? '';
       const email = document.getElementById('txtConsentEmail').value ?? '';
@@ -1818,33 +1887,43 @@
 
       msg.innerHTML = '';
       try {
-        // Register consenters name and email to the backend.
-        const payload = {
-          parameters: { signature, fullname, email, phone }
-        }
-        fetch(STATIC_PARAMETERS.ROLES['CONSENTING_PERSON'].API_URI, {
+        // Register consenters consent.
+        const response = await fetch(STATIC_PARAMETERS.ROLES['CONSENTING_PERSON'].API_URI, {
           method: 'GET',
           mode: 'cors',
           credentials: 'include',
           headers: {
             'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
             'Content-Type': 'application/json',
-            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify(payload)
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({
+               task:'register-consent', 
+               parameters: { signature, fullname, email, phone }
+            })
           }
-        })
-        .then(response => response.json())
-        .then((json) => {
-          const { message, payload } = json;
-          if(payload.ok) {
-            signUp(email);
+        });
+
+        const package = await response.json();
+        const { message, payload } = package;
+        if(payload.ok) {
+          consenterInfo = payload;
+          const { consenter, activeConsent, entities } = payload;
+          if(activeConsent) {
+            const { consented_timestamp } = consenter;
+            document.getElementById('consenter-exhibit-link').style.display = '';
+            document.getElementById('consentFieldSet').style.display = 'none';
+            document.getElementById('consentOptions').style.display = '';
+            document.getElementById('consentTimestamp').innerHTML = `<span style='color:green;'>Consent registered at: ${consented_timestamp}</span>`;
           }
           else {
-            msg.innerHTML = `<pre>${message}</pre>`;
+            document.getElementById('consenter-exhibit-link').style.display = 'none';
+            document.getElementById('consentFieldSet').style.display = '';
+            document.getElementById('consentOptions').style.display = 'none';
+            msg.innerHTML = `<pre>Consent failed to register!</pre>`;
           }
-        })
-        .catch((e) => {
-          msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
-        }); 
+         }
+        else {
+          msg.innerHTML = `<pre>${message}</pre>`;
+        }
       }
       catch(err) {
         msg.innerHTML = `<pre>${JSON.stringify(err, Object.getOwnPropertyNames(e), 2)}</pre>`;
@@ -2279,6 +2358,11 @@
       }
     };
 
+    // Fill out placeholder elements with the name and role of the signed in user.
+    const setName = (role, user) => {
+      document.getElementById(`${role.name}_username`).innerHTML = `${role.fullname} ${user.getDisplayName()}`;
+    }
+
     // Define the different sections of the page and a function to switch between them
     const sections = [ 'auth', 'app', 'acknowledge-entity', 'acknowledge-consenter', 'register-entity', 'register-consenter' ];
     const showSection = (sectionToShow) => {
@@ -2492,6 +2576,7 @@
             
             case 'CONSENTING_PERSON':
               document.getElementById('app-section-CONSENTING_PERSON').style.display = 'inline';
+              const ctr = await getConsenter();
               break;
 
             default:
@@ -2504,9 +2589,7 @@
           await showAppForRole();
         }
         else if(!AccessJwtCookie.jwtExpired()) {
-          const role = AccessJwtCookie.getRole();
-          const user = IDJwtCookie.getUser();
-          document.getElementById(`${role.name}_username`).innerHTML = `${role.fullname} ${user.getDisplayName()}`;  
+          setName(AccessJwtCookie.getRole(), IDJwtCookie.getUser())
           await showAppForRole();        
         }
         else if(!RefreshJwtCookie.jwtExpired()) {

@@ -1,7 +1,7 @@
 import { DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, PutItemCommandOutput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { DynamoDbConstruct } from "../../../DynamoDb";
-import { DAOConsenter } from "./dao";
+import { DAOConsenter, ReadParms } from "./dao";
 import { AffiliateTypes, Consenter, ConsenterFields, Roles, YN } from "./entity";
 import { consenterUpdate } from "./db-update-builder.consenter";
 import { convertFromApiObject } from "./db-object-builder";
@@ -62,7 +62,7 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
     }));
   }
 
-  const read = async ():Promise<(Consenter|null)|Consenter[]> => {
+  const read = async (readParms?:ReadParms):Promise<(Consenter|null)|Consenter[]> => {
     // Handle missing field validation
     if( ! email) throwMissingError('read', ConsenterFields.email);
 
@@ -79,7 +79,9 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
       return null;
     }
 
-    return await loadConsenter(command);
+    const { convertDates } = (readParms ?? {});
+
+    return await loadConsenter(retval.Item, convertDates ?? true);
   }
 
   /**
@@ -136,9 +138,9 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
     return response;
   }
 
-  const loadConsenter = async (consenter:any):Promise<Consenter> => {
+  const loadConsenter = async (consenter:any, convertDates:boolean):Promise<Consenter> => {
     return new Promise( resolve => {
-      resolve(convertFromApiObject(consenter) as Consenter);
+      resolve(convertFromApiObject(consenter, convertDates) as Consenter);
     });
   }
 
