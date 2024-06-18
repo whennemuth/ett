@@ -1018,22 +1018,57 @@
 
                       <div id="consentOptions" style="float:left; clear: both; overflow: auto;">
                         <p id="consentTimestamp" style="font-weight:bold; text-align:left;"></p>
-                        <div style="display: flex; flex-direction: row; float:left; overflow: auto; padding-right:25px; margin-right:25px; border-right-style: solid;">
-                          <div style="display: flex; width:220px; margin-right: 5px;">To rescind this Consent Form (or review the exception), click</div>
-                          <div style="display: flex; align-items: center; height: 100%; overflow:auto;">
-                            <button id="btnRescindConsent" class="btn btn-danger" type="button" style="margin-top:6px;">RESCIND</button>
+                        <div id="consentRescind" style="width:215px; float:left; overflow: auto; padding: 10px; margin-right:35px; background-color: #ffe6e6;">
+                          <div style="margin-right: 5px; float:left; text-align: center;">
+                            To rescind this Consent Form (or review the exception), click
+                            <!-- Button trigger modal -->
+                            <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rescindBackdrop" style="margin-top:6px;">RESCIND</button>
+                            <!-- Modal -->
+                            <div class="modal fade" id="rescindBackdrop" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="rescindBackdropLabel" aria-hidden="true">
+                              <div class="modal-dialog  modal-dialog-scrollable">
+                                <div class="modal-content">
+                                  <div class="modal-header">
+                                    <h5 class="modal-title" id="rescindBackdropLabel">Rescinding Consent</h5>
+                                  </div>
+                                  <div class="modal-body" style="text-align:left;">
+                                    <p>
+                                      Even if your Consent otherwise expires or is otherwise rescinded, your Consent Form will 
+                                      remain in effect- while you are  being considered for a particular Employment or Role, 
+                                      Honor or Privilege for the purpose of - and for as long as it takes  for - all requested 
+                                      disclosures about you to be made if:<br>                                      
+                                    </p>
+                                    <p>
+                                      <b>(1)</b> You submit ETT Exhibit Forms <span style="font-style: italic;">(listing your professional affiliations who will be 
+                                      asked for disclosures)</span>                                      
+                                    </p>
+                                    <p>
+                                      and...
+                                    </p>
+                                    <p>
+                                      <b>(2)</b> the ETT-Registered Entity that is considering you timely directs ETT to issue requests
+                                      for disclosures. <span style="font-style: italic;">(The Exhibit Form includes your agreement to this continued life.)</span>
+                                    </p>
+                                  </div>
+                                  <div class="modal-footer">
+                                    <button id="btnRescindConsent" class="btn btn-primary" data-bs-dismiss="modal">Rescind & Close</button>
+                                    &nbsp;
+                                    <button class="btn btn-primary" data-bs-dismiss="modal">Cancel</button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
                           </div>                                                 
                         </div>
-                        <div style="display: flex; flex-direction: row; float:left; overflow: auto; vertical-align: middle; margin-right:10px;">
-                          <div style="display: flex; width:140px; margin-right: 5px;">To renew this Consent Form click</div>
-                          <div style="display: flex; align-items: center; height: 100%; overflow:auto;">
-                            <button id="btnRenewConsent" class="btn btn-primary" type="button" style="margin-top:6px;">RENEW</button>
+                        <div id="consentRenew" style="width:215px; float:left; overflow: auto; vertical-align: middle; margin-right:4px; padding:10px; background-color: #e6e6ff;">
+                          <div style="margin-right: 5px; float:left; text-align: center;">
+                            To renew this Consent Form for another 10 years click<br>
+                            <button id="btnRenewConsent" class="btn btn-primary" style="margin-top:6px;">RENEW</button>
                           </div>                                                 
                         </div>
-                        <div style="display: flex; flex-direction: row; float:left; overflow: auto; vertical-align: middle; ">
-                          <div style="display: flex; width:140px; margin-right: 5px;">To correct this Consent Form, click</div>
-                          <div style="display: flex; align-items: center; height: 100%; overflow:auto;">
-                            <button id="btnCorrectConsent" class="btn btn-primary" type="button" style="margin-top:6px;">CORRECT</button>
+                        <div id="consentCorrect" style="width:215px; float:left; overflow: auto; vertical-align: middle; margin-right:4px; padding:10px; background-color: #e6e6ff;">
+                          <div style="margin-right: 5px; text-align: center;">
+                            To correct this Consent Form, click<br><br>
+                            <button id="btnCorrectConsent" class="btn btn-primary" style="margin-top:6px;">CORRECT</button>
                           </div>                                                 
                         </div>
                       </div>                  
@@ -1620,7 +1655,7 @@
         }); 
       }
       catch(err) {
-        msg.innerHTML = `<pre>${JSON.stringify(err, Object.getOwnPropertyNames(e), 2)}</pre>`;
+        msg.innerHTML = `<pre>${JSON.stringify(err, Object.getOwnPropertyNames(err), 2)}</pre>`;
       }
     }
 
@@ -1793,24 +1828,43 @@
         }); 
       }
       catch(err) {
-        msg.innerHTML = `<pre>${JSON.stringify(err, Object.getOwnPropertyNames(e), 2)}</pre>`;
+        msg.innerHTML = `<pre>${JSON.stringify(err, Object.getOwnPropertyNames(err), 2)}</pre>`;
+      }
+    }
+
+    /**
+     * Object for converting an ISO date string to a date and compare it to other date string values
+     */
+    function ComparableDate(timestamp) {
+      if(timestamp) {
+        this.date = typeof timestamp == 'string' ? new Date(timestamp) : timestamp;
+      }
+      else {
+        this.date = new Date(0);
+      }
+      this.before = (_timestamp) => {
+        const other = new ComparableDate(_timestamp);
+        return this.date.getTime() < other.getTime();
+      }
+      this.after = (_timestamp) => {
+        const other = new ComparableDate(_timestamp);
+        return this.date.getTime() > other.getTime();
+      }
+      this.getTime = () => {
+        return this.date.getTime();
       }
     }
 
     let consenterInfo;
-    /**
-     * Get the full record for the consenter
-     */
-    const getConsenter = async () => {
-      if(consenterInfo) {
-        return consenterInfo;
-      }
 
+    /**
+     * Perform a consent related api task
+     */
+    const doConsentTask = async (task, parameters) => {
       const msg = document.getElementById('apiResponse');
       msg.innerHTML = '';
       try {
-        // Obtain information about the consenter from the backend
-        const user = IDJwtCookie.getUser();
+        // Perform the consent task.
         const response = await fetch(STATIC_PARAMETERS.ROLES['CONSENTING_PERSON'].API_URI, {
           method: 'GET',
           mode: 'cors',
@@ -1818,116 +1872,156 @@
           headers: {
             'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
             'Content-Type': 'application/json',
-            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({
-               task:'get-consenter', 
-               parameters: { email:user.email }
-            })
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({ task, parameters })
           }
         });
 
-        // Set field values with the values obtained
+        // Set field values with from obtained payload
         const package = await response.json();
         const { message, payload } = package;
         if(payload.ok) {
           consenterInfo = payload;
-          const { consenter, activeConsent, entities } = payload;
-          const { firstname, middlename, lastname, email, phone_number, consented_timestamp } = consenter ?? {};            
-          const fullname = `${firstname} ${middlename} ${lastname}`.replace(/\x20{2,}/, '').trim();
-          const user = fullname ? { getDisplayName: () => fullname } : IDJwtCookie.getUser();
-          document.getElementById('txtConsentFullname').value = fullname;
-          document.getElementById('txtConsentEmail').value = email;
-          document.getElementById('txtConsentPhone').value = phone_number;
-          setName(AccessJwtCookie.getRole(), user);
-          if(activeConsent) {
-            document.getElementById('consenter-exhibit-link').style.display = '';
-            document.getElementById('consentFieldSet').style.display = 'none';
-            document.getElementById('consentOptions').style.display = '';
-            document.getElementById('consentTimestamp').innerHTML = `<span style='color:green;'>Consent registered at: ${consented_timestamp}</span>`;
+          const { consenter, entities } = payload;
+          const { active, consented_timestamp, renewed_timestamp, rescinded_timestamp, email } = consenter ?? {};
+
+          const lastAction = () => {
+            const consented = new ComparableDate(consented_timestamp);
+            const rescinded = new ComparableDate(rescinded_timestamp);
+            const renewed = new ComparableDate(renewed_timestamp);
+            if(active == 'N') {
+              return 'deactivated';
+            }
+            if(consented.after(rescinded) && consented.after(renewed)) {
+              return 'consented';
+            }
+            if(renewed.after(consented) && renewed.after(rescinded)) {
+              return 'renewed';
+            }
+            if(rescinded.after(consented) && rescinded.after(renewed)) {
+              return 'rescinded';
+            }
+            return 'none';
           }
-          else {
+
+          const hide = id => document.getElementById(id).style.display = 'none';
+          const show = id => document.getElementById(id).style.display = '';
+          const fill = (id, html) => document.getElementById(id).innerHTML = html;
+
+          // Show the fields necessary to submit initial consent, including the submit button
+          const showPreConsentFields = () => {
+            const pendingMsg = 'Pending consent';
+            const failureMsg = '<pre>Consent failed to register!</pre>';
+            let msg = { 
+              id: task == 'register-consent' ? 'apiResponse' : 'consentTimestamp',
+              html: task == 'register-consent' ? failureMsg: pendingMsg
+            };
+            hide('consenter-exhibit-link');
+            hide('consentOptions');
+            show('consentFieldSet');
+            fill(msg.id, msg.html);
+          };
+
+          // Show the buttons used to renew, rescind, or edit consent
+          showPostConsentFields = (lastAction) => {
+            const timestamp = renewed_timestamp ?? consented_timestamp;
+            const consentMsg = `Consent ${lastAction} at: ${timestamp}`;
+            const color = lastAction == 'rescinded' ? 'red' : 'green';
+            show('consentRescind');
+            show('consentRenew');
+            show('consentCorrect');
+            show('consenter-exhibit-link');
+            show('consentOptions');
+            hide('consentFieldSet');
+            fill('consentTimestamp', `<span style='color:${color};'>${consentMsg}</span>`);
+          };
+
+          // Hide all consent options
+          hideConsentFields = () => {
             document.getElementById('consenter-exhibit-link').style.display = 'none';
-            document.getElementById('consentFieldSet').style.display = '';
-            document.getElementById('consentOptions').style.display = 'none';
-          }
-        }
-        else {
-          msg.innerHTML = `<pre>${message}</pre>`;
-        }
-      }
-      catch(err) {
-        msg.innerHTML = `<pre>${JSON.stringify(err, Object.getOwnPropertyNames(e), 2)}</pre>`;
-      }
-      finally {
-        return consenterInfo;
-      }
-    }
-
-    /**
-     * Get the consenters consent into the database.
-     */
-    const registerConsent = async () => {
-      const signature = document.getElementById('txtConsentSignature').value ?? '';
-      const fullname = document.getElementById('txtConsentFullname').value ?? '';
-      const email = document.getElementById('txtConsentEmail').value ?? '';
-      const phone = document.getElementById('txtConsentPhone').value ?? '';
-      const msg = document.getElementById('apiResponse');
-
-      if( ! signature) {
-        alert('Signature required'); return;
-      }
-      if( ! fullname) {
-        alert('Fullname required'); return;
-      }
-      if( ! email) {
-        alert('Email address required'); return;
-      }
-      if( ! phone) {
-        alert('Phone number required'); return;
-      }
-
-      msg.innerHTML = '';
-      try {
-        // Register consenters consent.
-        const response = await fetch(STATIC_PARAMETERS.ROLES['CONSENTING_PERSON'].API_URI, {
-          method: 'GET',
-          mode: 'cors',
-          credentials: 'include',
-          headers: {
-            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
-            'Content-Type': 'application/json',
-            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({
-               task:'register-consent', 
-               parameters: { signature, fullname, email, phone }
-            })
-          }
-        });
-
-        const package = await response.json();
-        const { message, payload } = package;
-        if(payload.ok) {
-          consenterInfo = payload;
-          const { consenter, activeConsent, entities } = payload;
-          if(activeConsent) {
-            const { consented_timestamp } = consenter;
-            document.getElementById('consenter-exhibit-link').style.display = '';
             document.getElementById('consentFieldSet').style.display = 'none';
-            document.getElementById('consentOptions').style.display = '';
-            document.getElementById('consentTimestamp').innerHTML = `<span style='color:green;'>Consent registered at: ${consented_timestamp}</span>`;
-          }
-          else {
-            document.getElementById('consenter-exhibit-link').style.display = 'none';
-            document.getElementById('consentFieldSet').style.display = '';
             document.getElementById('consentOptions').style.display = 'none';
-            msg.innerHTML = `<pre>Consent failed to register!</pre>`;
+            fill('apiResponse', `${email} found to be deactivated`);
+          }
+
+          let _lastAction = lastAction();
+          switch(lastAction()) {
+            case 'none':
+              showPreConsentFields();
+              break;
+            case 'consented':
+              showPostConsentFields(_lastAction);
+              break;
+            case 'renewed':
+              showPostConsentFields(_lastAction);
+              break;
+            case 'rescinded':
+              showPostConsentFields(_lastAction);
+              hide('consentRescind');
+              hide('consentCorrect');
+              hide('consenter-exhibit-link');
+              break;
+            case 'deactivated':
+              hideConsentFields();
+              break;
           }
          }
         else {
           msg.innerHTML = `<pre>${message}</pre>`;
         }
       }
-      catch(err) {
-        msg.innerHTML = `<pre>${JSON.stringify(err, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
       }
+    }
+
+    /**
+     * Get the full record for the consenter
+     */
+    const getConsenter = async () => {
+      const { email } = IDJwtCookie.getUser() ?? {};
+      await doConsentTask('get-consenter', { email });
+      return consenterInfo;
+    }
+
+    /**
+     * Register consent.
+     */
+    const registerConsent = async () => {
+      const { email } = IDJwtCookie.getUser() ?? {};
+      const getFldVal = fldname => document.getElementById(fldname).value ?? '';
+      const parms = { 
+        signature:getFldVal('txtConsentSignature'),
+        fullname:getFldVal('txtConsentFullname'),
+        email:getFldVal('txtConsentEmail'),
+        phone:getFldVal('txtConsentPhone'),
+      }
+
+      if( ! parms.signature) { alert('Signature required'); return; }
+      if( ! parms.fullname) { alert('Fullname required'); return; }
+      if( ! parms.email) { alert('Email address required'); return; }
+      if( ! parms.phone) { alert('Phone number required'); return; }
+      if(parms.email != email) { 
+        alert(`Your email entry ${parms.email} must match your registration email: ${email}`); 
+        return;
+      }
+
+      await doConsentTask('register-consent', parms);
+    }
+
+    /**
+     * Renew consent.
+     */
+    const renewConsent = async () => {
+      const { email } = IDJwtCookie.getUser() ?? {};
+      await doConsentTask('renew-consent', { email });
+    }
+
+    /**
+     * Rescind consent.
+     */
+    const rescindConsent = async () => {
+      const { email } = IDJwtCookie.getUser() ?? {};
+      await doConsentTask('rescind-consent', { email });
     }
 
     /**
@@ -2468,6 +2562,12 @@
       });
       document.getElementById('btnRegisterConsentSubmit').addEventListener('click', () => {
         registerConsent();
+      });
+      document.getElementById('btnRenewConsent').addEventListener('click', () => {
+        renewConsent();
+      });
+      document.getElementById('btnRescindConsent').addEventListener('click', () => {
+        rescindConsent();
       });
       document.getElementById('lbxRequestingEntity').addEventListener('change', (event) => {
         const lbx = event.srcElement;

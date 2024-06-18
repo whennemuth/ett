@@ -11,6 +11,8 @@ export enum Task {
   SEND_AFFILIATE_DATA = 'send-affiliate-data',
   GET_CONSENTER = 'get-consenter',
   REGISTER_CONSENT = 'register-consent',
+  RENEW_CONSENT = 'renew-consent',
+  RESCIND_CONSENT = 'rescind-consent',
   PING = 'ping'
 }
 
@@ -60,6 +62,10 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           return await getConsenterResponse(email);
         case Task.REGISTER_CONSENT:
           return await registerConsent(email);
+        case Task.RENEW_CONSENT:
+          return await renewConsent(email);
+        case Task.RESCIND_CONSENT:
+          return await rescindConsent(email);
         case Task.SAVE_AFFILIATE_DATA:
           return await saveExhibitData(email, exhibit_data);
         case Task.SEND_AFFILIATE_DATA:
@@ -127,23 +133,54 @@ export const getConsenter = async (email:string, includeEntityList:boolean=true)
 }
 
 /**
- * Register consent by applying a consented_timestamp value to the consenter database record.
+ * Change one of the timestamp fields of the consenter.
  * @param email 
+ * @param timestampFld 
  * @returns 
  */
-export const registerConsent = async (email:string): Promise<LambdaProxyIntegrationResponse> => {
+export const changeTimestamp = async (email:string, timestampFld:string): Promise<LambdaProxyIntegrationResponse> => {
   if( ! email) {
     return invalidResponse(INVALID_RESPONSE_MESSAGES.missingEmail)
   }
   const dao = DAOFactory.getInstance({ DAOType: 'consenter', Payload: { 
     email, 
-    consented_timestamp: new Date().toISOString() 
+    [ timestampFld ]: new Date().toISOString() 
   } as Consenter });
 
   await dao.update();
   
   return getConsenterResponse(email);
+};
+
+/**
+ * Register consent by applying a consented_timestamp value to the consenter database record.
+ * @param email 
+ * @returns 
+ */
+export const registerConsent = async (email:string): Promise<LambdaProxyIntegrationResponse> => {
+  console.log(`Registering consent for ${email}`);
+  return changeTimestamp(email, ConsenterFields.consented_timestamp);
 }
+
+/**
+ * Renew consent by applying a renewed_timestamp value to the consenter database record.
+ * @param email 
+ * @returns 
+ */
+export const renewConsent = async (email:string): Promise<LambdaProxyIntegrationResponse> => {
+  console.log(`Renewing consent for ${email}`);
+  return changeTimestamp(email, ConsenterFields.renewed_timestamp);
+}
+
+/**
+ * Rescind consent by applying a rescinded_timestamp value to the consenter database record.
+ * @param email 
+ * @returns 
+ */
+export const rescindConsent = async (email:string): Promise<LambdaProxyIntegrationResponse> => {
+  console.log(`Rescinding consent for ${email}`);
+  return changeTimestamp(email, ConsenterFields.rescinded_timestamp);
+};
 
 /**
  * Save exhibit form submission
@@ -158,7 +195,7 @@ export const saveExhibitData = async (email:string, data:ExhibitFormData): Promi
   }
 
   // Abort if the consenter has not yet consented
-  const consenterInfo = await getConsenter(email, false);
+  const consenterInfo = await getConsenter(email, false) as ConsenterInfo;
   if( ! consenterInfo?.activeConsent) {
     return invalidResponse(INVALID_RESPONSE_MESSAGES.missingConsent);
   }
@@ -213,7 +250,7 @@ export const processExhibitData = async (email:string, data:ExhibitFormData): Pr
 
   // Get the consenter
   const consenterInfo = await getConsenter(email, false) as ConsenterInfo;
-  const { consenter, activeConsent } = (consenterInfo ?? {});
+  const { consenter, activeConsent } = consenterInfo ?? {};
 
   // Abort if the consenter has not yet consented
   if( ! activeConsent) {
