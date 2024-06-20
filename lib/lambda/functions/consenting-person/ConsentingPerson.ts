@@ -2,8 +2,11 @@ import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { DAOFactory } from "../../_lib/dao/dao";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
-import { Entity, Roles, User, YN, Affiliate, ExhibitForm as ExhibitFormData, Consenter, AffiliateTypes } from "../../_lib/dao/entity";
+import { Entity, Roles, User, YN, Affiliate, ExhibitForm as ExhibitFormData, Consenter, AffiliateTypes, ConsenterFields } from "../../_lib/dao/entity";
+import { ConsentFormData } from "../../_lib/pdf/ConsentForm";
+import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../Utils";
+import { ConsentFormEmail } from "./ConsentEmail";
 import { ExhibitEmail, FormTypes } from "./ExhibitEmail";
 
 export enum Task {
@@ -13,6 +16,7 @@ export enum Task {
   REGISTER_CONSENT = 'register-consent',
   RENEW_CONSENT = 'renew-consent',
   RESCIND_CONSENT = 'rescind-consent',
+  SEND_CONSENT = 'send-consent',
   PING = 'ping'
 }
 
@@ -30,7 +34,7 @@ export const INVALID_RESPONSE_MESSAGES = {
 }
 
 export type ConsenterInfo = {
-  consenter:Consenter, activeConsent:boolean, entities?:Entity[]
+  consenter:Consenter, fullName:string, activeConsent:boolean, entities?:Entity[]
 }
 
 /**
@@ -56,7 +60,7 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
       log(`Performing task: ${task}`);
       const callerUsername = event?.requestContext?.authorizer?.claims?.username;
       const callerSub = callerUsername || event?.requestContext?.authorizer?.claims?.sub;
-      const { email, exhibit_data } = parameters;
+      const { email, exhibit_data, entityName } = parameters;
       switch(task as Task) {
         case Task.GET_CONSENTER:
           return await getConsenterResponse(email);
@@ -66,6 +70,8 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           return await renewConsent(email);
         case Task.RESCIND_CONSENT:
           return await rescindConsent(email);
+        case Task.SEND_CONSENT:
+          return await sendConsent( { email } as Consenter, entityName);
         case Task.SAVE_AFFILIATE_DATA:
           return await saveExhibitData(email, exhibit_data);
         case Task.SEND_AFFILIATE_DATA:
@@ -99,6 +105,23 @@ export const getConsenterResponse = async (email:string): Promise<LambdaProxyInt
 }
 
 /**
+ * Determine from consent, renew, and rescind dates what the consent status for a consenter is.
+ * @param consenter 
+ * @returns 
+ */
+export const isActiveConsent = (consenter:Consenter):boolean => {
+  const { consented_timestamp, rescinded_timestamp, renewed_timestamp, active } = consenter;
+  let activeConsent:boolean = false;
+  if(consented_timestamp && `${active}` == YN.Yes) {
+    const added:Date = new Date(consented_timestamp);
+    const removed:Date = rescinded_timestamp ? new Date(rescinded_timestamp) : new Date(0);
+    const restored:Date = renewed_timestamp ? new Date(renewed_timestamp) : new Date(0);
+    activeConsent = ( added.getTime() > removed.getTime() ) || ( restored.getTime() >= removed.getTime() );
+  }
+  return activeConsent;
+}
+
+/**
  * Get a consenters database record.
  * @param email 
  * @returns 
@@ -109,14 +132,7 @@ export const getConsenter = async (email:string, includeEntityList:boolean=true)
   if( ! consenter) {
     return null;
   }
-  const { consented_timestamp, rescinded_timestamp, renewed_timestamp, active } = consenter;
-  let activeConsent:boolean = false;
-  if(consented_timestamp && `${active}` == YN.Yes) {
-    const added:Date = new Date(consented_timestamp);
-    const removed:Date = rescinded_timestamp ? new Date(rescinded_timestamp) : new Date(0);
-    const restored:Date = renewed_timestamp ? new Date(renewed_timestamp) : new Date(0);
-    activeConsent = ( added.getTime() > removed.getTime() ) || ( restored.getTime() >= removed.getTime() );
-  }
+  const activeConsent = isActiveConsent(consenter);
   let entities:Entity[] = [];
   if(includeEntityList && activeConsent) {
     const entityDao = DAOFactory.getInstance({ DAOType: 'entity', Payload: { active:YN.Yes }});
@@ -125,8 +141,13 @@ export const getConsenter = async (email:string, includeEntityList:boolean=true)
       return _entity.entity_id != ENTITY_WAITING_ROOM;
     }));
   }
-
-  const retval = { consenter, activeConsent, entities } as ConsenterInfo;
+  const { firstname, middlename, lastname } = consenter;
+  const retval = { 
+    consenter, 
+    fullName:PdfForm.fullName(firstname, middlename, lastname), 
+    activeConsent, 
+    entities 
+  } as ConsenterInfo;
   debugLog(`Returning: ${JSON.stringify(retval, null, 2)}`);
 
   return retval;
@@ -159,7 +180,14 @@ export const changeTimestamp = async (email:string, timestampFld:string): Promis
  */
 export const registerConsent = async (email:string): Promise<LambdaProxyIntegrationResponse> => {
   console.log(`Registering consent for ${email}`);
-  return changeTimestamp(email, ConsenterFields.consented_timestamp);
+  const response = await changeTimestamp(email, ConsenterFields.consented_timestamp);
+  const consenterInfo = JSON.parse(response.body ?? '{}')['payload'] as ConsenterInfo;
+  const { consenter } = consenterInfo ?? {};
+  if(consenter) {
+    // TODO: Mention of a specific entity in the consent form is in question and needs to be resolved with the client.
+    await sendConsent(consenter, 'unknown entity');
+  }
+  return response;
 }
 
 /**
@@ -180,6 +208,43 @@ export const renewConsent = async (email:string): Promise<LambdaProxyIntegration
 export const rescindConsent = async (email:string): Promise<LambdaProxyIntegrationResponse> => {
   console.log(`Rescinding consent for ${email}`);
   return changeTimestamp(email, ConsenterFields.rescinded_timestamp);
+};
+
+/**
+ * Send a pdf copy of the consent form to the consenter
+ * @param email 
+ * @returns 
+ */
+export const sendConsent = async (consenter:Consenter, entityName:string): Promise<LambdaProxyIntegrationResponse> => {
+  const { email } = consenter;
+  console.log(`Sending consent form to ${email}`);
+  let consenterInfo:ConsenterInfo|null;
+  if(email && Object.keys(consenter).length == 1) {
+    // email was the only piece of information provided about the consenter, so retrieve the rest from the database.
+    consenterInfo = await getConsenter(email, false) as ConsenterInfo;
+    if(consenterInfo) {
+      const { consenter: { firstname, middlename, lastname}} = consenterInfo ?? { consenter: {}};
+      consenterInfo = { 
+        consenter, 
+        fullName: PdfForm.fullName(firstname, middlename, lastname),
+        activeConsent:isActiveConsent(consenter) 
+      };
+    }
+    else {
+      return errorResponse(`Cannot find consenter ${email}`);
+    }  
+  }
+  else {
+    const { firstname, middlename, lastname } = consenter ?? {};
+    consenterInfo = { 
+      consenter, 
+      fullName: PdfForm.fullName(firstname, middlename, lastname),
+      activeConsent:isActiveConsent(consenter)
+    };
+  }
+
+  await new ConsentFormEmail({ consenter:consenterInfo.consenter, entityName } as ConsentFormData).send(email);
+  return okResponse('Ok', consenterInfo);
 };
 
 /**
@@ -309,7 +374,7 @@ export const processExhibitData = async (email:string, data:ExhibitFormData): Pr
 const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
 
-  const task = Task.REGISTER_CONSENT as Task;
+  const task = Task.SEND_CONSENT as Task;
   const landscape = 'dev';
   const region = 'us-east-2';
 
@@ -334,6 +399,9 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
       case Task.SEND_AFFILIATE_DATA:
         break;
       case Task.GET_CONSENTER:
+      case Task.SEND_CONSENT:
+      case Task.RENEW_CONSENT:
+      case Task.RESCIND_CONSENT:
         payload = {
           task,
           parameters: {

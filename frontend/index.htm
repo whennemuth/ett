@@ -1071,6 +1071,13 @@
                             <button id="btnCorrectConsent" class="btn btn-primary" style="margin-top:6px;">CORRECT</button>
                           </div>                                                 
                         </div>
+                        <div id="consentSend"  style="width:215px; float:left; overflow: auto; vertical-align: middle; padding:10px; background-color: #e6e6ff;">
+                          <div style="margin-right: 5px; text-align: center;">
+                            Send a pdf copy of this<br>consent form to<br>
+                            <span id="consentSendEmail">yourself</span>, click<br>
+                            <button id="btnSendConsent" class="btn btn-primary" style="margin-top:6px;">SEND</button>
+                          </div>
+                        </div>
                       </div>                  
                     </div>
                   </div>
@@ -1929,9 +1936,11 @@
             show('consentRescind');
             show('consentRenew');
             show('consentCorrect');
+            show('consentSend');
             show('consenter-exhibit-link');
             show('consentOptions');
             hide('consentFieldSet');
+            fill('consentSendEmail', email);
             fill('consentTimestamp', `<span style='color:${color};'>${consentMsg}</span>`);
           };
 
@@ -1958,6 +1967,7 @@
               showPostConsentFields(_lastAction);
               hide('consentRescind');
               hide('consentCorrect');
+              hide('consentSend');
               hide('consenter-exhibit-link');
               break;
             case 'deactivated':
@@ -1980,6 +1990,10 @@
     const getConsenter = async () => {
       const { email } = IDJwtCookie.getUser() ?? {};
       await doConsentTask('get-consenter', { email });
+      const { consenter: { phone_number }, fullName } = consenterInfo ?? {};
+      document.getElementById('txtConsentFullname').value = fullName;
+      document.getElementById('txtConsentEmail').value = email;
+      document.getElementById('txtConsentPhone').value = phone_number;
       return consenterInfo;
     }
 
@@ -2022,6 +2036,16 @@
     const rescindConsent = async () => {
       const { email } = IDJwtCookie.getUser() ?? {};
       await doConsentTask('rescind-consent', { email });
+    }
+
+    /**
+     * Send the consenter a pdf copy of the consent form via email
+     */
+    const sendConsent = async () => {
+      const { email } = IDJwtCookie.getUser() ?? {};
+      // TODO: Mention of a specific entity in the consent form is in question and needs to be resolved with the client.
+      await doConsentTask('send-consent', { email, entityName: 'unknown entity' });
+      alert('Consent form sent');
     }
 
     /**
@@ -2569,6 +2593,9 @@
       document.getElementById('btnRescindConsent').addEventListener('click', () => {
         rescindConsent();
       });
+      document.getElementById('btnSendConsent').addEventListener('click', () => {
+        sendConsent();
+      });
       document.getElementById('lbxRequestingEntity').addEventListener('change', (event) => {
         const lbx = event.srcElement;
         toggleHighlight(lbx);
@@ -2676,6 +2703,9 @@
             
             case 'CONSENTING_PERSON':
               document.getElementById('app-section-CONSENTING_PERSON').style.display = 'inline';
+              if(localTesting()) {
+                break;
+              }
               const ctr = await getConsenter();
               break;
 

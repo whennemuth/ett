@@ -57,7 +57,7 @@ export class DisclosureRequestEmail {
 
 
 /**
- * RUN MANUALLY: Modify the task, landscape, email, role, & entity_id as needed.
+ * RUN MANUALLY: Modify email as needed.
  */
 const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY_SEND_DISCLOSURE_FORM') {
