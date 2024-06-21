@@ -2805,6 +2805,8 @@
 
         case 'login':
           await exchangeAuthorizationCode(checkAuth);
+          // Redirect back to the plain root url to shed the action, code, and state parameters
+          document.location.href = document.location.origin;
           break;
 
         case 'post-signup':
