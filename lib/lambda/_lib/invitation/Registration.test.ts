@@ -81,11 +81,11 @@ describe('registerAcknowledgement', () => {
   });
 });
 
-describe('registerConsent', () => {
+describe('registerUser', () => {
   
   it('Should return false if an error occurs', async () => {
     const registration = new Registration(code);
-    expect(await registration.registerConsent({ 
+    expect(await registration.registerUser({ 
       email: 'daffyduck@warnerbros.com',
       fullname: 'Daffy Duck',
       title: 'Cartoon Character'
@@ -95,7 +95,7 @@ describe('registerConsent', () => {
 
   it('Should return true if no error occurs', async () => {
     const registration = new Registration(code);
-    expect(await registration.registerConsent({ 
+    expect(await registration.registerUser({ 
       email: 'bugsbunny@warnerbros.com',
       fullname: 'Bugs Bunny',
       title: 'Cartoon Character'

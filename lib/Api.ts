@@ -24,7 +24,7 @@ export class ApiConstruct extends Construct {
   private _sysAdminApi: SysAdminApi;
   private _reAdminApi: ReAdminUserApi;
   private _authIndApi: AuthorizedIndividualApi;
-  private _consentPersonApi: ConsentingPersonApi;
+  private _consentingPersonApi: ConsentingPersonApi;
 
   constructor(scope: Construct, constructId: string, apiParms:ApiConstructParms) {
     super(scope, constructId);
@@ -37,27 +37,31 @@ export class ApiConstruct extends Construct {
 
     this._authIndApi = new AuthorizedIndividualApi(this, 'AuthIndUser', apiParms);
 
-    this._consentPersonApi = new ConsentingPersonApi(this, 'ConsentPersonUser', apiParms);
+    this._consentingPersonApi = new ConsentingPersonApi(this, 'ConsentPersonUser', apiParms);
   }
 
   public grantPermissionsTo = (dynamodb:DynamoDbConstruct, cognito:CognitoConstruct) => {
 
+    const { reAdminApi, sysAdminApi, authIndApi, consentingPersonApi } = this;
+
     // Grant the sysadmin api read/write access to dynamodb tables
-    dynamodb.getEntitiesTable().grantReadWriteData(this.sysAdminApi.getLambdaFunction());
-    dynamodb.getInvitationsTable().grantReadWriteData(this.sysAdminApi.getLambdaFunction());
-    dynamodb.getUsersTable().grantReadWriteData(this.sysAdminApi.getLambdaFunction());
+    dynamodb.getEntitiesTable().grantReadWriteData(sysAdminApi.getLambdaFunction());
+    dynamodb.getInvitationsTable().grantReadWriteData(sysAdminApi.getLambdaFunction());
+    dynamodb.getUsersTable().grantReadWriteData(sysAdminApi.getLambdaFunction());
 
     // Grant the re administrator api permissions to read/write from the users table
-    dynamodb.getUsersTable().grantReadWriteData(this.reAdminApi.getLambdaFunction());
-    dynamodb.getInvitationsTable().grantReadWriteData(this.reAdminApi.getLambdaFunction());
-    dynamodb.getEntitiesTable().grantReadWriteData(this.reAdminApi.getLambdaFunction());
+    dynamodb.getUsersTable().grantReadWriteData(reAdminApi.getLambdaFunction());
+    dynamodb.getInvitationsTable().grantReadWriteData(reAdminApi.getLambdaFunction());
+    dynamodb.getEntitiesTable().grantReadWriteData(reAdminApi.getLambdaFunction());
 
     // Grant the authorized individual api permissions to read/write from the users table
-    dynamodb.getUsersTable().grantReadWriteData(this.authIndApi.getLambdaFunction());
-    dynamodb.getInvitationsTable().grantReadWriteData(this.authIndApi.getLambdaFunction());
-    dynamodb.getEntitiesTable().grantReadWriteData(this.authIndApi.getLambdaFunction());
+    dynamodb.getUsersTable().grantReadWriteData(authIndApi.getLambdaFunction());
+    dynamodb.getInvitationsTable().grantReadWriteData(authIndApi.getLambdaFunction());
+    dynamodb.getEntitiesTable().grantReadWriteData(authIndApi.getLambdaFunction());
 
-    // TODO: Grant the appropriate iam policies to the consenting persons lambdas
+    // Grant the consenter api permissions to read/write from the users table
+    dynamodb.getConsentersTable().grantReadWriteData(consentingPersonApi.getLambdaFunction());
+    dynamodb.getEntitiesTable().grantReadWriteData(consentingPersonApi.getLambdaFunction());
   }
 
   public get helloWorldApi(): HelloWorldApi {
@@ -73,6 +77,6 @@ export class ApiConstruct extends Construct {
     return this._authIndApi;
   }
   public get consentingPersonApi(): ConsentingPersonApi {
-    return this._consentPersonApi;
+    return this._consentingPersonApi;
   }
 }

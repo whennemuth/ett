@@ -20,8 +20,9 @@ export interface StaticSiteCustomInConstructParms {
   cloudfrontDomain: string,
   cognitoDomain: string,
   cognitoUserpoolRegion: string,
-  acknowledgementApiUri: string,
-  consentApiUri: string,
+  entityAcknowledgeApiUri: string,
+  registerEntityApiUri: string,
+  registerConsenterApiUri: string,
   apis: AbstractRoleApi[]
 }
 
@@ -36,8 +37,9 @@ const buildJsonEnvVar = (parms: StaticSiteCustomInConstructParms) => {
     COGNITO_DOMAIN: parms.cognitoDomain,
     USER_POOL_REGION: parms.cognitoUserpoolRegion,
     PAYLOAD_HEADER: AbstractRoleApi.ETTPayloadHeader,
-    ACKNOWLEDGE_API_URI: parms.acknowledgementApiUri,
-    CONSENT_API_URI: parms.consentApiUri,
+    ACKNOWLEDGE_ENTITY_API_URI: parms.entityAcknowledgeApiUri,
+    REGISTER_ENTITY_API_URI: parms.registerEntityApiUri,
+    REGISTER_CONSENTER_API_URI: parms.registerConsenterApiUri,
     ROLES: { } as any
   };
   parms.apis.forEach((api:AbstractRoleApi) => {
@@ -66,6 +68,7 @@ export class StaticSiteCustomInConstruct extends StaticSiteConstruct {
       description: 'Function for modifying content being loaded into the static website bucket so that \
         certain placeholders are replaced with resource attribute values, like cognito userpool client attributes.',
       runtime: Runtime.NODEJS_18_X,
+      memorySize: 1024,
       // handler: 'Injector.handler',
       handler: 'handler',
       logRetention: 7,

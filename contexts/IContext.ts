@@ -4,7 +4,6 @@ export interface IContext {
   ACCOUNT:  string;
   REGION:   string;
   BUCKET_NAME: string;
-  BUCKET_OLAP?: boolean;
   CLOUDFRONT_DOMAIN: string;
   CLOUDFRONT_CERTIFICATE: string;
   TAGS:     Tags;

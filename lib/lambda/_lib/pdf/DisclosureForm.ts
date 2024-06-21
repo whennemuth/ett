@@ -70,12 +70,14 @@ export class DisclosureForm extends PdfForm implements IPdfForm{
 const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY_DISCLOSURE_FORM') {
 
-  new DisclosureForm({
+  new DisclosureForm(
+  {
     consenter: { 
-      email: 'foghorn@warnerbros.com', phone_number: '617-222-4444', fullname: 'Foghorn Leghorn' },
-      disclosingEntity: { name: 'Boston University', representatives: [ daffyduck, yosemitesam ] },
-      requestingEntity: { name: 'Northeastern University', authorizedIndividuals: [ bugsbunny ]
-    }
+      email: 'foghorn@warnerbros.com', phone_number: '617-222-4444', 
+      firstname: 'Foghorn', middlename: 'F', lastname: 'Leghorn' 
+    },
+    disclosingEntity: { name: 'Boston University', representatives: [ daffyduck, yosemitesam ] },
+    requestingEntity: { name: 'Northeastern University', authorizedIndividuals: [ bugsbunny ] }
   } as DisclosureFormData).writeToDisk('./lib/lambda/_lib/pdf/disclosureForm.pdf')
   .then((bytes) => {
     console.log('done');

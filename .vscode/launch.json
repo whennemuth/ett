@@ -12,20 +12,17 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Admin dynamodb CRUD",
+      "name": "DAO consenter",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
-        "${workspaceFolder}/lib/lambda/_lib/dao/_runner.ts",
-        "user",
-        "migrate"
+        "${workspaceFolder}/lib/lambda/_lib/dao/dao-consenter.ts",
+        "RUN_MANUALLY_DAO_CONSENTER",
+        "update",
+        "consent"
       ], 
       "env": {
-        "AWS_PROFILE": "bu",
-        "DYNAMODB_USER_TABLE_NAME": "ett-users",
-        "DYNAMODB_INVITATION_TABLE_NAME": "ett-invitations",
-        "DYNAMODB_ENTITY_TABLE_NAME": "ett-entities",
-        "REGION": "us-east-2"
+        "AWS_PROFILE": "bu"
       }, 
     },
     {
@@ -36,7 +33,9 @@
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
         "${workspaceFolder}/lib/lambda/functions/sys-admin/SysAdminUser.ts",
-        "RUN_MANUALLY",
+        "RUN_MANUALLY_SYS_ADMIN",
+        "sysadmin1@warhen.work",
+        "dev"
       ], 
       "env": {
         "AWS_PROFILE": "bu",
@@ -51,7 +50,7 @@
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
         "${workspaceFolder}/lib/lambda/functions/re-admin/ReAdminUser.ts",
-        "RUN_MANUALLY",
+        "RUN_MANUALLY_RE_ADMIN",
       ], 
       "env": {
         "AWS_PROFILE": "bu",
@@ -66,7 +65,7 @@
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
         "${workspaceFolder}/lib/lambda/functions/authorized-individual/AuthorizedIndividual.ts",
-        "RUN_MANUALLY",
+        "RUN_MANUALLY_AUTH_IND",
       ], 
       "env": {
         "AWS_PROFILE": "bu",
@@ -76,12 +75,12 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Acknowledge",
+      "name": "ConsentingPerson",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
-        "${workspaceFolder}/lib/lambda/functions/signup/Acknowledgement.ts",
-        "RUN_MANUALLY",
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/ConsentingPerson.ts",
+        "RUN_MANUALLY_CONSENTING_PERSON",
       ], 
       "env": {
         "AWS_PROFILE": "bu",
@@ -91,12 +90,27 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Consent",
+      "name": "Entity Acknowledgement",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
-        "${workspaceFolder}/lib/lambda/functions/signup/Consent.ts",
-        "RUN_MANUALLY",
+        "${workspaceFolder}/lib/lambda/functions/signup/EntityAcknowledgement.ts",
+        "RUN_MANUALLY_ACKNOWLEDGEMENT",
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Entity Registration",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/signup/EntityRegistration.ts",
+        "RUN_MANUALLY_ENTITY_REGISTRATION",
       ], 
       "env": {
         "AWS_PROFILE": "bu",
@@ -111,7 +125,7 @@
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
         "${workspaceFolder}/lib/lambda/functions/authorized-individual/Demolition.ts",
-        "RUN_MANUALLY",
+        "RUN_MANUALLY_DEMOLITION",
       ], 
       "env": {
         "AWS_PROFILE": "bu",
@@ -126,7 +140,7 @@
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
         "${workspaceFolder}/lib/lambda/functions/cognito/PreSignup.ts",
-        "RUN_MANUALLY"
+        "RUN_MANUALLY_COGNITO_PRE_SIGNUP"
       ], 
       "env": {
         "AWS_PROFILE": "bu",
@@ -171,6 +185,22 @@
         "${workspaceFolder}/lib/lambda/_lib/pdf/ConsentForm.ts",
         "RUN_MANUALLY_CONSENT_FORM"
       ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF send consent form",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/ConsentEmail.ts",
+        "RUN_MANUALLY_SEND_CONSENT_FORM"
+      ],
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      },
+      "envFile": "${workspaceFolder}/.env",
     },
     {
       "type": "node",
@@ -364,7 +394,6 @@
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "env": {
-        "DYNAMODB_USER_TABLE_NAME": "ett-users",
         "ACTION_TO_TEST": ""
       }
     },
@@ -383,7 +412,6 @@
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "env": {
-        "DYNAMODB_USER_TABLE_NAME": "ett-users",
         "ACTION_TO_TEST": ""
       }
     },    {
@@ -399,10 +427,7 @@
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "env": {
-        "DYNAMODB_INVITATION_TABLE_NAME": "ett-invitations"
-      }
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "type": "node",
@@ -417,10 +442,7 @@
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "env": {
-        "DYNAMODB_ENTITY_TABLE_NAME": "ett-entities"
-      }
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "type": "node",
@@ -429,34 +451,57 @@
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
         "--runTestsByPath", 
-        "--silent",
         "-i", 
         "${workspaceFolder}/lib/lambda/_lib/dao/db-object-builder.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "env": { 
-        "DYNAMODB_USER_TABLE_NAME": "ett-users"
-      }
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest DAO db-update-builder",
+      "name": "Jest DAO db-update-builder-consenter",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
         "--runTestsByPath", 
         "--silent",
         "-i", 
-        "${workspaceFolder}/lib/lambda/_lib/dao/db-update-builder.test.ts" 
+        "${workspaceFolder}/lib/lambda/_lib/dao/db-update-builder.consenter.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "env": { 
-        "DYNAMODB_USER_TABLE_NAME": "ett-users"
-      }
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest DAO db-update-builder-invitation",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/_lib/dao/db-update-builder.invitation.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest DAO db-update-builder-user",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "--silent",
+        "-i", 
+        "${workspaceFolder}/lib/lambda/_lib/dao/db-update-builder.user.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "type": "node",
@@ -546,7 +591,7 @@
         "--runTestsByPath", 
         "--silent",
         "-i", 
-        "${workspaceFolder}/lib/lambda/functions/signup/Acknowledgement.test.ts" 
+        "${workspaceFolder}/lib/lambda/functions/signup/EntityAcknowledgement.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
@@ -555,13 +600,13 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest Lambda Entity Consent",
+      "name": "Jest Lambda Entity Registration",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
         "--runTestsByPath", 
         "--silent",
         "-i", 
-        "${workspaceFolder}/lib/lambda/functions/signup/Consent.test.ts" 
+        "${workspaceFolder}/lib/lambda/functions/signup/EntityRegistration.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
@@ -580,10 +625,7 @@
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "env": { 
-        "DYNAMODB_USER_TABLE_NAME": "ett-users"
-      }
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "type": "node",
@@ -598,10 +640,7 @@
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "env": { 
-        "DYNAMODB_USER_TABLE_NAME": "ett-users",
-      }
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "type": "node",
@@ -616,10 +655,7 @@
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "env": { 
-        "DYNAMODB_USER_TABLE_NAME": "ett-users",
-      }
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "type": "node",
@@ -649,10 +685,7 @@
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "env": {
-        "DYNAMODB_USER_TABLE_NAME": "ett-users"
-      }
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "type": "node",

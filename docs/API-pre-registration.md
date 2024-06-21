@@ -9,7 +9,7 @@ https://u4k2uilit9.execute-api.us-east-2.amazonaws.com/dev
 
 where `"u4k2uilit9.execute-api.us-east-2.amazonaws.com"` identifies the API gateway resource, `"dev"` identifies the environment.
 
-- #### `/acknowledge/{task}/{invitation-code}`
+- #### `/acknowledge-entity/{task}/{invitation-code}`
 
   Acknowledgment of privacy policy is recorded for a user by "marking" their invitation dynamodb record accordingly.
 
@@ -36,7 +36,7 @@ where `"u4k2uilit9.execute-api.us-east-2.amazonaws.com"` identifies the API gate
               fullname?: string,
               title?: string,
               acknowledged_timestamp?: string,
-              consented_timestamp?: string,
+              registered_timestamp?: string,
               retracted_timestamp?: string
             }
           }
@@ -57,7 +57,7 @@ where `"u4k2uilit9.execute-api.us-east-2.amazonaws.com"` identifies the API gate
 
   - Headers: NONE
 
-- #### `/consent/{task}/{invitation-code}`
+- #### `/register-entity/{task}/{invitation-code}`
 
   Consent to the terms of ETT is recorded for a user by "marking" their invitation dynamodb record accordingly.
 
@@ -84,7 +84,7 @@ where `"u4k2uilit9.execute-api.us-east-2.amazonaws.com"` identifies the API gate
               fullname?: string,
               title?: string,
               acknowledged_timestamp?: string,
-              consented_timestamp?: string,
+              registered_timestamp?: string,
               retracted_timestamp?: string
             }
           }
@@ -115,9 +115,9 @@ where `"u4k2uilit9.execute-api.us-east-2.amazonaws.com"` identifies the API gate
         Returns as follows:
 
         ```
-        { "message": "Ok: Consent registered for [invitation-code]" }
+        { "message": "Ok: Registration completed for [invitation-code]" }
         or...
-        { "message": "Ok: Already consented at [timestamp]" }
+        { "message": "Ok: Already registered at [timestamp]" }
         ```
 
       - "terminate"

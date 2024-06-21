@@ -1,3 +1,4 @@
+import { Actions } from '../../../role/AbstractRole';
 import { lookupUserPoolClientId, lookupUserPoolId } from '../cognito/Lookup';
 import { Role } from "../dao/entity";
 
@@ -65,7 +66,7 @@ export class SignupLink {
         client_id: userPoolClientId,
         response_type: 'code',
         scope: 'email+openid+phone',
-        redirect_uri: encodeURIComponent(`https://${redirectURI}?action=signedup`)
+        redirect_uri: encodeURIComponent(`https://${redirectURI}?action=${Actions.post_signup}&selected_role=${role}`)
       } as any;
   
       const queryString = Object.keys(params).map(key => `${key}=${params[key]}`).join('&');
@@ -81,7 +82,7 @@ export class SignupLink {
   public getRegistrationLink = async (entity_id?:string):Promise<string|undefined> => {
     return new Promise((resolve, reject) => {
       const cfdomain = process.env.CLOUDFRONT_DOMAIN;
-      let link = `https://${cfdomain}?action=acknowledge`;
+      let link = `https://${cfdomain}?action=${Actions.acknowledge_entity}`;
       if(entity_id) {
         link = `${link}&entity_id=${entity_id}`
       }

@@ -21,6 +21,16 @@ export interface ApiParms {
   methods: string[],
 }
 
+export enum Actions {
+  login = 'login',
+  logout = 'logout',
+  post_signup = 'post-signup',
+  acknowledge_entity = 'acknowledge-entity',
+  register_entity = 'register-entity',
+  acknowledge_consenter = 'acknowledge-consenter',
+  register_consenter = 'register-consenter'
+};
+
 /**
  * This is the type expected by lambda functions for incoming api calls, where the ETTPayloadHeader 
  * contains a json object that, when parsed, will produce an object that reflects this type.

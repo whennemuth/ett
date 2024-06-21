@@ -39,7 +39,7 @@ export type User = {
 };
 
 /**************** CONSENTER ****************/
-export const enum AffiliateTypes { EMPLOYER = 'EMPLOYER', ACADEMIC = 'ACADEMIC', OTHER = 'OTHER' };
+export enum AffiliateTypes { EMPLOYER = 'EMPLOYER', ACADEMIC = 'ACADEMIC', OTHER = 'OTHER' };
 export type AffiliateType = AffiliateTypes.EMPLOYER | AffiliateTypes.ACADEMIC | AffiliateTypes.OTHER;
 export type Affiliate = {
   affiliateType: AffiliateType,
@@ -66,7 +66,9 @@ export type ExhibitForm = {
 export enum ConsenterFields {
   email = 'email',
   sub = 'sub',
-  fullname = 'fullname',
+  firstname = 'firstname',
+  middlename = 'middlename',
+  lastname = 'lastname',
   title = 'title',
   phone_number = 'phone_number',
   create_timestamp = 'create_timestamp',
@@ -80,7 +82,9 @@ export enum ConsenterFields {
 export type Consenter = {
   email: string,
   sub?: string,
-  fullname?: string,
+  firstname?: string,
+  middlename?: string,
+  lastname?: string,
   title?: string,
   phone_number?: string,
   create_timestamp?: string,
@@ -121,7 +125,7 @@ export enum InvitationFields {
   fullname = 'fullname',
   title = 'title',
   acknowledged_timestamp = 'acknowledged_timestamp',
-  consented_timestamp = 'consented_timestamp',
+  registered_timestamp = 'registered_timestamp',
   retracted_timestamp = 'retracted_timestamp',
 }
 export type Invitation = {
@@ -134,7 +138,7 @@ export type Invitation = {
   fullname?: string,
   title?: string,
   acknowledged_timestamp?: string,
-  consented_timestamp?: string,
+  registered_timestamp?: string,
   retracted_timestamp?: string,
 }
 

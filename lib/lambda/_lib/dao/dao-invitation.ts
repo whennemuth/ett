@@ -1,9 +1,10 @@
 import { AttributeValue, DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, QueryCommand, QueryCommandInput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
-import { DAOInvitation } from './dao';
+import { DAOInvitation, ReadParms } from './dao';
 import { convertFromApiObject } from './db-object-builder';
 import { invitationUpdate } from './db-update-builder.invitation';
 import { Invitation, InvitationFields } from './entity';
+import { DynamoDbConstruct } from '../../../DynamoDb';
 
 /**
  * Basic CRUD operations for the invitations table.
@@ -12,8 +13,8 @@ import { Invitation, InvitationFields } from './entity';
  */
 export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false): DAOInvitation {
   const dbclient = new DynamoDBClient({ region: process.env.REGION });
-  const TableName = process.env.DYNAMODB_INVITATION_TABLE_NAME || '';
-  const TableEntityIndex = process.env.DYNAMODB_INVITATION_ENTITY_INDEX || '';
+  const TableName = DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME;
+  const TableEntityIndex = DynamoDbConstruct.DYNAMODB_INVITATION_ENTITY_INDEX;
 
   let { code:_code, entity_id, role, email } = invitationInfo;
 
@@ -51,25 +52,25 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
     return await sendCommand(command);
   }
 
-  const read = async ():Promise<(Invitation|null)|Invitation[]> => {
+  const read = async (readParms?:ReadParms):Promise<(Invitation|null)|Invitation[]> => {
     if(_code) {
       return await _read() as Invitation;
     }
     else if( ! email && ! entity_id ) {
-      return await _read() as Invitation; // Should throw error
+      return await _read(readParms) as Invitation; // Should throw error
     }
     else if(email && entity_id) {
-      return await _query({ email, entity_id } as IdxParms) as Invitation[];
+      return await _query({ email, entity_id } as IdxParms, readParms) as Invitation[];
     }
     else if(email) {
-      return await _query({ email, entity_id:null } as IdxParms) as Invitation[];
+      return await _query({ email, entity_id:null } as IdxParms, readParms) as Invitation[];
     }
     else {
-      return await _query({ email:null, entity_id } as IdxParms) as Invitation[];
+      return await _query({ email:null, entity_id } as IdxParms, readParms) as Invitation[];
     }
   }
 
-  const _read = async ():Promise<Invitation|null> => {
+  const _read = async (readParms?:ReadParms):Promise<Invitation|null> => {
     // Handle field validation
     if( ! _code) {
       throwMissingError('read', InvitationFields.code);
@@ -87,7 +88,8 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
     if( ! retval.Item) {
       return null;
     }
-    return await loadInvitation(retval.Item) as Invitation;
+    const { convertDates } = (readParms ?? {});
+    return await loadInvitation(retval.Item, convertDates ?? true) as Invitation;
   }
 
   /**
@@ -97,7 +99,7 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
    * @returns 
    */
   type IdxParms = { email:string|null, entity_id:string|null }
-  const _query = async (idxParms:IdxParms):Promise<Invitation[]> => {
+  const _query = async (idxParms:IdxParms, readParms?:ReadParms):Promise<Invitation[]> => {
     const { email, entity_id } = idxParms;
     const parmEmail = email ? `email: ${email}` : '';
     let parmEntityId = entity_id ? `entity_id: ${entity_id}` : '';
@@ -138,8 +140,9 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
     command = new QueryCommand(params);
     const retval = await sendCommand(command);
     const invitations = [] as Invitation[];
+    const { convertDates } = (readParms ?? {});
     for(const item in retval.Items) {
-      invitations.push(await loadInvitation(retval.Items[item]));
+      invitations.push(await loadInvitation(retval.Items[item], convertDates ?? true));
     }
     return invitations as Invitation[];
   }
@@ -215,9 +218,9 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
     return response;
   }
 
-  const loadInvitation = async (invitation:any):Promise<Invitation> => {
+  const loadInvitation = async (invitation:any, convertDates:boolean):Promise<Invitation> => {
     return new Promise( resolve => {
-      resolve(convertFromApiObject(invitation) as Invitation);
+      resolve(convertFromApiObject(invitation, convertDates) as Invitation);
     })
   }
 

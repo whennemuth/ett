@@ -1,9 +1,10 @@
 import { AttributeValue, DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, PutItemCommand, PutItemCommandOutput, QueryCommand, QueryCommandInput, TransactWriteItemsCommand, TransactWriteItemsCommandInput, TransactWriteItemsCommandOutput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
 import { marshall } from '@aws-sdk/util-dynamodb';
-import { DAOFactory, DAOUser } from './dao';
+import { DAOFactory, DAOUser, ReadParms } from './dao';
 import { convertFromApiObject } from './db-object-builder';
 import { Roles, User, UserFields, YN } from './entity';
 import { userUpdate } from './db-update-builder.user';
+import { DynamoDbConstruct } from '../../../DynamoDb';
 
 /**
  * Basic CRUD operations for the dynamodb table behind the user base.
@@ -13,8 +14,8 @@ import { userUpdate } from './db-update-builder.user';
 export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
 
   const dbclient = new DynamoDBClient({ region: process.env.REGION });
-  const TableName = process.env.DYNAMODB_USER_TABLE_NAME || '';
-  const TableEntityIndex = process.env.DYNAMODB_USER_ENTITY_INDEX || '';
+  const TableName = DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME;
+  const TableEntityIndex = DynamoDbConstruct.DYNAMODB_USER_ENTITY_INDEX;
 
   let { email, entity_id, role, sub, active=YN.Yes, create_timestamp=(new Date().toISOString()), 
     fullname, phone_number, title } = userinfo;
@@ -73,15 +74,15 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
     return await sendCommand(command);
   }
 
-  const read = async ():Promise<(User|null)|User[]> => {
+  const read = async (readParms?:ReadParms):Promise<(User|null)|User[]> => {
     if(email && entity_id) {
-      return await _read() as User;
+      return await _read(readParms) as User;
     }
     else if(email) {
-      return await _query({ v1: email, index: null } as IdxParms) as User[];
+      return await _query({ v1: email, index: null } as IdxParms, readParms) as User[];
     }
     else {
-      return await _query({ v1: entity_id, index: TableEntityIndex } as IdxParms) as User[];
+      return await _query({ v1: entity_id, index: TableEntityIndex } as IdxParms, readParms) as User[];
     }
   }
 
@@ -89,7 +90,7 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
    * Get a single record for a user in association with a specific registered entity.
    * @returns 
    */
-  const _read = async ():Promise<User|null> => {
+  const _read = async (readParms?:ReadParms):Promise<User|null> => {
     console.log(`Reading user ${email} / ${entity_id}`);
     const params = {
       TableName,
@@ -101,7 +102,8 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
     } as GetItemCommandInput;
     command = new GetItemCommand(params);
     const retval:GetItemCommandOutput = await sendCommand(command);
-    return await loadUser(retval.Item) as User;
+    const { convertDates } = (readParms ?? {});
+    return await loadUser(retval.Item, convertDates ?? true) as User;
   }
 
   /**
@@ -112,7 +114,7 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
    * @returns 
    */
   type IdxParms = { v1:string; index:string|null }
-  const _query = async (idxParms:IdxParms):Promise<User[]> => {
+  const _query = async (idxParms:IdxParms, readParms?:ReadParms):Promise<User[]> => {
     const { v1, index } = idxParms;
     const key = TableEntityIndex == index ? UserFields.entity_id : UserFields.email;
     console.log(`Reading users for ${key}: ${v1}`);
@@ -131,8 +133,9 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
     command = new QueryCommand(params);
     const retval = await sendCommand(command);
     const users = [] as User[];
+    const { convertDates } = (readParms ?? {});
     for(const item in retval.Items) {
-      users.push(await loadUser(retval.Items[item]));
+      users.push(await loadUser(retval.Items[item], convertDates ?? true));
     }
     return users as User[];
   }
@@ -172,7 +175,7 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
       DAOType:'user', 
       Payload:{ email, entity_id:old_entity_id } as User
     });
-    const user = await daoUser.read() as User;
+    const user = await daoUser.read({ convertDates: false }) as User;
 
     // Modify the attributes that need to change (entity_id, update_timestamp)
     user.entity_id = entity_id;
@@ -250,9 +253,9 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
 
   const hasSortKey = () => { return userinfo.entity_id || false; }
 
-  const loadUser = async (user:any):Promise<User> => {
+  const loadUser = async (user:any, convertDates:boolean):Promise<User> => {
     return new Promise( resolve => {
-      resolve(convertFromApiObject(user) as User);
+      resolve(convertFromApiObject(user, convertDates) as User);
     });
   }
 

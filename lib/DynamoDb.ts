@@ -14,6 +14,7 @@ export class DynamoDbConstruct extends Construct {
   static DYNAMODB_USER_ENTITY_INDEX: string = 'EntityIndex';
   static DYNAMODB_INVITATION_ENTITY_INDEX: string = 'EntityIndex';
   static DYNAMODB_INVITATION_EMAIL_INDEX: string = 'EmailIndex';
+  static DYNAMODB_ENTITY_ACTIVE_INDEX: string = 'EntityActiveIndex';
   
   context: IContext;
 
@@ -44,9 +45,6 @@ export class DynamoDbConstruct extends Construct {
           partitionKey: { name: UserFields.entity_id, type: AttributeType.STRING },
           sortKey: { name: UserFields.email, type: AttributeType.STRING },
           projectionType: ProjectionType.ALL,
-          // projectionType: ProjectionType.KEYS_ONLY,
-          // projectionType: ProjectionType.INCLUDE,
-          // nonKeyAttributes: [ role, disclosures, etc...]
         }
       ]    
     } as TablePropsV2);
@@ -60,6 +58,15 @@ export class DynamoDbConstruct extends Construct {
       removalPolicy: RemovalPolicy.DESTROY,
       pointInTimeRecovery: true,
       deletionProtection: this.context.TAGS.Landscape == 'prod',
+      globalSecondaryIndexes: [
+        {
+          indexName: DynamoDbConstruct.DYNAMODB_ENTITY_ACTIVE_INDEX,
+          partitionKey: { name: EntityFields.active, type: AttributeType.STRING },
+          sortKey: { name: EntityFields.entity_name, type: AttributeType.STRING },
+          projectionType: ProjectionType.INCLUDE,
+          nonKeyAttributes: [ EntityFields.entity_id, EntityFields.entity_name ]
+        }
+      ]
     });
 
     // Create a table for invitations sent to users.

@@ -1,13 +1,12 @@
-import { IContext } from '../../contexts/IContext';
-import { Construct } from "constructs";
-import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
 import { ResourceServerScope } from "aws-cdk-lib/aws-cognito";
-import { AbstractFunction } from "../AbstractFunction";
-import { Function, Runtime } from "aws-cdk-lib/aws-lambda";
-import { DynamoDbConstruct } from "../DynamoDb";
-import { Roles } from '../lambda/_lib/dao/entity';
-import { ApiConstructParms } from "../Api";
 import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { Function, Runtime } from "aws-cdk-lib/aws-lambda";
+import { Construct } from "constructs";
+import { IContext } from '../../contexts/IContext';
+import { AbstractFunction } from "../AbstractFunction";
+import { ApiConstructParms } from "../Api";
+import { Roles } from '../lambda/_lib/dao/entity';
+import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
 
 export class SysAdminApi extends AbstractRole {
   private api: AbstractRoleApi;
@@ -65,6 +64,7 @@ export class LambdaFunction extends AbstractFunction {
     
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
+      memorySize: 1024,
       entry: 'lib/lambda/functions/sys-admin/SysAdminUser.ts',
       // handler: 'handler',
       functionName: `Ett${constructId}`,
@@ -108,10 +108,6 @@ export class LambdaFunction extends AbstractFunction {
       }),
       environment: {
         REGION: context.REGION,
-        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
-        DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME,
-        DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
-        DYNAMODB_CONSENTER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME,
         USERPOOL_NAME: userPoolName,
         COGNITO_DOMAIN: userPoolDomain,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,

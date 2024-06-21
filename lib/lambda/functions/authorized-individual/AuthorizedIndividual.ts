@@ -1,11 +1,11 @@
 import { SESv2Client, SendEmailCommand, SendEmailCommandInput, SendEmailResponse } from "@aws-sdk/client-sesv2";
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
+import { DAOFactory, DAOUser } from "../../_lib/dao/dao";
+import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
 import { Entity, Roles, User } from "../../_lib/dao/entity";
 import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../Utils";
 import { DemolitionRecord, EntityToDemolish } from "./Demolition";
-import { DAOFactory, DAOUser } from "../../_lib/dao/dao";
-import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
 
 export enum Task {
   DEMOLISH_ENTITY = 'demolish-entity',
@@ -185,7 +185,7 @@ const getSysAdminEmail = async ():Promise<string|null> => {
  * RUN MANUALLY: Modify the task, landscape, entity_id, and dryRun settings as needed.
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
+if(args.length > 2 && args[2] == 'RUN_MANUALLY_AUTH_IND') {
 
   const task = Task.DEMOLISH_ENTITY;
   const landscape = 'dev';
@@ -201,9 +201,6 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
     return lookupUserPoolId('ett-cognito-userpool', region);
   }).then((userpoolId) => {
 
-    process.env.DYNAMODB_INVITATION_TABLE_NAME = 'ett-invitations';
-    process.env.DYNAMODB_USER_TABLE_NAME = 'ett-users';
-    process.env.DYNAMODB_ENTITY_TABLE_NAME = 'ett-entities'
     process.env.USERPOOL_ID = userpoolId;
     process.env.REGION = region;
     process.env.DEBUG = 'true';

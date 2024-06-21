@@ -84,8 +84,8 @@ export class DisclosureFormPage1 extends PdfForm implements IPdfForm {
    */
   private drawConsenter = async () => {
     let size = 10;
-    const {page, page: { basePage, bodyWidth }, boldfont, font, _return, data } = this;
-    const { consenter } = data!;
+    const {page, page: { basePage, bodyWidth }, boldfont, font, _return, getFullName, data } = this;
+    const { consenter: { firstname, middlename, lastname, email, phone_number } } = data;
 
     basePage.moveDown(16);
 
@@ -117,7 +117,7 @@ export class DisclosureFormPage1 extends PdfForm implements IPdfForm {
     basePage.moveRight(fldNameWidth);    
 
     await new Rectangle({
-      text: consenter.fullname!,
+      text: getFullName(firstname, middlename, lastname),
       page,
       align: Align.left,
       valign: VAlign.middle,
@@ -142,7 +142,7 @@ export class DisclosureFormPage1 extends PdfForm implements IPdfForm {
     basePage.moveRight(fldNameWidth); 
 
     await new Rectangle({
-      text: consenter.email,
+      text: email,
       page,
       align: Align.left,
       valign: VAlign.middle,
@@ -164,7 +164,7 @@ export class DisclosureFormPage1 extends PdfForm implements IPdfForm {
     basePage.moveRight(fldNameWidth);
 
     await new Rectangle({
-      text: consenter.phone_number!,
+      text: phone_number!,
       page,
       align: Align.left,
       valign: VAlign.middle,
@@ -207,7 +207,7 @@ export class DisclosureFormPage1 extends PdfForm implements IPdfForm {
     basePage.moveRight(fldNameWidth); 
 
     await new Rectangle({
-      text: authInd.fullname! || '',
+      text: authInd.fullname ?? '',
       page,
       align: Align.left,
       valign: VAlign.middle,
@@ -474,13 +474,15 @@ export class DisclosureFormPage1 extends PdfForm implements IPdfForm {
 const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY_DISCLOSURE_FORM_PAGE_1') {
 
-  new DisclosureFormPage1({
-    consenter: { 
-      email: 'foghorn@warnerbros.com', phone_number: '617-222-4444', fullname: 'Foghorn Leghorn' },
+  new DisclosureFormPage1(
+    {
+      consenter: { 
+        email: 'foghorn@warnerbros.com', phone_number: '617-222-4444', 
+        firstname: 'Foghorn', middlename: 'F', lastname: 'Leghorn' 
+      },
       disclosingEntity: { name: 'Boston University', representatives: [ daffyduck, yosemitesam ] },
-      requestingEntity: { name: 'Northeastern University', authorizedIndividuals: [ bugsbunny ]
-    }
-  } as DisclosureFormData).writeToDisk('./lib/lambda/_lib/pdf/disclosureForm1.pdf')
+      requestingEntity: { name: 'Northeastern University', authorizedIndividuals: [ bugsbunny ] }
+    } as DisclosureFormData).writeToDisk('./lib/lambda/_lib/pdf/disclosureForm1.pdf')
   .then((bytes) => {
     console.log('done');
   })

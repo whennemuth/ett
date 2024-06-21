@@ -1,10 +1,9 @@
-import { IContext } from '../../contexts/IContext';
 import { ResourceServerScope, UserPool } from "aws-cdk-lib/aws-cognito";
 import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { Function, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from "constructs";
+import { IContext } from '../../contexts/IContext';
 import { AbstractFunction } from "../AbstractFunction";
-import { DynamoDbConstruct } from "../DynamoDb";
 import { Roles } from '../lambda/_lib/dao/entity';
 import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
 
@@ -69,7 +68,7 @@ export class LambdaFunction extends AbstractFunction {
       entry: 'lib/lambda/functions/re-admin/ReAdminUser.ts',
       // handler: 'handler',
       functionName: `Ett${constructId}`,
-      memorySize: 512,
+      memorySize: 1024,
       description: 'Function for all re admin user activity.',
       cleanup: true,
       bundling: {
@@ -110,10 +109,6 @@ export class LambdaFunction extends AbstractFunction {
       }),
       environment: {
         REGION: context.REGION,
-        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
-        DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
-        DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME,
-        DYNAMODB_CONSENTER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
         USERPOOL_ID: userPoolId
       }

@@ -1,16 +1,18 @@
-import { DeleteItemCommandOutput, DynamoDBClient, PutItemCommandOutput, UpdateItemCommandOutput } from "@aws-sdk/client-dynamodb";
+import { DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, PutItemCommandOutput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { DynamoDbConstruct } from "../../../DynamoDb";
-import { DAOConsenter } from "./dao";
+import { DAOConsenter, ReadParms } from "./dao";
 import { AffiliateTypes, Consenter, ConsenterFields, Roles, YN } from "./entity";
+import { consenterUpdate } from "./db-update-builder.consenter";
+import { convertFromApiObject } from "./db-object-builder";
 
 export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): DAOConsenter {
 
   const dbclient = new DynamoDBClient({ region: process.env.REGION });
   const docClient = DynamoDBDocumentClient.from(dbclient);
-  const TableName = process.env.DYNAMODB_CONSENTER_TABLE_NAME || '';
+  const TableName = DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME;
   
-  let { email, active=YN.Yes, fullname, exhibit_forms, 
+  let { email, active=YN.Yes, firstname, middlename, lastname, exhibit_forms, 
     create_timestamp=(new Date().toISOString()), consented_timestamp, renewed_timestamp, rescinded_timestamp
   } = consenterInfo;
 
@@ -39,7 +41,7 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
    * @returns 
    */
   const create = async (): Promise<PutItemCommandOutput> => {
-    console.log(`Creating ${Roles.CONSENTING_PERSON}: ${fullname}`);
+    console.log(`Creating ${Roles.CONSENTING_PERSON}: ${firstname} ${middlename} ${lastname}`);
 
     // Handle required field validation
     if( ! email) throwMissingError('create', ConsenterFields.email);
@@ -48,7 +50,7 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
     if(consented_timestamp) throwIllegalParm('create', ConsenterFields.consented_timestamp);
     if(rescinded_timestamp) throwIllegalParm('create', ConsenterFields.rescinded_timestamp);
     if(renewed_timestamp) throwIllegalParm('create', ConsenterFields.renewed_timestamp);
-    if(exhibit_forms) throwIllegalParm('create', ConsenterFields.exhibit_forms);
+    if(exhibit_forms && exhibit_forms.length > 0) throwIllegalParm('create', ConsenterFields.exhibit_forms);
 
     // Make sure the original userinfo object gets a create_timestamp value if a default value is invoked.
     if( ! consenterInfo.create_timestamp) consenterInfo.create_timestamp = create_timestamp;
@@ -60,15 +62,58 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
     }));
   }
 
-  const read = async ():Promise<(Consenter|null)|Consenter[]> => {
-    return await sendCommand(command);
+  const read = async (readParms?:ReadParms):Promise<(Consenter|null)|Consenter[]> => {
+    // Handle missing field validation
+    if( ! email) throwMissingError('read', ConsenterFields.email);
+
+    console.log(`Reading email ${email}`);
+    const params = {
+      TableName,
+      Key: {
+        [ConsenterFields.email]: { S: email }
+      }
+    } as GetItemCommandInput
+    command = new GetItemCommand(params);
+    const retval:GetItemCommandOutput = await sendCommand(command);
+    if( ! retval.Item) {
+      return null;
+    }
+
+    const { convertDates } = (readParms ?? {});
+
+    return await loadConsenter(retval.Item, convertDates ?? true);
   }
 
+  /**
+   * Update a specific consenter record associated with the specified primary key (email)
+   */
   const update = async (oldConsenterInfo:Consenter):Promise<UpdateItemCommandOutput> => {
+    // Handle field validation
+    if( ! email) {
+      throwMissingError('update', ConsenterFields.email);
+    }
+    if( Object.keys(consenterInfo).length == 1 ) {
+      throw new Error(`Consenter update error: No fields to update for ${email}`);
+    }
+    console.log(`Updating consenter: ${email}`);
+    const input = consenterUpdate(TableName, consenterInfo, oldConsenterInfo).buildUpdateItem() as UpdateItemCommandInput;
+    command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
 
+  /**
+   * Delete a consenter from the dynamodb table.
+   * This is probably not a function you want to expose too publicly, favoring a deactivate method in client
+   * code that calls the update function to toggle the active field to "N".
+   */
   const Delete = async ():Promise<DeleteItemCommandOutput> => {
+    const input = {
+      TableName,
+      Key: { 
+         [ConsenterFields.email]: { S: email, },
+      },
+    } as DeleteItemCommandInput;
+    command = new DeleteItemCommand(input);
     return await sendCommand(command);
   }
   
@@ -93,6 +138,12 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
     return response;
   }
 
+  const loadConsenter = async (consenter:any, convertDates:boolean):Promise<Consenter> => {
+    return new Promise( resolve => {
+      resolve(convertFromApiObject(consenter, convertDates) as Consenter);
+    });
+  }
+
   const test = async () => {
     await read();
   }
@@ -106,16 +157,17 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
  */
 const { argv:args } = process;
 enum TASK { create='create', update='update', read='read', Delete='delete' };
-if(args.length > 2 && args[2] == 'RUN_MANUALLY') {
-  process.env.DYNAMODB_CONSENTER_TABLE_NAME = DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME;
+if(args.length > 2 && args[2] == 'RUN_MANUALLY_DAO_CONSENTER') {
   process.env.REGION = 'us-east-2';
   const task = args.length > 3 ? args[3] : TASK.create;
   const email = 'daffy@warnerbros.com';
   switch(task as TASK) {
     case TASK.create:
       var dao = ConsenterCrud({
-        email: 'daffy@warnerbros.com',
-        fullname: 'Daffy Duck',
+        email,
+        firstname: 'Daffy',
+        middlename: 'D',
+        lastname: 'Duck',
         title: 'Aquatic fowl',
         phone_number: '617-333-5555',        
       } as Consenter);

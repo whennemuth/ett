@@ -3,6 +3,7 @@ import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest';
 import { DAOFactory, DAOUser } from './dao';
 import { Roles, User, UserFields, YN } from './entity';
+import { DynamoDbConstruct } from '../../../DynamoDb';
 
 const dbMockClient = mockClient(DynamoDBClient);
 
@@ -92,7 +93,7 @@ const testPut = () => {
       const expectedResponse = {
         ConsumedCapacity: {
           CapacityUnits: 1,
-          TableName: process.env.DYNAMODB_USER_TABLE_NAME
+          TableName: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME
         }
       };
       dbMockClient.on(PutItemCommand).resolves(expectedResponse);
@@ -124,7 +125,7 @@ const testPut = () => {
       const expectedResponse = {
         ConsumedCapacity: {
           CapacityUnits: 1,
-          TableName: process.env.DYNAMODB_USER_TABLE_NAME
+          TableName: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME
         }
       };
       dbMockClient.on(PutItemCommand).resolves(expectedResponse);
@@ -256,7 +257,7 @@ const testDelete = () => {
       dbMockClient.on(DeleteItemCommand).resolves({      
         ConsumedCapacity: {
           CapacityUnits: 1,
-          TableName: process.env.DYNAMODB_USER_TABLE_NAME || 'ett-users'
+          TableName: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME
         }      
       });
       const dao = DAOFactory.getInstance({
@@ -273,7 +274,7 @@ const testDelete = () => {
       dbMockClient.on(DeleteItemCommand).resolves({      
         ConsumedCapacity: {
           CapacityUnits: 1,
-          TableName: process.env.DYNAMODB_USER_TABLE_NAME || 'ett-users'
+          TableName: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME
         }      
       });
       const dao = DAOFactory.getInstance({
@@ -302,7 +303,7 @@ const testDeleteEntity = () => {
   const response = {      
     ConsumedCapacity: {
       CapacityUnits: 1,
-      TableName: process.env.DYNAMODB_USER_TABLE_NAME || 'ett-users'
+      TableName: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME
     }      
   };
   dbMockClient.on(DeleteItemCommand).resolves(response);

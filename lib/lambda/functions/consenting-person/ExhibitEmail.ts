@@ -2,6 +2,7 @@ import { AffiliateTypes, Consenter, Entity, ExhibitForm as ExhibitFormData, YN }
 import { ExhibitForm } from "../../_lib/pdf/ExhibitForm";
 import { ExhibitFormFull } from "../../_lib/pdf/ExhibitFormFull";
 import { ExhibitFormSingle } from "../../_lib/pdf/ExhibitFormSingle";
+import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { sendEmail } from "../EmailWithAttachments";
 
 
@@ -33,13 +34,15 @@ export class ExhibitEmail {
   }
 
   public send = async (emailAddress:string):Promise<boolean> => {
-    const { data, formType, entity, consenter, consenter: { fullname } } = this;
+    const { data, formType, entity, consenter, consenter: { firstname, middlename, lastname } } = this;
+    const { fullName } = PdfForm;
+    const consenterFullname = fullName(firstname, middlename, lastname);
     const { entity_name } = entity;
     switch(formType) {
       case FormTypes.FULL:
         return await sendEmail({
           subject: 'ETT Exhibit Form Submission',
-          message: `Consenting individual ${fullname} is forwarding you their full affliate list via ETT`,
+          message: `Consenting individual ${consenterFullname} is forwarding you their full affliate list via ETT`,
           emailAddress,
           attachments: {
             pdf: new ExhibitFormFull(new ExhibitForm(data), consenter),
@@ -50,7 +53,7 @@ export class ExhibitEmail {
       case FormTypes.SINGLE:
         return await sendEmail({
           subject: 'ETT Notice of Consent',
-          message: `Consenting individual ${fullname} has named you as an affilate for disclosure to ${entity_name}`,
+          message: `Consenting individual ${consenterFullname} has named you as an affilate for disclosure to ${entity_name}`,
           emailAddress,
           attachments: {
             pdf: new ExhibitFormSingle(new ExhibitForm(data), consenter),
@@ -77,10 +80,7 @@ export const test_entity = {
 } as Entity;
 
 export const test_data = {
-  email: 'applicant@gmail.com',
   entity_id: 'abc123',
-  fullname: 'Porky Pig',
-  phone: '617-234-5678',
   affiliates: [
     { 
       affiliateType: AffiliateTypes.EMPLOYER,
@@ -125,7 +125,9 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_SEND_EXHIBIT_FORM') {
     process.exit(1);
   }
 
-  new ExhibitEmail(test_data, FormTypes.FULL, test_entity, { fullname:'Porky Pig' } as Consenter).send(email)
+  new ExhibitEmail(test_data, FormTypes.FULL, test_entity, { 
+    firstname:'Porky', middlename: 'P', lastname: 'Pig'
+  } as Consenter).send(email)
     .then(success => {
       console.log(success ? 'Succeeded' : 'Failed');
     })

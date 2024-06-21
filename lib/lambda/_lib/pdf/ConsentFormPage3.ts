@@ -58,8 +58,8 @@ export class ConsentFormPage3 extends PdfForm implements IPdfForm {
   }
 
   private drawBody = async () => {
-    const { page, page: { basePage, bodyWidth, margins, drawRectangle, drawText }, boldfont, font, 
-      data: { consenter: { fullname, phone_number, email, consented_timestamp } }, _return } = this;
+    const { page, page: { basePage, bodyWidth, margins, drawRectangle, drawText }, boldfont, font, getFullName,
+      data: { consenter: { firstname, middlename, lastname, phone_number, email, consented_timestamp } }, _return } = this;
 
     basePage.moveDown(50);
     
@@ -72,7 +72,7 @@ export class ConsentFormPage3 extends PdfForm implements IPdfForm {
       textOptions: { size:14, font:boldfont, color:white, lineHeight: 16 }
     });
     await drawRectangle({
-      text: fullname ?? 'unknown',
+      text: getFullName(firstname, middlename, lastname),
       page, margins: { left:6, top:6, bottom:0, right:6 },
       align: Align.left, valign: VAlign.middle,
       options: {
@@ -160,7 +160,7 @@ export class ConsentFormPage3 extends PdfForm implements IPdfForm {
     })
 
     await drawRectangle({
-      text: fullname ?? 'unknown',
+      text: getFullName(firstname, middlename, lastname),
       page, margins: { left:6, top:6, bottom:0, right:6 },
       align: Align.left, valign: VAlign.middle,
       options: {
@@ -211,8 +211,8 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENT_FORM_PAGE_3') {
   new ConsentFormPage3({
     entityName: 'Boston University',
     consenter: { 
-      email: 'bugsbunny@warnerbros.com', fullname: 'Bugs Bunny', phone_number: '617-333-5555', 
-      consented_timestamp: new Date().toISOString(), active: YN.Yes
+      email: 'bugsbunny@warnerbros.com', firstname: 'Bugs', middlename: 'B', lastname: 'Bunny',
+      phone_number: '617-333-5555', consented_timestamp: new Date().toISOString(), active: YN.Yes
     } as Consenter
   } as ConsentFormData).writeToDisk('./lib/lambda/_lib/pdf/consentForm3.pdf')
   .then((bytes) => {

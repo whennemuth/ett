@@ -1,6 +1,6 @@
 {
-  "resource": "/acknowledge/{invitation-code}",
-  "path": "/acknowledge/my_invitation_code2",
+  "resource": "register-entity/{task}/{invitation-code}",
+  "path": "register-entity/lookup-invitation/my_invitation_code2",
   "httpMethod": "GET",
   "headers": {
       "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
@@ -118,20 +118,24 @@
           "https"
       ]
   },
-  "queryStringParameters": null,
+  "queryStringParameters": {
+    "email": "daffyduck@warnerbros.com",
+    "fullname": "Daffy%20Duck",
+    "title": "Cartoon%20Character"
+  },
   "multiValueQueryStringParameters": null,
   "pathParameters": {
-      "task": "register",
+      "task": "lookup-invitation",
       "invitation-code": "my_invitation_code2"
   },
   "stageVariables": null,
   "requestContext": {
       "resourceId": "uq9k2p",
-      "resourcePath": "/acknowledge/{invitation-code}",
+      "resourcePath": "register-entity/{task}/{invitation-code}",
       "httpMethod": "GET",
       "extendedRequestId": "SQojxHGeCYcErWA=",
       "requestTime": "28/Jan/2024:16:58:25 +0000",
-      "path": "/prod/acknowledge/my_invitation_code2",
+      "path": "/prodregister-entity/lookup-invitation/my_invitation_code2",
       "accountId": "037860335094",
       "protocol": "HTTP/1.1",
       "stage": "prod",

@@ -149,7 +149,7 @@ export class UserInvitation {
 
   /**
    * Registering the invitation to the database to reflect the email that would have just got sent.
-   * NOTE: The email address itself is NOT saved (cannot do this until acknowledgement and consent have occurred.)
+   * NOTE: The email address itself is NOT saved (cannot do this until acknowledgement and entity registration have occurred.)
    * @returns 
    */
   private persist = async ():Promise<any> => {
@@ -173,7 +173,7 @@ export class UserInvitation {
       if(role == Roles.SYS_ADMIN) {
         Payload.email = email;
         Payload.acknowledged_timestamp = sent_timestamp,
-        Payload.consented_timestamp = sent_timestamp
+        Payload.registered_timestamp = sent_timestamp
       }
 
       // Make sure email is NOT assigned the actual value, but the code value instead.

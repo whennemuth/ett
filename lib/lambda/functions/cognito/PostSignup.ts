@@ -1,6 +1,6 @@
 import { lookupRole, removeUserFromUserpool } from '../../_lib/cognito/Lookup';
-import { DAOUser, DAOFactory } from '../../_lib/dao/dao';
-import { Role, UserFields, User, Invitation, Roles } from '../../_lib/dao/entity';
+import { DAOUser, DAOFactory, DAOConsenter } from '../../_lib/dao/dao';
+import { Role, UserFields, User, Invitation, Roles, Consenter, ConsenterFields } from '../../_lib/dao/entity';
 import { PostSignupEventType } from './PostSignupEventType';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
 
@@ -20,53 +20,97 @@ export const handler = async (_event:any) => {
   debugLog(JSON.stringify(_event, null, 2)); 
   
   const event = _event as PostSignupEventType;
-  const { userPoolId, region } = event;
-  let newUser:User|undefined;
-  if( event?.callerContext) {
-    const { clientId } = event?.callerContext;
 
-    // Determined what role applies to the "doorway" (userpool client), the newly confirmed cognito user entered through.
-    const role:Role|undefined = await lookupRole(userPoolId, clientId, region);
+  let role:Role|undefined;
 
-    if(role) {
-      // Make a corresponding new user entry in dynamodb.
-      newUser = await addUserToDynamodb(event, role);
-    }
-  }
-
-  // If any of this failed (no new dynamodb entry made), erase the users presence in cognito.
-  if( ! newUser) {
+  /** Call this function to remove the user from the cognito userpool */
+  const removeCognitoUser = async (reason:string) => {
     const errmsg = 'Post cognito signup confirmation error.'
     if(event.request && event.request.userAttributes) {
       const { email } = event.request.userAttributes;
       if(email) {
         await removeUserFromUserpool(userPoolId, email, region);
-        throw new Error(`${errmsg} User rolled back from userpool: ${email}`);
+        if(`${role}` == Roles.CONSENTING_PERSON) {
+          let dao = DAOFactory.getInstance({ DAOType: 'consenter', Payload: { email }}) as DAOConsenter;
+          const consenter = await dao.read() as Consenter;
+          if( ! consenter.sub) {
+            dao.Delete();
+          }
+          else {
+            reason = `${reason} AND ${email} already has a cognito account`;
+          }
+        }
+        throw new Error(`${errmsg} User rolled back from userpool: ${email}, due to ${reason}`);
       }
     }
     throw new Error(errmsg);
   }
 
+  const { userPoolId, region, callerContext } = event;
+
+  if( ! userPoolId) {
+    await removeCognitoUser('Missing userPoolId');
+  }
+
+  if( ! callerContext) {
+    await removeCognitoUser('Missing callerContext');
+  }
+
+  const { clientId } = callerContext;
+
+  if( ! clientId ) {
+    await removeCognitoUser('Missing clientId');
+  }
+
+  // Determine what role applies to the "doorway" (userpool client), the newly confirmed cognito user entered through.
+  role = await lookupRole(userPoolId, clientId, region);
+
+  // Throw an error if there is anything wrong with the role or the event
+  const invalidMsg = role ? checkEvent(event) : 'Role lookup failure!';
+  if (invalidMsg) {
+    await removeCognitoUser(invalidMsg);
+  }
+
+  if(role == Roles.CONSENTING_PERSON) {
+    // Update the existing database record for the consenter with sub and phone_number
+    const consenter:Consenter|undefined = await updateConsenterInDatabase(event);
+    if( ! consenter) {
+      // If consenter update failed (no new dynamodb entry made), erase the users presence in cognito AND the database.
+      await removeCognitoUser(`Failed to update new ${role} in dynamodb`);
+    }
+  }
+  else {
+    // Make a corresponding new user entry in dynamodb.
+    const newUser:User|undefined = await addUserToDatabase(event, role!);      
+    if( ! newUser) {
+      // If user creation failed (no new dynamodb entry made), erase the users presence in cognito.
+      await removeCognitoUser(`Failed to create new ${role} in dynamodb`);
+    }
+  }
+  
+
+  // Returning the event without change means a "pass" and cognito will carry signup to completion.
   return event;
 }
 
 /**
- * 
+ * Ensure the incoming event contains all expected fields with valid values.
  * @param event 
  * @param role 
  * @returns 
  */
-const addUserToDynamodb = async (event:PostSignupEventType, role:Role):Promise<User|undefined> => {
-  
+const checkEvent = (event:PostSignupEventType):string|undefined => {
+  let invalidMsg:string|undefined;
+
   if( ! event.request || ! event.request.userAttributes) {
-    console.log('ERROR: Attributes are missing from the event');
-    return;
+    invalidMsg = 'ERROR: Attributes are missing from the event';
+    console.log(invalidMsg);
+    return invalidMsg;
   }
 
   const { sub, email, email_verified, phone_number, 'cognito:user_status':status } = event.request.userAttributes;
   const goodStatus = ( status && status.toUpperCase() == 'CONFIRMED' );
   const emailVerified = ( email_verified && email_verified.toLowerCase() == 'true' );
-  let invalidMsg:string|undefined;
 
   if( ! goodStatus) {
     invalidMsg = 'User is not confirmed!';
@@ -85,16 +129,51 @@ const addUserToDynamodb = async (event:PostSignupEventType, role:Role):Promise<U
   }
   if(invalidMsg) {
     console.error(`ERROR: ${invalidMsg}`);
+  }
+  return invalidMsg;
+}
+
+/**
+ * Update the consenter in the database with the coginito sub value and the phone_number
+ * @param event 
+ * @returns 
+ */
+const updateConsenterInDatabase = async (event:PostSignupEventType):Promise<Consenter|undefined> => {
+  const { sub, email, phone_number } = event.request.userAttributes;
+
+  const consenter = {
+    [ConsenterFields.email]: email,
+    [ConsenterFields.phone_number]: phone_number,
+    [ConsenterFields.sub]: sub,
+  } as Consenter;
+
+  const daoConsenter = DAOFactory.getInstance({ DAOType: 'consenter', Payload:consenter}) as DAOConsenter;
+  try {
+    await daoConsenter.update();
+  }
+  catch(e) {
+    console.error(e);
     return;
   }
+
+  return consenter;
+}
+
+/**
+ * Create the user in the database.
+ * @param event 
+ * @param role 
+ * @returns 
+ */
+const addUserToDatabase = async (event:PostSignupEventType, role:Role):Promise<User|undefined> => {
+  const { sub, email, phone_number } = event.request.userAttributes;
 
   // Lookup the original invitation for the email to get the entity_id, fullname and title values:
   const invitation = await scrapeUserValuesFromInvitation(email, role);
 
   if( ! invitation) return;
 
-  let user:User;
-  user = {
+  const user = {
     [UserFields.email]: email,
     [UserFields.entity_id]: invitation.entity_id,
     [UserFields.fullname]: invitation.fullname,
@@ -102,12 +181,13 @@ const addUserToDynamodb = async (event:PostSignupEventType, role:Role):Promise<U
     [UserFields.phone_number]: phone_number,
     [UserFields.sub]: sub,
     [UserFields.role]: role
-  };
+  } as User;
 
   const daoUser = DAOFactory.getInstance({ DAOType: 'user', Payload: user }) as DAOUser;
   try {
     await daoUser.create();
-  } catch (e) {
+  } 
+  catch (e) {
     console.error(e);
     return;
   } 
@@ -132,11 +212,11 @@ const scrapeUserValuesFromInvitation = async (email:string, role:Role):Promise<I
   });
   let invitations = await daoInvitation.read() as Invitation[];
 
-  // Filter off invitations that are retracted, unconsented, for other roles, or not to the expected entity.
+  // Filter off invitations that are retracted, unregistered, for other roles, or not to the expected entity.
   invitations = invitations.filter((invitation) => {
     if(invitation.retracted_timestamp) return false;
     if( ! invitation.acknowledged_timestamp) return false;
-    if( ! invitation.consented_timestamp) return false;
+    if( ! invitation.registered_timestamp) return false;
     if( invitation.role != role) return false;
     // Should NEVER find these role and entity_id combinations for associated invitation directly after signup
     // An RE_ADMIN is always in the waiting room BEFORE they create their entity.
@@ -154,6 +234,6 @@ const scrapeUserValuesFromInvitation = async (email:string, role:Role):Promise<I
   }
 
   // There should be only one result, but multiple results just means a SYS_ADMIN sent a subsequent invitation
-  // to the same person before that person had a chance to consent to and setup an account against the first invitation.
+  // to the same person before that person had a chance to register to and setup an account against the first invitation.
   return invitations[0];
 }

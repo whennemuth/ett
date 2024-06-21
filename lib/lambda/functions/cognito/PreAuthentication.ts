@@ -1,5 +1,5 @@
-import { Role, User, UserFields, YN } from "../../_lib/dao/entity";
-import { DAOUser, DAOFactory } from '../../_lib/dao/dao';
+import { Consenter, ConsenterFields, Role, Roles, User, UserFields, YN } from "../../_lib/dao/entity";
+import { DAOUser, DAOFactory, DAOConsenter } from '../../_lib/dao/dao';
 import { PreAuthenticationEventType } from "./PreAuthenticationEventType";
 import { lookupRole } from '../../_lib/cognito/Lookup';
 
@@ -56,25 +56,34 @@ export const handler = async (_event:any) => {
         throw new Error(Messages.EMAIL_LOOKUP_FAILURE);
       }
 
-      const dao:DAOUser = DAOFactory.getInstance({ DAOType: "user", Payload: {
-        [UserFields.email]: email,
-        [UserFields.role]: role
-      }}) as DAOUser;
+      let matchingPerson:User|Consenter|null = null;
+      if(role == Roles.CONSENTING_PERSON) {
+        const daoConsenter = DAOFactory.getInstance({ DAOType: 'consenter', Payload: {
+          [ConsenterFields.email]: email
+        }}) as DAOConsenter;
 
-      const entries:User[] = await dao.read() as User[];
-      let matchingUser:User|null = null;
-      for(const user of entries) {
-        if(user.role == role) {
-          matchingUser = user;
-          break;
+        matchingPerson = await daoConsenter.read({ convertDates: false }) as Consenter;
+      }
+      else {
+        const daoUser:DAOUser = DAOFactory.getInstance({ DAOType: "user", Payload: {
+          [UserFields.email]: email,
+          [UserFields.role]: role
+        }}) as DAOUser;
+
+        const entries:User[] = await daoUser.read() as User[];
+        for(const user of entries) {
+          if(user.role == role) {
+            matchingPerson = user;
+            break;
+          }
         }
       }
 
-      if(matchingUser && matchingUser.active == YN.No) {
+      if(matchingPerson && matchingPerson.active == YN.No) {
         throw new Error(Messages.ACCOUNT_DEACTIVATED.replace('role', `${role} role`));
       }
 
-      if(matchingUser) {
+      if(matchingPerson) {
         return event;
       } 
     }

@@ -1,13 +1,12 @@
-import { Construct } from "constructs";
-import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
-import { ApiConstructParms } from "../Api";
-import { AbstractFunction } from "../AbstractFunction";
-import { Function, Runtime } from "aws-cdk-lib/aws-lambda";
-import { DynamoDbConstruct } from "../DynamoDb";
-import { Roles } from "../lambda/_lib/dao/entity";
 import { ResourceServerScope } from "aws-cdk-lib/aws-cognito";
 import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
+import { Function, Runtime } from "aws-cdk-lib/aws-lambda";
+import { Construct } from "constructs";
 import { IContext } from "../../contexts/IContext";
+import { AbstractFunction } from "../AbstractFunction";
+import { ApiConstructParms } from "../Api";
+import { Roles } from "../lambda/_lib/dao/entity";
+import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
 
 
 export class AuthorizedIndividualApi extends AbstractRole {
@@ -62,6 +61,7 @@ export class LambdaFunction extends AbstractFunction {
     const { userPoolId, userPoolArn } = userPool;
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
+      memorySize: 1024,
       entry: 'lib/lambda/functions/authorized-individual/AuthorizedIndividual.ts',
       // handler: 'handler',
       functionName: `Ett${constructId}`,
@@ -105,10 +105,6 @@ export class LambdaFunction extends AbstractFunction {
       }),
       environment: {
         REGION: scope.node.getContext('stack-parms').REGION,
-        DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
-        DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME,
-        DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
-        DYNAMODB_CONSENTER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME,
         USERPOOL_ID: userPoolId
       }
     });

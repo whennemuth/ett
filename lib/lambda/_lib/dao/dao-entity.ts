@@ -1,16 +1,18 @@
-import { DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
+import { DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, QueryCommand, QueryCommandInput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
-import { DAOEntity } from './dao';
+import { DAOEntity, ReadParms } from './dao';
 import { convertFromApiObject } from './db-object-builder';
 import { entityUpdate } from './db-update-builder.entity';
 import { Entity, EntityFields, YN } from './entity';
+import { DynamoDbConstruct } from '../../../DynamoDb';
 
 export const ENTITY_WAITING_ROOM:string = '__UNASSIGNED__';
 
 export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity {
 
   const dbclient = new DynamoDBClient({ region: process.env.REGION });
-  const TableName = process.env.DYNAMODB_ENTITY_TABLE_NAME || '';
+  const TableName = DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME;
+  const TableActiveIndex = DynamoDbConstruct.DYNAMODB_ENTITY_ACTIVE_INDEX;
 
   let { entity_id, entity_name, create_timestamp, update_timestamp, active=YN.Yes } = entityInfo;
 
@@ -54,17 +56,30 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
       update_timestamp = create_timestamp;
       entityInfo.update_timestamp = update_timestamp;
     }
+    if( ! active) {
+      active = YN.Yes;
+    }
 
     const input = entityUpdate(TableName, entityInfo).buildUpdateItem() as UpdateItemCommandInput;
     command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
 
+  const read = async (readParms?:ReadParms):Promise<(Entity|null)|Entity[]> => {
+    if(entity_id) {
+      return await _read(readParms) as Entity;
+    }
+    else {
+      const _active = active ?? YN.Yes;
+      return await _query(_active, readParms) as Entity[];
+    }
+  }
+
   /**
    * Get a single entity record associated with the specified primary key value (entity_id)
    * @returns 
    */
-  const read = async ():Promise<Entity|null> => {
+  const _read = async (readParms?:ReadParms):Promise<Entity|null> => {
     // Handle missing field validation
     if( ! entity_id) throwMissingError('read', EntityFields.entity_id);
 
@@ -80,7 +95,35 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
     if( ! retval.Item) {
       return null;
     }
-    return await loadUser(retval.Item) as Entity;
+    const { convertDates } = (readParms ?? {});
+    return await loadEntity(retval.Item, convertDates ?? true) as Entity;
+  }
+
+
+  const _query = async (v1:string, readParms?:ReadParms):Promise<Entity[]> => {
+    const key = EntityFields.active; // set to the partion key
+    // NOTE: With a little more code, key could also be entity_name, which is the sort key.
+    // entity_name could contain a partial name and KeyConditionExpression could make use of
+    // comparison operators as documented in: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.OperatorsAndFunctions.html
+    // This would open up possibilites for a rudimentary entity search feature for users, based on entity_name.
+    console.log(`Reading entities for ${key}: ${v1}`);
+    const params = {
+      TableName,
+      // ConsistentRead: true,
+      ExpressionAttributeValues: {
+        ':v1': { S: v1 }
+      },
+      KeyConditionExpression: `${key} = :v1`,
+      IndexName: TableActiveIndex
+    } as QueryCommandInput;
+    command = new QueryCommand(params);
+    const retval = await sendCommand(command);
+    const entities = [] as Entity[];
+    const { convertDates } = (readParms ?? {});
+    for(const item in retval.Items) {
+      entities.push(await loadEntity(retval.Items[item], convertDates ?? true));
+    }
+    return entities as Entity[];
   }
 
   /**
@@ -137,9 +180,9 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
     return response;
   }
 
-  const loadUser = async (entity:any):Promise<Entity> => {
+  const loadEntity = async (entity:any, convertDates:boolean):Promise<Entity> => {
     return new Promise( resolve => {
-      resolve(convertFromApiObject(entity) as Entity);
+      resolve(convertFromApiObject(entity, convertDates) as Entity);
     });
   }
 
