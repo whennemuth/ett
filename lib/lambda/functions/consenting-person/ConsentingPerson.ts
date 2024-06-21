@@ -17,6 +17,7 @@ export enum Task {
   RENEW_CONSENT = 'renew-consent',
   RESCIND_CONSENT = 'rescind-consent',
   SEND_CONSENT = 'send-consent',
+  CORRECT_CONSENT = 'correct-consent',
   PING = 'ping'
 }
 
@@ -72,6 +73,8 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           return await rescindConsent(email);
         case Task.SEND_CONSENT:
           return await sendConsent( { email } as Consenter, entityName);
+        case Task.CORRECT_CONSENT:
+          return await correctConsent(parameters);
         case Task.SAVE_AFFILIATE_DATA:
           return await saveExhibitData(email, exhibit_data);
         case Task.SEND_AFFILIATE_DATA:
@@ -93,11 +96,11 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
  * @param email 
  * @returns 
  */
-export const getConsenterResponse = async (email:string): Promise<LambdaProxyIntegrationResponse> => {
+export const getConsenterResponse = async (email:string, includeEntityList:boolean=true): Promise<LambdaProxyIntegrationResponse> => {
   if( ! email) {
     return invalidResponse(INVALID_RESPONSE_MESSAGES.missingEmail)
   }
-  const consenterInfo = await getConsenter(email);
+  const consenterInfo = await getConsenter(email, includeEntityList);
   if( ! consenterInfo) {
     return okResponse(`No such consenter: ${email}`);
   }
@@ -170,7 +173,7 @@ export const changeTimestamp = async (email:string, timestampFld:string): Promis
 
   await dao.update();
   
-  return getConsenterResponse(email);
+  return getConsenterResponse(email, false);
 };
 
 /**
@@ -208,6 +211,17 @@ export const renewConsent = async (email:string): Promise<LambdaProxyIntegration
 export const rescindConsent = async (email:string): Promise<LambdaProxyIntegrationResponse> => {
   console.log(`Rescinding consent for ${email}`);
   return changeTimestamp(email, ConsenterFields.rescinded_timestamp);
+};
+
+/**
+ * Correct consent. NOT IMPLEMENTED - pending dialog with client 
+ * @param parameters 
+ * @returns 
+ */
+export const correctConsent = async (parameters:any): Promise<LambdaProxyIntegrationResponse> => {
+  const { email, alt_email, full_name, phone_number, signature } = parameters;
+  console.log(`NOT IMPLEMENTED: Correct consent for: ${JSON.stringify(parameters, null, 2)}`);
+  return getConsenterResponse(email, false);
 };
 
 /**

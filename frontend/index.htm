@@ -1068,7 +1068,33 @@
                         <div id="consentCorrect" style="width:215px; float:left; overflow: auto; vertical-align: middle; margin-right:4px; padding:10px; background-color: #e6e6ff;">
                           <div style="margin-right: 5px; text-align: center;">
                             To correct this Consent Form, click<br><br>
-                            <button id="btnCorrectConsent" class="btn btn-primary" style="margin-top:6px;">CORRECT</button>
+                            <!-- Button trigger modal -->
+                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#correctBackdrop" style="margin-top:6px;">CORRECT</button>
+                            <!-- Modal -->
+                            <div class="modal fade" id="correctBackdrop" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="correctBackdropLabel" aria-hidden="true">
+                              <div class="modal-dialog  modal-dialog-scrollable">
+                                <div class="modal-content">
+                                  <div class="modal-header">
+                                    <h5 class="modal-title" id="correctBackdropLabel">Edit your Consent</h5>
+                                  </div>
+                                  <div class="modal-body" style="text-align:left; overflow:auto;">
+                                    <div style="clear:both; margin-top:10px;">Full Name <span style="font-size: 10px;">(first, middle, last)</span></div>
+                                    <div><input type="text" class="form-control" id="txtConsentEditFullname"></div>
+                                    <div style="clear:both; margin-top:10px;">Email Address</div>
+                                    <div><input type="text" class="form-control" id="txtConsentEditEmail"></div>
+                                    <div style="clear:both; margin-top:10px;">Cell Phone</div>
+                                    <div><input type="text" class="form-control" id="txtConsentEditPhone"></div>
+                                    <div style="clear:both; margin-top:10px;">Please type your full name <span style="font-size: 10px;">(first, middle, last)</span> to digitally sign this Consent Form:</div>
+                                    <div><input type="text" class="form-control" id="txtConsentEditSignature"></div>
+                                  </div>
+                                  <div class="modal-footer">
+                                    <button id="btnCorrectConsent" class="btn btn-primary" data-bs-dismiss="modal">CORRECT</button>
+                                    &nbsp;
+                                    <button class="btn btn-primary" data-bs-dismiss="modal">Cancel</button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
                           </div>                                                 
                         </div>
                         <div id="consentSend"  style="width:215px; float:left; overflow: auto; vertical-align: middle; padding:10px; background-color: #e6e6ff;">
@@ -1907,7 +1933,7 @@
             if(rescinded.after(consented) && rescinded.after(renewed)) {
               return 'rescinded';
             }
-            return 'none';
+            return task == 'correct-consent' ? 'corrected' : 'none';
           }
 
           const hide = id => document.getElementById(id).style.display = 'none';
@@ -1963,6 +1989,9 @@
             case 'renewed':
               showPostConsentFields(_lastAction);
               break;
+            case 'corrected': 
+              showPostConsentFields(_lastAction);
+              break;
             case 'rescinded':
               showPostConsentFields(_lastAction);
               hide('consentRescind');
@@ -1994,6 +2023,9 @@
       document.getElementById('txtConsentFullname').value = fullName;
       document.getElementById('txtConsentEmail').value = email;
       document.getElementById('txtConsentPhone').value = phone_number;
+      document.getElementById('txtConsentEditFullname').value = fullName;
+      document.getElementById('txtConsentEditEmail').value = email;
+      document.getElementById('txtConsentEditPhone').value = phone_number;
       return consenterInfo;
     }
 
@@ -2046,6 +2078,18 @@
       // TODO: Mention of a specific entity in the consent form is in question and needs to be resolved with the client.
       await doConsentTask('send-consent', { email, entityName: 'unknown entity' });
       alert('Consent form sent');
+    }
+
+    /**
+     * Submit corrections to the consenter consent form information. NOTE: Not implemented on the backend (pending client discussion)
+     */
+    const correctConsent = async () => {
+      const { email } = IDJwtCookie.getUser() ?? {};
+      const alt_email = document.getElementById('txtConsentEditEmail').value;
+      const full_name = document.getElementById('txtConsentEditFullname').value;
+      const phone_number = document.getElementById('txtConsentEditPhone').value;
+      const signature = document.getElementById('txtConsentEditSignature').value;
+      await doConsentTask('correct-consent', { email, alt_email, full_name, phone_number, signature });
     }
 
     /**
@@ -2595,6 +2639,9 @@
       });
       document.getElementById('btnSendConsent').addEventListener('click', () => {
         sendConsent();
+      });
+      document.getElementById('btnCorrectConsent').addEventListener('click', () => {
+        correctConsent();
       });
       document.getElementById('lbxRequestingEntity').addEventListener('change', (event) => {
         const lbx = event.srcElement;
