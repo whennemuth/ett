@@ -311,6 +311,12 @@
         text-align:right;
       }
       /* div.bdp-input {
+        overflow: auto;
+      } */
+      div.bdp-block input, div.bdp-block div {
+        width:70px;
+        display:inline-table;      
+      }
 
       /* .text-left {
         text-align: left;
@@ -764,6 +770,9 @@
                   <a class="nav-link active" id="sys-admin-invitation-tab" data-toggle="tab" href="#sys-admin-invitation" role="tab" aria-controls="sys-admin-invitation" aria-selected="false">Invitation</a>
                 </li>
                 <li class="nav-item">
+                  <a class="nav-link" id="sys-admin-config-tab" data-toggle="tab" href="#sys-admin-config" role="tab" aria-controls="sys-admin-config" aria-selected="false">Configuration</a>
+                </li>
+                <li class="nav-item">
                   <a class="nav-link" id="sys-admin-db-tab" data-toggle="tab" href="#sys-admin-db" role="tab" aria-controls="sys-admin-db" aria-selected="false">Database</a>
                 </li>
               </ul>
@@ -800,6 +809,63 @@
                       <button id="btnSysAdminInvite" class="btn btn-primary btn-lg" type="button">Invite</button>
                     </div>
                   </div>
+                </div>
+                <div class="tab-pane fade" id="sys-admin-config" role="tabpanel" aria-labelledby="sys-admin-config-tab">
+                  <h3 class="display-7 fw-bold" style="text-align:center; margin-bottom: 20px;">ETT configuration</h3>
+                  <table class="sysAdminConfig" style="border-style:none; padding:5px;">
+                    <tr>
+                      <th>Description</th>
+                      <th>Default Value</th>
+                      <th style="min-width: 180px;">Current Value</th>
+                      <th>&nbsp;</th>
+                    </tr>
+                    <tr>
+                      <td>Number of authorized individuals per entity</td>
+                      <td>2</td>
+                      <td>
+                        <select id="lbxSysAdminConfigAuthIndNbr" class="form-control" style="width:fit-content; display:inline-block;">
+                          <script>for(var i=2; i<=10; i++) { document.writeln(`<option value='${i}'>${i}</option>`); }</script>
+                        </select>
+                      </td>
+                      <td><button class="btn btn-primary btn" type="button" onclick="changeConfig('auth-ind-nbr');">Update</button></td>
+                    </tr>
+                    <tr>
+                      <td>Duration between an initial disclosure request and the 1st automated reminder<br><span style="font-style: italic;">(set to "0" to negate the reminder)</span></td>
+                      <td>2 weeks</td>
+                      <td><input type="text" id="1st-reminder"></td>
+                      <td><button class="btn btn-primary btn" type="button" onclick="changeConfig('1st-reminder');">Update</button></td>
+                    </tr>
+                    <tr>
+                      <td>Duration between an initial disclosure request and the 2nd automated reminder<br><span style="font-style: italic;">(set to "0" to negate the reminder)</span></td>
+                      <td>1 week</td>
+                      <td><input type="text" class="form-control" id="2nd-reminder"></td>
+                      <td><button class="btn btn-primary btn" type="button" onclick="changeConfig('2nd-reminder');">Update</button></td>
+                    </tr>
+                    <tr>
+                      <td>Duration between an initial disclosure request and the 3rd automated reminder<br><span style="font-style: italic;">(set to "0" to negate the reminder)</span>.</td>
+                      <td>0</td>
+                      <td><input type="text" class="form-control" id="3rd-reminder"></td>
+                      <td><button class="btn btn-primary btn" type="button" onclick="changeConfig('3rd-reminder');">Update</button></td>
+                    </tr>
+                    <tr>
+                      <td>Duration between an initial disclosure request and the 4th automated reminder<br><span style="font-style: italic;">(set to "0" to negate the reminder)</span></td>
+                      <td>0</td>
+                      <td><input type="text" class="form-control" id="4th-reminder"></td>
+                      <td><button class="btn btn-primary btn" type="button" onclick="changeConfig('4th-reminder');">Update</button></td>
+                    </tr>
+                    <tr>
+                      <td>Duration exhibit forms, once submitted, can survive in the ETT system before failure to send disclosure request(s) will result their deletion</i></td>
+                      <td>60 days</td>
+                      <td><input type="text" class="form-control" id="delete-exhibit-forms-after"></td>
+                      <td><button class="btn btn-primary btn" type="button" onclick="changeConfig('delete-exhibit-forms-after');">Update</button></td>
+                    </tr>
+                    <tr>
+                      <td>Duration that partially complete exhibit forms can survive in the ETT system before failure to submit them will result in their deletion</td>
+                      <td>48 hours</td>
+                      <td><input type="text" class="form-control" id="delete-drafts-after"></td>
+                      <td><button class="btn btn-primary btn" type="button" onclick="changeConfig('delete-drafts-after');">Update</button></td>
+                    </tr>
+                  </table>"
                 </div>
                 <div class="tab-pane fade" id="sys-admin-db" role="tabpanel" aria-labelledby="sys-admin-db-tab">
                   <h3 class="display-7 fw-bold" style="text-align:center; margin-bottom: 20px;">ETT database viewer</h3>
@@ -2224,6 +2290,10 @@
       console.log('not implemented yet');
     }
 
+    const changeConfig = async (config) => {
+      alert(`${config}: NOT IMPLEMENTED`);
+    }
+
     const refreshDbTable = async (tableName) => {
       const msg = document.getElementById('apiResponse');
       msg.innerHTML = '';
@@ -2262,6 +2332,53 @@
       }
     }
 
+    /**
+     * Load the duration picker plugin and activate the pickers
+     */
+    const activateDurationPickers = async () => {
+      // Load and duration picker plugin
+      let { origin } = document.location;
+      if(localTesting()) {
+        origin = '../frontend';
+        const response = await fetch('../contexts/context.json', { method: 'GET' });
+        const package = await response.json();
+        const { CONFIG } = package ?? {};
+        const { configs } = CONFIG ?? {};
+      }
+      else {
+        console.log('coming')
+      }
+      const bdpScript = document.createElement('script');
+      bdpScript.src = `${origin}/bootstrap-duration-picker.js`;
+      bdpScript.async = false;
+      const minute = 60;
+      const hour = minute * 60;
+      const day = hour * 24;
+      const week = day * 7;
+      bdpScript.onload = e => {
+        // Activate the duration pickers
+        const tbl = document.getElementById('sysAdminConfig');
+        // TODO: Change this so that they are set by seconds stored in db table and retrieved by api call.
+        const pickers = [
+          { id: '1st-reminder', config: (2 * week) }, 
+          { id: '2nd-reminder', config: week }, 
+          { id: '3rd-reminder', config: 0 }, 
+          { id: '4th-reminder', config: 0 }, 
+          { id: 'delete-exhibit-forms-after', config: (60 * day) }, 
+          { id: 'delete-drafts-after', config: (48 * hour) }, 
+        ];
+        pickers.forEach(item=> {
+          const { id, config } = item;
+          $(`#${id}`).durationPicker({ showSeconds:true });
+          $(`#${id}`).data('durationPicker').setValue(config);
+        })
+      }
+      document.head.appendChild(bdpScript);
+      const bdpLink = document.createElement('link');
+      bdpLink.rel = 'stylesheet';
+      bdpLink.href = `${origin}/frontend/bootstrap-duration-picker.css`;
+      document.head.appendChild(bdpLink);
+    }
 
     /**
      * Signup for a cognito userpool account.
@@ -2766,6 +2883,10 @@
         $(this).tab('show')
       });
 
+      if(selected_role == 'SYS_ADMIN') {
+        await activateDurationPickers();
+      }
+      
       const tooltips = {
         consent: [
           '<b>Ethical Transparency Tool</b> (or ETT) means a tool that enables each Consent Recipient to provide a completed Disclosure Form about a person who has signed and delivered a Consent Form (this form), to any ETT-Registered Entit(ies) that make(s) a request.  Each entity retains its independence in policymaking and decision-making (e.g., when to use the ETT and how to respond to disclosures).',

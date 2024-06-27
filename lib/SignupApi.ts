@@ -259,6 +259,9 @@ export class SignupApiConstruct extends Construct {
     dynamodb.getEntitiesTable().grantReadWriteData(this.registerEntityLambda);
     dynamodb.getUsersTable().grantReadWriteData(this.registerEntityLambda);
     dynamodb.getConsentersTable().grantReadWriteData(this.registerConsenterLambda);
+    dynamodb.getConfigTable().grantReadData(this.acknowledgeEntityLambda);
+    dynamodb.getConfigTable().grantReadData(this.registerEntityLambda);
+    dynamodb.getConfigTable().grantReadData(this.registerConsenterLambda);
   }
 
   public get entityAcknowledgeApiUri() {

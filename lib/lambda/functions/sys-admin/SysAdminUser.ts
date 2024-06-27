@@ -1,8 +1,9 @@
 import { DynamoDbConstruct } from '../../../DynamoDb';
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
+import { Configurations } from '../../_lib/config/Config';
 import { DAOEntity, DAOFactory } from '../../_lib/dao/dao';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
-import { Entity, EntityFields, Role, Roles, YN } from '../../_lib/dao/entity';
+import { Config, ConfigNames, Entity, EntityFields, Role, Roles, YN } from '../../_lib/dao/entity';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
 import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../Utils";
 import { Task as ReAdminTasks, createEntity, createEntityAndInviteUsers, deactivateEntity, inviteUser, lookupEntity, updateEntity } from '../re-admin/ReAdminUser';
@@ -12,6 +13,9 @@ import { HtmlTableView } from './view/HtmlTableView';
 export enum Task {
   REPLACE_RE_ADMIN = 'replace-re-admin',
   GET_DB_TABLE = 'get-db-table',
+  GET_APP_CONFIGS = 'get-app-configs',
+  GET_APP_CONFIG = 'get-app-config',
+  SET_APP_CONFIG = 'set-app-config'
 }
 
 /**
@@ -70,6 +74,11 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
         case Task.GET_DB_TABLE:
           return await getDbTable(parameters);
         case Task.GET_APP_CONFIGS:
+          return await getAppConfigs();
+        case Task.GET_APP_CONFIG:
+          return await getAppConfig(parameters);
+        case Task.SET_APP_CONFIG:
+          return await setAppConfig(parameters);
       } 
     }
   }
@@ -123,6 +132,47 @@ export const getDbTable = async (parms:any):Promise<LambdaProxyIntegrationRespon
   return okResponse('Ok', { html });
 };
 
+/**
+ * @returns The full set of application configurations.
+ */
+export const getAppConfigs = async ():Promise<LambdaProxyIntegrationResponse> => {
+  const configs = new Configurations().getAppConfigs();
+  return okResponse('Ok', { configs });
+}
+
+/**
+ * @param parms 
+ * @returns A single application configuration.
+ */
+export const getAppConfig = async (parms:any):Promise<LambdaProxyIntegrationResponse> => {
+  const { name } = parms;
+  const config = new Configurations().getAppConfig(name);
+  return okResponse('Ok', { config });
+}
+
+/**
+ * Modify a single application configuration
+ * @param parms 
+ * @returns 
+ */
+export const setAppConfig = async (parms:any):Promise<LambdaProxyIntegrationResponse> => {
+  const { name, value, description } = parms;
+  if( ! name) {
+    return invalidResponse('Bad Request: name parameter required');
+  }
+  if( ! Object.values<string>(ConfigNames).includes(name)) {
+    return invalidResponse(`Bad Request - no such parameter: ${name}`);
+  }
+  if( ! value) {
+    return invalidResponse('Bad Request: value parameter required');
+  }
+  let config = { name, value } as Config;
+  if(description) {
+    config.description = description;
+  }
+  await new Configurations().setDbConfig(config);
+  return okResponse('Ok');
+}
 
 
 /**

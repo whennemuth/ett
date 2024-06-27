@@ -142,6 +142,47 @@ export type Invitation = {
   retracted_timestamp?: string,
 }
 
+/**************** CONFIG ****************/
+export enum ConfigNames { 
+  CONSENT_EXPIRATION = 'consent-expiration',
+  AUTH_IND_NBR = 'auth-ind-nbr',
+  FIRST_REMINDER = 'first-reminder',
+  SECOND_REMINDER = 'second-reminder',
+  THIRD_REMINDER = 'third-reminder',
+  FOURTH_REMINDER = 'fourth-reminder',
+  DELETE_EXHIBIT_FORMS_AFTER = 'delete-exhibit-forms-after',
+  DELETE_DRAFTS_AFTER = 'delete-drafts-after'
+}
+export type ConfigName = 
+  ConfigNames.CONSENT_EXPIRATION |
+  ConfigNames.AUTH_IND_NBR | 
+  ConfigNames.DELETE_DRAFTS_AFTER | 
+  ConfigNames.DELETE_EXHIBIT_FORMS_AFTER | 
+  ConfigNames.FIRST_REMINDER |
+  ConfigNames.SECOND_REMINDER |
+  ConfigNames.THIRD_REMINDER |
+  ConfigNames.FOURTH_REMINDER;
+export enum ConfigTypes {
+  DURATION = 'duration',
+  NUMBER = 'number',
+  STRING = 'string'
+}
+export type ConfigType = ConfigTypes.DURATION | ConfigTypes.NUMBER | ConfigTypes.STRING;
+export enum ConfigFields {
+  name = 'name',
+  value = 'value',
+  config_type = 'config_type',
+  description = 'description',
+  update_timestamp = 'update_timestamp'
+}
+export type Config = {
+  name: ConfigName,
+  value: string,
+  config_type: ConfigType,
+  description: string,
+  update_timestamp?: string
+}
+
 export function Validator() {
   const isRole = (role:string|undefined|null) => {
     if( ! role) return false;

@@ -48,20 +48,25 @@ export class ApiConstruct extends Construct {
     dynamodb.getEntitiesTable().grantReadWriteData(sysAdminApi.getLambdaFunction());
     dynamodb.getInvitationsTable().grantReadWriteData(sysAdminApi.getLambdaFunction());
     dynamodb.getUsersTable().grantReadWriteData(sysAdminApi.getLambdaFunction());
+    dynamodb.getConsentersTable().grantReadWriteData(sysAdminApi.getLambdaFunction());
+    dynamodb.getConfigTable().grantReadWriteData(sysAdminApi.getLambdaFunction());
 
     // Grant the re administrator api permissions to read/write from the users table
     dynamodb.getUsersTable().grantReadWriteData(reAdminApi.getLambdaFunction());
     dynamodb.getInvitationsTable().grantReadWriteData(reAdminApi.getLambdaFunction());
     dynamodb.getEntitiesTable().grantReadWriteData(reAdminApi.getLambdaFunction());
+    dynamodb.getConfigTable().grantReadData(reAdminApi.getLambdaFunction());
 
     // Grant the authorized individual api permissions to read/write from the users table
     dynamodb.getUsersTable().grantReadWriteData(authIndApi.getLambdaFunction());
     dynamodb.getInvitationsTable().grantReadWriteData(authIndApi.getLambdaFunction());
     dynamodb.getEntitiesTable().grantReadWriteData(authIndApi.getLambdaFunction());
+    dynamodb.getConfigTable().grantReadData(authIndApi.getLambdaFunction());
 
     // Grant the consenter api permissions to read/write from the users table
     dynamodb.getConsentersTable().grantReadWriteData(consentingPersonApi.getLambdaFunction());
     dynamodb.getEntitiesTable().grantReadWriteData(consentingPersonApi.getLambdaFunction());
+    dynamodb.getConfigTable().grantReadData(consentingPersonApi.getLambdaFunction());
   }
 
   public get helloWorldApi(): HelloWorldApi {
