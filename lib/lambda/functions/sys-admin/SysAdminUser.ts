@@ -1,3 +1,4 @@
+import { DynamoDbConstruct } from '../../../DynamoDb';
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
 import { DAOEntity, DAOFactory } from '../../_lib/dao/dao';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
@@ -5,9 +6,12 @@ import { Entity, EntityFields, Role, Roles, YN } from '../../_lib/dao/entity';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
 import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../Utils";
 import { Task as ReAdminTasks, createEntity, createEntityAndInviteUsers, deactivateEntity, inviteUser, lookupEntity, updateEntity } from '../re-admin/ReAdminUser';
+import { DynamoDbTableOutput } from './DynamoDbTableOutput';
+import { HtmlTableView } from './view/HtmlTableView';
 
 export enum Task {
-  REPLACE_RE_ADMIN = 'replace_re_admin'
+  REPLACE_RE_ADMIN = 'replace-re-admin',
+  GET_DB_TABLE = 'get-db-table',
 }
 
 /**
@@ -63,6 +67,9 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           return okResponse('Ping!', parameters);
         case Task.REPLACE_RE_ADMIN:
           return await replaceAdmin(parameters);
+        case Task.GET_DB_TABLE:
+          return await getDbTable(parameters);
+        case Task.GET_APP_CONFIGS:
       } 
     }
   }
@@ -79,6 +86,43 @@ export const replaceAdmin = async (parms:any):Promise<LambdaProxyIntegrationResp
   console.log('Not implemented yet.');
   return errorResponse('Not implemented yet');
 }
+
+/**
+ * Retrieve the contents of the specified database table in html form.
+ * @param parms 
+ * @returns 
+ */
+export const getDbTable = async (parms:any):Promise<LambdaProxyIntegrationResponse> => {
+  let { tableName } = parms;
+  if( ! tableName) {
+    return invalidResponse('Table name parameter is missing: tableName');
+  }
+
+  console.log(`Getting database table: ${tableName}`);
+
+  const { 
+    DYNAMODB_CONSENTER_TABLE_NAME: consenters, 
+    DYNAMODB_ENTITY_TABLE_NAME: entities, 
+    DYNAMODB_INVITATION_TABLE_NAME: invitations, 
+    DYNAMODB_USER_TABLE_NAME: users
+  } = DynamoDbConstruct;
+
+  const tables = [ consenters, entities, invitations, users ];
+  const noSuchTableMsg = `Bad Request - No matching table for: ${tableName}`;
+  // Find a table that is equal to or ends with the provided value.
+  tableName = tables.find(tb => tb == tableName || tb.endsWith(tableName));
+
+  if( ! tableName) {
+    return invalidResponse(noSuchTableMsg);
+  }
+
+  const html = await new DynamoDbTableOutput(
+    new HtmlTableView()
+  ).getDisplay(tableName);
+
+  return okResponse('Ok', { html });
+};
+
 
 
 /**

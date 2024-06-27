@@ -377,6 +377,33 @@
         "RUN_MANUALLY_TEXTLINE"
       ],
     },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Html Table View",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/sys-admin/view/HtmlTableView.ts",
+        "RUN_MANUALLY_TABLE_VIEW"
+      ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Dynamodb Table View",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/sys-admin/DynamoDbTableOutput.ts",
+        "RUN_MANUALLY_DYNAMODB_DISPLAY",
+        "cp"
+      ],
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      },
+    },
 
     // JEST TESTS
     {

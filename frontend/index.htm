@@ -291,6 +291,27 @@
         text-align:left;
       }
 
+      table.sysAdminConfig, table.sysAdminConfig th, table.sysAdminConfig td {
+        border: 1px solid black;
+        border-collapse: collapse;
+      }
+      table.sysAdminConfig th {
+        font-weight: bold;
+        text-align: center;
+        vertical-align: middle;
+      }
+      table.sysAdminConfig td, table.sysAdminConfig th {
+        padding: 15px;
+      }
+      div.dbTableLabel {
+        display:inline-block; 
+        font-size:1.25rem; 
+        font-weight:500; 
+        min-width: 102px; 
+        text-align:right;
+      }
+      /* div.bdp-input {
+
       /* .text-left {
         text-align: left;
       } */
@@ -743,16 +764,15 @@
                   <a class="nav-link active" id="sys-admin-invitation-tab" data-toggle="tab" href="#sys-admin-invitation" role="tab" aria-controls="sys-admin-invitation" aria-selected="false">Invitation</a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" id="sys-admin-misc-tab" data-toggle="tab" href="#sys-admin-misc" role="tab" aria-controls="sys-admin-misc" aria-selected="false">Miscellaneous</a>
+                  <a class="nav-link" id="sys-admin-db-tab" data-toggle="tab" href="#sys-admin-db" role="tab" aria-controls="sys-admin-db" aria-selected="false">Database</a>
                 </li>
               </ul>
               <div class="tab-content" id="sysAdminContent">
                 <div class="tab-pane fade show active" id="sys-admin-invitation" role="tabpanel" aria-labelledby="sys-admin-invitation-tab">
                   <h3 class="display-7 fw-bold">Welcome <span id="SYS_ADMIN_username"></span></h3>
-                  <h3 class="display-7 fw-bold">Invite a registered entity administrator</h3>
+                  <h3 class="display-7 fw-bold">Invite a participant</h3>
                   <div style="display:inline-block; width:405px;">
-                    <div style="display:none;">
-                      <!-- Temporarily hiding the radio buttons -->
+                    <div>
                       <div class="divSysAdminOption">
                         Another System Administrator:&nbsp;
                         <input type="radio" name="rdoSysAdminInvite" value="SYS_ADMIN">
@@ -778,11 +798,33 @@
                     </div>                
                     <div class="divSysAdminOption">
                       <button id="btnSysAdminInvite" class="btn btn-primary btn-lg" type="button">Invite</button>
-                    </div> 
+                    </div>
                   </div>
                 </div>
-                <div class="tab-pane fade" id="sys-admin-misc" role="tabpanel" aria-labelledby="sys-admin-misc-tab">
-                  <h3 class="display-7 fw-bold" style="text-align:center; margin-bottom: 20px;">Something else can go here, not sure what</h3>
+                <div class="tab-pane fade" id="sys-admin-db" role="tabpanel" aria-labelledby="sys-admin-db-tab">
+                  <h3 class="display-7 fw-bold" style="text-align:center; margin-bottom: 20px;">ETT database viewer</h3>
+                  <div style="overflow:auto;">
+                    <div style="float:left; clear:both; margin-bottom: 30px;">
+                      <div class="dbTableLabel">Entities</div>
+                      <button class="btn btn-primary btn" type="button" onclick="refreshDbTable('entities')">Load/Refresh</button>
+                      <div id="db-table-entities" style="margin-top:10px;"></div>
+                    </div>
+                    <div style="float:left; clear:both; margin-bottom: 30px;">
+                      <div class="dbTableLabel">Invitations</div>
+                      <button class="btn btn-primary btn" type="button" onclick="refreshDbTable('invitations')">Load/Refresh</button>
+                      <div id="db-table-invitations" style="margin-top:10px;"></div>
+                    </div>
+                    <div style="float:left; clear:both; margin-bottom: 30px;">
+                      <div class="dbTableLabel">Users</div>
+                      <button class="btn btn-primary btn" type="button" onclick="refreshDbTable('users')">Load/Refresh</button>
+                      <div id="db-table-users" style="margin-top:10px;"></div>
+                    </div>
+                    <div style="float:left; clear:both;">
+                      <div class="dbTableLabel">Consenters</div>
+                      <button class="btn btn-primary btn" type="button" onclick="refreshDbTable('consenters')">Load/Refresh</button>
+                      <div id="db-table-consenters" style="margin-top:10px;"></div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2181,6 +2223,45 @@
     function signSingleExhibitForms() {
       console.log('not implemented yet');
     }
+
+    const refreshDbTable = async (tableName) => {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+        const role = AccessJwtCookie.getRole().name;
+        const apiUri = STATIC_PARAMETERS.ROLES[role].API_URI
+        
+        document.body.style.cursor = 'progress';
+        const response = await fetch(apiUri, {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({
+              task: 'get-db-table',
+              parameters: { tableName }
+            })
+          }
+        });
+
+        const package = await response.json();
+        document.body.style.cursor = 'default';
+        const { message, payload } = package;
+        if(payload.ok) {
+          const { html } = payload;
+          document.getElementById(`db-table-${tableName}`).innerHTML = html;
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
 
     /**
      * Signup for a cognito userpool account.

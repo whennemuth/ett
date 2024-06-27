@@ -1,6 +1,7 @@
 import { CloudFrontClient, DistributionSummary, ListDistributionsCommand, ListDistributionsResult } from "@aws-sdk/client-cloudfront";
 import { DAOEntity, DAOFactory, DAOInvitation, DAOUser } from "../_lib/dao/dao";
 import { Entity, Invitation, User, YN } from "../_lib/dao/entity";
+import { exec } from "child_process";
 
 export type LambdaProxyIntegrationResponse<T extends string = string> = {
   isBase64Encoded: boolean;
@@ -210,4 +211,36 @@ export const debugLog = (o:any) => {
   if(process.env.DEBUG == 'true') {
     log(o);
   }
+}
+
+export const viewHtml = async (html:string) => {
+  const { writeFileSync } = await import('fs');
+  const { join } = await import('path');
+  const { tmpdir } = await import('os');
+  const { platform } = await import('process');
+
+  const tmpPath = join(tmpdir(), 'html_table.html');
+  let command = '';
+  switch (platform) {
+    case 'win32':
+      command = `start "" "${tmpPath}"`;
+      break;
+    case 'darwin':
+      command = `open "${tmpPath}"`;
+      break;
+    case 'linux':
+      command = `xdg-open "${tmpPath}"`;
+      break;
+    default:
+      console.error('Unsupported platform:', platform);
+      return;
+  }
+
+  writeFileSync(tmpPath, html, 'utf-8');
+  exec(command, (err) => {
+    if (err) {
+      console.error('Failed to open browser:', err);
+    }
+  });
+
 }
