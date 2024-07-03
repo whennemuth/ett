@@ -812,58 +812,10 @@
                 </div>
                 <div class="tab-pane fade" id="sys-admin-config" role="tabpanel" aria-labelledby="sys-admin-config-tab">
                   <h3 class="display-7 fw-bold" style="text-align:center; margin-bottom: 20px;">ETT configuration</h3>
-                  <table class="sysAdminConfig" style="border-style:none; padding:5px;">
+                  <table id="tblSysAdminConfig" class="sysAdminConfig" style="border-style:none; padding:5px;">
                     <tr>
                       <th>Description</th>
-                      <th>Default Value</th>
-                      <th style="min-width: 180px;">Current Value</th>
-                      <th>&nbsp;</th>
-                    </tr>
-                    <tr>
-                      <td>Number of authorized individuals per entity</td>
-                      <td>2</td>
-                      <td>
-                        <select id="lbxSysAdminConfigAuthIndNbr" class="form-control" style="width:fit-content; display:inline-block;">
-                          <script>for(var i=2; i<=10; i++) { document.writeln(`<option value='${i}'>${i}</option>`); }</script>
-                        </select>
-                      </td>
-                      <td><button class="btn btn-primary btn" type="button" onclick="changeConfig('auth-ind-nbr');">Update</button></td>
-                    </tr>
-                    <tr>
-                      <td>Duration between an initial disclosure request and the 1st automated reminder<br><span style="font-style: italic;">(set to "0" to negate the reminder)</span></td>
-                      <td>2 weeks</td>
-                      <td><input type="text" id="1st-reminder"></td>
-                      <td><button class="btn btn-primary btn" type="button" onclick="changeConfig('1st-reminder');">Update</button></td>
-                    </tr>
-                    <tr>
-                      <td>Duration between an initial disclosure request and the 2nd automated reminder<br><span style="font-style: italic;">(set to "0" to negate the reminder)</span></td>
-                      <td>1 week</td>
-                      <td><input type="text" class="form-control" id="2nd-reminder"></td>
-                      <td><button class="btn btn-primary btn" type="button" onclick="changeConfig('2nd-reminder');">Update</button></td>
-                    </tr>
-                    <tr>
-                      <td>Duration between an initial disclosure request and the 3rd automated reminder<br><span style="font-style: italic;">(set to "0" to negate the reminder)</span>.</td>
-                      <td>0</td>
-                      <td><input type="text" class="form-control" id="3rd-reminder"></td>
-                      <td><button class="btn btn-primary btn" type="button" onclick="changeConfig('3rd-reminder');">Update</button></td>
-                    </tr>
-                    <tr>
-                      <td>Duration between an initial disclosure request and the 4th automated reminder<br><span style="font-style: italic;">(set to "0" to negate the reminder)</span></td>
-                      <td>0</td>
-                      <td><input type="text" class="form-control" id="4th-reminder"></td>
-                      <td><button class="btn btn-primary btn" type="button" onclick="changeConfig('4th-reminder');">Update</button></td>
-                    </tr>
-                    <tr>
-                      <td>Duration exhibit forms, once submitted, can survive in the ETT system before failure to send disclosure request(s) will result their deletion</i></td>
-                      <td>60 days</td>
-                      <td><input type="text" class="form-control" id="delete-exhibit-forms-after"></td>
-                      <td><button class="btn btn-primary btn" type="button" onclick="changeConfig('delete-exhibit-forms-after');">Update</button></td>
-                    </tr>
-                    <tr>
-                      <td>Duration that partially complete exhibit forms can survive in the ETT system before failure to submit them will result in their deletion</td>
-                      <td>48 hours</td>
-                      <td><input type="text" class="form-control" id="delete-drafts-after"></td>
-                      <td><button class="btn btn-primary btn" type="button" onclick="changeConfig('delete-drafts-after');">Update</button></td>
+                      <th style="min-width: 180px;" colspan="2">Current Value</th>
                     </tr>
                   </table>"
                 </div>
@@ -2290,10 +2242,6 @@
       console.log('not implemented yet');
     }
 
-    const changeConfig = async (config) => {
-      alert(`${config}: NOT IMPLEMENTED`);
-    }
-
     const refreshDbTable = async (tableName) => {
       const msg = document.getElementById('apiResponse');
       msg.innerHTML = '';
@@ -2333,20 +2281,71 @@
     }
 
     /**
+     * Obtain the output of a fetch to the configuration api endpoint
+     */
+    const getAppConfigs = async () => {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+        const role = AccessJwtCookie.getRole().name;
+        const apiUri = STATIC_PARAMETERS.ROLES[role].API_URI
+        
+        document.body.style.cursor = 'progress';
+        const response = await fetch(apiUri, {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({
+              task: 'get-app-configs',
+              parameters: { }
+            })
+          }
+        });
+
+        const package = await response.json();
+        document.body.style.cursor = 'default';
+        const { message, payload } = package;
+        if(payload.ok) {
+          const { configs } = payload;
+          return configs;
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
+    /**
      * Load the duration picker plugin and activate the pickers
      */
-    const activateDurationPickers = async () => {
+    const buildConfigurationsTable = async () => {
       // Load and duration picker plugin
       let { origin } = document.location;
+      let configs;
       if(localTesting()) {
         origin = '../frontend';
-        const response = await fetch('../contexts/context.json', { method: 'GET' });
-        const package = await response.json();
-        const { CONFIG } = package ?? {};
-        const { configs } = CONFIG ?? {};
+        // Load the table with static dummy data.
+        configs = [
+          { name:'consent-expiration', value:'315360000', config_type: 'duration' },
+          { name:'auth-ind-nbr', value:'2', config_type: 'number' },
+          { name:'first-reminder', value:'1209600', config_type: 'duration' },
+          { name:'second-reminder', value:'1814400', config_type: 'duration' },
+          { name:'third-reminder', value:'0', config_type: 'duration' },
+          { name:'fourth-reminder', value:'0', config_type: 'duration' },
+          { name:'delete-exhibit-forms-after', value:'5184000', config_type: 'duration' },
+          { name:'delete-drafts-after', value:'172800', config_type: 'duration' },
+        ]
+        configs = configs.map(c => { return Object.assign(c, { description: `${c.name} description` }); })
       }
       else {
-        console.log('coming')
+        // Load the table with the output of a fetch to the configuration api endpoint
+        configs = await getAppConfigs();
       }
       const bdpScript = document.createElement('script');
       bdpScript.src = `${origin}/bootstrap-duration-picker.js`;
@@ -2355,29 +2354,98 @@
       const hour = minute * 60;
       const day = hour * 24;
       const week = day * 7;
+      
+      // Load the config table with rows, one row for each configuration.
       bdpScript.onload = e => {
-        // Activate the duration pickers
-        const tbl = document.getElementById('sysAdminConfig');
-        // TODO: Change this so that they are set by seconds stored in db table and retrieved by api call.
-        const pickers = [
-          { id: '1st-reminder', config: (2 * week) }, 
-          { id: '2nd-reminder', config: week }, 
-          { id: '3rd-reminder', config: 0 }, 
-          { id: '4th-reminder', config: 0 }, 
-          { id: 'delete-exhibit-forms-after', config: (60 * day) }, 
-          { id: 'delete-drafts-after', config: (48 * hour) }, 
-        ];
-        pickers.forEach(item=> {
-          const { id, config } = item;
-          $(`#${id}`).durationPicker({ showSeconds:true });
-          $(`#${id}`).data('durationPicker').setValue(config);
+        const tbl = document.getElementById('tblSysAdminConfig');
+        configs.forEach(config => {
+          let tr = tbl.insertRow(-1);
+          // First cell
+          let td = tr.insertCell(-1);
+          let txt = document.createTextNode(config.description);
+          td.appendChild(txt);
+          // Second cell
+          td = tr.insertCell(-1);
+          let input = document.createElement('input');
+          input.id = config.name;
+          input.className = 'form-control input-sm';
+          input.type = 'text';
+          switch(config.config_type) {
+            case 'duration':
+              td.appendChild(input);
+              // Activate the duration picker
+              $(`#${config.name}`).durationPicker({ showSeconds:true });
+              $(`#${config.name}`).data('durationPicker').setValue(parseInt(config.value));
+              break;
+            case 'number':
+              input.style = 'display:inline-block;width:180px;';
+              input.type = 'number';
+              input.value = parseInt(config.value);
+              td.appendChild(input);
+              break;
+            default:
+              input.style = 'display:inline-block;width:180px;';
+              input.value = config.value;
+              td.appendChild(input);
+              break;
+          }
+          // Third cell
+          td = tr.insertCell(-1);
+          let button = document.createElement('button');
+          txt = document.createTextNode('Update');
+          button.appendChild(txt);
+          button.className = 'btn btn-primary btn';
+          button.addEventListener('click', async() => {
+            changeConfig(config.name);
+          });
+          td.appendChild(button);
         })
       }
       document.head.appendChild(bdpScript);
-      const bdpLink = document.createElement('link');
-      bdpLink.rel = 'stylesheet';
-      bdpLink.href = `${origin}/frontend/bootstrap-duration-picker.css`;
-      document.head.appendChild(bdpLink);
+      // const bdpLink = document.createElement('link');
+      // bdpLink.rel = 'stylesheet';
+      // bdpLink.href = `${origin}/bootstrap-duration-picker.css`;
+      // document.head.appendChild(bdpLink);
+    }
+
+    /**
+     * Modify a single app configuration setting.
+     */
+    const changeConfig = async (name) => {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+        const role = AccessJwtCookie.getRole().name;
+        const apiUri = STATIC_PARAMETERS.ROLES[role].API_URI;
+        const { value } = document.getElementById(name);
+        
+        document.body.style.cursor = 'progress';
+        const response = await fetch(apiUri, {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({
+              task: 'set-app-config',
+              parameters: { name, value }
+            })
+          }
+        });
+        const package = await response.json();
+        document.body.style.cursor = 'default';
+        const { message, payload } = package;
+        if(payload.ok) {
+          alert(`${name} change succesful`);
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }        
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
     }
 
     /**
@@ -2758,9 +2826,11 @@
 
     const onDocumentLoad = async () => {
       document.body.style.display = 'progress';
-      const queryParams = new URLSearchParams(window.location.search);
+
+      selected_role = getSelectedRole();
 
       // Get querystring parameters
+      const queryParams = new URLSearchParams(window.location.search);
       const action = queryParams.get('action');
       const invitationCode = queryParams.get('code');
 
@@ -2769,7 +2839,7 @@
         signIn();
       });
       document.getElementById('btnSignup').addEventListener('click', () => {
-        if(selected_role = 'CONSENTING_PERSON') {
+        if(selected_role == 'CONSENTING_PERSON') {
           showSection('acknowledge-consenter');
         }
         else {
@@ -2884,7 +2954,7 @@
       });
 
       if(selected_role == 'SYS_ADMIN') {
-        await activateDurationPickers();
+        await buildConfigurationsTable();
       }
       
       const tooltips = {

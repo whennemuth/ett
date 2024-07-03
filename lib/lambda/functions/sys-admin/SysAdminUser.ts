@@ -136,7 +136,7 @@ export const getDbTable = async (parms:any):Promise<LambdaProxyIntegrationRespon
  * @returns The full set of application configurations.
  */
 export const getAppConfigs = async ():Promise<LambdaProxyIntegrationResponse> => {
-  const configs = new Configurations().getAppConfigs();
+  const configs = await new Configurations().getAppConfigs();
   return okResponse('Ok', { configs });
 }
 
@@ -146,7 +146,7 @@ export const getAppConfigs = async ():Promise<LambdaProxyIntegrationResponse> =>
  */
 export const getAppConfig = async (parms:any):Promise<LambdaProxyIntegrationResponse> => {
   const { name } = parms;
-  const config = new Configurations().getAppConfig(name);
+  const config = await new Configurations().getAppConfig(name);
   return okResponse('Ok', { config });
 }
 

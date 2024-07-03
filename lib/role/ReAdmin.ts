@@ -6,6 +6,7 @@ import { IContext } from '../../contexts/IContext';
 import { AbstractFunction } from "../AbstractFunction";
 import { Roles } from '../lambda/_lib/dao/entity';
 import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
+import { Configurations } from "../lambda/_lib/config/Config";
 
 export interface AdminUserParms {
   userPool: UserPool, 
@@ -110,7 +111,8 @@ export class LambdaFunction extends AbstractFunction {
       environment: {
         REGION: context.REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
-        USERPOOL_ID: userPoolId
+        USERPOOL_ID: userPoolId,
+        [Configurations.ENV_VAR_NAME]: new Configurations(context.CONFIG).getJson()
       }
     });
   }

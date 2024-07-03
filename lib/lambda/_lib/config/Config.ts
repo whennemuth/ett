@@ -35,7 +35,7 @@ export class AppConfig implements IAppConfig {
  */
 export class Configurations {
 
-  static ENV_VAR_NAME:string = 'APP_CONFIG';
+  static ENV_VAR_NAME:string = 'APP_CONFIGS';
   private config?:CONFIG;
   
   /**
