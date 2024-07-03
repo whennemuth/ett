@@ -73,7 +73,16 @@ export class Configurations {
     let { configs=[], useDatabase=false } = config ?? { configs:[] };
     let appConfigs:IAppConfig[];
     if(useDatabase) {
-      configs = await getDbConfig() as Config[];
+      let dbOutput = await getDbConfig() as Config[];
+      dbOutput = dbOutput ?? [];
+      if(dbOutput.length == 0) {
+        console.log('Pre-populating database configurations...');
+        // Pre-populate the table - this must be the first time it is being accessed after having been cloudformed.
+        await this.setDbConfigs();
+      }
+      else {
+        configs = dbOutput;
+      }
     }
     appConfigs = configs.map((config:Config) => {
       return new AppConfig(config);
@@ -93,6 +102,19 @@ export class Configurations {
     let _config:Config|undefined;
     if(useDatabase) {
       _config = await getDbConfig(name) as Config;
+      if( ! _config) {
+        let dbOutput = await getDbConfig() as Config[];
+        dbOutput = dbOutput ?? [];
+        if(dbOutput.length == 0) {
+          console.log('Pre-populating database configurations...');
+          // Pre-populate the table - this must be the first time it is being accessed after having been cloudformed.
+          await this.setDbConfigs();
+        }
+        else {
+          configs = dbOutput;
+        }
+        _config = configs.find((config:Config) => config.name == name);
+      }
     }
     else {
       _config = configs.find((config:Config) => config.name == name);
