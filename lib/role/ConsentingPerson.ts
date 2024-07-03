@@ -7,6 +7,7 @@ import { Roles } from "../lambda/_lib/dao/entity";
 import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
 import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { IContext } from "../../contexts/IContext";
+import { Configurations } from "../lambda/_lib/config/Config";
 
 export class ConsentingPersonApi extends AbstractRole {
   private api: AbstractRoleApi
@@ -100,7 +101,8 @@ export class LambdaFunction extends AbstractFunction {
       environment: {
         REGION: scope.node.getContext('stack-parms').REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
-        USERPOOL_ID: userPoolId
+        USERPOOL_ID: userPoolId,
+        [Configurations.ENV_VAR_NAME]: new Configurations(context.CONFIG).getJson()
       }
     });
   }

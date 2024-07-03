@@ -7,6 +7,7 @@ import { AbstractFunction } from "../AbstractFunction";
 import { ApiConstructParms } from "../Api";
 import { Roles } from '../lambda/_lib/dao/entity';
 import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
+import { Configurations } from "../lambda/_lib/config/Config";
 
 export class SysAdminApi extends AbstractRole {
   private api: AbstractRoleApi;
@@ -18,7 +19,6 @@ export class SysAdminApi extends AbstractRole {
 
     const { userPool, cloudfrontDomain } = parms;
     const lambdaFunction = new LambdaFunction(scope, `${constructId}Lambda`, parms);
-    
 
     this.api = new AbstractRoleApi(scope, `${constructId}Api`, {
       cloudfrontDomain,
@@ -58,6 +58,8 @@ export class SysAdminApi extends AbstractRole {
 export class LambdaFunction extends AbstractFunction {
   constructor(scope: Construct, constructId: string, parms:ApiConstructParms) {
     const context:IContext = scope.node.getContext('stack-parms');
+    const { CONFIG, REGION } = context;
+    const config = new Configurations(CONFIG);
     const { userPool, userPoolName, userPoolDomain, cloudfrontDomain, redirectPath } = parms;
     const { userPoolArn } = userPool;
     const redirectURI = `${cloudfrontDomain}/${redirectPath}`.replace('//', '/');
@@ -107,7 +109,8 @@ export class LambdaFunction extends AbstractFunction {
         }
       }),
       environment: {
-        REGION: context.REGION,
+        REGION,
+        [Configurations.ENV_VAR_NAME]: config.getJson(),
         USERPOOL_NAME: userPoolName,
         COGNITO_DOMAIN: userPoolDomain,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,

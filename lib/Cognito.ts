@@ -7,6 +7,7 @@ import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import path = require('path');
 import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { DynamoDbConstruct } from './DynamoDb';
+import { Configurations } from './lambda/_lib/config/Config';
 
 export class CognitoConstruct extends Construct {
 
@@ -44,6 +45,7 @@ export class CognitoConstruct extends Construct {
       DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
       DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME,
       DYNAMODB_CONSENTER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME,
+      [Configurations.ENV_VAR_NAME]: new Configurations(this.context.CONFIG).getJson() 
     };
 
     const preSignupFunction = new AbstractFunction(this, 'PreSignupFunction', {

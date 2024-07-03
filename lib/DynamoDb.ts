@@ -1,8 +1,8 @@
 import { RemovalPolicy } from "aws-cdk-lib";
-import { AttributeType, Billing, TableV2, TableClass, ProjectionType, TablePropsV2 } from "aws-cdk-lib/aws-dynamodb";
+import { AttributeType, Billing, ProjectionType, TableClass, TablePropsV2, TableV2 } from "aws-cdk-lib/aws-dynamodb";
 import { Construct } from "constructs";
 import { IContext } from "../contexts/IContext";
-import { EntityFields, UserFields, InvitationFields, ConsenterFields } from "./lambda/_lib/dao/entity";
+import { ConfigFields, ConsenterFields, EntityFields, InvitationFields, UserFields } from "./lambda/_lib/dao/entity";
 
 export class DynamoDbConstruct extends Construct {
   
@@ -10,6 +10,7 @@ export class DynamoDbConstruct extends Construct {
   static DYNAMODB_ENTITY_TABLE_NAME: string = 'ett-entities';
   static DYNAMODB_INVITATION_TABLE_NAME: string = 'ett-invitations';
   static DYNAMODB_CONSENTER_TABLE_NAME: string = 'ett-consenters';
+  static DYAMODB_CONFIG_TABLE_NAME: string = 'ett-config'
 
   static DYNAMODB_USER_ENTITY_INDEX: string = 'EntityIndex';
   static DYNAMODB_INVITATION_ENTITY_INDEX: string = 'EntityIndex';
@@ -22,12 +23,16 @@ export class DynamoDbConstruct extends Construct {
   private entitiesTable: TableV2;
   private invitationsTable: TableV2;
   private consentersTable: TableV2;
+  private configTable: TableV2;
   
   constructor(scope: Construct, constructId: string, props?:any) {
 
     super(scope, constructId);
 
     this.context = scope.node.getContext('stack-parms');
+    const { Landscape } = this.context.TAGS ?? {};
+    const deletionProtection = Landscape == 'prod';
+    const { CONFIG: { useDatabase } } = this.context;
 
     // Create a table for SYS_ADMIN, RE_ADMIN, and RE_AUTH_IND users.
     this.usersTable = new TableV2(this, 'DbUsers', {
@@ -38,7 +43,7 @@ export class DynamoDbConstruct extends Construct {
       tableClass: TableClass.STANDARD_INFREQUENT_ACCESS,
       removalPolicy: RemovalPolicy.DESTROY,
       pointInTimeRecovery: true,
-      deletionProtection: this.context.TAGS.Landscape == 'prod', 
+      deletionProtection, 
       globalSecondaryIndexes: [
         {
           indexName: DynamoDbConstruct.DYNAMODB_USER_ENTITY_INDEX,
@@ -57,7 +62,7 @@ export class DynamoDbConstruct extends Construct {
       tableClass: TableClass.STANDARD_INFREQUENT_ACCESS,
       removalPolicy: RemovalPolicy.DESTROY,
       pointInTimeRecovery: true,
-      deletionProtection: this.context.TAGS.Landscape == 'prod',
+      deletionProtection,
       globalSecondaryIndexes: [
         {
           indexName: DynamoDbConstruct.DYNAMODB_ENTITY_ACTIVE_INDEX,
@@ -77,7 +82,7 @@ export class DynamoDbConstruct extends Construct {
       tableClass: TableClass.STANDARD_INFREQUENT_ACCESS,
       removalPolicy: RemovalPolicy.DESTROY,
       pointInTimeRecovery: true,
-      deletionProtection: this.context.TAGS.Landscape == 'prod', 
+      deletionProtection, 
       globalSecondaryIndexes: [
         {
           indexName: DynamoDbConstruct.DYNAMODB_INVITATION_EMAIL_INDEX,
@@ -91,7 +96,7 @@ export class DynamoDbConstruct extends Construct {
           sortKey: { name: InvitationFields.email, type: AttributeType.STRING },
           projectionType:ProjectionType.ALL
         }
-      ]  
+      ]
     } as TablePropsV2);
 
     // Create a table for CONSENTING_PERSON users
@@ -102,8 +107,21 @@ export class DynamoDbConstruct extends Construct {
       tableClass: TableClass.STANDARD_INFREQUENT_ACCESS,
       removalPolicy: RemovalPolicy.DESTROY,
       pointInTimeRecovery: true,
-      deletionProtection: this.context.TAGS.Landscape == 'prod',
-    } as TablePropsV2)
+      deletionProtection,
+    } as TablePropsV2);
+
+    if(useDatabase) {
+      // Create a table for system configurations
+      this.configTable = new TableV2(this, 'DbConfig', {
+        tableName: DynamoDbConstruct.DYAMODB_CONFIG_TABLE_NAME,
+        partitionKey: { name: ConfigFields.name, type: AttributeType.STRING },
+        billing: Billing.onDemand(),
+        tableClass: TableClass.STANDARD_INFREQUENT_ACCESS,
+        removalPolicy: RemovalPolicy.DESTROY,
+        pointInTimeRecovery: true,
+        deletionProtection,
+      } as TablePropsV2);
+    }
   }
 
   public getUsersTable(): TableV2 {
@@ -120,5 +138,12 @@ export class DynamoDbConstruct extends Construct {
 
   public getConsentersTable(): TableV2 {
     return this.consentersTable;
+  }
+
+  public getConfigTable(): TableV2 {
+    return this.configTable ?? {
+      grantReadWriteData: (parm?:any) => { console.log('Config table not implemented'); },
+      grantReadData: (parm?:any) => { console.log('Config table not implemented'); }
+    } as TableV2;
   }
 }

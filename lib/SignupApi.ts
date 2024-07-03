@@ -8,6 +8,7 @@ import { AbstractFunction } from "./AbstractFunction";
 import { DynamoDbConstruct } from "./DynamoDb";
 import { UserPool } from "aws-cdk-lib/aws-cognito";
 import { AbstractRoleApi, Actions } from "./role/AbstractRole";
+import { Configurations } from "./lambda/_lib/config/Config";
 
 export type SignupApiConstructParms = {
   userPool: UserPool,
@@ -72,7 +73,8 @@ export class SignupApiConstruct extends Construct {
       },
       environment: {
         REGION,
-        CLOUDFRONT_DOMAIN: cloudfrontDomain
+        CLOUDFRONT_DOMAIN: cloudfrontDomain,
+        [Configurations.ENV_VAR_NAME]: new Configurations(this.context.CONFIG).getJson()
       }
     });
 
@@ -164,7 +166,8 @@ export class SignupApiConstruct extends Construct {
       environment: {
         REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
-        USERPOOL_ID: userPoolId
+        USERPOOL_ID: userPoolId,
+        [Configurations.ENV_VAR_NAME]: new Configurations(this.context.CONFIG).getJson()
       }
     });
 
@@ -223,6 +226,7 @@ export class SignupApiConstruct extends Construct {
       environment: {
         REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
+        [Configurations.ENV_VAR_NAME]: new Configurations(this.context.CONFIG).getJson()
       }
     });
 
@@ -259,6 +263,9 @@ export class SignupApiConstruct extends Construct {
     dynamodb.getEntitiesTable().grantReadWriteData(this.registerEntityLambda);
     dynamodb.getUsersTable().grantReadWriteData(this.registerEntityLambda);
     dynamodb.getConsentersTable().grantReadWriteData(this.registerConsenterLambda);
+    dynamodb.getConfigTable().grantReadData(this.acknowledgeEntityLambda);
+    dynamodb.getConfigTable().grantReadData(this.registerEntityLambda);
+    dynamodb.getConfigTable().grantReadData(this.registerConsenterLambda);
   }
 
   public get entityAcknowledgeApiUri() {

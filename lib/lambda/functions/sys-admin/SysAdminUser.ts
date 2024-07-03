@@ -1,13 +1,21 @@
+import { DynamoDbConstruct } from '../../../DynamoDb';
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
+import { Configurations } from '../../_lib/config/Config';
 import { DAOEntity, DAOFactory } from '../../_lib/dao/dao';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
-import { Entity, EntityFields, Role, Roles, YN } from '../../_lib/dao/entity';
+import { Config, ConfigNames, Entity, EntityFields, Role, Roles, YN } from '../../_lib/dao/entity';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
 import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../Utils";
 import { Task as ReAdminTasks, createEntity, createEntityAndInviteUsers, deactivateEntity, inviteUser, lookupEntity, updateEntity } from '../re-admin/ReAdminUser';
+import { DynamoDbTableOutput } from './DynamoDbTableOutput';
+import { HtmlTableView } from './view/HtmlTableView';
 
 export enum Task {
-  REPLACE_RE_ADMIN = 'replace_re_admin'
+  REPLACE_RE_ADMIN = 'replace-re-admin',
+  GET_DB_TABLE = 'get-db-table',
+  GET_APP_CONFIGS = 'get-app-configs',
+  GET_APP_CONFIG = 'get-app-config',
+  SET_APP_CONFIG = 'set-app-config'
 }
 
 /**
@@ -63,6 +71,14 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           return okResponse('Ping!', parameters);
         case Task.REPLACE_RE_ADMIN:
           return await replaceAdmin(parameters);
+        case Task.GET_DB_TABLE:
+          return await getDbTable(parameters);
+        case Task.GET_APP_CONFIGS:
+          return await getAppConfigs();
+        case Task.GET_APP_CONFIG:
+          return await getAppConfig(parameters);
+        case Task.SET_APP_CONFIG:
+          return await setAppConfig(parameters);
       } 
     }
   }
@@ -78,6 +94,84 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
 export const replaceAdmin = async (parms:any):Promise<LambdaProxyIntegrationResponse> => {
   console.log('Not implemented yet.');
   return errorResponse('Not implemented yet');
+}
+
+/**
+ * Retrieve the contents of the specified database table in html form.
+ * @param parms 
+ * @returns 
+ */
+export const getDbTable = async (parms:any):Promise<LambdaProxyIntegrationResponse> => {
+  let { tableName } = parms;
+  if( ! tableName) {
+    return invalidResponse('Table name parameter is missing: tableName');
+  }
+
+  console.log(`Getting database table: ${tableName}`);
+
+  const { 
+    DYNAMODB_CONSENTER_TABLE_NAME: consenters, 
+    DYNAMODB_ENTITY_TABLE_NAME: entities, 
+    DYNAMODB_INVITATION_TABLE_NAME: invitations, 
+    DYNAMODB_USER_TABLE_NAME: users
+  } = DynamoDbConstruct;
+
+  const tables = [ consenters, entities, invitations, users ];
+  const noSuchTableMsg = `Bad Request - No matching table for: ${tableName}`;
+  // Find a table that is equal to or ends with the provided value.
+  tableName = tables.find(tb => tb == tableName || tb.endsWith(tableName));
+
+  if( ! tableName) {
+    return invalidResponse(noSuchTableMsg);
+  }
+
+  const html = await new DynamoDbTableOutput(
+    new HtmlTableView()
+  ).getDisplay(tableName);
+
+  return okResponse('Ok', { html });
+};
+
+/**
+ * @returns The full set of application configurations.
+ */
+export const getAppConfigs = async ():Promise<LambdaProxyIntegrationResponse> => {
+  const configs = await new Configurations().getAppConfigs();
+  return okResponse('Ok', { configs });
+}
+
+/**
+ * @param parms 
+ * @returns A single application configuration.
+ */
+export const getAppConfig = async (parms:any):Promise<LambdaProxyIntegrationResponse> => {
+  const { name } = parms;
+  const config = await new Configurations().getAppConfig(name);
+  return okResponse('Ok', { config });
+}
+
+/**
+ * Modify a single application configuration
+ * @param parms 
+ * @returns 
+ */
+export const setAppConfig = async (parms:any):Promise<LambdaProxyIntegrationResponse> => {
+  const { name, value, description } = parms;
+  if( ! name) {
+    return invalidResponse('Bad Request: name parameter required');
+  }
+  if( ! Object.values<string>(ConfigNames).includes(name)) {
+    return invalidResponse(`Bad Request - no such parameter: ${name}`);
+  }
+  if( ! value) {
+    return invalidResponse('Bad Request: value parameter required');
+  }
+  let config = { name, value } as Config;
+  if(description) {
+    config.description = description;
+  }
+  await new Configurations().setDbConfig(config);
+  return okResponse('Ok');
 }
 
 

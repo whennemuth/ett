@@ -7,6 +7,7 @@ import { AbstractFunction } from "../AbstractFunction";
 import { ApiConstructParms } from "../Api";
 import { Roles } from "../lambda/_lib/dao/entity";
 import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
+import { Configurations } from "../lambda/_lib/config/Config";
 
 
 export class AuthorizedIndividualApi extends AbstractRole {
@@ -105,7 +106,8 @@ export class LambdaFunction extends AbstractFunction {
       }),
       environment: {
         REGION: scope.node.getContext('stack-parms').REGION,
-        USERPOOL_ID: userPoolId
+        USERPOOL_ID: userPoolId,
+        [Configurations.ENV_VAR_NAME]: new Configurations(context.CONFIG).getJson()
       }
     });
   }

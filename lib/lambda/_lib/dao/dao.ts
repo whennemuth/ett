@@ -1,8 +1,9 @@
+import { ConfigCrud } from './dao-config';
 import { ConsenterCrud } from './dao-consenter';
 import { EntityCrud } from './dao-entity';
 import { InvitationCrud } from './dao-invitation';
 import { UserCrud } from './dao-user';
-import { Consenter, Entity, Invitation, User, Validator } from './entity';
+import { Config, Consenter, Entity, Invitation, User, Validator } from './entity';
 
 const validator = Validator();
 
@@ -33,16 +34,19 @@ export type DAOEntity = Baseline & {
 export type DAOConsenter = Baseline & {
   read(parms?:ReadParms):Promise<(Consenter|null)|Consenter[]>
 }
+export type DAOConfig = Baseline & {
+  read(parms?:ReadParms):Promise<(Config|null)|Config[]>
+}
 
 export type FactoryParms = {
-  DAOType: 'user' | 'entity' | 'invitation' | 'consenter',
+  DAOType: 'user' | 'entity' | 'invitation' | 'consenter' | 'config',
   Payload: any
 }
 
 export class DAOFactory {
   constructor() { }
   
-  public static getInstance(parms:FactoryParms): DAOUser|DAOInvitation|DAOEntity|DAOConsenter {
+  public static getInstance(parms:FactoryParms): DAOUser|DAOInvitation|DAOEntity|DAOConsenter|DAOConfig {
     switch(parms.DAOType) {
 
       case 'user':
@@ -80,6 +84,9 @@ export class DAOFactory {
           throw new Error(`Consenter crud error: Invalid Y/N active field value specified in ${JSON.stringify(parms, null, 2)}: ${active}`);
         }
         return ConsenterCrud(parms.Payload as Consenter);
+
+      case 'config':
+        return ConfigCrud(parms.Payload as Config);
     }
   }
 }

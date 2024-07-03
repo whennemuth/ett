@@ -291,6 +291,33 @@
         text-align:left;
       }
 
+      table.sysAdminConfig, table.sysAdminConfig th, table.sysAdminConfig td {
+        border: 1px solid black;
+        border-collapse: collapse;
+      }
+      table.sysAdminConfig th {
+        font-weight: bold;
+        text-align: center;
+        vertical-align: middle;
+      }
+      table.sysAdminConfig td, table.sysAdminConfig th {
+        padding: 15px;
+      }
+      div.dbTableLabel {
+        display:inline-block; 
+        font-size:1.25rem; 
+        font-weight:500; 
+        min-width: 102px; 
+        text-align:right;
+      }
+      /* div.bdp-input {
+        overflow: auto;
+      } */
+      div.bdp-block input, div.bdp-block div {
+        width:70px;
+        display:inline-table;      
+      }
+
       /* .text-left {
         text-align: left;
       } */
@@ -743,16 +770,18 @@
                   <a class="nav-link active" id="sys-admin-invitation-tab" data-toggle="tab" href="#sys-admin-invitation" role="tab" aria-controls="sys-admin-invitation" aria-selected="false">Invitation</a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" id="sys-admin-misc-tab" data-toggle="tab" href="#sys-admin-misc" role="tab" aria-controls="sys-admin-misc" aria-selected="false">Miscellaneous</a>
+                  <a class="nav-link" id="sys-admin-config-tab" data-toggle="tab" href="#sys-admin-config" role="tab" aria-controls="sys-admin-config" aria-selected="false">Configuration</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" id="sys-admin-db-tab" data-toggle="tab" href="#sys-admin-db" role="tab" aria-controls="sys-admin-db" aria-selected="false">Database</a>
                 </li>
               </ul>
               <div class="tab-content" id="sysAdminContent">
                 <div class="tab-pane fade show active" id="sys-admin-invitation" role="tabpanel" aria-labelledby="sys-admin-invitation-tab">
                   <h3 class="display-7 fw-bold">Welcome <span id="SYS_ADMIN_username"></span></h3>
-                  <h3 class="display-7 fw-bold">Invite a registered entity administrator</h3>
+                  <h3 class="display-7 fw-bold">Invite a participant</h3>
                   <div style="display:inline-block; width:405px;">
-                    <div style="display:none;">
-                      <!-- Temporarily hiding the radio buttons -->
+                    <div>
                       <div class="divSysAdminOption">
                         Another System Administrator:&nbsp;
                         <input type="radio" name="rdoSysAdminInvite" value="SYS_ADMIN">
@@ -778,11 +807,42 @@
                     </div>                
                     <div class="divSysAdminOption">
                       <button id="btnSysAdminInvite" class="btn btn-primary btn-lg" type="button">Invite</button>
-                    </div> 
+                    </div>
                   </div>
                 </div>
-                <div class="tab-pane fade" id="sys-admin-misc" role="tabpanel" aria-labelledby="sys-admin-misc-tab">
-                  <h3 class="display-7 fw-bold" style="text-align:center; margin-bottom: 20px;">Something else can go here, not sure what</h3>
+                <div class="tab-pane fade" id="sys-admin-config" role="tabpanel" aria-labelledby="sys-admin-config-tab">
+                  <h3 class="display-7 fw-bold" style="text-align:center; margin-bottom: 20px;">ETT configuration</h3>
+                  <table id="tblSysAdminConfig" class="sysAdminConfig" style="border-style:none; padding:5px;">
+                    <tr>
+                      <th>Description</th>
+                      <th style="min-width: 180px;" colspan="2">Current Value</th>
+                    </tr>
+                  </table>"
+                </div>
+                <div class="tab-pane fade" id="sys-admin-db" role="tabpanel" aria-labelledby="sys-admin-db-tab">
+                  <h3 class="display-7 fw-bold" style="text-align:center; margin-bottom: 20px;">ETT database viewer</h3>
+                  <div style="overflow:auto;">
+                    <div style="float:left; clear:both; margin-bottom: 30px;">
+                      <div class="dbTableLabel">Entities</div>
+                      <button class="btn btn-primary btn" type="button" onclick="refreshDbTable('entities')">Load/Refresh</button>
+                      <div id="db-table-entities" style="margin-top:10px;"></div>
+                    </div>
+                    <div style="float:left; clear:both; margin-bottom: 30px;">
+                      <div class="dbTableLabel">Invitations</div>
+                      <button class="btn btn-primary btn" type="button" onclick="refreshDbTable('invitations')">Load/Refresh</button>
+                      <div id="db-table-invitations" style="margin-top:10px;"></div>
+                    </div>
+                    <div style="float:left; clear:both; margin-bottom: 30px;">
+                      <div class="dbTableLabel">Users</div>
+                      <button class="btn btn-primary btn" type="button" onclick="refreshDbTable('users')">Load/Refresh</button>
+                      <div id="db-table-users" style="margin-top:10px;"></div>
+                    </div>
+                    <div style="float:left; clear:both;">
+                      <div class="dbTableLabel">Consenters</div>
+                      <button class="btn btn-primary btn" type="button" onclick="refreshDbTable('consenters')">Load/Refresh</button>
+                      <div id="db-table-consenters" style="margin-top:10px;"></div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2182,6 +2242,212 @@
       console.log('not implemented yet');
     }
 
+    const refreshDbTable = async (tableName) => {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+        const role = AccessJwtCookie.getRole().name;
+        const apiUri = STATIC_PARAMETERS.ROLES[role].API_URI
+        
+        document.body.style.cursor = 'progress';
+        const response = await fetch(apiUri, {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({
+              task: 'get-db-table',
+              parameters: { tableName }
+            })
+          }
+        });
+
+        const package = await response.json();
+        document.body.style.cursor = 'default';
+        const { message, payload } = package;
+        if(payload.ok) {
+          const { html } = payload;
+          document.getElementById(`db-table-${tableName}`).innerHTML = html;
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
+    /**
+     * Obtain the output of a fetch to the configuration api endpoint
+     */
+    const getAppConfigs = async () => {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+        const role = AccessJwtCookie.getRole().name;
+        const apiUri = STATIC_PARAMETERS.ROLES[role].API_URI
+        
+        document.body.style.cursor = 'progress';
+        const response = await fetch(apiUri, {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({
+              task: 'get-app-configs',
+              parameters: { }
+            })
+          }
+        });
+
+        const package = await response.json();
+        document.body.style.cursor = 'default';
+        const { message, payload } = package;
+        if(payload.ok) {
+          const { configs } = payload;
+          return configs;
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
+    /**
+     * Load the duration picker plugin and activate the pickers
+     */
+    const buildConfigurationsTable = async () => {
+      // Load and duration picker plugin
+      let { origin } = document.location;
+      let configs;
+      if(localTesting()) {
+        origin = '../frontend';
+        // Load the table with static dummy data.
+        configs = [
+          { name:'consent-expiration', value:'315360000', config_type: 'duration' },
+          { name:'auth-ind-nbr', value:'2', config_type: 'number' },
+          { name:'first-reminder', value:'1209600', config_type: 'duration' },
+          { name:'second-reminder', value:'1814400', config_type: 'duration' },
+          { name:'third-reminder', value:'0', config_type: 'duration' },
+          { name:'fourth-reminder', value:'0', config_type: 'duration' },
+          { name:'delete-exhibit-forms-after', value:'5184000', config_type: 'duration' },
+          { name:'delete-drafts-after', value:'172800', config_type: 'duration' },
+        ]
+        configs = configs.map(c => { return Object.assign(c, { description: `${c.name} description` }); })
+      }
+      else {
+        // Load the table with the output of a fetch to the configuration api endpoint
+        configs = await getAppConfigs();
+      }
+      const bdpScript = document.createElement('script');
+      bdpScript.src = `${origin}/bootstrap-duration-picker.js`;
+      bdpScript.async = false;
+      const minute = 60;
+      const hour = minute * 60;
+      const day = hour * 24;
+      const week = day * 7;
+      
+      // Load the config table with rows, one row for each configuration.
+      bdpScript.onload = e => {
+        const tbl = document.getElementById('tblSysAdminConfig');
+        configs.forEach(config => {
+          let tr = tbl.insertRow(-1);
+          // First cell
+          let td = tr.insertCell(-1);
+          let txt = document.createTextNode(config.description);
+          td.appendChild(txt);
+          // Second cell
+          td = tr.insertCell(-1);
+          let input = document.createElement('input');
+          input.id = config.name;
+          input.className = 'form-control input-sm';
+          input.type = 'text';
+          switch(config.config_type) {
+            case 'duration':
+              td.appendChild(input);
+              // Activate the duration picker
+              $(`#${config.name}`).durationPicker({ showSeconds:true });
+              $(`#${config.name}`).data('durationPicker').setValue(parseInt(config.value));
+              break;
+            case 'number':
+              input.style = 'display:inline-block;width:180px;';
+              input.type = 'number';
+              input.value = parseInt(config.value);
+              td.appendChild(input);
+              break;
+            default:
+              input.style = 'display:inline-block;width:180px;';
+              input.value = config.value;
+              td.appendChild(input);
+              break;
+          }
+          // Third cell
+          td = tr.insertCell(-1);
+          let button = document.createElement('button');
+          txt = document.createTextNode('Update');
+          button.appendChild(txt);
+          button.className = 'btn btn-primary btn';
+          button.addEventListener('click', async() => {
+            changeConfig(config.name);
+          });
+          td.appendChild(button);
+        })
+      }
+      document.head.appendChild(bdpScript);
+      // const bdpLink = document.createElement('link');
+      // bdpLink.rel = 'stylesheet';
+      // bdpLink.href = `${origin}/bootstrap-duration-picker.css`;
+      // document.head.appendChild(bdpLink);
+    }
+
+    /**
+     * Modify a single app configuration setting.
+     */
+    const changeConfig = async (name) => {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+        const role = AccessJwtCookie.getRole().name;
+        const apiUri = STATIC_PARAMETERS.ROLES[role].API_URI;
+        const { value } = document.getElementById(name);
+        
+        document.body.style.cursor = 'progress';
+        const response = await fetch(apiUri, {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({
+              task: 'set-app-config',
+              parameters: { name, value }
+            })
+          }
+        });
+        const package = await response.json();
+        document.body.style.cursor = 'default';
+        const { message, payload } = package;
+        if(payload.ok) {
+          alert(`${name} change succesful`);
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }        
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
     /**
      * Signup for a cognito userpool account.
      */
@@ -2560,9 +2826,11 @@
 
     const onDocumentLoad = async () => {
       document.body.style.display = 'progress';
-      const queryParams = new URLSearchParams(window.location.search);
+
+      selected_role = getSelectedRole();
 
       // Get querystring parameters
+      const queryParams = new URLSearchParams(window.location.search);
       const action = queryParams.get('action');
       const invitationCode = queryParams.get('code');
 
@@ -2571,7 +2839,7 @@
         signIn();
       });
       document.getElementById('btnSignup').addEventListener('click', () => {
-        if(selected_role = 'CONSENTING_PERSON') {
+        if(selected_role == 'CONSENTING_PERSON') {
           showSection('acknowledge-consenter');
         }
         else {
@@ -2685,6 +2953,10 @@
         $(this).tab('show')
       });
 
+      if(selected_role == 'SYS_ADMIN') {
+        await buildConfigurationsTable();
+      }
+      
       const tooltips = {
         consent: [
           '<b>Ethical Transparency Tool</b> (or ETT) means a tool that enables each Consent Recipient to provide a completed Disclosure Form about a person who has signed and delivered a Consent Form (this form), to any ETT-Registered Entit(ies) that make(s) a request.  Each entity retains its independence in policymaking and decision-making (e.g., when to use the ETT and how to respond to disclosures).',
