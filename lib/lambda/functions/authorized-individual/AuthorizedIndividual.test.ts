@@ -3,7 +3,7 @@ import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest';
 import { Roles, User } from '../../_lib/dao/entity';
 import { entity, bugsbunny, daffyduck, yosemitesam } from './MockObjects';
-import * as mockCommandInput from './DemolitionCommandInputMock.json';
+import { expectedCommandInput } from './DemolitionCommandInputMock';
 import { Task, handler } from './AuthorizedIndividual';
 import { LambdaProxyIntegrationResponse } from '../Utils';
 import { AbstractRoleApi, IncomingPayload, OutgoingBody } from '../../../role/AbstractRole';
@@ -11,7 +11,7 @@ import { DAOUser, FactoryParms } from '../../_lib/dao/dao';
 
 const deletedUsers = [ bugsbunny, daffyduck, yosemitesam ] as User[];
 const dryRun = false;
-const demolish = async ():Promise<any> => mockCommandInput;
+const demolish = async ():Promise<any> => expectedCommandInput;
 
 enum Scenario { NORMAL, UNMATCHABLE_ENTITY, NON_EMAILS };
 let currentScenario = Scenario.NORMAL as Scenario;
@@ -62,6 +62,8 @@ jest.mock('../../_lib/dao/dao.ts', () => {
           case 'invitation':
             return null;
           case 'consenter':
+            return null;
+          case 'config':
             return null;
         }
       })

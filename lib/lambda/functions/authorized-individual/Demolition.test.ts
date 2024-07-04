@@ -2,10 +2,10 @@ import { AdminDeleteUserCommand, CognitoIdentityProviderClient } from '@aws-sdk/
 import { DynamoDBClient, TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb';
 import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest';
-import { DAOConsenter, DAOEntity, DAOInvitation, DAOUser, FactoryParms } from '../../_lib/dao/dao';
-import { Consenter, Invitation, User } from '../../_lib/dao/entity';
+import { DAOConfig, DAOConsenter, DAOEntity, DAOInvitation, DAOUser, FactoryParms } from '../../_lib/dao/dao';
+import { Config, Consenter, Invitation, User } from '../../_lib/dao/entity';
 import { EntityToDemolish } from './Demolition';
-import * as expectedCommandInput from './DemolitionCommandInputMock.json';
+import { expectedCommandInput } from './DemolitionCommandInputMock';
 import { entity, bugsbunny, daffyduck, yosemitesam, bugbunny_invitation, daffyduck_invitation, yosemitesam_invitation } from './MockObjects';
 
 const dbMockClient = mockClient(DynamoDBClient);
@@ -36,6 +36,12 @@ const mockConsenterRead = jest.fn(async ():Promise<any> => {
   });
 }) as any;
 
+const mockConfigRead = jest.fn(async ():Promise<any> => {
+  return new Promise((resolve) => {
+    resolve({ } as Config[])
+  })
+}) as any;
+
 jest.mock('../../_lib/dao/dao.ts', () => {
   return {
     __esModule: true,
@@ -50,6 +56,8 @@ jest.mock('../../_lib/dao/dao.ts', () => {
             return { read: mockEntityRead } as DAOEntity;
           case 'consenter':
             return { read: mockConsenterRead } as DAOConsenter;
+          case 'config':
+            return { read: mockConfigRead } as DAOConfig;
         }
       })
     }

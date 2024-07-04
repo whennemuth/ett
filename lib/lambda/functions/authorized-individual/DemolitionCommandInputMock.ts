@@ -1,8 +1,13 @@
-{
+import { DynamoDbConstruct, TableBaseNames } from "../../../DynamoDb"
+
+const { getTableName } = DynamoDbConstruct;
+const { ENTITIES, USERS, INVITATIONS } = TableBaseNames;
+
+export const expectedCommandInput = {
   "TransactItems": [
     {
       "Delete": {
-        "TableName": "ett-users",
+        "TableName": `${getTableName(USERS)}`,
         "Key": {
           "entity_id": {
             "S": "mock_entity_id"
@@ -15,7 +20,7 @@
     },
     {
       "Delete": {
-        "TableName": "ett-users",
+        "TableName": `${getTableName(USERS)}`,
         "Key": {
           "entity_id": {
             "S": "mock_entity_id"
@@ -28,7 +33,7 @@
     },
     {
       "Delete": {
-        "TableName": "ett-users",
+        "TableName": `${getTableName(USERS)}`,
         "Key": {
           "entity_id": {
             "S": "mock_entity_id"
@@ -41,7 +46,7 @@
     },
     {
       "Delete": {
-        "TableName": "ett-invitation",
+        "TableName": `${getTableName(INVITATIONS)}`,
         "Key": {
           "code": {
             "S": "abc123"
@@ -51,7 +56,7 @@
     },
     {
       "Delete": {
-        "TableName": "ett-invitation",
+        "TableName": `${getTableName(INVITATIONS)}`,
         "Key": {
           "code": {
             "S": "def456"
@@ -61,7 +66,7 @@
     },
     {
       "Delete": {
-        "TableName": "ett-invitation",
+        "TableName": `${getTableName(INVITATIONS)}`,
         "Key": {
           "code": {
             "S": "ghi789"
@@ -71,7 +76,7 @@
     },
     {
       "Delete": {
-        "TableName": "ett-entities",
+        "TableName": `${getTableName(ENTITIES)}`,
         "Key": {
           "entity_id": {
             "S": "mock_entity_id"

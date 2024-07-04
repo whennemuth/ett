@@ -28,7 +28,7 @@ describe('Consenting Person lambda trigger: handler', () => {
   });
 });
 
-describe('Consenting Person lambda trigger: send-affiliate-data', () => {
+describe(`Consenting Person lambda trigger: ${Task.SEND_AFFILIATE_DATA}`, () => {
   const task = Task.SEND_AFFILIATE_DATA;
   it('Should return invalid response if exhibit data is missing', async () => {
     await SendAffiliateData.missingExhibitData(handler, mockEvent, task, msgs.missingExhibitData); 
@@ -41,6 +41,15 @@ describe('Consenting Person lambda trigger: send-affiliate-data', () => {
   });
   it('Should return invalid response if email of exhibit issuer is missing', async () => {
     await SendAffiliateData.missingEmail(handler, mockEvent, task, msgs.missingExhibitFormIssuerEmail); 
+  });
+  it('Should return invalid response if exhibit issuer has not consented', async () => {
+    await SendAffiliateData.missingConsent(handler, mockEvent, task, msgs.missingConsent)
+  });
+  it('Should return invalid response if exhibit issuer has retracted their consent', async () => {
+    await SendAffiliateData.rescindedConsent(handler, mockEvent, task, msgs.missingConsent)
+  });
+  it('Should return invalid response if exhibit issuer has consented, but is inactive', async () => {
+    await SendAffiliateData.consenterInactive(handler, mockEvent, task, msgs.missingConsent)
   });
   it('Should behave as expected if error is encountered looking up the entity', async () => {
     await SendAffiliateData.entityLookupFailure(handler, mockEvent, task);

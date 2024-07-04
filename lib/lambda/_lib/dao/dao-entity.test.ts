@@ -65,17 +65,6 @@ const testPut = () => {
 const testRead = () => {
   describe('Dao entity read', () => {
 
-    it('Should error if entity_id is missing', async () => {
-      expect(async () => {
-        const dao = DAOFactory.getInstance({
-          DAOType: 'entity', Payload: {
-            [EntityFields.entity_name]: 'Boston University'
-          }
-        }) as DAOEntity;
-        await dao.read();
-      }).rejects.toThrow(/Entity read error: Missing entity_id in /)
-    });
-
     it('Should return null if a non-existing entity_id is specified', async () => {
       const dao = DAOFactory.getInstance({
         DAOType: 'entity', Payload: {

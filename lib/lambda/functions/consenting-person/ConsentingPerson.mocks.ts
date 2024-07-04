@@ -1,7 +1,7 @@
 import { mock } from "node:test";
 import { IncomingPayload, OutgoingBody } from "../../../role/AbstractRole";
 import { DAOConsenter, DAOEntity, DAOInvitation, DAOUser, FactoryParms } from "../../_lib/dao/dao";
-import { AffiliateTypes, Entity, Roles, User, YN, Affiliate, ExhibitForm as ExhibitFormData, Consenter } from "../../_lib/dao/entity";
+import { AffiliateTypes, Entity, Roles, User, YN, Affiliate, ExhibitForm as ExhibitFormData, Consenter, Config } from "../../_lib/dao/entity";
 import { MockCalls, TestParms, invokeAndAssert } from "../UtilsTest";
 import { FormType, FormTypes } from "./ExhibitEmail";
 
@@ -9,6 +9,11 @@ import { FormType, FormTypes } from "./ExhibitEmail";
  * Keeps track of how many times any method of any mock has been called.
  */
 const mockCalls = new MockCalls();
+
+/**
+ * Designate what mocked consenter lookups are expected to return in terms of consent.
+ */
+enum ConsentState { OK, NONE, RESCINDED, RESTORED, INACTIVE }
 
 const deepClone = (obj:any) => JSON.parse(JSON.stringify(obj));
 
@@ -90,8 +95,48 @@ export function DaoMock(originalModule: any) {
           case "consenter":
             mockCalls.update('consenter.read');
             return { read: async ():Promise<Consenter|Consenter[]> => {
-              return sylvesterTheCat;
+              let consenter = {} as Consenter;
+              let consented;
+              const day = 1000 * 60 * 60 * 24;
+              const retracted = new Date();
+              const consentState = parseInt(email.split('-')[0]);            
+              switch(consentState) {
+                case ConsentState.OK:
+                  consenter = Object.assign(consenter, sylvesterTheCat);
+                  consenter.consented_timestamp = new Date().toISOString();
+                  break;
+                case ConsentState.NONE:
+                  consenter = Object.assign(consenter, sylvesterTheCat);
+                  break;
+                case ConsentState.RESCINDED:
+                  consented = new Date(retracted.getTime() - day);
+                  consenter = Object.assign(consenter, sylvesterTheCat);
+                  consenter.consented_timestamp = consented.toISOString();
+                  consenter.rescinded_timestamp = retracted.toISOString();
+                  break;
+                case ConsentState.RESTORED:
+                  consented = new Date(retracted.getTime() + day);
+                  consenter = Object.assign(consenter, sylvesterTheCat);
+                  consenter.consented_timestamp = consented.toISOString();
+                  consenter.rescinded_timestamp = retracted.toISOString();
+                  break;
+                case ConsentState.INACTIVE:
+                  consenter = Object.assign(consenter, sylvesterTheCat);
+                  consenter.consented_timestamp = new Date().toISOString();
+                  consenter.active = YN.No;
+                  break;
+                default:
+                  consenter = Object.assign(consenter, sylvesterTheCat);
+                  break;                  
+              }
+              consenter.email = email;
+              return consenter;
             }} as DAOConsenter;
+          case "config":
+            mockCalls.update('config.read');
+            return { read: async ():Promise<(Config|null)|Config[]> => {
+              return {} as Config;
+            }}
         }
       })
     }
@@ -208,6 +253,96 @@ export const SendAffiliateData = {
       } as IncomingPayload
     });
   },
+  missingConsent: async(_handler:any, mockEvent:any, task:string, message:string) => {
+    mockCalls.reset();
+    let _affiliates = deepClone(affiliates);
+    await invokeAndAssert({
+      expectedResponse: {
+        statusCode: 400,
+        outgoingBody: {
+          message,
+          payload: { invalid: true }
+        }
+      },
+      _handler, mockEvent,
+      incomingPayload: { 
+        task,         
+        parameters: {
+          email: `${ConsentState.NONE}-${sylvesterTheCat.email}`,
+          exhibit_data: {
+            email: 'yosemitesam@warnerbros.com',
+            entity_id: entity1.entity_id,
+            fullname: 'Yosemite Sam',
+            affiliates: _affiliates
+          } as ExhibitFormData
+        } 
+      } as IncomingPayload
+    } as TestParms);
+    expect(mockCalls.called(`consenter.read`)).toEqual(1);
+    expect(mockCalls.called(`entity.read`)).toEqual(0);
+    expect(mockCalls.called(`user.read`)).toEqual(0);
+    expect(mockCalls.called('email.send')).toEqual(0);
+  },
+  rescindedConsent: async(_handler:any, mockEvent:any, task:string, message:string) => {
+    mockCalls.reset();
+    let _affiliates = deepClone(affiliates);
+    await invokeAndAssert({
+      expectedResponse: {
+        statusCode: 400,
+        outgoingBody: {
+          message,
+          payload: { invalid: true }
+        }
+      },
+      _handler, mockEvent,
+      incomingPayload: { 
+        task, 
+        parameters: {
+          email: `${ConsentState.RESCINDED}-${sylvesterTheCat.email}`,
+          exhibit_data: {
+            email: 'yosemitesam@warnerbros.com',
+            entity_id: entity1.entity_id,
+            fullname: 'Yosemite Sam',
+            affiliates: _affiliates
+          } as ExhibitFormData
+      } 
+      } as IncomingPayload
+    } as TestParms);
+    expect(mockCalls.called(`consenter.read`)).toEqual(1);
+    expect(mockCalls.called(`entity.read`)).toEqual(0);
+    expect(mockCalls.called(`user.read`)).toEqual(0);
+    expect(mockCalls.called('email.send')).toEqual(0);
+  },
+  consenterInactive: async(_handler:any, mockEvent:any, task:string, message:string) => {
+    mockCalls.reset();
+    let _affiliates = deepClone(affiliates);
+    await invokeAndAssert({
+      expectedResponse: {
+        statusCode: 400,
+        outgoingBody: {
+          message,
+          payload: { invalid: true }
+        }
+      },
+      _handler, mockEvent,
+      incomingPayload: { 
+        task, 
+        parameters: {
+          email: `${ConsentState.INACTIVE}-${sylvesterTheCat.email}`,
+          exhibit_data: {
+            email: 'yosemitesam@warnerbros.com',
+            entity_id: entity1.entity_id,
+            fullname: 'Yosemite Sam',
+            affiliates: _affiliates
+          } as ExhibitFormData
+      } 
+      } as IncomingPayload
+    } as TestParms);
+    expect(mockCalls.called(`consenter.read`)).toEqual(1);
+    expect(mockCalls.called(`entity.read`)).toEqual(0);
+    expect(mockCalls.called(`user.read`)).toEqual(0);
+    expect(mockCalls.called('email.send')).toEqual(0);
+  },
   entityLookupFailure: async(_handler:any, mockEvent:any, task:string) => {
     mockCalls.reset();
     await invokeAndAssert({
@@ -222,7 +357,7 @@ export const SendAffiliateData = {
       incomingPayload: { 
         task, 
         parameters: {
-          email: sylvesterTheCat.email,
+          email: `${ConsentState.OK}-${sylvesterTheCat.email}`,
           exhibit_data: {
             email: 'yosemitesam@warnerbros.com',
             entity_id: BAD_ENTITY_ID1,
@@ -232,6 +367,7 @@ export const SendAffiliateData = {
         } 
       } as IncomingPayload
     } as TestParms);
+    expect(mockCalls.called(`consenter.read`)).toEqual(1);
     expect(mockCalls.called(`entity.read.${BAD_ENTITY_ID1}`)).toEqual(1);
     expect(mockCalls.called(`user.read`)).toEqual(0);
     expect(mockCalls.called('email.send')).toEqual(0);
@@ -250,7 +386,7 @@ export const SendAffiliateData = {
       incomingPayload: { 
         task, 
         parameters: {
-          email: sylvesterTheCat.email,
+          email: `${ConsentState.OK}-${sylvesterTheCat.email}`,
           exhibit_data: {
             email: 'yosemitesam@warnerbros.com',
             entity_id: BAD_ENTITY_ID2,
@@ -260,13 +396,13 @@ export const SendAffiliateData = {
         } 
       } as IncomingPayload
     } as TestParms);
+    expect(mockCalls.called(`consenter.read`)).toEqual(1);
     expect(mockCalls.called(`entity.read.${BAD_ENTITY_ID2}`)).toEqual(1);
     expect(mockCalls.called(`user.read`)).toEqual(1);
     expect(mockCalls.called('email.send')).toEqual(0);
   },
   sendEmailFailure: async(_handler:any, mockEvent:any, task:string, message:string) => {
     let _affiliates = deepClone(affiliates);
-    mockCalls.reset();
     let parms = {
       expectedResponse: {
         statusCode: 500,
@@ -279,7 +415,7 @@ export const SendAffiliateData = {
       incomingPayload: { 
         task, 
         parameters: {
-          email: sylvesterTheCat.email,
+          email: `${ConsentState.OK}-${sylvesterTheCat.email}`,
           exhibit_data: {
             email: 'yosemitesam@warnerbros.com',
             entity_id: BAD_ENTITY_ID3,
@@ -290,7 +426,9 @@ export const SendAffiliateData = {
       } as IncomingPayload
     } as TestParms;
 
+    mockCalls.reset();
     await invokeAndAssert(parms);
+    expect(mockCalls.called(`consenter.read`)).toEqual(1);
     expect(mockCalls.called(`entity.read.${BAD_ENTITY_ID3}`)).toEqual(1);
     expect(mockCalls.called(`user.read`)).toEqual(1);
     // badUser should throw an error when email is sent, but this should not halt email sending
@@ -302,13 +440,13 @@ export const SendAffiliateData = {
     expect(mockCalls.called(`email.send.${FormTypes.SINGLE}.${foghorLeghorn.email}`)).toEqual(1);
     expect(mockCalls.called(`email.send.${FormTypes.SINGLE}.${wileECoyote.email}`)).toEqual(1);
 
-    mockCalls.reset();
     _affiliates = deepClone(affiliates);
     _affiliates[0].email = BAD_EXHIBIT_RECIPIENT_EMAIL;
     parms.incomingPayload.parameters['exhibit_data'].entity_id = entity1.entity_id;
     parms.incomingPayload.parameters['exhibit_data'].affiliates = _affiliates;
     const badAffiliate = _affiliates[0];
     const goodAffiliate = _affiliates[1];
+    mockCalls.reset();
     await invokeAndAssert(parms);
     expect(mockCalls.called(`email.send.${FormTypes.FULL}.${daffyduck.email}`)).toEqual(1);
     expect(mockCalls.called(`email.send.${FormTypes.FULL}.${bugsbunny.email}`)).toEqual(1);
@@ -320,37 +458,49 @@ export const SendAffiliateData = {
   sendEmailOk: async(_handler:any, mockEvent:any, task:string) => {
     mockCalls.reset();
     const _affiliates = deepClone(affiliates);
-    let parms = {
-      expectedResponse: {
-        statusCode: 200,
-        outgoingBody: {
-          message: `Ok`,
-          payload: { ok: true }
-        }
-      },
-      _handler, mockEvent,
-      incomingPayload: { 
-        task, 
-        parameters: {
-          email: sylvesterTheCat.email,
-          exhibit_data: {
-            email: 'yosemitesam@warnerbros.com',
-            entity_id: entity1.entity_id,
-            fullname: 'Yosemite Sam',
-            affiliates: _affiliates
-          } as ExhibitFormData
-        } 
-      } as IncomingPayload
-    } as TestParms;
+    const getParms = (email:string) => {
+      return {
+        expectedResponse: {
+          statusCode: 200,
+          outgoingBody: {
+            message: `Ok`,
+            payload: { ok: true }
+          }
+        },
+        _handler, mockEvent,
+        incomingPayload: { 
+          task, 
+          parameters: {
+            email,
+            exhibit_data: {
+              email: 'yosemitesam@warnerbros.com',
+              entity_id: entity1.entity_id,
+              fullname: 'Yosemite Sam',
+              affiliates: _affiliates
+            } as ExhibitFormData
+          } 
+        } as IncomingPayload
+      } as TestParms;
+    }
 
-    mockCalls.reset();
-    await invokeAndAssert(parms);
-    expect(mockCalls.called(`entity.read.${entity1.entity_id}`)).toEqual(1);
-    expect(mockCalls.called(`user.read`)).toEqual(1);
-    expect(mockCalls.called(`email.send.${FormTypes.FULL}.${daffyduck.email}`)).toEqual(1);
-    expect(mockCalls.called(`email.send.${FormTypes.FULL}.${bugsbunny.email}`)).toEqual(1);
-    expect(mockCalls.called(`email.send.${FormTypes.FULL}.${porkypig.email}`)).toEqual(1);
-    expect(mockCalls.called(`email.send.${FormTypes.SINGLE}.${foghorLeghorn.email}`)).toEqual(1);
-    expect(mockCalls.called(`email.send.${FormTypes.SINGLE}.${wileECoyote.email}`)).toEqual(1);
+
+    const doTest = async (parms:TestParms) => {
+      mockCalls.reset();
+      await invokeAndAssert(parms);
+      expect(mockCalls.called(`consenter.read`)).toEqual(1);
+      expect(mockCalls.called(`entity.read.${entity1.entity_id}`)).toEqual(1);
+      expect(mockCalls.called(`user.read`)).toEqual(1);
+      expect(mockCalls.called(`email.send.${FormTypes.FULL}.${daffyduck.email}`)).toEqual(1);
+      expect(mockCalls.called(`email.send.${FormTypes.FULL}.${bugsbunny.email}`)).toEqual(1);
+      expect(mockCalls.called(`email.send.${FormTypes.FULL}.${porkypig.email}`)).toEqual(1);
+      expect(mockCalls.called(`email.send.${FormTypes.SINGLE}.${foghorLeghorn.email}`)).toEqual(1);
+      expect(mockCalls.called(`email.send.${FormTypes.SINGLE}.${wileECoyote.email}`)).toEqual(1);
+    }
+
+    // Test for someone who has consented
+    await doTest(getParms(`${ConsentState.OK}-${sylvesterTheCat.email}`));
+
+    // Test for someone who rescinded their consent but later restored it.
+    await doTest(getParms(`${ConsentState.RESTORED}-${sylvesterTheCat.email}`));
   }
 }
