@@ -16,6 +16,7 @@ export class CognitoConstruct extends Construct {
   private userPool: UserPool;
   private userPoolDomain: UserPoolDomain;
   private userPoolName: string;
+  private landscape: string;
 
   constructor(scope: Construct, constructId: string) {
 
@@ -23,12 +24,14 @@ export class CognitoConstruct extends Construct {
 
     this.constructId = constructId;
     this.context = scope.node.getContext('stack-parms');
-    this.userPoolName = `ett-${this.constructId.toLowerCase()}-userpool`;
+    const { TAGS: { Landscape }} = this.context;
+    this.landscape = Landscape;
+    this.userPoolName = `ett-${Landscape}-${this.constructId.toLowerCase()}-userpool`;
     this.buildResources();
   }
 
   buildResources(): void {
-    const { REGION, ACCOUNT } = this.context;
+    const { context: { REGION, ACCOUNT, CONFIG:config, STACK_ID:stackId }, constructId, landscape } = this;
     const { CONFIG, CONSENTERS, ENTITIES, INVITATIONS, USERS } = TableBaseNames;
     const { getTableName } = DynamoDbConstruct;
 
@@ -51,11 +54,11 @@ export class CognitoConstruct extends Construct {
       DYNAMODB_ENTITY_TABLE_NAME: getTableName(ENTITIES),
       DYNAMODB_CONSENTER_TABLE_NAME: getTableName(CONSENTERS),
       DYNAMODB_CONFIG_TABLE_NAME: getTableName(CONFIG),
-      [Configurations.ENV_VAR_NAME]: new Configurations(this.context.CONFIG).getJson() 
+      [Configurations.ENV_VAR_NAME]: new Configurations(config).getJson() 
     };
 
     const preSignupFunction = new AbstractFunction(this, 'PreSignupFunction', {
-      functionName: `ett-${this.constructId.toLowerCase()}-pre-signup`,
+      functionName: `ett-${landscape}-${constructId.toLowerCase()}-pre-signup`,
       description: 'Intercepts cognito account creation to ensure proper registration pre-requisites have been met first.',
       runtime: Runtime.NODEJS_18_X,
       memorySize: 1024,
@@ -96,7 +99,7 @@ export class CognitoConstruct extends Construct {
     });
 
     const postSignupFunction = new AbstractFunction(this, 'PostSignupFunction', {
-      functionName: `ett-${this.constructId.toLowerCase()}-post-signup`,
+      functionName: `ett-${landscape}-${constructId.toLowerCase()}-post-signup`,
       description: 'Handles entry of a user into dynamodb directly after signing up in cognito.',
       runtime: Runtime.NODEJS_18_X,
       memorySize: 1024,
@@ -146,7 +149,7 @@ export class CognitoConstruct extends Construct {
     });
 
     const preAuthenticationFunction = new AbstractFunction(this, 'PreAuthenticationFunction', {
-      functionName: `ett-${this.constructId.toLowerCase()}-pre-authentication`,
+      functionName: `ett-${landscape}-${constructId.toLowerCase()}-pre-authentication`,
       description: 'Cancels login attempt if user is does not have the role they selected to sign in with',
       runtime: Runtime.NODEJS_18_X,
       memorySize: 1024,
@@ -215,7 +218,7 @@ export class CognitoConstruct extends Construct {
     this.userPoolDomain = new UserPoolDomain(this, 'Domain', {
       userPool: this.userPool,
       cognitoDomain: {
-        domainPrefix: `${this.context.STACK_ID}-${this.context.TAGS.Landscape}`,
+        domainPrefix: `${stackId}-${landscape}`,
       }
     });
 
