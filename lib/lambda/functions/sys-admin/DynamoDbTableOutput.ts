@@ -2,9 +2,10 @@ import { AttributeValue, DynamoDBClient, ScanCommand, ScanInput, ScanOutput } fr
 import { View } from "./view/View";
 import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { convertFromApiObject } from "../../_lib/dao/db-object-builder";
-import { DynamoDbConstruct } from "../../../DynamoDb";
+import { DynamoDbConstruct, TableBaseNames } from "../../../DynamoDb";
 import { HtmlTableView } from "./view/HtmlTableView";
 import { viewHtml } from "../Utils";
+import { TableBase } from "aws-cdk-lib/aws-dynamodb";
 
 /**
  * Output a "display" of the entire content of the specified dynamodb table that is based on the
@@ -53,13 +54,15 @@ const { argv:args } = process;
 
 if(args.length > 2 && args[2] == 'RUN_MANUALLY_DYNAMODB_DISPLAY') {
   const table = args[3];
+  const { getTableName } = DynamoDbConstruct;
+  const { USERS, ENTITIES, INVITATIONS, CONSENTERS } = TableBaseNames;
 
   let tableName;
   switch(table) {
-    case 'user': tableName = DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME; break;
-    case 'entity': tableName = DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME; break;
-    case 'invitation': tableName = DynamoDbConstruct.DYNAMODB_INVITATION_EMAIL_INDEX; break;
-    case 'cp': tableName = DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME; break;
+    case 'user': tableName = getTableName(USERS); break;
+    case 'entity': tableName = getTableName(ENTITIES); break;
+    case 'invitation': tableName = getTableName(INVITATIONS); break;
+    case 'cp': tableName = getTableName(CONSENTERS); break;
   }
 
   if( ! tableName) {

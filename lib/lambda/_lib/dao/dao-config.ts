@@ -1,16 +1,19 @@
 import { BatchWriteItemCommand, BatchWriteItemInput, BatchWriteItemOutput, DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, ScanCommand, ScanInput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput, WriteRequest } from "@aws-sdk/client-dynamodb";
-import { DAOConfig, ReadParms } from "./dao"
-import { Config, ConfigFields } from "./entity"
-import { DynamoDbConstruct } from "../../../DynamoDb";
-import { configUpdate } from "./db-update-builder.config";
-import { convertFromApiObject } from "./db-object-builder";
 import { marshall } from "@aws-sdk/util-dynamodb";
+import { DynamoDbConstruct, TableBaseNames } from "../../../DynamoDb";
+import { DAOConfig, ReadParms } from "./dao";
+import { convertFromApiObject } from "./db-object-builder";
+import { configUpdate } from "./db-update-builder.config";
+import { Config, ConfigFields } from "./entity";
 
 
 export function ConfigCrud(configInfo:Config, _dryRun:boolean=false): DAOConfig {
 
   const dbclient = new DynamoDBClient({ region: process.env.REGION });
-  const TableName = DynamoDbConstruct.DYAMODB_CONFIG_TABLE_NAME;
+  const { getTableName } = DynamoDbConstruct;
+  const { CONFIG } = TableBaseNames;
+  const TableName = getTableName(CONFIG);
+
   
   let { name, description, update_timestamp, value } = configInfo;
   
@@ -168,7 +171,10 @@ export type DAOConfigBatch = { create(configs:Config[]):Promise<any>, Delete(nam
 export function ConfigBatch(_dryRun:boolean=false): DAOConfigBatch {
 
   const dbclient = new DynamoDBClient({ region: process.env.REGION });
-  const TableName = DynamoDbConstruct.DYAMODB_CONFIG_TABLE_NAME;
+  const { getTableName } = DynamoDbConstruct;
+  const { CONFIG } = TableBaseNames;
+  const TableName = getTableName(CONFIG);
+
 
   /**
    * Put multiple items into the table as one operation

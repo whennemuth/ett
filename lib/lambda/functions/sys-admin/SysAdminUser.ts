@@ -109,14 +109,8 @@ export const getDbTable = async (parms:any):Promise<LambdaProxyIntegrationRespon
 
   console.log(`Getting database table: ${tableName}`);
 
-  const { 
-    DYNAMODB_CONSENTER_TABLE_NAME: consenters, 
-    DYNAMODB_ENTITY_TABLE_NAME: entities, 
-    DYNAMODB_INVITATION_TABLE_NAME: invitations, 
-    DYNAMODB_USER_TABLE_NAME: users
-  } = DynamoDbConstruct;
+  const tables:string[] = DynamoDbConstruct.getTableNames();
 
-  const tables = [ consenters, entities, invitations, users ];
   const noSuchTableMsg = `Bad Request - No matching table for: ${tableName}`;
   // Find a table that is equal to or ends with the provided value.
   tableName = tables.find(tb => tb == tableName || tb.endsWith(tableName));
@@ -185,7 +179,7 @@ if(args.length > 3 && args[2] == 'RUN_MANUALLY_SYS_ADMIN') {
   const email = args[3];
   const landscape = args[4];
   
-  process.env.USERPOOL_NAME = 'ett-cognito-userpool'; 
+  process.env.USERPOOL_NAME = 'ett-dev-cognito-userpool'; 
   process.env.COGNITO_DOMAIN = 'ett-dev.auth.us-east-2.amazoncognito.com'; //  `${this.context.STACK_ID}-${this.context.TAGS.Landscape}.${REGION}.amazoncognito.com`
   process.env.REGION = 'us-east-2';
   process.env.DEBUG = 'true';

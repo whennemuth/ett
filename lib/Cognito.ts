@@ -6,7 +6,7 @@ import { AbstractFunction } from './AbstractFunction';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import path = require('path');
 import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
-import { DynamoDbConstruct } from './DynamoDb';
+import { DynamoDbConstruct, TableBaseNames } from './DynamoDb';
 import { Configurations } from './lambda/_lib/config/Config';
 
 export class CognitoConstruct extends Construct {
@@ -28,23 +28,29 @@ export class CognitoConstruct extends Construct {
   }
 
   buildResources(): void {
+    const { REGION, ACCOUNT } = this.context;
+    const { CONFIG, CONSENTERS, ENTITIES, INVITATIONS, USERS } = TableBaseNames;
+    const { getTableName } = DynamoDbConstruct;
 
     const dynamodbResources = [
-      `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME}`,
-      `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME}/*`,
-      `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME}`,
-      `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME}/*`,
-      `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME}`,
-      `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME}/*`,
-      `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME}`,
-      `arn:aws:dynamodb:${this.context.REGION}:${this.context.ACCOUNT}:table/${DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME}/*`,
+      `arn:aws:dynamodb:${REGION}:${ACCOUNT}:table/${getTableName(USERS)}`,
+      `arn:aws:dynamodb:${REGION}:${ACCOUNT}:table/${getTableName(USERS)}/*`,
+      `arn:aws:dynamodb:${REGION}:${ACCOUNT}:table/${getTableName(INVITATIONS)}`,
+      `arn:aws:dynamodb:${REGION}:${ACCOUNT}:table/${getTableName(INVITATIONS)}/*`,
+      `arn:aws:dynamodb:${REGION}:${ACCOUNT}:table/${getTableName(ENTITIES)}`,
+      `arn:aws:dynamodb:${REGION}:${ACCOUNT}:table/${getTableName(ENTITIES)}/*`,
+      `arn:aws:dynamodb:${REGION}:${ACCOUNT}:table/${getTableName(CONSENTERS)}`,
+      `arn:aws:dynamodb:${REGION}:${ACCOUNT}:table/${getTableName(CONSENTERS)}/*`,
+      `arn:aws:dynamodb:${REGION}:${ACCOUNT}:table/${getTableName(CONFIG)}`,
+      `arn:aws:dynamodb:${REGION}:${ACCOUNT}:table/${getTableName(CONFIG)}/*`,
     ] as string[];
 
     const environment = {
-      DYNAMODB_USER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
-      DYNAMODB_INVITATION_TABLE_NAME: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
-      DYNAMODB_ENTITY_TABLE_NAME: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME,
-      DYNAMODB_CONSENTER_TABLE_NAME: DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME,
+      DYNAMODB_USER_TABLE_NAME: getTableName(USERS),
+      DYNAMODB_INVITATION_TABLE_NAME: getTableName(INVITATIONS),
+      DYNAMODB_ENTITY_TABLE_NAME: getTableName(ENTITIES),
+      DYNAMODB_CONSENTER_TABLE_NAME: getTableName(CONSENTERS),
+      DYNAMODB_CONFIG_TABLE_NAME: getTableName(CONFIG),
       [Configurations.ENV_VAR_NAME]: new Configurations(this.context.CONFIG).getJson() 
     };
 
@@ -121,7 +127,7 @@ export class CognitoConstruct extends Construct {
               actions: [
                 'cognito-idp:AdminDeleteUser',
               ],
-              resources: [ `arn:aws:cognito-idp:${this.context.REGION}:${this.context.ACCOUNT}:userpool/${this.context.REGION}_*` ],
+              resources: [ `arn:aws:cognito-idp:${REGION}:${ACCOUNT}:userpool/${REGION}_*` ],
               effect: Effect.ALLOW
             })]
           }),

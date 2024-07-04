@@ -1,18 +1,21 @@
 import { DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, QueryCommand, QueryCommandInput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
+import { DynamoDbConstruct, IndexBaseNames, TableBaseNames } from '../../../DynamoDb';
 import { DAOEntity, ReadParms } from './dao';
 import { convertFromApiObject } from './db-object-builder';
 import { entityUpdate } from './db-update-builder.entity';
 import { Entity, EntityFields, YN } from './entity';
-import { DynamoDbConstruct } from '../../../DynamoDb';
 
 export const ENTITY_WAITING_ROOM:string = '__UNASSIGNED__';
 
 export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity {
 
   const dbclient = new DynamoDBClient({ region: process.env.REGION });
-  const TableName = DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME;
-  const TableActiveIndex = DynamoDbConstruct.DYNAMODB_ENTITY_ACTIVE_INDEX;
+  const { getTableName } = DynamoDbConstruct;
+  const { ENTITIES } = TableBaseNames;
+  const { ENTITIES_ACTIVE } = IndexBaseNames;
+  const TableName = getTableName(ENTITIES);
+  const TableActiveIndex = ENTITIES_ACTIVE;
 
   let { entity_id, entity_name, create_timestamp, update_timestamp, active=YN.Yes } = entityInfo;
 

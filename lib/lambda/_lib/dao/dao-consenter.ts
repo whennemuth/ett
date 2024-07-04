@@ -1,16 +1,18 @@
 import { DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, PutItemCommandOutput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
-import { DynamoDbConstruct } from "../../../DynamoDb";
+import { DynamoDbConstruct, TableBaseNames } from "../../../DynamoDb";
 import { DAOConsenter, ReadParms } from "./dao";
-import { AffiliateTypes, Consenter, ConsenterFields, Roles, YN } from "./entity";
-import { consenterUpdate } from "./db-update-builder.consenter";
 import { convertFromApiObject } from "./db-object-builder";
+import { consenterUpdate } from "./db-update-builder.consenter";
+import { AffiliateTypes, Consenter, ConsenterFields, Roles, YN } from "./entity";
 
 export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): DAOConsenter {
 
   const dbclient = new DynamoDBClient({ region: process.env.REGION });
   const docClient = DynamoDBDocumentClient.from(dbclient);
-  const TableName = DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME;
+  const { getTableName } = DynamoDbConstruct;
+  const { CONSENTERS } = TableBaseNames;
+  const TableName = getTableName(CONSENTERS);
   
   let { email, active=YN.Yes, firstname, middlename, lastname, exhibit_forms, 
     create_timestamp=(new Date().toISOString()), consented_timestamp, renewed_timestamp, rescinded_timestamp
