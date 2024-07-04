@@ -14,6 +14,7 @@ export type ApiConstructParms = {
   userPoolDomain: string,
   cloudfrontDomain: string,
   redirectPath: string,
+  landscape: string
 }
 
 /**

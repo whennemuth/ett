@@ -90,14 +90,14 @@ export class AbstractRoleApi extends Construct {
 
     // Create a log group for the api gateway to log to.
     const log_group = new LogGroup(this, `RestApiLogGroup`, {
-      logGroupName: `/aws/lambda/${constructId}RestApiLogGroup`,
+      logGroupName: `/aws/lambda/ett-${stageName}-${role}-rest-api-log-group`,
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
     // Create the api gateway REST api.
     const api = new RestApi(this, `LambdaRestApi`, {
       description,
-      restApiName: `Ett-${role}-rest-api-${stageName}`,
+      restApiName: `ett-${stageName}-${role}-rest-api`,
       deployOptions: { 
         stageName,
         accessLogDestination: new LogGroupLogDestination(log_group),
@@ -125,7 +125,7 @@ export class AbstractRoleApi extends Construct {
 
     // Let the cognito user pool control access to the api. Add an api gateway authorizer of type "COGNITO_USER_POOLS"
     const authorizer = new CognitoUserPoolsAuthorizer(this, 'UserPoolAuthorizer', {
-      authorizerName: `${constructId}-authorizer`,
+      authorizerName: `ett-${stageName}-${constructId}-authorizer`,
       cognitoUserPools: [ userPool ],
       identitySource: 'method.request.header.Authorization',
     });
@@ -146,7 +146,7 @@ export class AbstractRoleApi extends Construct {
     // validity based on token expiration, and access level based on the scopes in token claims
     const resourceServer = userPool.addResourceServer(`${constructId}ResourceServer`, {
       identifier: resourceServerId,
-      userPoolResourceServerName: `${resourceServerId}-resource-server`,
+      userPoolResourceServerName: `ett-${stageName}-${resourceServerId}-resource-server`,
       scopes
     });
 

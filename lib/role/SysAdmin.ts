@@ -58,7 +58,7 @@ export class SysAdminApi extends AbstractRole {
 export class LambdaFunction extends AbstractFunction {
   constructor(scope: Construct, constructId: string, parms:ApiConstructParms) {
     const context:IContext = scope.node.getContext('stack-parms');
-    const { CONFIG, REGION } = context;
+    const { CONFIG, REGION, TAGS: { Landscape:landscape } } = context;
     const config = new Configurations(CONFIG);
     const { userPool, userPoolName, userPoolDomain, cloudfrontDomain, redirectPath } = parms;
     const { userPoolArn } = userPool;
@@ -69,7 +69,7 @@ export class LambdaFunction extends AbstractFunction {
       memorySize: 1024,
       entry: 'lib/lambda/functions/sys-admin/SysAdminUser.ts',
       // handler: 'handler',
-      functionName: `Ett${constructId}`,
+      functionName: `ett-${landscape}-${Roles.SYS_ADMIN}-user`,
       description: 'Function for all sys admin user activity.',
       cleanup: true,
       bundling: {

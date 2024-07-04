@@ -6,10 +6,12 @@ import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
 import { LogGroup } from "aws-cdk-lib/aws-logs";
 import { RemovalPolicy } from "aws-cdk-lib";
 import { Roles } from  '../lambda/_lib/dao/entity';
+import { IContext } from "../../contexts/IContext";
 
 export interface HelloWorldParms {
   userPool: UserPool, 
-  cloudfrontDomain: string
+  cloudfrontDomain: string,
+  landscape: string
 }
 
 export class HelloWorldApi extends AbstractRole {
@@ -20,12 +22,13 @@ export class HelloWorldApi extends AbstractRole {
 
     super(scope, constructId);
 
-    const { userPool, cloudfrontDomain } = parms;
+    const { userPool, cloudfrontDomain, landscape } = parms;
+    const functionName = `ett-${landscape}-${Roles.HELLO_WORLD}-user`;
 
     const lambdaFunction = new Function(scope, `${constructId}Lambda`, {
       runtime: Runtime.NODEJS_18_X,
       handler: 'index.handler',
-      functionName: `Ett${constructId}Lambda`,
+      functionName,
       description: 'Just a simple lambda for testing cognito authorization',
       code: Code.fromInline(`
       exports.handler = async (event) => {
@@ -50,7 +53,7 @@ export class HelloWorldApi extends AbstractRole {
     )});
 
     const log_group = new LogGroup(this, `${constructId}LogGroup`, {
-      logGroupName: `/aws/lambda/${constructId}Lambda`,
+      logGroupName: `/aws/lambda/${functionName}`,
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
