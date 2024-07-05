@@ -58,14 +58,14 @@ export class AuthorizedIndividualApi extends AbstractRole {
 export class LambdaFunction extends AbstractFunction {
   constructor(scope: Construct, constructId: string, parms:ApiConstructParms) {
     const context:IContext = scope.node.getContext('stack-parms');
-    const { userPool } = parms;
+    const { userPool, landscape } = parms;
     const { userPoolId, userPoolArn } = userPool;
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
       memorySize: 1024,
       entry: 'lib/lambda/functions/authorized-individual/AuthorizedIndividual.ts',
       // handler: 'handler',
-      functionName: `Ett${constructId}`,
+      functionName: `ett-${landscape}-${Roles.RE_AUTH_IND}-user`,
       description: 'Function for all authorized individual activity.',
       cleanup: true,
       bundling: {

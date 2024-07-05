@@ -17,28 +17,22 @@ const context:IContext = <IContext>ctx;
 
 const app = new App();
 app.node.setContext('stack-parms', context);
-const stackName = `${context.STACK_ID}-${context.TAGS.Landscape}`;
+const { STACK_ID, ACCOUNT:account, REGION:region, TAGS: { Function, Landscape, Service }, SCENARIO:scenario } = context;
+const stackName = `${STACK_ID}-${Landscape}`;
 
 const stackProps: StackProps = {
   stackName,
   description: 'Ethical transparency tool',
-  env: {
-    account: context.ACCOUNT,
-    region: context.REGION
-  },
-  tags: {
-    Service: context.TAGS.Service,
-    Function: context.TAGS.Function,
-    Landscape: context.TAGS.Landscape
-  }
+  env: { account, region },
+  tags: { Service, Function, Landscape }
 }
 
 const stack:AbstractStack = new AbstractStack(app, stackName, stackProps);
 
 // Adding tags into the stackProps does not seem to work - have to apply tags using aspects:
-Tags.of(stack).add('Service', context.TAGS.Service);
-Tags.of(stack).add('Function', context.TAGS.Function);
-Tags.of(stack).add('Landscape', context.TAGS.Landscape);
+Tags.of(stack).add('Service', Service);
+Tags.of(stack).add('Function', Function);
+Tags.of(stack).add('Landscape', Landscape);
 
 const buildAll = () => {
   // Set up the bucket only.
@@ -66,7 +60,8 @@ const buildAll = () => {
     userPool: cognito.getUserPool(),
     userPoolName: cognito.getUserPoolName(),    
     cloudfrontDomain: cloudfront.getDistributionDomainName(),
-    redirectPath: 'index.htm'
+    redirectPath: 'index.htm',
+    landscape: Landscape
   } as ApiConstructParms);
 
   // Grant the apis the necessary permissions (policy actions).
@@ -79,7 +74,7 @@ const buildAll = () => {
     distributionId: cloudfront.getDistributionId(),
     cloudfrontDomain: cloudfront.getDistributionDomainName(),
     cognitoDomain: cognito.getUserPoolDomain(),
-    cognitoUserpoolRegion: context.REGION,
+    cognitoUserpoolRegion: region,
     entityAcknowledgeApiUri: signupApi.entityAcknowledgeApiUri,
     registerEntityApiUri: signupApi.registerEntityApiUri,
     registerConsenterApiUri: signupApi.registerConsenterApiUri,
@@ -131,7 +126,7 @@ const buildDynamoDb = (): DynamoDbConstruct => {
   return db;
 }
 
-switch(context.SCENARIO) {
+switch(scenario) {
   case SCENARIO.DEFAULT:
     buildAll();
     break;

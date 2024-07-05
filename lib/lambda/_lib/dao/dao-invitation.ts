@@ -4,7 +4,7 @@ import { DAOInvitation, ReadParms } from './dao';
 import { convertFromApiObject } from './db-object-builder';
 import { invitationUpdate } from './db-update-builder.invitation';
 import { Invitation, InvitationFields } from './entity';
-import { DynamoDbConstruct } from '../../../DynamoDb';
+import { DynamoDbConstruct, IndexBaseNames, TableBaseNames } from '../../../DynamoDb';
 
 /**
  * Basic CRUD operations for the invitations table.
@@ -13,8 +13,10 @@ import { DynamoDbConstruct } from '../../../DynamoDb';
  */
 export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false): DAOInvitation {
   const dbclient = new DynamoDBClient({ region: process.env.REGION });
-  const TableName = DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME;
-  const TableEntityIndex = DynamoDbConstruct.DYNAMODB_INVITATION_ENTITY_INDEX;
+  const { getTableName } = DynamoDbConstruct;
+  const { INVITATIONS } = TableBaseNames;
+  const { INVITATIONS_ENTITY, INVITATIONS_EMAIL } = IndexBaseNames;
+  const TableName = getTableName(INVITATIONS);
 
   let { code:_code, entity_id, role, email } = invitationInfo;
 
@@ -110,7 +112,7 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
     // Declare QueryCommandInput fields
     let vals = {} as any;
     let cdns = '';
-    let index = 'EmailIndex';
+    let index = INVITATIONS_EMAIL;
 
     // Build QueryCommandInput fields
     if(email) {
@@ -125,7 +127,7 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
       else {
         cdns = `${InvitationFields.entity_id} = :v2`;
       }
-      if( ! email) index = TableEntityIndex;
+      if( ! email) index = INVITATIONS_ENTITY;
     }
 
     // Declare QueryCommandInput

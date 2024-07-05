@@ -1,4 +1,5 @@
-import { Invitation, Role, Roles } from '../../_lib/dao/entity';
+import { DAOConsenter, ReadParms } from '../../_lib/dao/dao';
+import { Consenter, Invitation, Role, Roles } from '../../_lib/dao/entity';
 import { Messages, handler } from './PreSignup';
 import * as event from './PreSignupEventMock.json'
 
@@ -29,6 +30,21 @@ jest.mock('../../_lib/cognito/Lookup.ts', () => {
     ...originalModule,
     lookupRole: async (userPoolId:string, clientId:string, region:string):Promise<Role|undefined> => {
       return role;
+    }
+  }
+});
+
+jest.mock('../../_lib/dao/dao-consenter.ts', () => {
+  const originalModule = jest.requireActual('../../_lib/dao/dao-consenter');
+  return {
+    __esModule: true,
+    ...originalModule,
+    ConsenterCrud: (consenterInfo:Consenter, _dryRun:boolean=false): DAOConsenter => {
+      return {
+        read: async (readParms?:ReadParms):Promise<(Consenter|null)|Consenter[]> => {
+          return { email: consenterInfo.email } as Consenter
+        }
+      } as DAOConsenter
     }
   }
 });

@@ -1,10 +1,10 @@
 import { AttributeValue, DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, PutItemCommand, PutItemCommandOutput, QueryCommand, QueryCommandInput, TransactWriteItemsCommand, TransactWriteItemsCommandInput, TransactWriteItemsCommandOutput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
 import { marshall } from '@aws-sdk/util-dynamodb';
+import { DynamoDbConstruct, IndexBaseNames, TableBaseNames } from '../../../DynamoDb';
 import { DAOFactory, DAOUser, ReadParms } from './dao';
 import { convertFromApiObject } from './db-object-builder';
-import { Roles, User, UserFields, YN } from './entity';
 import { userUpdate } from './db-update-builder.user';
-import { DynamoDbConstruct } from '../../../DynamoDb';
+import { Roles, User, UserFields, YN } from './entity';
 
 /**
  * Basic CRUD operations for the dynamodb table behind the user base.
@@ -14,8 +14,10 @@ import { DynamoDbConstruct } from '../../../DynamoDb';
 export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
 
   const dbclient = new DynamoDBClient({ region: process.env.REGION });
-  const TableName = DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME;
-  const TableEntityIndex = DynamoDbConstruct.DYNAMODB_USER_ENTITY_INDEX;
+  const { getTableName } = DynamoDbConstruct;
+  const { USERS } = TableBaseNames;
+  const { USERS_ENTITY } = IndexBaseNames;
+  const TableName = getTableName(USERS);
 
   let { email, entity_id, role, sub, active=YN.Yes, create_timestamp=(new Date().toISOString()), 
     fullname, phone_number, title } = userinfo;
@@ -82,7 +84,7 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
       return await _query({ v1: email, index: null } as IdxParms, readParms) as User[];
     }
     else {
-      return await _query({ v1: entity_id, index: TableEntityIndex } as IdxParms, readParms) as User[];
+      return await _query({ v1: entity_id, index: USERS_ENTITY } as IdxParms, readParms) as User[];
     }
   }
 
@@ -116,7 +118,7 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
   type IdxParms = { v1:string; index:string|null }
   const _query = async (idxParms:IdxParms, readParms?:ReadParms):Promise<User[]> => {
     const { v1, index } = idxParms;
-    const key = TableEntityIndex == index ? UserFields.entity_id : UserFields.email;
+    const key = USERS_ENTITY == index ? UserFields.entity_id : UserFields.email;
     console.log(`Reading users for ${key}: ${v1}`);
     const params = {
       TableName,

@@ -57,14 +57,14 @@ export class ConsentingPersonApi extends AbstractRole {
 export class LambdaFunction extends AbstractFunction {
   constructor(scope: Construct, constructId: string, parms:ApiConstructParms) {
     const context:IContext = scope.node.getContext('stack-parms');
-    const { userPool, cloudfrontDomain } = parms;
+    const { userPool, cloudfrontDomain, landscape } = parms;
     const { userPoolArn, userPoolId } = userPool;
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
       memorySize: 1024,
       entry: 'lib/lambda/functions/consenting-person/ConsentingPerson.ts',
       // handler: 'handler',
-      functionName: `Ett${constructId}`,
+      functionName: `ett-${landscape}-${Roles.CONSENTING_PERSON}-user`,
       description: 'Function for all consenting persons activity.',
       cleanup: true,
       bundling: {

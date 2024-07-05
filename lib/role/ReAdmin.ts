@@ -11,6 +11,7 @@ import { Configurations } from "../lambda/_lib/config/Config";
 export interface AdminUserParms {
   userPool: UserPool, 
   cloudfrontDomain: string,
+  landscape: string,
 }
 
 export class ReAdminUserApi extends AbstractRole {
@@ -61,14 +62,14 @@ export class ReAdminUserApi extends AbstractRole {
 export class LambdaFunction extends AbstractFunction {
   constructor(scope:Construct, constructId:string, parms:AdminUserParms) {
     const context:IContext = scope.node.getContext('stack-parms');
-    const { userPool, cloudfrontDomain } = parms;
+    const { userPool, cloudfrontDomain, landscape } = parms;
     const { userPoolArn, userPoolId } = userPool;
     
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
       entry: 'lib/lambda/functions/re-admin/ReAdminUser.ts',
       // handler: 'handler',
-      functionName: `Ett${constructId}`,
+      functionName: `ett-${landscape}-${Roles.RE_ADMIN}-user`,
       memorySize: 1024,
       description: 'Function for all re admin user activity.',
       cleanup: true,

@@ -30,6 +30,7 @@ export const INVALID_RESPONSE_MESSAGES = {
   invalidAffiliateRecords: 'Affiliate item with missing/invalid value',
   missingEntityId: 'Missing entity_id!',
   missingConsent: 'Consent is required before the requested operation can be performed',
+  inactiveConsenter: 'Consenter is inactive',
   missingExhibitFormIssuerEmail: 'Missing email of exhibit form issuer!',
   emailFailure: 'Email failed for one or more recipients!'
 }
@@ -276,6 +277,9 @@ export const saveExhibitData = async (email:string, data:ExhibitFormData): Promi
   // Abort if the consenter has not yet consented
   const consenterInfo = await getConsenter(email, false) as ConsenterInfo;
   if( ! consenterInfo?.activeConsent) {
+    if(consenterInfo?.consenter?.active == YN.No) {
+      return invalidResponse(INVALID_RESPONSE_MESSAGES.inactiveConsenter);
+    }
     return invalidResponse(INVALID_RESPONSE_MESSAGES.missingConsent);
   }
 

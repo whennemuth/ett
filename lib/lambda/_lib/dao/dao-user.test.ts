@@ -3,7 +3,7 @@ import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest';
 import { DAOFactory, DAOUser } from './dao';
 import { Roles, User, UserFields, YN } from './entity';
-import { DynamoDbConstruct } from '../../../DynamoDb';
+import { DynamoDbConstruct, TableBaseNames } from '../../../DynamoDb';
 
 const dbMockClient = mockClient(DynamoDBClient);
 
@@ -22,6 +22,7 @@ const dynamodbItem = {
   [UserFields.create_timestamp]: { S: dte },
   [UserFields.update_timestamp]: { S: dte },
 };
+const TableName = DynamoDbConstruct.getTableName(TableBaseNames.USERS);
 
 const testPut = () => {  
   describe('Dao user create', () => {    
@@ -93,7 +94,7 @@ const testPut = () => {
       const expectedResponse = {
         ConsumedCapacity: {
           CapacityUnits: 1,
-          TableName: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME
+          TableName
         }
       };
       dbMockClient.on(PutItemCommand).resolves(expectedResponse);
@@ -125,7 +126,7 @@ const testPut = () => {
       const expectedResponse = {
         ConsumedCapacity: {
           CapacityUnits: 1,
-          TableName: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME
+          TableName
         }
       };
       dbMockClient.on(PutItemCommand).resolves(expectedResponse);
@@ -257,7 +258,7 @@ const testDelete = () => {
       dbMockClient.on(DeleteItemCommand).resolves({      
         ConsumedCapacity: {
           CapacityUnits: 1,
-          TableName: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME
+          TableName
         }      
       });
       const dao = DAOFactory.getInstance({
@@ -274,7 +275,7 @@ const testDelete = () => {
       dbMockClient.on(DeleteItemCommand).resolves({      
         ConsumedCapacity: {
           CapacityUnits: 1,
-          TableName: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME
+          TableName
         }      
       });
       const dao = DAOFactory.getInstance({
@@ -303,7 +304,7 @@ const testDeleteEntity = () => {
   const response = {      
     ConsumedCapacity: {
       CapacityUnits: 1,
-      TableName: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME
+      TableName
     }      
   };
   dbMockClient.on(DeleteItemCommand).resolves(response);

@@ -23,13 +23,14 @@ export class CloudfrontConstruct extends Construct {
 
     this.constructId = constructId;
     this.context = scope.node.getContext('stack-parms');
+    const { TAGS: { Landscape:landscape }} = this.context;
     const  defaultBehavior = { 
       origin: new HttpOrigin('dummy-origin.com', { originId: 'dummy-origin' })
     }
 
     this.distribution = new Distribution(this, 'Distribution', {
       defaultBehavior,
-      comment: `ett-${this.context.TAGS.Landscape}-distribution`,
+      comment: `ett-${landscape}-distribution`,
       defaultRootObject: 'index.htm',
       logBucket: new Bucket(this, 'DistributionLogsBucket', {
         removalPolicy: RemovalPolicy.DESTROY,    
@@ -47,7 +48,7 @@ export class CloudfrontConstruct extends Construct {
 
     const oac = new CfnOriginAccessControl(this, 'StaticSiteAccessControl', {
       originAccessControlConfig: {
-        name: 'ett-static-site',
+        name: `ett-${landscape}-static-site`,
         originAccessControlOriginType: 's3',
         signingBehavior: 'always',
         signingProtocol: 'sigv4',

@@ -2,20 +2,31 @@ import { RemovalPolicy } from "aws-cdk-lib";
 import { AttributeType, Billing, ProjectionType, TableClass, TablePropsV2, TableV2 } from "aws-cdk-lib/aws-dynamodb";
 import { Construct } from "constructs";
 import { IContext } from "../contexts/IContext";
+import * as ctx from '../contexts/context.json';
 import { ConfigFields, ConsenterFields, EntityFields, InvitationFields, UserFields } from "./lambda/_lib/dao/entity";
 
+export enum TableBaseNames {
+  USERS = 'users', ENTITIES = 'entities', INVITATIONS = 'invitations', CONSENTERS = 'consenters', CONFIG = 'config'
+}
+export enum IndexBaseNames {
+  USERS_ENTITY = 'users-entity',
+  ENTITIES_ACTIVE = 'entities-active',
+  INVITATIONS_ENTITY = 'invitations-entity',
+  INVITATIONS_EMAIL = 'invitations-email',
+}
 export class DynamoDbConstruct extends Construct {
-  
-  static DYNAMODB_USER_TABLE_NAME: string = 'ett-users';
-  static DYNAMODB_ENTITY_TABLE_NAME: string = 'ett-entities';
-  static DYNAMODB_INVITATION_TABLE_NAME: string = 'ett-invitations';
-  static DYNAMODB_CONSENTER_TABLE_NAME: string = 'ett-consenters';
-  static DYAMODB_CONFIG_TABLE_NAME: string = 'ett-config'
 
-  static DYNAMODB_USER_ENTITY_INDEX: string = 'EntityIndex';
-  static DYNAMODB_INVITATION_ENTITY_INDEX: string = 'EntityIndex';
-  static DYNAMODB_INVITATION_EMAIL_INDEX: string = 'EmailIndex';
-  static DYNAMODB_ENTITY_ACTIVE_INDEX: string = 'EntityActiveIndex';
+  static getTableName = (basename:TableBaseNames):string => {
+    const context:IContext = <IContext>ctx;
+    const { TAGS: { Landscape }} = context;
+    return `ett-${Landscape}-${basename}`
+  }
+
+  static getTableNames = ():string[] => {
+    return Object.values<string>(TableBaseNames).map((basename:string) => { 
+      return this.getTableName(basename as TableBaseNames); 
+    });
+  }
   
   context: IContext;
 
@@ -33,10 +44,13 @@ export class DynamoDbConstruct extends Construct {
     const { Landscape } = this.context.TAGS ?? {};
     const deletionProtection = Landscape == 'prod';
     const { CONFIG: { useDatabase } } = this.context;
+    const { getTableName } = DynamoDbConstruct;
+    const { CONFIG, CONSENTERS, ENTITIES, INVITATIONS, USERS } = TableBaseNames;
+    const { ENTITIES_ACTIVE, USERS_ENTITY, INVITATIONS_EMAIL, INVITATIONS_ENTITY } = IndexBaseNames;
 
     // Create a table for SYS_ADMIN, RE_ADMIN, and RE_AUTH_IND users.
     this.usersTable = new TableV2(this, 'DbUsers', {
-      tableName: DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME,
+      tableName: getTableName(USERS),
       partitionKey: { name: UserFields.email, type: AttributeType.STRING },
       sortKey: { name: UserFields.entity_id, type: AttributeType.STRING },
       billing: Billing.onDemand(),
@@ -46,7 +60,7 @@ export class DynamoDbConstruct extends Construct {
       deletionProtection, 
       globalSecondaryIndexes: [
         {
-          indexName: DynamoDbConstruct.DYNAMODB_USER_ENTITY_INDEX,
+          indexName: USERS_ENTITY,
           partitionKey: { name: UserFields.entity_id, type: AttributeType.STRING },
           sortKey: { name: UserFields.email, type: AttributeType.STRING },
           projectionType: ProjectionType.ALL,
@@ -56,7 +70,7 @@ export class DynamoDbConstruct extends Construct {
 
     // Create a table for ALL registerend entities, to be managed by system administrator.
     this.entitiesTable = new TableV2(this, 'DbEntities', {
-      tableName: DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME,
+      tableName: getTableName(ENTITIES),
       partitionKey: { name: EntityFields.entity_id, type: AttributeType.STRING },
       billing: Billing.onDemand(),
       tableClass: TableClass.STANDARD_INFREQUENT_ACCESS,
@@ -65,7 +79,7 @@ export class DynamoDbConstruct extends Construct {
       deletionProtection,
       globalSecondaryIndexes: [
         {
-          indexName: DynamoDbConstruct.DYNAMODB_ENTITY_ACTIVE_INDEX,
+          indexName: ENTITIES_ACTIVE,
           partitionKey: { name: EntityFields.active, type: AttributeType.STRING },
           sortKey: { name: EntityFields.entity_name, type: AttributeType.STRING },
           projectionType: ProjectionType.INCLUDE,
@@ -76,7 +90,7 @@ export class DynamoDbConstruct extends Construct {
 
     // Create a table for invitations sent to users.
     this.invitationsTable = new TableV2(this, 'DbInvitations', {
-      tableName: DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME,
+      tableName: getTableName(INVITATIONS),
       partitionKey: { name: InvitationFields.code, type: AttributeType.STRING },
       billing: Billing.onDemand(),
       tableClass: TableClass.STANDARD_INFREQUENT_ACCESS,
@@ -85,13 +99,13 @@ export class DynamoDbConstruct extends Construct {
       deletionProtection, 
       globalSecondaryIndexes: [
         {
-          indexName: DynamoDbConstruct.DYNAMODB_INVITATION_EMAIL_INDEX,
+          indexName: INVITATIONS_EMAIL,
           partitionKey: { name: InvitationFields.email, type: AttributeType.STRING },
           sortKey: { name: InvitationFields.entity_id, type: AttributeType.STRING },
           projectionType: ProjectionType.ALL,
         },
         {
-          indexName: DynamoDbConstruct.DYNAMODB_INVITATION_ENTITY_INDEX,
+          indexName: INVITATIONS_ENTITY,
           partitionKey: { name: InvitationFields.entity_id, type: AttributeType.STRING },
           sortKey: { name: InvitationFields.email, type: AttributeType.STRING },
           projectionType:ProjectionType.ALL
@@ -101,7 +115,7 @@ export class DynamoDbConstruct extends Construct {
 
     // Create a table for CONSENTING_PERSON users
     this.consentersTable = new TableV2(this, 'DbConsenters', {
-      tableName: DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME,
+      tableName: getTableName(CONSENTERS),
       partitionKey: { name: ConsenterFields.email, type: AttributeType.STRING },
       billing: Billing.onDemand(),
       tableClass: TableClass.STANDARD_INFREQUENT_ACCESS,
@@ -113,7 +127,7 @@ export class DynamoDbConstruct extends Construct {
     if(useDatabase) {
       // Create a table for system configurations
       this.configTable = new TableV2(this, 'DbConfig', {
-        tableName: DynamoDbConstruct.DYAMODB_CONFIG_TABLE_NAME,
+        tableName: getTableName(CONFIG),
         partitionKey: { name: ConfigFields.name, type: AttributeType.STRING },
         billing: Billing.onDemand(),
         tableClass: TableClass.STANDARD_INFREQUENT_ACCESS,

@@ -28,7 +28,6 @@ Build the entire application and AWS infrastructure from scratch.
      "STACK_ID": "ett",
      "ACCOUNT": "[Your account ID]",
      "REGION": "[Your desired region]",
-     "BUCKET_NAME": "ett-static-site-content",
      "CONFIG": {
        "useDatabase": true,
        "configs": [
@@ -49,7 +48,6 @@ Build the entire application and AWS infrastructure from scratch.
    }
    ```
    
-   *NOTE: Make sure the BUCKET_NAME value does not collide with an existing bucket.*
    The "CONFIG" entry is a collection of settings the app will use for reference when carrying out certain business rules. These are mostly duration or timeout thresholds. There is a "useDatabase" setting provided
    
    - "true": These configuration values will be loaded into a database table and the lambda functions that drive the app logic will obtain them from there. Also, the sysadmin user will be provided a tab that can be used to modify these values *(useful for testing - no stack update necessary)*.

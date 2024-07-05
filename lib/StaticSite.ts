@@ -31,14 +31,15 @@ export abstract class StaticSiteConstruct extends Construct {
 
   public abstract customize(): void;
  
-  public getBucket(): Bucket {
+  public getBucket = (): Bucket => {
+    const { TAGS: { Landscape }} = this.context;
     if( ! this.bucket) {
       if(this.props?.bucket) {
         this.bucket = this.props.bucket;
       }
       else {
         this.bucket = new Bucket(this, 'Bucket', {
-          bucketName: this.context.BUCKET_NAME,
+          bucketName: `ett-${Landscape}-static-site-content`,
           publicReadAccess: false,
           blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
           removalPolicy: RemovalPolicy.DESTROY,    
@@ -55,7 +56,7 @@ export abstract class StaticSiteConstruct extends Construct {
    * way into the bucket so as to modify it's content, a dependency to the corresponding resource(s)
    * needs to be applied to the BucketDeployment.
    */
-  public setIndexFileForUpload(dependOn?:Construct[]) {
+  public setIndexFileForUpload = (dependOn?:Construct[]) => {
     const deployment = new BucketDeployment(this, 'BucketContentDeployment', {
       destinationBucket: this.getBucket(),
       sources: [

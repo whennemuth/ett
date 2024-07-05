@@ -4,7 +4,7 @@ import { DAOFactory } from "../../_lib/dao/dao";
 import { Entity, Invitation, User } from "../../_lib/dao/entity";
 import { CognitoIdentityProviderClient, AdminDeleteUserCommand, AdminDeleteUserRequest, AdminDeleteUserCommandOutput } from '@aws-sdk/client-cognito-identity-provider';
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
-import { DynamoDbConstruct } from "../../../DynamoDb";
+import { DynamoDbConstruct, TableBaseNames } from "../../../DynamoDb";
 
 const dbclient = new DynamoDBClient({ region: process.env.REGION });
 const cognitoClient = new CognitoIdentityProviderClient({ region: process.env.REGION });
@@ -39,9 +39,11 @@ export class EntityToDemolish {
   public deleteEntityFromDatabase = async ():Promise<any> => {
 
     const TransactItems = [] as TransactWriteItem[];
+    const { getTableName } = DynamoDbConstruct;
+    const { USERS, INVITATIONS, ENTITIES } = TableBaseNames
   
     // Load commands to delete each item from the users table where the user belongs to the specified entity.
-    let TableName = DynamoDbConstruct.DYNAMODB_USER_TABLE_NAME;
+    let TableName = getTableName(USERS);
     const daoUser = DAOFactory.getInstance({ DAOType: 'user', Payload: { entity_id:this.entityId } as User });
     const users = await daoUser.read() as User[];
     users.forEach((user) => {
@@ -52,7 +54,7 @@ export class EntityToDemolish {
     });
   
     // Load commands to delete each item from the invitations table that invited somebody to the specified entity.
-    TableName = DynamoDbConstruct.DYNAMODB_INVITATION_TABLE_NAME;
+    TableName = getTableName(INVITATIONS);
     const daoInvitation = DAOFactory.getInstance({ DAOType: 'invitation', Payload: { entity_id:this.entityId } as Invitation });
     const invitations = await daoInvitation.read() as Invitation[];
     invitations.forEach((invitation) => {
@@ -62,7 +64,7 @@ export class EntityToDemolish {
     });
   
     // Load the one command to delete the entity itself from the entities table.
-    TableName = DynamoDbConstruct.DYNAMODB_ENTITY_TABLE_NAME;
+    TableName = getTableName(ENTITIES);
     const daoEntity = DAOFactory.getInstance({ DAOType: 'entity', Payload: { entity_id:this.entityId } as Entity });
     this._entity = await daoEntity.read() as Entity;
     const Key = marshall({ entity_id: this.entityId } as Entity);

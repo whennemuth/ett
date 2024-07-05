@@ -53,7 +53,7 @@ export class SignupApiConstruct extends Construct {
    * Create the lambda function and api for checking invitation code and registering a new user has acknowledged privacy policy.
    */
   private createAcknowledgeEntityApi = () => {
-    const { constructId, parms: { cloudfrontDomain }, stageName, context: { REGION } } = this;
+    const { constructId, parms: { cloudfrontDomain }, stageName, context: { REGION, CONFIG, TAGS: { Landscape:landscape } } } = this;
     const basename = `${constructId}AcknowledgeEntity`;
     const description = 'for checking invitation code and registering a new user has acknowledged privacy policy';
 
@@ -63,7 +63,7 @@ export class SignupApiConstruct extends Construct {
       memorySize: 1024,
       entry: 'lib/lambda/functions/signup/EntityAcknowledgement.ts',
       // handler: 'handler',
-      functionName: `Ett${basename}`,
+      functionName: `ett-${landscape}-signup-acknowledge-entity-lambda`,
       description: `Function ${description}`,
       cleanup: true,
       bundling: {
@@ -74,7 +74,7 @@ export class SignupApiConstruct extends Construct {
       environment: {
         REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
-        [Configurations.ENV_VAR_NAME]: new Configurations(this.context.CONFIG).getJson()
+        [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });
 
@@ -84,7 +84,7 @@ export class SignupApiConstruct extends Construct {
         description: `API ${description}`,
         stageName
       },
-      restApiName: `Ett-${basename}-rest-api`,
+      restApiName: `ett-${landscape}-signup-acknowledge-entity-rest-api`,
       handler: this.acknowledgeEntityLambda,
       proxy: false
     });
@@ -112,7 +112,7 @@ export class SignupApiConstruct extends Construct {
    * Create the lambda function and api for for checking invitation code and registering a new user has signed and registered.
    */
   private createRegisterEntityApi = () => {
-    const { constructId, context: { REGION, ACCOUNT }, 
+    const { constructId, context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape } }, 
       parms: { cloudfrontDomain, userPool: { userPoolArn, userPoolId } }, stageName 
     } = this;
     const basename = `${constructId}RegisterEntity`;
@@ -124,7 +124,7 @@ export class SignupApiConstruct extends Construct {
       memorySize: 1024,
       entry: 'lib/lambda/functions/signup/EntityRegistration.ts',
       // handler: 'handler',
-      functionName: `Ett${basename}`,
+      functionName: `ett-${landscape}-signup-register-entity-lambda`,
       description: `Function ${description}`,
       cleanup: true,
       bundling: {
@@ -167,7 +167,7 @@ export class SignupApiConstruct extends Construct {
         REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
         USERPOOL_ID: userPoolId,
-        [Configurations.ENV_VAR_NAME]: new Configurations(this.context.CONFIG).getJson()
+        [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });
 
@@ -177,7 +177,7 @@ export class SignupApiConstruct extends Construct {
         description: `API ${description}`,
         stageName: stageName
       },
-      restApiName: `Ett-${basename}-rest-api`,
+      restApiName: `ett-${landscape}-signup-register-entity-rest-api`,
       handler: this.registerEntityLambda,
       proxy: false
     });
@@ -205,7 +205,7 @@ export class SignupApiConstruct extends Construct {
    * Create the public registration lambda function and api for the first stage of consenter registration
    */
   private createRegisterConsenterApi = () => {
-    const { constructId, parms: { cloudfrontDomain }, stageName, context: { REGION } } = this;
+    const { constructId, parms: { cloudfrontDomain }, stageName, context: { REGION, CONFIG, TAGS: { Landscape:landscape } } } = this;
     const basename = `${constructId}RegisterConsenter`;
     const description = 'for the first stage of public registration of a consenting person';
 
@@ -215,7 +215,7 @@ export class SignupApiConstruct extends Construct {
       memorySize: 1024,
       entry: 'lib/lambda/functions/signup/ConsenterRegistration.ts',
       // handler: 'handler',
-      functionName: `Ett${basename}`,
+      functionName: `ett-${landscape}-signup-register-consenter-lambda`,
       description: `Function ${description}`,
       cleanup: true,
       bundling: {
@@ -236,7 +236,7 @@ export class SignupApiConstruct extends Construct {
         description: `API ${description}`,
         stageName
       },
-      restApiName: `Ett-${basename}-rest-api`,
+      restApiName: `ett-${landscape}-signup-register-consenter-rest-api`,
       handler: this.registerConsenterLambda,
       proxy: false
     });

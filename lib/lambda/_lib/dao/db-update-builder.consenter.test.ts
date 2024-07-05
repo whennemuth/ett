@@ -1,5 +1,5 @@
 import { UpdateItemCommandInput } from '@aws-sdk/client-dynamodb';
-import { DynamoDbConstruct } from '../../../DynamoDb';
+import { DynamoDbConstruct, TableBaseNames } from '../../../DynamoDb';
 import { consenterUpdate } from './db-update-builder.consenter';
 import { Affiliate, Consenter, ConsenterFields } from './entity';
 
@@ -9,7 +9,9 @@ describe('getCommandInputBuilderForConsenterUpdate', () => {
 
   const isoString = new Date().toISOString();
   Date.prototype.toISOString = () => { return isoString; };
-  const TableName = DynamoDbConstruct.DYNAMODB_CONSENTER_TABLE_NAME;
+  const { getTableName } = DynamoDbConstruct;
+  const { CONSENTERS } = TableBaseNames;
+  const TableName = getTableName(CONSENTERS);
   const daffyEmail = 'daffyduck@warnerbros.com';
 
   const oldConsenter = {
