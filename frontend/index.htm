@@ -1182,9 +1182,6 @@
                       <div style="float:left;">
                         <select id="lbxRequestingEntity" class="form-control" style="width:300px; height:48px; margin-right: 10px;">
                           <option><- Select One -></option>
-                          <option value="bu">Boston University</option>
-                          <option value="tu">Tufts University</option>
-                          <option value="nu">Northeastern University</option>
                         </select>
                       </div>
                     </div>
@@ -2073,19 +2070,37 @@
       }
     }
 
+    const populateEntityList = (entities) => {
+      if( ! entities) {
+        return;
+      }
+      if( entities.length == 0) {
+        return;
+      }
+      const lbx = document.getElementById('lbxRequestingEntity');
+      entities.forEach(entity => {
+        const { entity_id, entity_name } = entity;
+        const opt = document.createElement("option");
+        opt.value = entity_id;
+        opt.text = entity_name;
+        lbx.add(opt, null);
+      });
+    }
+
     /**
      * Get the full record for the consenter
      */
     const getConsenter = async () => {
       const { email } = IDJwtCookie.getUser() ?? {};
       await doConsentTask('get-consenter', { email });
-      const { consenter: { phone_number }, fullName } = consenterInfo ?? {};
+      const { consenter: { phone_number }, fullName, entities } = consenterInfo ?? {};
       document.getElementById('txtConsentFullname').value = fullName;
       document.getElementById('txtConsentEmail').value = email;
       document.getElementById('txtConsentPhone').value = phone_number;
       document.getElementById('txtConsentEditFullname').value = fullName;
       document.getElementById('txtConsentEditEmail').value = email;
       document.getElementById('txtConsentEditPhone').value = phone_number;
+      populateEntityList(entities);
       return consenterInfo;
     }
 
@@ -3023,6 +3038,11 @@
             case 'CONSENTING_PERSON':
               document.getElementById('app-section-CONSENTING_PERSON').style.display = 'inline';
               if(localTesting()) {
+                populateEntityList([
+                  { entity_id: 'bu', entity_name: 'Boston University'},
+                  { entity_id: 'tu', entity_name: 'Tufts University'},
+                  { entity_id: 'nu', entity_name: 'Northeastern University'},
+                ])
                 break;
               }
               const ctr = await getConsenter();
