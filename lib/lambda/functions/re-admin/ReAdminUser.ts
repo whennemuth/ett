@@ -142,7 +142,12 @@ export const lookupEntity = async (email:string, role:Role):Promise<LambdaProxyI
   return okResponse('Ok', { user }) 
 }
 
-
+/**
+ * Create a single entity.
+ * @param entity 
+ * @param reAdmin 
+ * @returns 
+ */
 export const createEntity = async (entity:Entity, reAdmin?:User):Promise<LambdaProxyIntegrationResponse> => {
 
   if( ! entity.entity_name) {
@@ -151,6 +156,10 @@ export const createEntity = async (entity:Entity, reAdmin?:User):Promise<LambdaP
 
   if( ! entity.description) {
     entity.description = entity.entity_name;
+  }
+
+  if( ! entity.active) {
+    entity.active = YN.Yes;
   }
 
   // Create the entity
