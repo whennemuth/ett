@@ -60,8 +60,9 @@ export class StaticSiteCustomInConstruct extends StaticSiteConstruct {
   }
 
   public customize(): void {
-    const inProps = (<StaticSiteCustomInConstructParms>this.props);
-    const functionName = `ett-${this.constructId.toLowerCase()}-injection-function`;
+    const { context: { ACCOUNT, TAGS: { Landscape:landscape } }, constructId, props, getBucket } = this;
+    const inProps = (<StaticSiteCustomInConstructParms>props);
+    const functionName = `ett-${landscape}-${constructId.toLowerCase()}-injection-function`;
     const staticParms = buildJsonEnvVar(inProps);
     const conversionFunction = new AbstractFunction(this, 'TextConverterFunction', {
       functionName,
@@ -81,25 +82,25 @@ export class StaticSiteCustomInConstruct extends StaticSiteConstruct {
     });
 
     // Grant the Lambda function permissions to access the S3 bucket
-    this.getBucket().grantReadWrite(conversionFunction);
+    getBucket().grantReadWrite(conversionFunction);
 
     // Grant cloudfront permission to access the s3 bucket
-    this.getBucket().addToResourcePolicy(new PolicyStatement({
+    getBucket().addToResourcePolicy(new PolicyStatement({
       effect: Effect.ALLOW,
       actions: [ 's3:GetObject' ],
       principals: [ new ServicePrincipal('cloudfront.amazonaws.com') ],
       resources: [
-        `arn:aws:s3:::${this.getBucket().bucketName}/*`
+        `arn:aws:s3:::${getBucket().bucketName}/*`
       ],
       conditions: {
         StringEquals: {
-          'aws:SourceArn': `arn:aws:cloudfront::${this.context.ACCOUNT}:distribution/${inProps.distributionId}`
+          'aws:SourceArn': `arn:aws:cloudfront::${ACCOUNT}:distribution/${inProps.distributionId}`
         }
       }
     }));
 
     // Create an S3 event notification to trigger the Lambda function on object creation
-    const eventSource = new S3EventSource(this.getBucket(), {
+    const eventSource = new S3EventSource(getBucket(), {
       events: [ EventType.OBJECT_CREATED ],
     });
 

@@ -16,7 +16,7 @@
     "redeploy": "cdk destroy -f && npm run deploy",
     "synth": "cdk synth 2>&1 | tee cdk.out/ett.template.yaml",
     "clearcache": "sh bin/clearcache.sh",
-    "publish": "sh -c 'aws s3 cp ./frontend/index.htm s3://ett-static-site-content/'"
+    "publish": "sh bin/publish.sh"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.352.0",
