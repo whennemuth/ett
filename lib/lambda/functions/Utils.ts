@@ -244,3 +244,28 @@ export const viewHtml = async (html:string) => {
   });
 
 }
+
+/**
+ * Object for converting an ISO date string to a date and compare it to other date string values
+ */
+export function ComparableDate(timestamp:any):any {
+  let date:Date;
+  if(timestamp) {
+    date = typeof timestamp == 'string' ? new Date(timestamp) : timestamp;
+  }
+  else {
+    date = new Date(0);
+  }
+  const before = (_timestamp:any) => {
+    const other = ComparableDate(_timestamp);
+    return date.getTime() < other.getTime();
+  }
+  const after = (_timestamp:any) => {
+    const other = ComparableDate(_timestamp);
+    return date.getTime() > other.getTime();
+  }
+  const getTime = () => {
+    return date.getTime();
+  }
+  return { before, after, getTime }
+}

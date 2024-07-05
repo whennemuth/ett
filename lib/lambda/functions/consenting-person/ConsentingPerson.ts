@@ -5,7 +5,7 @@ import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
 import { Entity, Roles, User, YN, Affiliate, ExhibitForm as ExhibitFormData, Consenter, AffiliateTypes, ConsenterFields } from "../../_lib/dao/entity";
 import { ConsentFormData } from "../../_lib/pdf/ConsentForm";
 import { PdfForm } from "../../_lib/pdf/PdfForm";
-import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../Utils";
+import { ComparableDate, debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../Utils";
 import { ConsentFormEmail } from "./ConsentEmail";
 import { ExhibitEmail, FormTypes } from "./ExhibitEmail";
 
@@ -117,10 +117,20 @@ export const isActiveConsent = (consenter:Consenter):boolean => {
   const { consented_timestamp, rescinded_timestamp, renewed_timestamp, active } = consenter;
   let activeConsent:boolean = false;
   if(consented_timestamp && `${active}` == YN.Yes) {
-    const added:Date = new Date(consented_timestamp);
-    const removed:Date = rescinded_timestamp ? new Date(rescinded_timestamp) : new Date(0);
-    const restored:Date = renewed_timestamp ? new Date(renewed_timestamp) : new Date(0);
-    activeConsent = ( added.getTime() > removed.getTime() ) || ( restored.getTime() >= removed.getTime() );
+
+    const consented = ComparableDate(consented_timestamp);
+    const rescinded = ComparableDate(rescinded_timestamp);
+    const renewed = ComparableDate(renewed_timestamp);
+
+    if(consented.after(rescinded) && consented.after(renewed)) {
+      activeConsent = true; // Consent was given
+    }
+    if(renewed.after(consented) && renewed.after(rescinded)) {
+      activeConsent = true; // Consent was rescinded but later restored
+    }
+    if(rescinded.after(consented) && rescinded.after(renewed)) {
+      activeConsent = false; // Consent was rescinded
+    }
   }
   return activeConsent;
 }
@@ -392,7 +402,7 @@ export const processExhibitData = async (email:string, data:ExhibitFormData): Pr
 const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
 
-  const task = Task.SEND_CONSENT as Task;
+  const task = Task.GET_CONSENTER as Task;
   const landscape = 'dev';
   const region = 'us-east-2';
 
