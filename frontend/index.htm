@@ -269,7 +269,7 @@
       /* background-color: rgb(217, 225, 242); */
       /* background-color:rgb(84, 123, 196); */
       /* background-color:rgb(33, 54, 95); */
-      #tblPoc > thead > tr > td {
+      table[name="tblPoc"] > thead > tr > td {
         font-weight:bold;
         color: white;
         text-align:center;
@@ -280,7 +280,7 @@
         padding: 10px;
       }
 
-      #tblPoc > tbody > tr > td {
+      table[name="tblPoc"] > tbody > tr > td {
         background-color: rgb(217, 225, 242);
         border-style: none;
         padding: 10px;
@@ -988,14 +988,17 @@
               <div style="overflow:auto">
                 <ul class="nav nav-tabs" id="consenter" role="tablist">
                   <li class="nav-item">
-                    <a class="nav-link active" id="consenter-consent-link" data-toggle="tab" href="#consenter-consent" role="tab" aria-controls="consenter-consent" aria-selected="true">Your Consent</a>
+                    <a class="nav-link" id="consenter-consent-link" data-toggle="tab" href="#consenter-consent" role="tab" aria-controls="consenter-consent" aria-selected="true">Your Consent</a>
                   </li>
                   <li class="nav-item">
-                    <a class="nav-link" id="consenter-exhibit-link" data-toggle="tab" href="#consenter-exhibit" role="tab" aria-controls="consenter-exhibit" aria-selected="false">Exhibit Form Submission</a>
+                    <a class="nav-link active" id="consenter-exhibit-link" data-toggle="tab" href="#consenter-exhibit" role="tab" aria-controls="consenter-exhibit" aria-selected="false">Exhibit Form Submission</a>
                   </li>
+                  <!-- <li class="nav-item">
+                    <a class="nav-link active" id="consenter-affiliate-link" data-toggle="tab" href="#consenter-affiliate" role="tab" aria-controls="consenter-affiliate" aria-selected="false">Single exhibit form</a>
+                  </li> -->
                 </ul>
                 <div class="tab-content" id="consenterContent">
-                  <div class="tab-pane fade show active" id="consenter-consent" role="tabpanel" aria-labelledby="consenter-consent-link">
+                  <div class="tab-pane fade" id="consenter-consent" role="tabpanel" aria-labelledby="consenter-consent-link">
                     <h3 class="display-7 fw-bold">ETT Consent Form</h3>
                     <div id="divConsenterConsent" class="divSysAdminOption" style="overflow: auto; width:100%">
                       <p style="text-align: left;">
@@ -1168,7 +1171,7 @@
                     </div>
                   </div>
 
-                  <div class="tab-pane fade" id="consenter-exhibit" role="tabpanel" aria-labelledby="consenter-exhibit-link" style="overflow:auto;">
+                  <div class="tab-pane fade show active" id="consenter-exhibit" role="tabpanel" aria-labelledby="consenter-exhibit-link" style="overflow:auto;">
                     <h3 class="display-7 fw-bold">Full Exhibit Form - Consent Recipients/Affiliates</h3>
 
                     <p style="margin-top:40px; margin-bottom:40px;">
@@ -1184,10 +1187,13 @@
                           <option><- Select One -></option>
                         </select>
                       </div>
+                      <div style="float:left;">
+                        <button class="btn btn-primary btn-lg" type="button" onclick="addDummyExhibitData()">Use Dummy Data</button>
+                      </div>
                     </div>
 
                     <div style="float:left; clear:both; margin-top: 20px; overflow: auto;">
-                      <table id="tblPoc">
+                      <table id="tblPoc" name="tblPoc">
                         <thead>
                           <tr>
                             <td colspan="2">Organization</td>
@@ -1203,12 +1209,12 @@
                             <td style="width:fit-content; width:1px;">&nbsp;</td>
                           </tr>
                         </thead>
-                        <tbody id="tbPoc">
-                          <tr id="trPoc">
-                            <td><input id="org-name" type="text" class="form-control"></td>
+                        <tbody id="tbPoc" name="tbPoc">
+                          <tr id="trPoc" name="trPoc">
+                            <td><input name="org-name" type="text" class="form-control"></td>
                             <td>
                               <span id='exhibit-tooltip-1' data-toggle="tooltip">
-                                <select id="org-type" class="form-control">
+                                <select name="org-type" class="form-control">
                                   <option><- Select One -></option>
                                   <option value="employer">1) Employers</option>
                                   <option value="academic">2) Academic / Professional Societies & Organizations</option>
@@ -1216,10 +1222,10 @@
                                 </select>
                               </span>
                             </td>
-                            <td><input id="poc-name" type="text" class="form-control"></td>
-                            <td><input id="poc-title" type="text" class="form-control"></td>
-                            <td><input id="poc-email" type="text" class="form-control"></td>
-                            <td><input id="poc-phone" type="text" class="form-control"></td>
+                            <td><input name="poc-name" type="text" class="form-control"></td>
+                            <td><input name="poc-title" type="text" class="form-control"></td>
+                            <td><input name="poc-email" type="text" class="form-control"></td>
+                            <td><input name="poc-phone" type="text" class="form-control"></td>
                             <td style="width:fit-content;">
                               <span id='exhibit-tooltip-2' data-toggle="tooltip">
                                 <button id="btnAddPoc" class="btn btn-primary btn-sm" type="button" style="width:68px;" onclick="changePoc('add')">Add</button>                                
@@ -1307,16 +1313,161 @@
                     </div>      
 
                     <div style="display:flex; flex-direction: row; overflow: auto; justify-content: flex-start; float:left; clear:both; margin-top:40px; width:100%;">
+                      <!-- Button trigger modal -->
                       <button id="btnExhibitNext" class="btn btn-danger btn-lg" style="margin-right:8px;" type="button">NEXT</button>
+                      <!-- Modal -->
+                      <div class="modal fade modal-xl" id="signSingleExhibitForms" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="signSingleExhibitFormsLabel" aria-hidden="true">
+                        <div class="modal-dialog  modal-dialog-scrollable">
+                          <div class="modal-content">
+                            <!-- <div class="modal-header">
+                              <h5 class="modal-title" id="signSingleExhibitFormsLabel">Sign each single exhibit form</h5>
+                            </div> -->
+                            <div class="modal-body" style="text-align:left; overflow:auto;">
+                              <div id="exhibitFormCarousel" class="carousel carousel-dark slide">
+                                <div id="exhibitFormCarouselIndicators" class="carousel-indicators"></div>
+                                <div id="exhibitFormCarouselInner" class="carousel-inner"></div>
+                                <div>
+                                  <button class="carousel-control-prev" type="button" data-bs-target="#exhibitFormCarousel" data-bs-slide="prev">
+                                    <span class="carousel-control-prev-icon"></span>
+                                    <span style="color:red; font-weight:bold;">Previous</span>
+                                  </button>
+                                  <button class="carousel-control-next" type="button" data-bs-target="#exhibitFormCarousel" data-bs-slide="next">
+                                    <span style="color:green; font-weight:bold;">Next</span>
+                                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="modal-footer">
+                              <button class="btn btn-primary" data-bs-dismiss="modal">Cancel</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                       <span style="font-style: italic; font-weight: bold;">
                         Click the Next button to create, review, and sign a Single-Entity Exhibit Form for each of your listed consent 
                         Recipients. You will not be able to submit any of your Exhibit Forms until you digitally sign all of them.
-                      </span> 
+                      </span>
                     </div>                                      
                   </div>
+
+                  <div class="tab-pane fade" id="consenter-affiliate" role="tabpanel" aria-labelledby="consenter-affiliate-link" style="overflow:auto;">
+                    <h3 class="display-7 fw-bold">Single-Entity Exhibit Form</h3>
+
+                    <p style="margin-top:40px; margin-bottom:20px; font-weight:bold;">
+                      This <u>“Single-Entity Exhibit Form”</u> is incorporated into my Consent Form, at link. <u>I agree that my 
+                      Consent Form will remain in effect to authorize the Disclosure Form that the following entity 
+                      completes and provides in response to the Disclosure Request sent with this Single-Entity Exhibit 
+                      Form.</u> The definitions in the Consent Form also apply to this Single Entity Exhibit Form. The 
+                      following entity is one of my <u>Consent Recipients</u> referenced in and covered by my Consent Form:
+                    </p>
+
+                    <div style="float:left; clear:both; overflow: auto;">
+                      <table name="tblPoc">
+                        <thead>
+                          <tr>
+                            <td colspan="2">Organization</td>
+                            <td colspan="5">Point of Contact</td>
+                          </tr>
+                          <tr>
+                            <td>Name (No acronyms) </td>
+                            <td><span id='exhibit-tooltip-1' data-toggle="tooltip">Type</span></td>
+                            <td>Name (First and Last Name)</td>
+                            <td>Job Title</td>
+                            <td>Email</td>
+                            <td>Phone Number</td>
+                          </tr>
+                        </thead>
+                        <tbody name="tbPoc">
+                          <tr>
+                            <td name="org-name"></td>
+                            <td name="org-type"></td>
+                            <td name="poc-name"></td>
+                            <td name="poc-title"></td>
+                            <td name="poc-email"></td>
+                            <td name="poc-phone"></td>
+                          </tr>
+                        </tbody>
+                      </table>
+
+                      <p style="margin-top:20px; margin-bottom:20px; font-weight:bold;">
+                        I agree that this electronic Single-Entity Exhibit Form and my electronic (digital) signature, and any copy will 
+                        have the same effect as originals for all purposes. <b>I have had the time to consider and consult anyone I wish 
+                        on whether to provide this Single Entity Exhibit Form. I am at least 18 years old and it is my knowing and 
+                        voluntary decision to sign and deliver this Single Entity Exhibit Form.</b>
+                      </p>
+
+                      <div name="signature-counter" style="float:left; clear:both; color:red; margin-top:10px; margin-bottom:10px; display: flex; justify-content: center; align-items: center; width:100%;">
+                        <div>
+                          <span name="signed-count">0</span> of <span name="signable-count">0</span> signatures collected
+                        </div>
+                      </div>
+
+                      <div style="float:left; clear:both;">
+                        <div style="overflow: auto;">
+                          <div style="float:left; max-width: 50%; text-align: right; font-weight: bold; font-style: italic; border-right-style: solid; height:100%; padding:10px;">
+                            Please type your full name (First Middle Last) to digitally sign this Exhibit Form:
+                          </div>
+                          <div style="float:left; padding:10px; overflow: auto; display:flex; align-items: center; height:100%;">
+                            <input type="text" class="form-control" name="txtExhibitSignature" onkeypress="onSignatureKeypress()"
+                              style="max-width: 200px; height:48px; float:left; margin-right:10px;">
+                          </div>
+                        </div>
+                      </div>
+                      <div class="consenterFields" style="min-width: 300px; clear:both;">
+                        <div class='tdHeading'>Full Name<br><span style="font-size: 10px;">(first, middle, last)</span></div>
+                        <div name="divExhibitFullname"></div>
+                      </div>
+                      <div class="consenterFields">
+                        <div class='tdHeading'>Email<br>Address</div>
+                        <div name="divExhibitEmail"></div>
+                      </div>
+                      <div class="consenterFields">
+                        <div class='tdHeading'>Cell<br>Phone</div>
+                        <div name="divExhibitPhone"></div>
+                      </div>      
+
+
+                      <div name="exhibitSubmitBlock" style="float:left; clear:both; display:none;">
+                        <hr style="width:90%; margin-top: 30px; margin-bottom: 30px;" />
+                        <p style="font-style: italic; font-weight:bold">
+                          You have digitally signed your Full Exhibit Form and each of your Single-Entity Exhibit Forms. 
+                        </p>
+                        <p style="font-weight:bold">
+                           NOTE: When you click “Submit”: 
+                        </p>
+                        <p>
+                          <ul>
+                            <li>
+                              <b>Your Consent Form will not expire and you will not be able to rescind your Consent Form or 
+                              update your Full or Single Entity Exhibit Forms in connection with the Privilege or Honor, 
+                              Employment or Role for which the Registered Entity is considering you at this time.</b>
+                            </li>
+                            <li>
+                              <b>Your Consent Recipients will be relying on these forms to make disclosures to the Registered 
+                              Entity. Contact the Registered Entity directly if you want to withdraw from their 
+                              consideration.</b><span style="font-style: italic;"> To correct your Exhibit Form contacts, directions are here. You may still rescind 
+                              your Consent Form to prevent its other use in the future; directions on how are here.</span>
+                            </li>
+                          </ul>
+                        </p>
+                       
+                        <div style="overflow:auto; display: flex; justify-content: center; align-items: center;">
+                          <div style="text-decoration:underline; font-weight:bold; float:left; width:300px;">
+                            Click the Submit button to complete and submit your Full and Single Entity Exhibit Form  
+                          </div>
+                          <div style="float:left;">
+                            <button id="btnSubmitExhibitForm" class="btn btn-danger btn-lg" data-bs-dismiss="modal" type="button" onclick="submitExhibitForm()">SUBMIT</button>                                                            
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
               </div>
           </div>
+
 
           <!-- Signout button -->
           <p>&nbsp;</p>              
@@ -1339,6 +1490,7 @@
         <!-- Display area for api response message (mostly errors) -->
         <div id="apiResponse"></div>
       </div>
+
     </main>
 
   <script>
@@ -2174,7 +2326,7 @@
       let _on_off = on_off;
       if(on_off == undefined) {
         _on_off = fld.nodeName == 'SELECT' && fld.selectedIndex == 0;
-        _on_off |= fld.nodeName == 'INPUT' && ! fld.value;
+        _on_off ||= fld.nodeName == 'INPUT' && ! fld.value;
       }
       fld.style.borderStyle = _on_off ? 'solid' : '';
       fld.style.borderWidth = _on_off ? '2px' : '';
@@ -2204,8 +2356,9 @@
     function changePoc(task) {
       if(task == 'add') {
         const tbl = document.getElementById('tblPoc');
-        const tr = document.getElementById('trPoc');
+        const tr = document.getElementsByName('trPoc')[0];
         const newrow = tbl.insertRow();
+        newrow.setAttribute('name', 'trPoc');
         newrow.innerHTML = tr.innerHTML;
 
         // Remove red borders of any of the rows child fields if they have them.
@@ -2227,34 +2380,199 @@
       }
     }
 
+    function addDummyExhibitData() {
+      const btn = document.getElementById('btnAddPoc');
+      if(document.getElementsByName('org-name').length < 4) {
+        btn.click();
+      }
+      if(document.getElementsByName('org-name').length < 4) {
+        btn.click();
+      }
+      const setValue = (name, index, value) => {
+        const input = document.getElementsByName(name)[index];
+        input.value = value;
+      }
+      setValue('org-name', 0, 'Warner Bros.');
+      setValue('org-type', 0, 'employer');
+      setValue('poc-name', 0, 'Bugs Bunny');
+      setValue('poc-title', 0, 'Rabbit');
+      setValue('poc-email', 0, 'bugs@warnerbros.com');
+      setValue('poc-phone', 0, '6172224444');
+      
+      setValue('org-name', 1, 'Cartoon Town University');
+      setValue('org-type', 1, 'academic');
+      setValue('poc-name', 1, 'Daffy Duck');
+      setValue('poc-title', 1, 'Fowl');
+      setValue('poc-email', 1, 'daffy@au.edu');
+      setValue('poc-phone', 1, '7813334444');
+      
+      setValue('org-name', 2, 'Anywhere Inc.');
+      setValue('org-type', 2, 'other');
+      setValue('poc-name', 2, 'Yosemite Sam');
+      setValue('poc-title', 2, 'Cowboy');
+      setValue('poc-email', 2, 'sam@anywhere.com');
+      setValue('poc-phone', 2, '5084448888');
+
+      document.getElementById('lbxRequestingEntity').selectedIndex = 1;
+      document.getElementById('txtExhibitFullname').value = 'Roger R Rabbit';
+      document.getElementById('txtExhibitEmail').value = 'roger@warnerbros.com';
+      document.getElementById('txtExhibitPhone').value = '617-444-5555';
+      document.getElementById('txtExhibitSignature').value = 'Rogers Signature';
+    }
+
+    /**
+     * When leaving a single exhibit form signature field, inspect all such fields for a signature, 
+     * and if each has one, show the "submit" button.
+     */
+    function onSignatureKeypress() {
+      const carousel = document.getElementById('exhibitFormCarouselInner');
+      const signatures = carousel.querySelectorAll('input[name="txtExhibitSignature"]');
+      let signed = 0;
+
+      // Count the signatures
+      signatures.forEach(signature => { if(signature.value) signed++; });
+      const sigCounters = carousel.querySelectorAll('div[name="signature-counter"]');
+      const allSigned = signed == signatures.length;
+
+      // Reapply numbers to the signature tally and change it from red to green if all signature boxes have a value
+      sigCounters.forEach(sigCounter => {
+        sigCounter.querySelector('span[name="signed-count"]').innerHTML = signed;
+        sigCounter.querySelector('span[name="signable-count"]').innerHTML = signatures.length;
+        sigCounter.style.color = allSigned ? 'green' : 'red'; 
+      });
+
+      // Unhide the submit blocks if all signature boxes have a value
+      const sigBlocks = carousel.querySelectorAll('div[name="exhibitSubmitBlock"]');
+      sigBlocks.forEach(sigBlock => {
+        sigBlock.style.display = allSigned ? 'inline' : 'none';
+      });
+    }
+
     /**
      * Return a boolean indicating if all exhibit form fields are filled out with valid values.
      */
-    function validExhibitForm() {
-      let empty = false;
+    function validExhibitForm() {     
+      let emptyFieldFound = false;
 
       // Put a red border on the requesting entity picklist if no entity is selected from it.
-      empty |= toggleHighlight(document.getElementById('lbxRequestingEntity'));
+      emptyFieldFound ||= toggleHighlight(document.getElementById('lbxRequestingEntity'));
 
       // Put red borders on any affliate field that is empty.
       [ 'select', 'input'].forEach(tagname => {
         const flds = document.getElementById('tblPoc').getElementsByTagName(tagname);
         for (const fld of flds) {
-          toggleHighlight(fld);
+          const empty = toggleHighlight(fld);
+          emptyFieldFound ||= empty;
         };
       });
       [ 'txtExhibitSignature', 'txtExhibitFullname', 'txtExhibitEmail', 'txtExhibitPhone' ].forEach(fldId => {
-        toggleHighlight(document.getElementById(fldId));
+        const empty = toggleHighlight(document.getElementById(fldId));
+        emptyFieldFound ||= empty;
       });
-      return empty;
+      return  ! emptyFieldFound;
     }
+
+    let exhibit_data = [];
 
     /**
      * Put each affliate in a modal dialog in the form of a single exhibit form with the ability 
      * to sign each of them in order using another next button.
      */
     function signSingleExhibitForms() {
-      console.log('not implemented yet');
+      // Blank out the exhibit data cache
+      exhibit_data = [];
+
+      // Blank out the carousel inside the modal dialog
+      const indicators = document.getElementById('exhibitFormCarouselIndicators');
+      const inner = document.getElementById('exhibitFormCarouselInner');
+      indicators.innerHTML = '';
+      inner.innerHTML = '';
+
+      // Populate a javascript object with data entered for each point of contact (affiliate)
+      const createExhibitDataObject = () => {
+        const rows = document.getElementsByName('trPoc');
+        rows.forEach(row => {
+          const affiliate = {};
+          const inputs = row.getElementsByTagName('input');
+          for(const input of inputs) {
+            affiliate[input.name] = input.value;
+          }
+          affiliate['org-type'] = row.getElementsByTagName('select')[0].value;
+          exhibit_data.push(affiliate);
+        });
+      };
+
+      const createCarouselItemIndicator = i => {
+        const data = exhibit_data[i];
+        const affInd = document.createElement('button');
+        indicators.append(affInd);
+        affInd.setAttribute('data-bs-target', '#signSingleExhibitForms');
+        affInd.setAttribute('data-bs-slide-to', `${i}`);
+        affInd.setAttribute('aria-label', `Point of contact ${data['poc-name']}`);
+        if(i == 0) {
+          affInd.className = 'active';
+          affInd.setAttribute('aria-current', 'true');
+        }         
+      };
+
+      const createCarouselItemBody = i => {
+        const data = exhibit_data[i];
+        const affBody = document.createElement('div');
+        inner.append(affBody);
+        affBody.className = `carousel-item${i==0 ? ' active' : ''}`;
+
+        const createBodyContainer = () => {
+          const img = document.createElement('img');
+          affBody.append(img);
+          img.className = 'd-block w-100"';
+        }
+
+        const createBodyContent = () => {
+          const div1 = document.createElement('div');
+          div1.setAttribute('style', 'display: flex; justify-content: center; align-items: center; width:100%;')
+          affBody.append(div1);
+          const div2 = document.createElement('div');
+          div1.append(div2);
+          div2.className = 'd-none d-md-block';
+          div2.setAttribute('style', 'width:800px; margin-bottom:75px;')
+          div2.innerHTML = document.getElementById('consenter-affiliate').innerHTML;
+          div2.querySelector('td[name="org-name"]').innerHTML = data['org-name'];
+          div2.querySelector('td[name="org-type"]').innerHTML = data['org-type'];
+          div2.querySelector('td[name="poc-name"]').innerHTML = data['poc-name'];
+          div2.querySelector('td[name="poc-email"]').innerHTML = data['poc-email'];
+          div2.querySelector('td[name="poc-title"]').innerHTML = data['poc-title'];
+          div2.querySelector('td[name="poc-phone"]').innerHTML = data['poc-phone'];
+          div2.querySelector('div[name="divExhibitFullname"]').innerHTML = document.getElementById('txtExhibitFullname').value;
+          div2.querySelector('div[name="divExhibitEmail"]').innerHTML = document.getElementById('txtExhibitEmail').value;
+          div2.querySelector('div[name="divExhibitPhone"]').innerHTML = document.getElementById('txtExhibitPhone').value;
+        }
+
+        createBodyContainer();
+        createBodyContent()
+      }
+
+      createExhibitDataObject();
+
+      // Repopulate the carousel with screens, one per affiliate.
+      for(let i=0; i<exhibit_data.length; i++) {
+        createCarouselItemIndicator(i)        
+        createCarouselItemBody(i)
+      };
+
+      // Show the modal dialog
+      const modalCarousel = new bootstrap.Modal('#signSingleExhibitForms', {
+        keyboard: false,
+        focus: true,
+        backdrop: 'static'
+      }).show();
+
+      document.getElementById('signSingleExhibitForms').addEventListener('hidden.bs.modal', event => {
+        inner.innerHTML = '';
+      })
+    }
+
+    function submitExhibitForm() {
+      alert('submitted');
     }
 
     const refreshDbTable = async (tableName) => {
