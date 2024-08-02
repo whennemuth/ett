@@ -1,7 +1,7 @@
 import { CloudFrontClient, DistributionSummary, ListDistributionsCommand, ListDistributionsResult } from "@aws-sdk/client-cloudfront";
+import { exec } from "child_process";
 import { DAOEntity, DAOFactory, DAOInvitation, DAOUser } from "../_lib/dao/dao";
 import { Entity, Invitation, User, YN } from "../_lib/dao/entity";
-import { exec } from "child_process";
 
 export type LambdaProxyIntegrationResponse<T extends string = string> = {
   isBase64Encoded: boolean;
