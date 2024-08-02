@@ -1,23 +1,13 @@
-import assert = require('assert');
-import { deepEqual } from './db-update-builder-utils';
+import { deepEqual } from "./Utils";
 
-const deep_equal = (obj1:any, obj2:any):boolean => {
-  try {
-    assert.deepEqual(obj1, obj2);
-    return true;
-  }
-  catch(e) {
-    return false;
-  }
-};
 
-describe('db-update-builder-utils', () => {
+describe('Utils', () => {
 
   it('Should accurately declare two objects equal: basic', () => {
     const obj1 = { one: 'one', two: 2, three: false };
     const obj2 = { three: false, two: 2, one: 'one' };
     expect(deepEqual(obj1, obj2)).toBe(true);
-    expect(deep_equal(obj1, obj2)).toBe(true);
+    expect(deepEqual(obj1, obj2, 'alt')).toBe(true);
   });
 
   it('Should accurately declare two objects equal: medium', () => {
@@ -26,7 +16,7 @@ describe('db-update-builder-utils', () => {
     const obj1 = { one: 'one', two: 2, three: false, child: child1 };
     const obj2 = { child:child2, three: false, two: 2, one: 'one' };
     expect(deepEqual(obj1, obj2)).toBe(true);
-    expect(deep_equal(obj1, obj2)).toBe(true);
+    expect(deepEqual(obj1, obj2, 'alt')).toBe(true);
   });
 
   it('Should accurately declare two objects equal: complex', () => {
@@ -41,7 +31,7 @@ describe('db-update-builder-utils', () => {
     const obj1 = { one: 'one', two: 2, three: false, child: child1 };
     const obj2 = { child:child2, three: false, two: 2, one: 'one' };
     expect(deepEqual(obj1, obj2)).toBe(true);
-    expect(deep_equal(obj1, obj2)).toBe(true);
+    expect(deepEqual(obj1, obj2, 'alt')).toBe(true);
   });
 
 
@@ -49,7 +39,7 @@ describe('db-update-builder-utils', () => {
     const obj1 = { one: 'one', two: 2, three: false };
     const obj2 = { three: false, two: 22, one: 'one' };
     expect(deepEqual(obj1, obj2)).toBe(false);
-    expect(deep_equal(obj1, obj2)).toBe(false);
+    expect(deepEqual(obj1, obj2, 'alt')).toBe(false);
   });
 
   it('Should accurately declare two objects unequal: medium', () => {
@@ -58,7 +48,7 @@ describe('db-update-builder-utils', () => {
     const obj1 = { one: 'one', two: 2, three: false, child: child1 };
     const obj2 = { child:child2, three: false, two: 2, one: 'one' };
     expect(deepEqual(obj1, obj2)).toBe(false);
-    expect(deep_equal(obj1, obj2)).toBe(false);
+    expect(deepEqual(obj1, obj2, 'alt')).toBe(false);
   });
 
   it('Should accurately declare two objects unequal: complex', () => {
@@ -73,6 +63,6 @@ describe('db-update-builder-utils', () => {
     const obj1 = { one: 'one', two: 2, three: false, child: child1 };
     const obj2 = { child:child2, three: false, two: 2, one: 'one' };
     expect(deepEqual(obj1, obj2)).toBe(false);
-    expect(deep_equal(obj1, obj2)).toBe(false);
+    expect(deepEqual(obj1, obj2, 'alt')).toBe(false);
   });
 })

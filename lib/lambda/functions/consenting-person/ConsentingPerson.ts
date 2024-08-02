@@ -5,7 +5,7 @@ import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
 import { Entity, Roles, User, YN, Affiliate, ExhibitForm as ExhibitFormData, Consenter, AffiliateTypes, ConsenterFields } from "../../_lib/dao/entity";
 import { ConsentFormData } from "../../_lib/pdf/ConsentForm";
 import { PdfForm } from "../../_lib/pdf/PdfForm";
-import { ComparableDate, debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../Utils";
+import { ComparableDate, debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
 import { ConsentFormEmail } from "./ConsentEmail";
 import { ExhibitEmail, FormTypes } from "./ExhibitEmail";
 

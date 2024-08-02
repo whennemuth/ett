@@ -1,6 +1,6 @@
 import { AttributeValue, UpdateItemCommandInput } from '@aws-sdk/client-dynamodb';
 import { DynamoDbConstruct, TableBaseNames } from '../../../DynamoDb';
-import { deepEqual } from './db-update-builder-utils';
+import { deepEqual } from '../../Utils';
 import { consenterUpdate } from './db-update-builder.consenter';
 import { Affiliate, AffiliateTypes, Consenter, ConsenterFields, ExhibitForm } from './entity';
 
@@ -376,7 +376,7 @@ describe('getCommandInputBuilderForConsenterUpdate', () => {
     } as UpdateItemCommandInput;
 
     // Test for equality between command input and expected command input
-    expect(deepEqual(input, expectedOutput, 'temp')).toBe(true);
+    expect(deepEqual(input, expectedOutput)).toBe(true);
   });
 
   it('Should produce the expected command input for all scenarios combined', () => {

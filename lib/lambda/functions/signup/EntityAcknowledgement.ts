@@ -1,6 +1,6 @@
 import { Invitation } from "../../_lib/dao/entity";
 import { Registration } from "../../_lib/invitation/Registration";
-import { debugLog, errorResponse, invalidResponse, lookupCloudfrontDomain, okResponse, unauthorizedResponse } from "../Utils";
+import { debugLog, errorResponse, invalidResponse, lookupCloudfrontDomain, okResponse, unauthorizedResponse } from "../../Utils";
 
 export enum Task {
   LOOKUP_INVITATION = 'lookup-invitation',

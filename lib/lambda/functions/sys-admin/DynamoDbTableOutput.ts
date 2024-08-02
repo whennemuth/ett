@@ -4,7 +4,7 @@ import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { convertFromApiObject } from "../../_lib/dao/db-object-builder";
 import { DynamoDbConstruct, TableBaseNames } from "../../../DynamoDb";
 import { HtmlTableView } from "./view/HtmlTableView";
-import { viewHtml } from "../Utils";
+import { viewHtml } from "../../Utils";
 import { TableBase } from "aws-cdk-lib/aws-dynamodb";
 
 /**

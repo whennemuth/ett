@@ -1,6 +1,7 @@
 import { AttributeValue, UpdateItemCommandInput } from "@aws-sdk/client-dynamodb";
 import { convertToApiObject, wrap } from './db-object-builder';
-import { Builder, deepEqual, getBlankCommandInput, getFldSetStatement, getListAppendStatement } from "./db-update-builder-utils";
+import { Builder, getBlankCommandInput, getFldSetStatement } from "./db-update-builder-utils";
+import { deepEqual, getListAppendStatement } from '../../Utils';
 import { Consenter, ConsenterFields } from "./entity";
 
 /**

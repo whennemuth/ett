@@ -4,8 +4,8 @@ import { CognitoLookupMock, InvitationMock, UtilsMock, DaoMock, SignupLinkMock,
 process.env.CLOUDFRONT_DOMAIN = 'dnkkwr06vb9yr.cloudfront.net';
 
 // Create the partial mock for Utils.ts module
-const utilsMock = jest.mock('../Utils.ts', () => {
-  const originalModule = jest.requireActual('../Utils.ts');
+const utilsMock = jest.mock('../../Utils.ts', () => {
+  const originalModule = jest.requireActual('../../Utils.ts');
   return UtilsMock(originalModule);
 });  
 

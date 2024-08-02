@@ -1,4 +1,4 @@
-import { viewHtml } from "../../Utils";
+import { viewHtml } from "../../../Utils";
 import { AbstractTableView } from "./AbstractTableView";
 
 /**

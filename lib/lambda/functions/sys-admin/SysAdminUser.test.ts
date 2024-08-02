@@ -4,8 +4,8 @@ process.env.CLOUDFRONT_DOMAIN = 'dnkkwr06vb9yr.cloudfront.net';
 process.env.COGNITO_DOMAIN = 'ett-dev.auth.us-east-2.amazoncognito.com';
 
 // Create the partial mock for Utils.ts module
-jest.mock('../Utils.ts', () => {
-  const originalModule = jest.requireActual('../Utils.ts');
+jest.mock('../../Utils.ts', () => {
+  const originalModule = jest.requireActual('../../Utils.ts');
   return UtilsMock(originalModule);
 });  
 

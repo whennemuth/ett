@@ -1,6 +1,6 @@
 import { SESv2Client, SendEmailCommand, SendEmailCommandInput, SendEmailResponse } from "@aws-sdk/client-sesv2";
 import { IPdfForm } from "../_lib/pdf/PdfForm";
-import { bytesToBase64 } from "./Utils";
+import { bytesToBase64 } from "../Utils";
 import { v4 as uuidv4 } from 'uuid';
 
 export type Attachment = { pdf:IPdfForm, name:string, description:string }

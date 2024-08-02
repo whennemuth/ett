@@ -1,7 +1,7 @@
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
 import { Consenter, YN } from "../../_lib/dao/entity";
-import { debugLog, errorResponse, invalidResponse, log, okResponse } from "../Utils";
+import { debugLog, errorResponse, invalidResponse, log, okResponse } from "../../Utils";
 
 /**
  * Handles the public steps of registration for consenting individual

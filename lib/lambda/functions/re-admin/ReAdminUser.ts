@@ -5,7 +5,7 @@ import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
 import { Entity, Invitation, Role, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
 import { UserInvitation } from '../../_lib/invitation/Invitation';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
-import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, lookupPendingInvitations, lookupSingleActiveEntity, lookupSingleUser, lookupUser, okResponse } from "../Utils";
+import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, lookupPendingInvitations, lookupSingleActiveEntity, lookupSingleUser, lookupUser, okResponse } from "../../Utils";
 
 export enum Task {
   CREATE_ENTITY = 'create-entity',

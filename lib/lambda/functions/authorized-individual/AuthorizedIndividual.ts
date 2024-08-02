@@ -4,7 +4,7 @@ import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { DAOFactory, DAOUser } from "../../_lib/dao/dao";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
 import { Entity, Roles, User } from "../../_lib/dao/entity";
-import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../Utils";
+import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
 import { DemolitionRecord, EntityToDemolish } from "./Demolition";
 
 export enum Task {

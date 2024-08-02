@@ -1,8 +1,8 @@
-import { mock } from "node:test";
 import { IncomingPayload, OutgoingBody } from "../../../role/AbstractRole";
 import { DAOConsenter, DAOEntity, DAOInvitation, DAOUser, FactoryParms } from "../../_lib/dao/dao";
-import { AffiliateTypes, Entity, Roles, User, YN, Affiliate, ExhibitForm as ExhibitFormData, Consenter, Config } from "../../_lib/dao/entity";
-import { MockCalls, TestParms, invokeAndAssert } from "../UtilsTest";
+import { Affiliate, AffiliateTypes, Config, Consenter, Entity, ExhibitForm as ExhibitFormData, Roles, User, YN } from "../../_lib/dao/entity";
+import { deepClone } from "../../Utils";
+import { MockCalls, TestParms, invokeAndAssert } from "../../UtilsTest";
 import { FormType, FormTypes } from "./ExhibitEmail";
 
 /**
@@ -14,8 +14,6 @@ const mockCalls = new MockCalls();
  * Designate what mocked consenter lookups are expected to return in terms of consent.
  */
 enum ConsentState { OK, NONE, RESCINDED, RESTORED, INACTIVE }
-
-const deepClone = (obj:any) => JSON.parse(JSON.stringify(obj));
 
 /**
  * Define a mock for the es6 ExhibitEmail class
