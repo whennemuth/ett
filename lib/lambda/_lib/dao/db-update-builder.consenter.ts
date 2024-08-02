@@ -134,14 +134,14 @@ const addExhibitFormChangesToUpdateItem = (_new:Consenter, old:Consenter, item:U
  */
 export const consenterUpdate = (TableName:string, _new:Consenter, old:Consenter={} as Consenter):Builder => {
 
-  const buildUpdateItem = () => {
+  const buildUpdateItemCommandInput = () => {
     if( ! _new.update_timestamp) {
       _new.update_timestamp = new Date().toISOString();
     }
     const key = {
       [ ConsenterFields.email ]: { S: _new.email }
     } as Record<string, AttributeValue>;
-    const item = getBlankItem(TableName, key);
+    const input = getBlankCommandInput(TableName, key);
     const fieldset = {
       nonExhibit: [] as any[],
       exhibit: {
@@ -180,7 +180,7 @@ export const consenterUpdate = (TableName:string, _new:Consenter, old:Consenter=
 
     let affAppendExpr = '';
     if(append.length > 0) {
-      affAppendExpr = `SET ${update.map((o:any) => { return getFldAppendStatement(o); }).join(', ')}`;
+      updateExpr = `${updateExpr} ${appends.map((o:any) => { return getListAppendStatement(o); }).join(', ')}`;
     }
 
     let affDeleteExpr = '';
@@ -195,5 +195,5 @@ export const consenterUpdate = (TableName:string, _new:Consenter, old:Consenter=
 
     return item;
   }  
-  return { buildUpdateItem } as Builder;
+  return { buildUpdateItemCommandInput } as Builder;
 }

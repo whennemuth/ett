@@ -98,9 +98,8 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
       throw new Error(`Consenter update error: No fields to update for ${email}`);
     }
     console.log(`Updating consenter: ${email}`);
-    const input = consenterUpdate(TableName, consenterInfo, oldConsenterInfo).buildUpdateItem() as UpdateItemCommandInput;
-    command = new UpdateItemCommand(input);
-    return await sendCommand(command);
+    const input = consenterUpdate(TableName, consenterInfo, oldConsenterInfo).buildUpdateItemCommandInput() as UpdateItemCommandInput|UpdateItemCommandInput[];
+    let command:UpdateItemCommand;
   }
 
   /**

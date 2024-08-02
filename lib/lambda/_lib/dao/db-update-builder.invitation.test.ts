@@ -33,7 +33,7 @@ describe('getCommandInputBuilderForInvitationUpdate', () => {
     } as UpdateItemCommandInput;
 
     Date.prototype.toISOString = () => { return isoString; }
-    const command = invitationUpdate('ett-invitation', invitation).buildUpdateItem();
+    const command = invitationUpdate('ett-invitation', invitation).buildUpdateItemCommandInput();
     expect(command).toEqual(expectedOutput);    
   });
 });

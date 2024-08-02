@@ -1,5 +1,6 @@
 import { AttributeValue } from "@aws-sdk/client-dynamodb";
-import { Builder, utils } from "./db-update-builder-utils";
+import { Builder, getBlankCommandInput, getFldSetStatement } from "./db-update-builder-utils";
+import { wrap } from './db-object-builder';
 import { Config, ConfigFields } from "./entity";
 
 
@@ -10,15 +11,14 @@ import { Config, ConfigFields } from "./entity";
  * @returns 
  */
 export const configUpdate = (TableName:string, config:Config):Builder => {
-  const { getBlankItem, getFldSetStatement, wrap } = utils;
-  const buildUpdateItem = () => {
+  const buildUpdateItemCommandInput = () => {
     if( ! config.update_timestamp) {
       config.update_timestamp = new Date().toISOString();
     }
     const key = {
       [ ConfigFields.name ]: { S: config.name }
     } as Record<string, AttributeValue>;
-    const item = getBlankItem(TableName, key);
+    const item = getBlankCommandInput(TableName, key);
     const fieldset = [] as any[];
     let fld: keyof typeof ConfigFields;
     for(fld in ConfigFields) {
@@ -31,5 +31,5 @@ export const configUpdate = (TableName:string, config:Config):Builder => {
     item.UpdateExpression = `SET ${fieldset.map((o:any) => { return getFldSetStatement(o); }).join(', ')}`
     return item;
   }
-  return { buildUpdateItem };
+  return { buildUpdateItemCommandInput };
 };

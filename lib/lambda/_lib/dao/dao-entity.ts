@@ -63,7 +63,7 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
       active = YN.Yes;
     }
 
-    const input = entityUpdate(TableName, entityInfo).buildUpdateItem() as UpdateItemCommandInput;
+    const input = entityUpdate(TableName, entityInfo).buildUpdateItemCommandInput() as UpdateItemCommandInput;
     command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
@@ -141,7 +141,7 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
       throw new Error(`Entity update error: No fields to update for ${entity_id}`);
     }
     console.log(`Updating entity: ${entity_id}`);
-    const input = entityUpdate(TableName, entityInfo).buildUpdateItem() as UpdateItemCommandInput;
+    const input = entityUpdate(TableName, entityInfo).buildUpdateItemCommandInput() as UpdateItemCommandInput;
     command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
