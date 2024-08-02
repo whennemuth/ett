@@ -1,4 +1,4 @@
-import { DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, PutItemCommandOutput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from "@aws-sdk/client-dynamodb";
+import { DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, PutItemCommandOutput, TransactWriteItem, TransactWriteItemsCommand, TransactWriteItemsCommandInput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { DynamoDbConstruct, TableBaseNames } from "../../../DynamoDb";
 import { DAOConsenter, ReadParms } from "./dao";
@@ -53,6 +53,11 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
     if(rescinded_timestamp) throwIllegalParm('create', ConsenterFields.rescinded_timestamp);
     if(renewed_timestamp) throwIllegalParm('create', ConsenterFields.renewed_timestamp);
     if(exhibit_forms && exhibit_forms.length > 0) throwIllegalParm('create', ConsenterFields.exhibit_forms);
+    if( ! exhibit_forms) {
+      // Always initialize a consenter item with an empty exhibit forms list. This will avoid an error when
+      // attempting to append to that list for the first time - it must exist, albeit empty.
+      consenterInfo.exhibit_forms = [];
+    }
 
     // Make sure the original userinfo object gets a create_timestamp value if a default value is invoked.
     if( ! consenterInfo.create_timestamp) consenterInfo.create_timestamp = create_timestamp;
@@ -89,7 +94,7 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
   /**
    * Update a specific consenter record associated with the specified primary key (email)
    */
-  const update = async (oldConsenterInfo:Consenter):Promise<UpdateItemCommandOutput> => {
+  const update = async (oldConsenterInfo:Consenter):Promise<UpdateItemCommandOutput|void> => {
     // Handle field validation
     if( ! email) {
       throwMissingError('update', ConsenterFields.email);
@@ -97,9 +102,49 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
     if( Object.keys(consenterInfo).length == 1 ) {
       throw new Error(`Consenter update error: No fields to update for ${email}`);
     }
+    const consenterMissing = ():boolean => !oldConsenterInfo || oldConsenterInfo == {} as Consenter;
+
+    if(consenterMissing()) {
+      oldConsenterInfo = await read() as Consenter;
+      if(consenterMissing()) {
+        throw new Error(`Consenter update error: No such consenter ${email}`);
+      }
+    }
     console.log(`Updating consenter: ${email}`);
     const input = consenterUpdate(TableName, consenterInfo, oldConsenterInfo).buildUpdateItemCommandInput() as UpdateItemCommandInput|UpdateItemCommandInput[];
     let command:UpdateItemCommand;
+    if(input instanceof Array) {
+      return await transUpdate(input);
+    }
+    else {
+      command = new UpdateItemCommand(input);
+      return await sendCommand(command);
+    }    
+  }
+
+  /**
+   * Perform multiple updates in an all or nothing transaction.
+   * @param inputs 
+   * @returns 
+   */
+  const transUpdate = async (inputs:UpdateItemCommandInput[]) => {
+    if(inputs.length == 0) {
+      console.log(`Consenter update cancelled: No changes detected in: ${JSON.stringify(consenterInfo, null, 2)}`);
+      return;
+    }
+    const TransactItems = [] as TransactWriteItem[];
+    const loadTransactItem = (_input:UpdateItemCommandInput) => {
+      const { Key, TableName, ConditionExpression, ExpressionAttributeNames, ExpressionAttributeValues, UpdateExpression } = _input;
+      TransactItems.push({
+        Update: {
+          Key, TableName, ConditionExpression, ExpressionAttributeNames, ExpressionAttributeValues, UpdateExpression
+        }
+      });
+    };
+    inputs.forEach(input => loadTransactItem(input));
+    const commandInput = { TransactItems } as TransactWriteItemsCommandInput;
+    const transCommand = new TransactWriteItemsCommand(commandInput);
+    return await sendCommand(transCommand);
   }
 
   /**
@@ -195,16 +240,29 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_DAO_CONSENTER') {
           consenter = {
             email,
             exhibit_forms: [{
-              entity_id: 'abc-123',
+              entity_id: 'def-456',
               affiliates: [
                 {
                   affiliateType: AffiliateTypes.EMPLOYER,
                   email: 'formerEmployer@formerOrg.com',
-                  fullname: 'George Jetson',
+                  fullname: 'George J Jetson',
                   org: 'Former Organization',
-                  phone_number: '617-777-9999',
+                  phone_number: '617-777-0000',
                   title: 'Manager'
                 },
+                // {
+                //   affiliateType: AffiliateTypes.ACADEMIC,
+                //   email: 'formerColleague@formerUniversity.edu',
+                //   fullname: 'Roger Rabbit',
+                //   org: 'Former University',
+                //   phone_number: '781-222-4444',
+                //   title: 'Researcher'
+                // }
+              ]
+            },
+            {
+              entity_id: 'ijk-789',
+              affiliates: [
                 {
                   affiliateType: AffiliateTypes.ACADEMIC,
                   email: 'formerColleague@formerUniversity.edu',
@@ -214,7 +272,8 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_DAO_CONSENTER') {
                   title: 'Researcher'
                 }
               ]
-            }]
+            }
+          ]
           };
       }
       var dao = ConsenterCrud(consenter);

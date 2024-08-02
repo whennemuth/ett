@@ -39,28 +39,39 @@ export const convertToApiObject = (obj:any, filter?:ConvertObjectFilter) => {
     }
     return false;
   }
-  const converted = {} as any;
-  for(const key in obj) {
-    if(excludeField(key)) {
-      continue;
+  let converted = {} as any;
+
+  if(obj instanceof Array) {
+    const list = [] as any[];
+    for(const o in obj) {
+      list.push(wrap(obj[o]));
     }
-    const val = obj[key];
-    if(val === null || typeof val === 'undefined') {
-      if(filter?.setNull) {
+    converted = { L: list };
+  }
+  else {
+    for(const key in obj) {
+      if(excludeField(key)) {
+        continue;
+      }
+      const val = obj[key];
+      if(val === null || typeof val === 'undefined') {
+        if(filter?.setNull) {
+          converted[key] = wrap(obj[key]);
+        }
+      }
+      else if(val instanceof Array) {
+        const list = [] as any[];
+        for(const o in val) {
+          list.push(wrap(val[o]));
+        }
+        converted[key] = { L: list };      
+      }
+      else {
         converted[key] = wrap(obj[key]);
       }
     }
-    else if(val instanceof Array) {
-      const list = [] as any[];
-      for(const o in val) {
-        list.push(wrap(val[o]));
-      }
-      converted[key] = { L: list };      
-    }
-    else {
-      converted[key] = wrap(obj[key]);
-    }
   }
+
   return converted;
 }
 

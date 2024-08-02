@@ -503,6 +503,20 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Jest DAO db-update-builder-utils",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "-i", 
+        "${workspaceFolder}/lib/lambda/_lib/dao/db-update-builder-utils.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Jest DAO db-update-builder-consenter",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 

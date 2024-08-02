@@ -172,6 +172,14 @@ if(jestTest) {
       expect(output).toEqual({ includedFld: { S: 'included' }});
     });
 
+    it('Should output expected result for array root object', () => {
+      let output = convertToApiObject([ bigInput, bigInput ]);
+      console.log(JSON.stringify(output, null, 2));
+      expect(output).toEqual({
+        L: [ { M: expectedBigOutput }, { M: expectedBigOutput } ]
+      })
+    })
+
     it('Should include fields only found in the include list if provided', () => {
       const input = {
         fld1: 'exclude 1',
