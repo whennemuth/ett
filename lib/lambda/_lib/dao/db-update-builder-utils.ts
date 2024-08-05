@@ -4,8 +4,8 @@ import { AttributeValue, UpdateItemCommandInput } from "@aws-sdk/client-dynamodb
  * Type for builder with single method buildUpdateItemCommandInput, where optional index refers to the index of a 
  * list member that is the target of the update within an item. Else the update refers to the item itself.
  */
-export type Builder = { buildUpdateItemCommandInput(index?:number): UpdateItemCommandInput|UpdateItemCommandInput[] };
-
+export type Builder = { buildUpdateItemCommandInput(mergeParms?:MergeParms): UpdateItemCommandInput|UpdateItemCommandInput[] };
+export type MergeParms = { fieldName:string, merge:boolean }
 export const getBlankCommandInput = (TableName:string, Key:Record<string, AttributeValue>):UpdateItemCommandInput => {
   return { 
     TableName, Key,

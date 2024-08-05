@@ -5,6 +5,7 @@ import { DAOConsenter, ReadParms } from "./dao";
 import { convertFromApiObject } from "./db-object-builder";
 import { consenterUpdate } from "./db-update-builder.consenter";
 import { AffiliateTypes, Consenter, ConsenterFields, Roles, YN } from "./entity";
+import { deepClone } from "../../Utils";
 
 export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): DAOConsenter {
 
@@ -94,7 +95,7 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
   /**
    * Update a specific consenter record associated with the specified primary key (email)
    */
-  const update = async (oldConsenterInfo:Consenter):Promise<UpdateItemCommandOutput|void> => {
+  const update = async (oldConsenterInfo:Consenter, mergeExhibitForms:boolean=false):Promise<UpdateItemCommandOutput> => {
     // Handle field validation
     if( ! email) {
       throwMissingError('update', ConsenterFields.email);
@@ -110,20 +111,25 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
         throw new Error(`Consenter update error: No such consenter ${email}`);
       }
     }
-    console.log(`Updating consenter: ${email}`);
-    const input = consenterUpdate(TableName, consenterInfo, oldConsenterInfo).buildUpdateItemCommandInput() as UpdateItemCommandInput|UpdateItemCommandInput[];
-    let command:UpdateItemCommand;
-    if(input instanceof Array) {
-      return await transUpdate(input);
+
+    // Make sure the upcoming update gets an update_timestamp
+    const { update_timestamp:newTimestamp } = consenterInfo;
+    const { update_timestamp:oldTimestamp } = oldConsenterInfo;
+    if( ! newTimestamp || newTimestamp == oldTimestamp) {
+      consenterInfo.update_timestamp = new Date().toISOString();
     }
-    else {
-      command = new UpdateItemCommand(input);
-      return await sendCommand(command);
-    }    
+
+    // Perform the update
+    console.log(`Updating consenter: ${email}`);
+    const input = consenterUpdate(TableName, consenterInfo, oldConsenterInfo)
+      .buildUpdateItemCommandInput({ fieldName: ConsenterFields.exhibit_forms, merge:mergeExhibitForms }) as UpdateItemCommandInput;
+    const command = new UpdateItemCommand(input);
+    return await sendCommand(command);
   }
 
   /**
    * Perform multiple updates in an all or nothing transaction.
+   * NOTE: Cannot perform multiple updates to a table using a transaction if any 2 of those updates affect the same item.
    * @param inputs 
    * @returns 
    */
@@ -207,9 +213,20 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_DAO_CONSENTER') {
   process.env.REGION = 'us-east-2';
   const task = args.length > 3 ? args[3] : TASK.create;
   const email = 'daffy@warnerbros.com';
+  let consenter = { } as Consenter;
+  let dao:DAOConsenter;
+  const execute = (task:any, taskname:string) => {
+    task()
+      .then((retval:any) => {
+        console.log(`${taskname} successful: ${JSON.stringify(retval, null, 2)}`);
+      })
+      .catch((e:any) => {
+        JSON.stringify(e, Object.getOwnPropertyNames(e), 2);
+      });
+  };
   switch(task as TASK) {
     case TASK.create:
-      var dao = ConsenterCrud({
+      dao = ConsenterCrud({
         email,
         firstname: 'Daffy',
         middlename: 'D',
@@ -217,18 +234,12 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_DAO_CONSENTER') {
         title: 'Aquatic fowl',
         phone_number: '617-333-5555',        
       } as Consenter);
-      dao.create()
-        .then((retval:any) => {
-          console.log(`Create successful: ${JSON.stringify(retval, null, 2)}`);
-        })
-        .catch((e:any) => {
-          JSON.stringify(e, Object.getOwnPropertyNames(e), 2);
-        });
+      execute(dao.create, task);
       break;
     case TASK.update:
       enum UPDATE_TYPE { consent='consent', sub='sub', exhibit='exhibit' };
       const updateType = args.length > 4 ? args[4] : 'consent';
-      let consenter = { } as Consenter;
+      const scenario = (args.length > 5 ? args[5] : '1') as '1'|'2'|'3';
       switch(updateType as UPDATE_TYPE) {
         case UPDATE_TYPE.sub:
           consenter = { email, sub: 'cognito-user-sub' };
@@ -237,59 +248,70 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_DAO_CONSENTER') {
           consenter = { email, consented_timestamp: new Date().toISOString() };
           break;
         case UPDATE_TYPE.exhibit:
-          consenter = {
-            email,
-            exhibit_forms: [{
-              entity_id: 'def-456',
-              affiliates: [
-                {
-                  affiliateType: AffiliateTypes.EMPLOYER,
-                  email: 'formerEmployer@formerOrg.com',
-                  fullname: 'George J Jetson',
-                  org: 'Former Organization',
-                  phone_number: '617-777-0000',
-                  title: 'Manager'
-                },
-                // {
-                //   affiliateType: AffiliateTypes.ACADEMIC,
-                //   email: 'formerColleague@formerUniversity.edu',
-                //   fullname: 'Roger Rabbit',
-                //   org: 'Former University',
-                //   phone_number: '781-222-4444',
-                //   title: 'Researcher'
-                // }
-              ]
-            },
-            {
-              entity_id: 'ijk-789',
-              affiliates: [
-                {
-                  affiliateType: AffiliateTypes.ACADEMIC,
-                  email: 'formerColleague@formerUniversity.edu',
-                  fullname: 'Roger Rabbit',
-                  org: 'Former University',
-                  phone_number: '781-222-4444',
-                  title: 'Researcher'
-                }
-              ]
-            }
-          ]
+          const affiliate1 = {
+            affiliateType: AffiliateTypes.EMPLOYER,
+            email: 'formerEmployer@formerOrg.com',
+            fullname: 'George Jetson',
+            org: 'Former Organization',
+            phone_number: '617-777-9999',
+            title: 'Manager'
           };
+          const affiliate2 = {
+            affiliateType: AffiliateTypes.ACADEMIC,
+            email: 'formerColleague@formerUniversity.edu',
+            fullname: 'Roger Rabbit',
+            org: 'Former University',
+            phone_number: '781-222-4444',
+            title: 'Researcher'
+          };
+          const affiliate3 = {
+            affiliateType: AffiliateTypes.OTHER,
+            email: 'formerColleague@formerUniversity.edu',
+            fullname: 'Elmer Fudd',
+            org: 'Former Institute',
+            phone_number: '508-555-7777',
+            title: 'Epidemiologist'
+          };
+          consenter = {
+            email, exhibit_forms: [
+              { entity_id: 'def-456', affiliates: [ affiliate1, affiliate2 ] },
+              { entity_id: 'ijk-789', affiliates: [ affiliate3 ] }
+            ]
+          };
+
+          const originalConsenter = deepClone(consenter) as Consenter;
+
+          const originalConsenterWithExhibitEdits = deepClone(consenter) as Consenter;
+          originalConsenterWithExhibitEdits.sub = 'test_sub';
+          originalConsenterWithExhibitEdits.title = 'Sufferin Succotash'
+          originalConsenterWithExhibitEdits.exhibit_forms![0].affiliates![0].fullname = 'Jorge J Jetson';
+          originalConsenterWithExhibitEdits.exhibit_forms![0].affiliates![0].phone_number = '617-777-0000';
+
+          const originalConsenterWithExhibitEditsAndRemovals = deepClone(originalConsenterWithExhibitEdits) as Consenter;
+          originalConsenterWithExhibitEditsAndRemovals.title = "Youuu're deththpicable!";
+          originalConsenterWithExhibitEditsAndRemovals.exhibit_forms!.pop();
+          originalConsenterWithExhibitEditsAndRemovals.exhibit_forms![0].affiliates![0].email = 'elmersFormerColleague@formerUniversity.edu';
+
+          switch(scenario) {
+            case "1":
+              consenter = originalConsenter; break;
+            case "2":
+              consenter = originalConsenterWithExhibitEdits; break;
+            case "3":
+              consenter = originalConsenterWithExhibitEditsAndRemovals; break;
+          }
+          break;
       }
-      var dao = ConsenterCrud(consenter);
-      dao.update()
-        .then((retval:any) => {
-          console.log(`Create successful: ${JSON.stringify(retval, null, 2)}`);
-        })
-        .catch((e:any) => {
-          JSON.stringify(e, Object.getOwnPropertyNames(e), 2);
-        });
+      dao = ConsenterCrud(consenter);
+      execute(dao.update, task);
       break;
     case TASK.read:
-      console.log('Not implemented');
-      break;
+      dao = ConsenterCrud({ email });
+      execute(dao.read, task);
+    break;
     case TASK.Delete:
-      console.log('Not implemented');
+      dao = ConsenterCrud({ email });
+      execute(dao.Delete, task);
       break;
   }
 }

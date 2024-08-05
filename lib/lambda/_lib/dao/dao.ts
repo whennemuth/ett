@@ -9,7 +9,7 @@ const validator = Validator();
 
 type Baseline = {
   create():Promise<any>; 
-  update(oldEntity?:any):Promise<any>; 
+  update(oldEntity?:any, merge?:boolean):Promise<any>; 
   Delete():Promise<any>; 
   dryRun():any;
   test():Promise<any>;
