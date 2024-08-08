@@ -19,7 +19,7 @@ describe('Consenting Person lambda trigger: handler', () => {
     await ParameterValidationTests.pingTest(handler, mockEvent, Task.PING);
   });
   it('Should handle missing ettpayload with 400 status code', async () => {
-    const task = `${Task.SEND_AFFILIATE_DATA}`;
+    const task = `${Task.SEND_EXHIBIT_FORM}`;
     await ParameterValidationTests.missingPayload(handler, mockEvent, task, `${msgs.missingTaskParms} ${task}`);
   });
   it('Should handle a bogus task value with 400 status code', async () => {
@@ -28,8 +28,8 @@ describe('Consenting Person lambda trigger: handler', () => {
   });
 });
 
-describe(`Consenting Person lambda trigger: ${Task.SEND_AFFILIATE_DATA}`, () => {
-  const task = Task.SEND_AFFILIATE_DATA;
+describe(`Consenting Person lambda trigger: ${Task.SEND_EXHIBIT_FORM}`, () => {
+  const task = Task.SEND_EXHIBIT_FORM;
   it('Should return invalid response if exhibit data is missing', async () => {
     await SendAffiliateData.missingExhibitData(handler, mockEvent, task, msgs.missingExhibitData); 
   });

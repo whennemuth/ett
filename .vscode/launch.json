@@ -96,7 +96,8 @@
         "${workspaceFolder}/lib/lambda/_lib/dao/dao-consenter.ts",
         "RUN_MANUALLY_DAO_CONSENTER",
         "update",
-        "exhibit"
+        "exhibit",
+        "1"
       ], 
       "env": {
         "AWS_PROFILE": "bu"

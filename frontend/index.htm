@@ -1180,8 +1180,6 @@
                       <b>Exhibit forms saved withing the last 48 hours:</b>
                       <select id="lbxSavedExhibitsForms" class="form-control" style="width:300px; height:48px; margin-left: 10px;">
                         <option><- Select One -></option>
-                        <option value="entity_id_1">New York University</option>
-                        <option value="entity_id_2">Stanford University</option>
                       </select>
                     </div>
                     <div id="savedExhibitForm"></div>
@@ -1327,6 +1325,15 @@
                       <div class='tdHeading'>Cell<br>Phone</div>
                       <div><input type="text" class="form-control" id="txtExhibitPhone"></div>
                     </div>      
+
+                    <div style="display:flex; flex-direction: row; overflow: auto; justify-content: flex-start; float:left; clear:both; margin-top:40px; width:100%;">
+                      <button id="btnSaveExhibitForm" class="btn btn-primary btn-lg" style="margin-right:8px;" type="button" onclick="if(validExhibitForm()) saveExhibitForm();">Save</button>
+                      <span style="font-style: italic; font-weight: bold;">
+                        Click the Save button to file your entries temporarily to the ETT system if you wish to return later to complete your work.
+                        NOTE: Any such work saved for the first time will not be retained by our system any longer than 2 days (48 hours).
+                        You can save again any number of times within this 2 day window, but doing so will not extend the initial 48 hour limit.
+                      </span>
+                    </div>                                      
 
                     <div style="display:flex; flex-direction: row; overflow: auto; justify-content: flex-start; float:left; clear:both; margin-top:40px; width:100%;">
                       <!-- Button trigger modal -->
@@ -2261,7 +2268,13 @@
     const getConsenter = async () => {
       const { email } = IDJwtCookie.getUser() ?? {};
       await doConsentTask('get-consenter', { email });
-      const { consenter: { phone_number }, fullName, entities } = consenterInfo ?? {};
+      setConsenter();;
+    }
+
+    const setConsenter = () => {
+      const { consenter: { email, phone_number }, fullName, entities } = consenterInfo ?? {};
+      const role = AccessJwtCookie.getRole();
+      document.getElementById(`${role.name}_username`).innerHTML = fullName;
       document.getElementById('txtConsentFullname').value = fullName;
       document.getElementById('txtConsentEmail').value = email;
       document.getElementById('txtConsentPhone').value = phone_number;
@@ -2269,6 +2282,7 @@
       document.getElementById('txtConsentEditEmail').value = email;
       document.getElementById('txtConsentEditPhone').value = phone_number;
       populateEntityList(entities, "consenter-new-exhibit");
+      populateSavedExhibitFormsList();
       return consenterInfo;
     }
 
@@ -2398,54 +2412,113 @@
       }
     }
 
+    function setDummyConsenter() {
+      consenterInfo = {
+        activeConsent: true,
+        fullName: 'Roger R Rabbit',
+        entities: [
+          { active: 'Y', entity_id: 'entity_id_1', entity_name: 'Anytown University'},
+          { active: 'Y', entity_id: 'entity_id_2', entity_name: 'Somewhere State University'},
+        ],
+        consenter: {
+          email: "roger@warnerbros.com",
+          phone_number: '+6174448888',
+          active: 'Y',
+          consented_timestamp: "2024-07-05T17:16:31.352Z",
+          create_timestamp: "2024-07-05T16:24:56.068Z",
+          exhibit_forms: [
+            {
+              entity_id: 'entity_id_1',
+              affiliates: [
+                {
+                  affiliateType:"employer",
+                  email:"bugs@warnerbros.com",
+                  org:"Warner Bros.",
+                  fullname:"Bugs Bunny",
+                  title:"Rabbit",
+                  phone_number:"6172224444"
+                },{
+                  affiliateType:"academic",
+                  email:"daffy@au.edu",
+                  org:"Cartoon Town University",
+                  fullname:"Daffy Duck",
+                  title:"Fowl",
+                  phone_number:"7813334444"
+                },{
+                  affiliateType:"other",
+                  email:"sam@anywhere.com",
+                  org:"Anywhere Inc.",
+                  fullname:"Yosemite Sam",
+                  title:"Cowboy",
+                  phone_number:"5084448888"
+                }
+              ]
+            }
+          ]
+        }
+      };
+    }
+
     function addDummyExhibitData() {
-      const parentDiv = event.srcElement.closest('div[role="tabpanel"]');
-      const button = parentDiv.querySelector('#btnAddPoc');
+      const tab = event.srcElement.closest('div[role="tabpanel"]');
+      let lbx;
+      switch(tab.id) {
+        case 'consenter-new-exhibit':
+          lbx = tab.querySelector('#lbxRequestingEntity');
+          break;
+        case 'consenter-saved-exhibit':
+          lbx = tab.querySelector('#lbxSavedExhibitsForms');
+          break;
+      }
+      const entity_id = lbx.item(1).value;
+      lbx.value = entity_id;
+      lbx.dispatchEvent(new Event('change'));      
+      populateExhibitFormTable(tab, entity_id);
+    }
 
-      if(parentDiv.querySelectorAll('input[name="org-name"]').length < 3) {
-        button.click();
-      }
-      if(parentDiv.querySelectorAll('input[name="org-name"]').length < 3) {
-        button.click();
-      }
-      const setValue = (name, index, value) => {
-        const input = parentDiv.querySelectorAll(`[name="${name}"]`)[index];
-        input.value = value;
-      }
-      setValue('org-name', 0, 'Warner Bros.');
-      setValue('org-type', 0, 'employer');
-      setValue('poc-name', 0, 'Bugs Bunny');
-      setValue('poc-title', 0, 'Rabbit');
-      setValue('poc-email', 0, 'bugs@warnerbros.com');
-      setValue('poc-phone', 0, '6172224444');
-      
-      setValue('org-name', 1, 'Cartoon Town University');
-      setValue('org-type', 1, 'academic');
-      setValue('poc-name', 1, 'Daffy Duck');
-      setValue('poc-title', 1, 'Fowl');
-      setValue('poc-email', 1, 'daffy@au.edu');
-      setValue('poc-phone', 1, '7813334444');
-      
-      setValue('org-name', 2, 'Anywhere Inc.');
-      setValue('org-type', 2, 'other');
-      setValue('poc-name', 2, 'Yosemite Sam');
-      setValue('poc-title', 2, 'Cowboy');
-      setValue('poc-email', 2, 'sam@anywhere.com');
-      setValue('poc-phone', 2, '5084448888');
+    function populateExhibitFormTable(tab, entity_id) {
+      const button = tab.querySelector('#btnAddPoc');
+      let { fullName, consenter: { email, phone_number, exhibit_forms }} = consenterInfo;
+      exhibit_forms = exhibit_forms ?? [];
+      const exhibit_form = exhibit_forms.find(ef => {
+        return ef.entity_id = entity_id;
+      });
 
-      parentDiv.querySelector('#lbxRequestingEntity').selectedIndex = 1;
-      parentDiv.querySelector('#txtExhibitFullname').value = 'Roger R Rabbit';
-      parentDiv.querySelector('#txtExhibitEmail').value = 'roger@warnerbros.com';
-      parentDiv.querySelector('#txtExhibitPhone').value = '617-444-5555';
-      parentDiv.querySelector('#txtExhibitSignature').value = 'Rogers Signature';
+      if(exhibit_form) {
+        const { affiliates } = exhibit_form;
+        if(affiliates && affiliates.length > 0) {
+          while(tab.querySelectorAll('input[name="org-name"]').length < affiliates.length) {
+            button.click();
+          }
+          const setValue = (name, index, value) => {
+            const input = tab.querySelectorAll(`[name="${name}"]`)[index];
+            input.value = value;
+          }
+          for(let i=0; i<affiliates.length; i++) {
+            const a = affiliates[i];
+            setValue('org-name', i, a.org);
+            setValue('org-type', i, a.affiliateType);
+            setValue('poc-name', i, a.fullname);
+            setValue('poc-title', i, a.title);
+            setValue('poc-email', i, a.email);
+            setValue('poc-phone', i, a.phone_number);
+          }
+        }
+      }
+
+      tab.querySelector('#lbxRequestingEntity').value = entity_id;
+      tab.querySelector('#txtExhibitFullname').value = fullName;
+      tab.querySelector('#txtExhibitEmail').value = email;
+      tab.querySelector('#txtExhibitPhone').value = phone_number;
+      tab.querySelector('#txtExhibitSignature').value = 'My Signature';
     }
 
     /**
      * When leaving a single exhibit form signature field, inspect all such fields for a signature, 
      * and if each has one, show the "submit" button.
      */
-    function onSignatureKeypress() {
-      const carousel = event.srcElement.closest('#exhibitFormCarouselInner');
+    function onSignatureKeypress(_carousel) {
+      const carousel = _carousel ?? event.srcElement.closest('#exhibitFormCarouselInner');
       const signatures = carousel.querySelectorAll('input[name="txtExhibitSignature"]');
       let signed = 0;
 
@@ -2570,7 +2643,8 @@
         }
 
         createBodyContainer();
-        createBodyContent()
+        createBodyContent();
+        onSignatureKeypress(inner);
       }
 
       createExhibitDataObject();
@@ -2588,29 +2662,144 @@
         backdrop: 'static'
       }).show();
 
-      parentDiv.querySelector('#signSingleExhibitForms').addEventListener('hidden.bs.modal', event => {
+      parentDiv.parentElement.querySelector('#signSingleExhibitForms').addEventListener('hidden.bs.modal', event => {
         inner.innerHTML = '';
       })
     }
 
-    function showSavedExhibitForm(entityId) {
+    function showSavedExhibitForm() {
+      const lbx = event.srcElement;
+      const entity_id = lbx.value;
+      const entity_name = lbx.options[lbx.selectedIndex].innerText;
+
       // Set the innerHTML of the saved exhibit form, minus the field values.
-      const parentDiv = document.querySelector('#savedExhibitForm');
-      const templateDiv = document.querySelector('#exhibit-form-template');
+      const tab = document.querySelector('#savedExhibitForm');
+      const templateDiv = document.querySelector('#exhibit-form-template');      
 
       // Hide the lbxRequestingEntity and its label since lbxSavedExhibitsForms is the relevant picklist here.
-      parentDiv.innerHTML = templateDiv.innerHTML;
-      const reqEntityDiv = parentDiv.querySelector('#divRequestingEntity');
+      tab.innerHTML = templateDiv.innerHTML;
+      const reqEntityDiv = tab.querySelector('#divRequestingEntity');
+
       reqEntityDiv.querySelectorAll('div').forEach(div => {
         // Hide all child divs except for the dummy data button.
         if( ! div.querySelector('#btnDummyData')) {
           div.style.display = 'none';
         }
       });
+
+      populateExhibitFormTable(tab, entity_id);
+      tab.querySelector('#btnDummyData').parentElement.style.display = 'none';
+      tab.querySelector('#spanRequestingEntity').innerText = entity_name;
     }
 
-    function submitExhibitForm() {
-      alert('submitted');
+    function getExhibitFormPayload(tab) {
+      const { email } = IDJwtCookie.getUser() ?? {}; 
+      const affiliates = [];
+      const entity_id = tab.querySelector('#lbxRequestingEntity').value;
+      tab.querySelectorAll('#trPoc').forEach(tr => {
+        const affiliate = {
+          affiliateType: tr.querySelector('select[name="org-type"]').value,
+          email: tr.querySelector('input[name="poc-email"]').value,
+          org: tr.querySelector('input[name="org-name"]').value,
+          fullname: tr.querySelector('input[name="poc-name"]').value,
+          title: tr.querySelector('input[name="poc-title"]').value,
+          phone_number: tr.querySelector('input[name="poc-phone"]').value
+        }
+        affiliates.push(affiliate);
+      })
+      const payload = { email, exhibit_data: { entity_id, affiliates }};
+      return payload;
+    }
+
+    const sendExhibitFormPayload = async (task, parameters, callback) => {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+        const role = AccessJwtCookie.getRole().name;
+        const apiUri = STATIC_PARAMETERS.ROLES[role].API_URI
+
+        document.body.style.cursor = 'progress';
+        const response = await fetch(apiUri, {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({ task, parameters })
+          }
+        });
+
+        const package = await response.json();
+        document.body.style.cursor = 'default';
+        const { message, payload } = package;
+        if(payload.ok) {
+          consenterInfo = payload;
+          callback();
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
+    const saveExhibitForm = async () => {
+      const tab = event.srcElement.closest('div[role="tabpanel"]');
+      const payload = getExhibitFormPayload(tab);
+      switch(tab.id) {
+        case 'consenter-new-exhibit':
+          await sendExhibitFormPayload('save-new-exhibit-form', payload, () => {
+            alert('Exhibit form saved.');
+            document.getElementById('consenter-new-exhibit').innerHTML = document.getElementById('exhibit-form-template').innerHTML;
+            const { entities } = consenterInfo; 
+            populateEntityList(entities, "consenter-new-exhibit");
+            populateSavedExhibitFormsList();
+            showSavedExhibitForm();
+          });
+          break;
+        case 'consenter-saved-exhibit':
+          await sendExhibitFormPayload('save-old-exhibit-form', payload, () => {
+            alert('Exhibit form updated.');
+          });
+          break;
+      }
+    }
+
+    const populateSavedExhibitFormsList = () => {
+      const { consenter: { exhibit_forms }, entities } = consenterInfo;
+      if(exhibit_forms && exhibit_forms.length > 0) {
+        const list = document.getElementById('lbxSavedExhibitsForms');
+        // Clear the list
+        while(list.options.length > 0) {
+          list.remove(0);
+        }
+        // Repopulate the list
+        const addItem = (value, text) => {
+          const item = document.createElement("option");
+          item.value = value;
+          item.text = text;
+          list.add(item, null);
+        }
+        addItem('', '<- Select One ->');
+        exhibit_forms.forEach(ef => {
+          const  { entity_id } = ef;
+          const match = entities.find(e => {
+            return e.entity_id == entity_id;
+          });
+          if(match) {
+            addItem(ef.entity_id, match.entity_name);
+          }          
+        })
+      }      
+    }
+
+    const submitExhibitForm = async () => {
+      const tab = event.srcElement.closest('div[role="tabpanel"]');
+      const payload = getExhibitFormPayload(tab);
+      sendExhibitFormPayload('send-exhibit-form', payload);
     }
 
     const refreshDbTable = async (tableName) => {
@@ -3288,7 +3477,7 @@
         document.getElementById('spanRequestingEntity').innerText = lbx.options[lbx.selectedIndex].innerText;
       });
       document.getElementById('lbxSavedExhibitsForms').addEventListener('change', () => {
-        showSavedExhibitForm(event.srcElement.value);
+        showSavedExhibitForm();
       });
       // document.getElementById('btnExhibitNext').addEventListener('click', () => {
       //   if(validExhibitForm()) {
@@ -3396,16 +3585,22 @@
             
             case 'CONSENTING_PERSON':
               document.getElementById('app-section-CONSENTING_PERSON').style.display = 'inline';
-              document.getElementById('consenter-new-exhibit').innerHTML = document.getElementById('exhibit-form-template').innerHTML;
+              
+              const newExhibitDiv = document.getElementById('consenter-new-exhibit');
+              newExhibitDiv.innerHTML = document.getElementById('exhibit-form-template').innerHTML;
+              newExhibitDiv.querySelector('#lbxRequestingEntity').addEventListener('change', (event) => {
+                const lbx = event.target;
+                toggleHighlight(lbx);
+                newExhibitDiv.querySelector('#spanRequestingEntity').innerText = lbx.options[lbx.selectedIndex].innerText;
+              });
+
               if(localTesting()) {
-                populateEntityList([
-                  { entity_id: 'bu', entity_name: 'Boston University'},
-                  { entity_id: 'tu', entity_name: 'Tufts University'},
-                  { entity_id: 'nu', entity_name: 'Northeastern University'},
-                ], "consenter-new-exhibit");
-                break;
+                setDummyConsenter();
+                setConsenter();
               }
-              const ctr = await getConsenter();
+              else {
+                await getConsenter();
+              }
               break;
 
             default:
