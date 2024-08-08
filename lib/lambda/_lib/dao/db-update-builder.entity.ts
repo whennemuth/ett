@@ -1,5 +1,6 @@
 import { AttributeValue } from "@aws-sdk/client-dynamodb";
-import { Builder, utils } from "./db-update-builder-utils";
+import { Builder, getBlankCommandInput, getFldSetStatement } from "./db-update-builder-utils";
+import { wrap } from './db-object-builder';
 import { Entity, EntityFields } from "./entity";
 
 /**
@@ -9,15 +10,14 @@ import { Entity, EntityFields } from "./entity";
  * @returns 
  */
 export const entityUpdate = (TableName:string, entity:Entity):Builder => {
-  const { getBlankItem, getFldSetStatement, wrap } = utils;
-  const buildUpdateItem = () => {
+  const buildUpdateItemCommandInput = () => {
     if( ! entity.update_timestamp) {
       entity.update_timestamp = new Date().toISOString();
     }
     const key = {
       [ EntityFields.entity_id ]: { S: entity.entity_id }
     } as Record<string, AttributeValue>;
-    const item = getBlankItem(TableName, key);
+    const item = getBlankCommandInput(TableName, key);
     const fieldset = [] as any[];
     let fld: keyof typeof EntityFields;
     for(fld in EntityFields) {
@@ -30,5 +30,5 @@ export const entityUpdate = (TableName:string, entity:Entity):Builder => {
     item.UpdateExpression = `SET ${fieldset.map((o:any) => { return getFldSetStatement(o); }).join(', ')}`
     return item;
   }
-  return { buildUpdateItem };
+  return { buildUpdateItemCommandInput };
 };

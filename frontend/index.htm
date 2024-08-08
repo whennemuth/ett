@@ -269,7 +269,7 @@
       /* background-color: rgb(217, 225, 242); */
       /* background-color:rgb(84, 123, 196); */
       /* background-color:rgb(33, 54, 95); */
-      #tblPoc > thead > tr > td {
+      table[name="tblPoc"] > thead > tr > td {
         font-weight:bold;
         color: white;
         text-align:center;
@@ -280,7 +280,7 @@
         padding: 10px;
       }
 
-      #tblPoc > tbody > tr > td {
+      table[name="tblPoc"] > tbody > tr > td {
         background-color: rgb(217, 225, 242);
         border-style: none;
         padding: 10px;
@@ -991,7 +991,10 @@
                     <a class="nav-link active" id="consenter-consent-link" data-toggle="tab" href="#consenter-consent" role="tab" aria-controls="consenter-consent" aria-selected="true">Your Consent</a>
                   </li>
                   <li class="nav-item">
-                    <a class="nav-link" id="consenter-exhibit-link" data-toggle="tab" href="#consenter-exhibit" role="tab" aria-controls="consenter-exhibit" aria-selected="false">Exhibit Form Submission</a>
+                    <a class="nav-link" id="consenter-new-exhibit-link" data-toggle="tab" href="#consenter-new-exhibit" role="tab" aria-controls="consenter-new-exhibit" aria-selected="false">New Exhibit Form</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" id="consenter-saved-exhibit-link" data-toggle="tab" href="#consenter-saved-exhibit" role="tab" aria-controls="consenter-saved-exhibit" aria-selected="false">Saved Exhibit Forms</a>
                   </li>
                 </ul>
                 <div class="tab-content" id="consenterContent">
@@ -1168,7 +1171,21 @@
                     </div>
                   </div>
 
-                  <div class="tab-pane fade" id="consenter-exhibit" role="tabpanel" aria-labelledby="consenter-exhibit-link" style="overflow:auto;">
+                  <div class="tab-pane fade" id="consenter-new-exhibit" role="tabpanel" aria-labelledby="consenter-new-exhibit-link" style="overflow:auto;">
+
+                  </div>
+
+                  <div class="tab-pane fade" id="consenter-saved-exhibit" role="tabpanel" aria-labelledby="consenter-saved-exhibit-link" style="overflow:auto;">
+                    <div style="overflow:auto; display: flex; justify-content: center; align-items: center; margin-top:10px;">
+                      <b>Exhibit forms saved withing the last 48 hours:</b>
+                      <select id="lbxSavedExhibitsForms" class="form-control" style="width:300px; height:48px; margin-left: 10px;">
+                        <option><- Select One -></option>
+                      </select>
+                    </div>
+                    <div id="savedExhibitForm"></div>
+                  </div>
+
+                  <div id="exhibit-form-template" style="display:none;">
                     <h3 class="display-7 fw-bold">Full Exhibit Form - Consent Recipients/Affiliates</h3>
 
                     <p style="margin-top:40px; margin-bottom:40px;">
@@ -1177,20 +1194,20 @@
                       in the Consent Form also apply to this Full Exhibit Form.</b> My known Consent Recipient(s) are listed below: 
                     </p>
 
-                    <div style="float:left; clear:both; overflow:auto;">
+                    <div id="divRequestingEntity" style="float:left; clear:both; overflow:auto;">
                       <div style="float:left; margin-right:10px; text-align: right;" ><span id='exhibit-tooltip-0' data-toggle="tooltip">Requesting<br>Organizations/Entities</span></div>
                       <div style="float:left;">
                         <select id="lbxRequestingEntity" class="form-control" style="width:300px; height:48px; margin-right: 10px;">
                           <option><- Select One -></option>
-                          <option value="bu">Boston University</option>
-                          <option value="tu">Tufts University</option>
-                          <option value="nu">Northeastern University</option>
                         </select>
+                      </div>
+                      <div style="float:left;">
+                        <button id="btnDummyData" class="btn btn-primary btn-lg" type="button" onclick="addDummyExhibitData()">Use Dummy Data</button>
                       </div>
                     </div>
 
                     <div style="float:left; clear:both; margin-top: 20px; overflow: auto;">
-                      <table id="tblPoc">
+                      <table id="tblPoc" name="tblPoc">
                         <thead>
                           <tr>
                             <td colspan="2">Organization</td>
@@ -1206,12 +1223,12 @@
                             <td style="width:fit-content; width:1px;">&nbsp;</td>
                           </tr>
                         </thead>
-                        <tbody id="tbPoc">
-                          <tr id="trPoc">
-                            <td><input id="org-name" type="text" class="form-control"></td>
+                        <tbody id="tbPoc" name="tbPoc">
+                          <tr id="trPoc" name="trPoc">
+                            <td><input name="org-name" type="text" class="form-control"></td>
                             <td>
                               <span id='exhibit-tooltip-1' data-toggle="tooltip">
-                                <select id="org-type" class="form-control">
+                                <select name="org-type" class="form-control">
                                   <option><- Select One -></option>
                                   <option value="employer">1) Employers</option>
                                   <option value="academic">2) Academic / Professional Societies & Organizations</option>
@@ -1219,10 +1236,10 @@
                                 </select>
                               </span>
                             </td>
-                            <td><input id="poc-name" type="text" class="form-control"></td>
-                            <td><input id="poc-title" type="text" class="form-control"></td>
-                            <td><input id="poc-email" type="text" class="form-control"></td>
-                            <td><input id="poc-phone" type="text" class="form-control"></td>
+                            <td><input name="poc-name" type="text" class="form-control"></td>
+                            <td><input name="poc-title" type="text" class="form-control"></td>
+                            <td><input name="poc-email" type="text" class="form-control"></td>
+                            <td><input name="poc-phone" type="text" class="form-control"></td>
                             <td style="width:fit-content;">
                               <span id='exhibit-tooltip-2' data-toggle="tooltip">
                                 <button id="btnAddPoc" class="btn btn-primary btn-sm" type="button" style="width:68px;" onclick="changePoc('add')">Add</button>                                
@@ -1310,16 +1327,169 @@
                     </div>      
 
                     <div style="display:flex; flex-direction: row; overflow: auto; justify-content: flex-start; float:left; clear:both; margin-top:40px; width:100%;">
-                      <button id="btnExhibitNext" class="btn btn-danger btn-lg" style="margin-right:8px;" type="button">NEXT</button>
+                      <button id="btnSaveExhibitForm" class="btn btn-primary btn-lg" style="margin-right:8px;" type="button" onclick="if(validExhibitForm()) saveExhibitForm();">Save</button>
+                      <span style="font-style: italic; font-weight: bold;">
+                        Click the Save button to file your entries temporarily to the ETT system if you wish to return later to complete your work.
+                        NOTE: Any such work saved for the first time will not be retained by our system any longer than 2 days (48 hours).
+                        You can save again any number of times within this 2 day window, but doing so will not extend the initial 48 hour limit.
+                      </span>
+                    </div>                                      
+
+                    <div style="display:flex; flex-direction: row; overflow: auto; justify-content: flex-start; float:left; clear:both; margin-top:40px; width:100%;">
+                      <!-- Button trigger modal -->
+                      <button id="btnExhibitNext" class="btn btn-danger btn-lg" style="margin-right:8px;" type="button" onclick="if(validExhibitForm()) signSingleExhibitForms();">NEXT</button>
                       <span style="font-style: italic; font-weight: bold;">
                         Click the Next button to create, review, and sign a Single-Entity Exhibit Form for each of your listed consent 
                         Recipients. You will not be able to submit any of your Exhibit Forms until you digitally sign all of them.
-                      </span> 
+                      </span>
                     </div>                                      
                   </div>
+
+                  <!-- Modal -->
+                  <div class="modal fade modal-xl" id="signSingleExhibitForms" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="signSingleExhibitFormsLabel" aria-hidden="true">
+                    <div class="modal-dialog  modal-dialog-scrollable">
+                      <div class="modal-content">
+                        <div class="modal-body" style="text-align:left; overflow:auto;">
+                          <div id="exhibitFormCarousel" class="carousel carousel-dark slide">
+                            <div id="exhibitFormCarouselIndicators" class="carousel-indicators"></div>
+                            <div id="exhibitFormCarouselInner" class="carousel-inner"></div>
+                            <div>
+                              <button class="carousel-control-prev" type="button" data-bs-target="#exhibitFormCarousel" data-bs-slide="prev">
+                                <span class="carousel-control-prev-icon"></span>
+                                <span style="color:red; font-weight:bold;">Previous</span>
+                              </button>
+                              <button class="carousel-control-next" type="button" data-bs-target="#exhibitFormCarousel" data-bs-slide="next">
+                                <span style="color:green; font-weight:bold;">Next</span>
+                                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="modal-footer">
+                          <button class="btn btn-primary" data-bs-dismiss="modal">Cancel</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+
+                  <div class="tab-pane fade" id="consenter-affiliate" role="tabpanel" aria-labelledby="consenter-affiliate-link" style="overflow:auto;">
+                    <h3 class="display-7 fw-bold">Single-Entity Exhibit Form</h3>
+
+                    <p style="margin-top:40px; margin-bottom:20px; font-weight:bold;">
+                      This <u>“Single-Entity Exhibit Form”</u> is incorporated into my Consent Form, at link. <u>I agree that my 
+                      Consent Form will remain in effect to authorize the Disclosure Form that the following entity 
+                      completes and provides in response to the Disclosure Request sent with this Single-Entity Exhibit 
+                      Form.</u> The definitions in the Consent Form also apply to this Single Entity Exhibit Form. The 
+                      following entity is one of my <u>Consent Recipients</u> referenced in and covered by my Consent Form:
+                    </p>
+
+                    <div style="float:left; clear:both; overflow: auto;">
+                      <table name="tblPoc">
+                        <thead>
+                          <tr>
+                            <td colspan="2">Organization</td>
+                            <td colspan="5">Point of Contact</td>
+                          </tr>
+                          <tr>
+                            <td>Name (No acronyms) </td>
+                            <td><span id='exhibit-tooltip-1' data-toggle="tooltip">Type</span></td>
+                            <td>Name (First and Last Name)</td>
+                            <td>Job Title</td>
+                            <td>Email</td>
+                            <td>Phone Number</td>
+                          </tr>
+                        </thead>
+                        <tbody name="tbPoc">
+                          <tr>
+                            <td name="org-name"></td>
+                            <td name="org-type"></td>
+                            <td name="poc-name"></td>
+                            <td name="poc-title"></td>
+                            <td name="poc-email"></td>
+                            <td name="poc-phone"></td>
+                          </tr>
+                        </tbody>
+                      </table>
+
+                      <p style="margin-top:20px; margin-bottom:20px; font-weight:bold;">
+                        I agree that this electronic Single-Entity Exhibit Form and my electronic (digital) signature, and any copy will 
+                        have the same effect as originals for all purposes. <b>I have had the time to consider and consult anyone I wish 
+                        on whether to provide this Single Entity Exhibit Form. I am at least 18 years old and it is my knowing and 
+                        voluntary decision to sign and deliver this Single Entity Exhibit Form.</b>
+                      </p>
+
+                      <div name="signature-counter" style="float:left; clear:both; color:red; margin-top:10px; margin-bottom:10px; display: flex; justify-content: center; align-items: center; width:100%;">
+                        <div>
+                          <span name="signed-count">0</span> of <span name="signable-count">0</span> signatures collected
+                        </div>
+                      </div>
+
+                      <div style="float:left; clear:both;">
+                        <div style="overflow: auto;">
+                          <div style="float:left; max-width: 50%; text-align: right; font-weight: bold; font-style: italic; border-right-style: solid; height:100%; padding:10px;">
+                            Please type your full name (First Middle Last) to digitally sign this Exhibit Form:
+                          </div>
+                          <div style="float:left; padding:10px; overflow: auto; display:flex; align-items: center; height:100%;">
+                            <input type="text" class="form-control" name="txtExhibitSignature" onkeypress="onSignatureKeypress()"
+                              style="max-width: 200px; height:48px; float:left; margin-right:10px;">
+                          </div>
+                        </div>
+                      </div>
+                      <div class="consenterFields" style="min-width: 300px; clear:both;">
+                        <div class='tdHeading'>Full Name<br><span style="font-size: 10px;">(first, middle, last)</span></div>
+                        <div name="divExhibitFullname"></div>
+                      </div>
+                      <div class="consenterFields">
+                        <div class='tdHeading'>Email<br>Address</div>
+                        <div name="divExhibitEmail"></div>
+                      </div>
+                      <div class="consenterFields">
+                        <div class='tdHeading'>Cell<br>Phone</div>
+                        <div name="divExhibitPhone"></div>
+                      </div>      
+
+
+                      <div name="exhibitSubmitBlock" style="float:left; clear:both; display:none;">
+                        <hr style="width:90%; margin-top: 30px; margin-bottom: 30px;" />
+                        <p style="font-style: italic; font-weight:bold">
+                          You have digitally signed your Full Exhibit Form and each of your Single-Entity Exhibit Forms. 
+                        </p>
+                        <p style="font-weight:bold">
+                           NOTE: When you click “Submit”: 
+                        </p>
+                        <p>
+                          <ul>
+                            <li>
+                              <b>Your Consent Form will not expire and you will not be able to rescind your Consent Form or 
+                              update your Full or Single Entity Exhibit Forms in connection with the Privilege or Honor, 
+                              Employment or Role for which the Registered Entity is considering you at this time.</b>
+                            </li>
+                            <li>
+                              <b>Your Consent Recipients will be relying on these forms to make disclosures to the Registered 
+                              Entity. Contact the Registered Entity directly if you want to withdraw from their 
+                              consideration.</b><span style="font-style: italic;"> To correct your Exhibit Form contacts, directions are here. You may still rescind 
+                              your Consent Form to prevent its other use in the future; directions on how are here.</span>
+                            </li>
+                          </ul>
+                        </p>
+                       
+                        <div style="overflow:auto; display: flex; justify-content: center; align-items: center;">
+                          <div style="text-decoration:underline; font-weight:bold; float:left; width:300px;">
+                            Click the Submit button to complete and submit your Full and Single Entity Exhibit Form  
+                          </div>
+                          <div style="float:left;">
+                            <button id="btnSubmitExhibitForm" class="btn btn-danger btn-lg" data-bs-dismiss="modal" type="button" onclick="submitExhibitForm()">SUBMIT</button>                                                            
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
               </div>
           </div>
+
 
           <!-- Signout button -->
           <p>&nbsp;</p>              
@@ -1342,6 +1512,7 @@
         <!-- Display area for api response message (mostly errors) -->
         <div id="apiResponse"></div>
       </div>
+
     </main>
 
   <script>
@@ -2008,7 +2179,7 @@
               id: task == 'register-consent' ? 'apiResponse' : 'consentTimestamp',
               html: task == 'register-consent' ? failureMsg: pendingMsg
             };
-            hide('consenter-exhibit-link');
+            hide('consenter-new-exhibit-link');
             hide('consentOptions');
             show('consentFieldSet');
             fill(msg.id, msg.html);
@@ -2023,7 +2194,7 @@
             show('consentRenew');
             show('consentCorrect');
             show('consentSend');
-            show('consenter-exhibit-link');
+            show('consenter-new-exhibit-link');
             show('consentOptions');
             hide('consentFieldSet');
             fill('consentSendEmail', email);
@@ -2032,7 +2203,7 @@
 
           // Hide all consent options
           hideConsentFields = () => {
-            document.getElementById('consenter-exhibit-link').style.display = 'none';
+            document.getElementById('consenter-new-exhibit-link').style.display = 'none';
             document.getElementById('consentFieldSet').style.display = 'none';
             document.getElementById('consentOptions').style.display = 'none';
             fill('apiResponse', `${email} found to be deactivated`);
@@ -2057,7 +2228,7 @@
               hide('consentRescind');
               hide('consentCorrect');
               hide('consentSend');
-              hide('consenter-exhibit-link');
+              hide('consenter-new-exhibit-link');
               break;
             case 'deactivated':
               hideConsentFields();
@@ -2073,19 +2244,45 @@
       }
     }
 
+    const populateEntityList = (entities, parentDivId) => {
+      if( ! entities) {
+        return;
+      }
+      if( entities.length == 0) {
+        return;
+      }
+
+      const lbx = document.querySelector(`#${parentDivId} #lbxRequestingEntity`);
+      entities.forEach(entity => {
+        const { entity_id, entity_name } = entity;
+        const opt = document.createElement("option");
+        opt.value = entity_id;
+        opt.text = entity_name;
+        lbx.add(opt, null);
+      });
+    }
+
     /**
      * Get the full record for the consenter
      */
     const getConsenter = async () => {
       const { email } = IDJwtCookie.getUser() ?? {};
       await doConsentTask('get-consenter', { email });
-      const { consenter: { phone_number }, fullName } = consenterInfo ?? {};
+      setConsenter();;
+    }
+
+    const setConsenter = () => {
+      const { consenter: { email, phone_number }, fullName, entities } = consenterInfo ?? {};
+      const role = AccessJwtCookie.getRole();
+      document.getElementById(`${role.name}_username`).innerHTML = fullName;
       document.getElementById('txtConsentFullname').value = fullName;
       document.getElementById('txtConsentEmail').value = email;
       document.getElementById('txtConsentPhone').value = phone_number;
       document.getElementById('txtConsentEditFullname').value = fullName;
       document.getElementById('txtConsentEditEmail').value = email;
       document.getElementById('txtConsentEditPhone').value = phone_number;
+      populateEntityList(entities, "consenter-new-exhibit");
+      populateSavedExhibitFormsList();
       return consenterInfo;
     }
 
@@ -2159,7 +2356,7 @@
       let _on_off = on_off;
       if(on_off == undefined) {
         _on_off = fld.nodeName == 'SELECT' && fld.selectedIndex == 0;
-        _on_off |= fld.nodeName == 'INPUT' && ! fld.value;
+        _on_off ||= fld.nodeName == 'INPUT' && ! fld.value;
       }
       fld.style.borderStyle = _on_off ? 'solid' : '';
       fld.style.borderWidth = _on_off ? '2px' : '';
@@ -2187,10 +2384,13 @@
      * Add or remove a point of contact from the exhibit form
      */
     function changePoc(task) {
+      const { srcElement:button } = event;
       if(task == 'add') {
-        const tbl = document.getElementById('tblPoc');
-        const tr = document.getElementById('trPoc');
+        const tbl = button.closest('#tblPoc');
+        const tr = button.closest('#trPoc');
         const newrow = tbl.insertRow();
+        newrow.setAttribute('name', 'trPoc');
+        newrow.setAttribute('id', 'trPoc');
         newrow.innerHTML = tr.innerHTML;
 
         // Remove red borders of any of the rows child fields if they have them.
@@ -2202,44 +2402,404 @@
         })
       }
       if(task == 'remove') {
-        const tb = document.getElementById('tbPoc');
+        const tb = button.closest('#tbPoc');
         if(tb.childElementCount > 1) {
           // $('#exhibit-tooltip-3').tooltip('hide');
           $('[data-toggle="tooltip"]').tooltip('hide');
-          const row = event.srcElement.parentElement.parentElement.parentElement;
+          const row = button.closest('#trPoc');
           tb.removeChild(row);
         }
       }
     }
 
+    function setDummyConsenter() {
+      consenterInfo = {
+        activeConsent: true,
+        fullName: 'Roger R Rabbit',
+        entities: [
+          { active: 'Y', entity_id: 'entity_id_1', entity_name: 'Anytown University'},
+          { active: 'Y', entity_id: 'entity_id_2', entity_name: 'Somewhere State University'},
+        ],
+        consenter: {
+          email: "roger@warnerbros.com",
+          phone_number: '+6174448888',
+          active: 'Y',
+          consented_timestamp: "2024-07-05T17:16:31.352Z",
+          create_timestamp: "2024-07-05T16:24:56.068Z",
+          exhibit_forms: [
+            {
+              entity_id: 'entity_id_1',
+              affiliates: [
+                {
+                  affiliateType:"employer",
+                  email:"bugs@warnerbros.com",
+                  org:"Warner Bros.",
+                  fullname:"Bugs Bunny",
+                  title:"Rabbit",
+                  phone_number:"6172224444"
+                },{
+                  affiliateType:"academic",
+                  email:"daffy@au.edu",
+                  org:"Cartoon Town University",
+                  fullname:"Daffy Duck",
+                  title:"Fowl",
+                  phone_number:"7813334444"
+                },{
+                  affiliateType:"other",
+                  email:"sam@anywhere.com",
+                  org:"Anywhere Inc.",
+                  fullname:"Yosemite Sam",
+                  title:"Cowboy",
+                  phone_number:"5084448888"
+                }
+              ]
+            }
+          ]
+        }
+      };
+    }
+
+    function addDummyExhibitData() {
+      const tab = event.srcElement.closest('div[role="tabpanel"]');
+      let lbx;
+      switch(tab.id) {
+        case 'consenter-new-exhibit':
+          lbx = tab.querySelector('#lbxRequestingEntity');
+          break;
+        case 'consenter-saved-exhibit':
+          lbx = tab.querySelector('#lbxSavedExhibitsForms');
+          break;
+      }
+      const entity_id = lbx.item(1).value;
+      lbx.value = entity_id;
+      lbx.dispatchEvent(new Event('change'));      
+      populateExhibitFormTable(tab, entity_id);
+    }
+
+    function populateExhibitFormTable(tab, entity_id) {
+      const button = tab.querySelector('#btnAddPoc');
+      let { fullName, consenter: { email, phone_number, exhibit_forms }} = consenterInfo;
+      exhibit_forms = exhibit_forms ?? [];
+      const exhibit_form = exhibit_forms.find(ef => {
+        return ef.entity_id = entity_id;
+      });
+
+      if(exhibit_form) {
+        const { affiliates } = exhibit_form;
+        if(affiliates && affiliates.length > 0) {
+          while(tab.querySelectorAll('input[name="org-name"]').length < affiliates.length) {
+            button.click();
+          }
+          const setValue = (name, index, value) => {
+            const input = tab.querySelectorAll(`[name="${name}"]`)[index];
+            input.value = value;
+          }
+          for(let i=0; i<affiliates.length; i++) {
+            const a = affiliates[i];
+            setValue('org-name', i, a.org);
+            setValue('org-type', i, a.affiliateType);
+            setValue('poc-name', i, a.fullname);
+            setValue('poc-title', i, a.title);
+            setValue('poc-email', i, a.email);
+            setValue('poc-phone', i, a.phone_number);
+          }
+        }
+      }
+
+      tab.querySelector('#lbxRequestingEntity').value = entity_id;
+      tab.querySelector('#txtExhibitFullname').value = fullName;
+      tab.querySelector('#txtExhibitEmail').value = email;
+      tab.querySelector('#txtExhibitPhone').value = phone_number;
+      tab.querySelector('#txtExhibitSignature').value = 'My Signature';
+    }
+
+    /**
+     * When leaving a single exhibit form signature field, inspect all such fields for a signature, 
+     * and if each has one, show the "submit" button.
+     */
+    function onSignatureKeypress(_carousel) {
+      const carousel = _carousel ?? event.srcElement.closest('#exhibitFormCarouselInner');
+      const signatures = carousel.querySelectorAll('input[name="txtExhibitSignature"]');
+      let signed = 0;
+
+      // Count the signatures
+      signatures.forEach(signature => { if(signature.value) signed++; });
+      const sigCounters = carousel.querySelectorAll('div[name="signature-counter"]');
+      const allSigned = signed == signatures.length;
+
+      // Reapply numbers to the signature tally and change it from red to green if all signature boxes have a value
+      sigCounters.forEach(sigCounter => {
+        sigCounter.querySelector('span[name="signed-count"]').innerHTML = signed;
+        sigCounter.querySelector('span[name="signable-count"]').innerHTML = signatures.length;
+        sigCounter.style.color = allSigned ? 'green' : 'red'; 
+      });
+
+      // Unhide the submit blocks if all signature boxes have a value
+      const sigBlocks = carousel.querySelectorAll('div[name="exhibitSubmitBlock"]');
+      sigBlocks.forEach(sigBlock => {
+        sigBlock.style.display = allSigned ? 'inline' : 'none';
+      });
+    }
+
     /**
      * Return a boolean indicating if all exhibit form fields are filled out with valid values.
      */
-    function validExhibitForm() {
-      let empty = false;
+    function validExhibitForm() {     
+      let emptyFieldFound = false;
+      const parentDiv = event.srcElement.closest('div[role="tabpanel"]');
 
       // Put a red border on the requesting entity picklist if no entity is selected from it.
-      empty |= toggleHighlight(document.getElementById('lbxRequestingEntity'));
+      emptyFieldFound ||= toggleHighlight(parentDiv.querySelector('#lbxRequestingEntity'));
 
       // Put red borders on any affliate field that is empty.
       [ 'select', 'input'].forEach(tagname => {
-        const flds = document.getElementById('tblPoc').getElementsByTagName(tagname);
+        const flds = parentDiv.querySelector('#tblPoc').getElementsByTagName(tagname);
         for (const fld of flds) {
-          toggleHighlight(fld);
+          const empty = toggleHighlight(fld);
+          emptyFieldFound ||= empty;
         };
       });
       [ 'txtExhibitSignature', 'txtExhibitFullname', 'txtExhibitEmail', 'txtExhibitPhone' ].forEach(fldId => {
-        toggleHighlight(document.getElementById(fldId));
+        const empty = toggleHighlight(parentDiv.querySelector(`#${fldId}`));
+        emptyFieldFound ||= empty;
       });
-      return empty;
+      return  ! emptyFieldFound;
     }
+
+    let exhibit_data = [];
 
     /**
      * Put each affliate in a modal dialog in the form of a single exhibit form with the ability 
      * to sign each of them in order using another next button.
      */
     function signSingleExhibitForms() {
-      console.log('not implemented yet');
+      // Blank out the exhibit data cache
+      exhibit_data = [];
+
+      // Blank out the carousel inside the modal dialog
+      const parentDiv = event.srcElement.closest('div[role="tabpanel"]');
+      const indicators = document.querySelector('#exhibitFormCarouselIndicators');
+      const inner = document.querySelector('#exhibitFormCarouselInner');
+      indicators.innerHTML = '';
+      inner.innerHTML = '';
+
+      // Populate a javascript object with data entered for each point of contact (affiliate)
+      const createExhibitDataObject = () => {
+        const rows = parentDiv.querySelectorAll('tr[name="trPoc"]');
+        rows.forEach(row => {
+          const affiliate = {};
+          const inputs = row.getElementsByTagName('input');
+          for(const input of inputs) {
+            affiliate[input.name] = input.value;
+          }
+          affiliate['org-type'] = row.getElementsByTagName('select')[0].value;
+          exhibit_data.push(affiliate);
+        });
+      };
+
+      const createCarouselItemIndicator = i => {
+        const data = exhibit_data[i];
+        const affInd = document.createElement('button');
+        indicators.append(affInd);
+        affInd.setAttribute('data-bs-target', '#signSingleExhibitForms');
+        affInd.setAttribute('data-bs-slide-to', `${i}`);
+        affInd.setAttribute('aria-label', `Point of contact ${data['poc-name']}`);
+        if(i == 0) {
+          affInd.className = 'active';
+          affInd.setAttribute('aria-current', 'true');
+        }         
+      };
+
+      const createCarouselItemBody = i => {
+        const data = exhibit_data[i];
+        const affBody = document.createElement('div');
+        inner.append(affBody);
+        affBody.className = `carousel-item${i==0 ? ' active' : ''}`;
+
+        const createBodyContainer = () => {
+          const img = document.createElement('img');
+          affBody.append(img);
+          img.className = 'd-block w-100"';
+        }
+
+        const createBodyContent = () => {
+          const div1 = document.createElement('div');
+          div1.setAttribute('style', 'display: flex; justify-content: center; align-items: center; width:100%;')
+          affBody.append(div1);
+          const div2 = document.createElement('div');
+          div1.append(div2);
+          div2.className = 'd-none d-md-block';
+          div2.setAttribute('style', 'width:800px; margin-bottom:75px;')
+          div2.innerHTML = document.querySelector('#consenter-affiliate').innerHTML;
+          div2.querySelector('td[name="org-name"]').innerHTML = data['org-name'];
+          div2.querySelector('td[name="org-type"]').innerHTML = data['org-type'];
+          div2.querySelector('td[name="poc-name"]').innerHTML = data['poc-name'];
+          div2.querySelector('td[name="poc-email"]').innerHTML = data['poc-email'];
+          div2.querySelector('td[name="poc-title"]').innerHTML = data['poc-title'];
+          div2.querySelector('td[name="poc-phone"]').innerHTML = data['poc-phone'];
+          div2.querySelector('div[name="divExhibitFullname"]').innerHTML = parentDiv.querySelector('#txtExhibitFullname').value;
+          div2.querySelector('div[name="divExhibitEmail"]').innerHTML = parentDiv.querySelector('#txtExhibitEmail').value;
+          div2.querySelector('div[name="divExhibitPhone"]').innerHTML = parentDiv.querySelector('#txtExhibitPhone').value;
+        }
+
+        createBodyContainer();
+        createBodyContent();
+        onSignatureKeypress(inner);
+      }
+
+      createExhibitDataObject();
+
+      // Repopulate the carousel with screens, one per affiliate.
+      for(let i=0; i<exhibit_data.length; i++) {
+        createCarouselItemIndicator(i)        
+        createCarouselItemBody(i)
+      };
+
+      // Show the modal dialog
+      const modalCarousel = new bootstrap.Modal('#signSingleExhibitForms', {
+        keyboard: false,
+        focus: true,
+        backdrop: 'static'
+      }).show();
+
+      parentDiv.parentElement.querySelector('#signSingleExhibitForms').addEventListener('hidden.bs.modal', event => {
+        inner.innerHTML = '';
+      })
+    }
+
+    function showSavedExhibitForm() {
+      const lbx = event.srcElement;
+      const entity_id = lbx.value;
+      const entity_name = lbx.options[lbx.selectedIndex].innerText;
+
+      // Set the innerHTML of the saved exhibit form, minus the field values.
+      const tab = document.querySelector('#savedExhibitForm');
+      const templateDiv = document.querySelector('#exhibit-form-template');      
+
+      // Hide the lbxRequestingEntity and its label since lbxSavedExhibitsForms is the relevant picklist here.
+      tab.innerHTML = templateDiv.innerHTML;
+      const reqEntityDiv = tab.querySelector('#divRequestingEntity');
+
+      reqEntityDiv.querySelectorAll('div').forEach(div => {
+        // Hide all child divs except for the dummy data button.
+        if( ! div.querySelector('#btnDummyData')) {
+          div.style.display = 'none';
+        }
+      });
+
+      populateExhibitFormTable(tab, entity_id);
+      tab.querySelector('#btnDummyData').parentElement.style.display = 'none';
+      tab.querySelector('#spanRequestingEntity').innerText = entity_name;
+    }
+
+    function getExhibitFormPayload(tab) {
+      const { email } = IDJwtCookie.getUser() ?? {}; 
+      const affiliates = [];
+      const entity_id = tab.querySelector('#lbxRequestingEntity').value;
+      tab.querySelectorAll('#trPoc').forEach(tr => {
+        const affiliate = {
+          affiliateType: tr.querySelector('select[name="org-type"]').value,
+          email: tr.querySelector('input[name="poc-email"]').value,
+          org: tr.querySelector('input[name="org-name"]').value,
+          fullname: tr.querySelector('input[name="poc-name"]').value,
+          title: tr.querySelector('input[name="poc-title"]').value,
+          phone_number: tr.querySelector('input[name="poc-phone"]').value
+        }
+        affiliates.push(affiliate);
+      })
+      const payload = { email, exhibit_data: { entity_id, affiliates }};
+      return payload;
+    }
+
+    const sendExhibitFormPayload = async (task, parameters, callback) => {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+        const role = AccessJwtCookie.getRole().name;
+        const apiUri = STATIC_PARAMETERS.ROLES[role].API_URI
+
+        document.body.style.cursor = 'progress';
+        const response = await fetch(apiUri, {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({ task, parameters })
+          }
+        });
+
+        const package = await response.json();
+        document.body.style.cursor = 'default';
+        const { message, payload } = package;
+        if(payload.ok) {
+          consenterInfo = payload;
+          callback();
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
+    const saveExhibitForm = async () => {
+      const tab = event.srcElement.closest('div[role="tabpanel"]');
+      const payload = getExhibitFormPayload(tab);
+      switch(tab.id) {
+        case 'consenter-new-exhibit':
+          await sendExhibitFormPayload('save-new-exhibit-form', payload, () => {
+            alert('Exhibit form saved.');
+            document.getElementById('consenter-new-exhibit').innerHTML = document.getElementById('exhibit-form-template').innerHTML;
+            const { entities } = consenterInfo; 
+            populateEntityList(entities, "consenter-new-exhibit");
+            populateSavedExhibitFormsList();
+            showSavedExhibitForm();
+          });
+          break;
+        case 'consenter-saved-exhibit':
+          await sendExhibitFormPayload('save-old-exhibit-form', payload, () => {
+            alert('Exhibit form updated.');
+          });
+          break;
+      }
+    }
+
+    const populateSavedExhibitFormsList = () => {
+      const { consenter: { exhibit_forms }, entities } = consenterInfo;
+      if(exhibit_forms && exhibit_forms.length > 0) {
+        const list = document.getElementById('lbxSavedExhibitsForms');
+        // Clear the list
+        while(list.options.length > 0) {
+          list.remove(0);
+        }
+        // Repopulate the list
+        const addItem = (value, text) => {
+          const item = document.createElement("option");
+          item.value = value;
+          item.text = text;
+          list.add(item, null);
+        }
+        addItem('', '<- Select One ->');
+        exhibit_forms.forEach(ef => {
+          const  { entity_id } = ef;
+          const match = entities.find(e => {
+            return e.entity_id == entity_id;
+          });
+          if(match) {
+            addItem(ef.entity_id, match.entity_name);
+          }          
+        })
+      }      
+    }
+
+    const submitExhibitForm = async () => {
+      const tab = event.srcElement.closest('div[role="tabpanel"]');
+      const payload = getExhibitFormPayload(tab);
+      sendExhibitFormPayload('send-exhibit-form', payload);
     }
 
     const refreshDbTable = async (tableName) => {
@@ -2916,11 +3476,14 @@
         toggleHighlight(lbx);
         document.getElementById('spanRequestingEntity').innerText = lbx.options[lbx.selectedIndex].innerText;
       });
-      document.getElementById('btnExhibitNext').addEventListener('click', () => {
-        if(validExhibitForm()) {
-          signSingleExhibitForms();
-        }
+      document.getElementById('lbxSavedExhibitsForms').addEventListener('change', () => {
+        showSavedExhibitForm();
       });
+      // document.getElementById('btnExhibitNext').addEventListener('click', () => {
+      //   if(validExhibitForm()) {
+      //     signSingleExhibitForms();
+      //   }
+      // });
       document.getElementById('txtExhibitSignature').addEventListener('keyup', () => {
         toggleHighlight(event.srcElement);
       });
@@ -3022,10 +3585,22 @@
             
             case 'CONSENTING_PERSON':
               document.getElementById('app-section-CONSENTING_PERSON').style.display = 'inline';
+              
+              const newExhibitDiv = document.getElementById('consenter-new-exhibit');
+              newExhibitDiv.innerHTML = document.getElementById('exhibit-form-template').innerHTML;
+              newExhibitDiv.querySelector('#lbxRequestingEntity').addEventListener('change', (event) => {
+                const lbx = event.target;
+                toggleHighlight(lbx);
+                newExhibitDiv.querySelector('#spanRequestingEntity').innerText = lbx.options[lbx.selectedIndex].innerText;
+              });
+
               if(localTesting()) {
-                break;
+                setDummyConsenter();
+                setConsenter();
               }
-              const ctr = await getConsenter();
+              else {
+                await getConsenter();
+              }
               break;
 
             default:

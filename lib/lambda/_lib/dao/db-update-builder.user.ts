@@ -1,6 +1,7 @@
 import { AttributeValue } from "@aws-sdk/client-dynamodb";
+import { wrap } from './db-object-builder';
+import { Builder, getBlankCommandInput, getFldSetStatement } from "./db-update-builder-utils";
 import { User, UserFields } from "./entity";
-import { Builder, utils } from "./db-update-builder-utils";
 
 /**
  * Create the command to modify an user in the target table, or add a new one if it does not exist.
@@ -9,8 +10,7 @@ import { Builder, utils } from "./db-update-builder-utils";
  * @returns 
  */
 export const userUpdate = (TableName:string, user:User):Builder => {
-  const { getBlankItem, getFldSetStatement, wrap } = utils;
-  const buildUpdateItem = () => {
+  const buildUpdateItemCommandInput = () => {
     if( ! user.update_timestamp) {
       user.update_timestamp = new Date().toISOString();
     }
@@ -18,7 +18,7 @@ export const userUpdate = (TableName:string, user:User):Builder => {
       [ UserFields.email ]: { S: user.email },
       [ UserFields.entity_id ]: { S: user.entity_id }
     } as Record<string, AttributeValue>;
-    const item = getBlankItem(TableName, key);
+    const item = getBlankCommandInput(TableName, key);
     const fieldset = [] as any[];
     let fld: keyof typeof UserFields;
     for(fld in UserFields) {
@@ -31,5 +31,5 @@ export const userUpdate = (TableName:string, user:User):Builder => {
     item.UpdateExpression = `SET ${fieldset.map((o:any) => { return getFldSetStatement(o); }).join(', ')}`
     return item;
   } 
-  return { buildUpdateItem };
+  return { buildUpdateItemCommandInput };
 };

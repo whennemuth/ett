@@ -1,7 +1,10 @@
 import { CloudFrontClient, DistributionSummary, ListDistributionsCommand, ListDistributionsResult } from "@aws-sdk/client-cloudfront";
-import { DAOEntity, DAOFactory, DAOInvitation, DAOUser } from "../_lib/dao/dao";
-import { Entity, Invitation, User, YN } from "../_lib/dao/entity";
 import { exec } from "child_process";
+import { DAOEntity, DAOFactory, DAOInvitation, DAOUser } from "./_lib/dao/dao";
+import { Entity, Invitation, User, YN } from "./_lib/dao/entity";
+import assert = require("assert");
+import { writeFileSync } from 'fs';
+import { tmpdir } from 'os';
 
 export type LambdaProxyIntegrationResponse<T extends string = string> = {
   isBase64Encoded: boolean;
@@ -244,3 +247,123 @@ export const viewHtml = async (html:string) => {
   });
 
 }
+
+/**
+ * Object for converting an ISO date string to a date and compare it to other date string values
+ */
+export function ComparableDate(timestamp:any):any {
+  let date:Date;
+  if(timestamp) {
+    date = typeof timestamp == 'string' ? new Date(timestamp) : timestamp;
+  }
+  else {
+    date = new Date(0);
+  }
+  const before = (_timestamp:any) => {
+    const other = ComparableDate(_timestamp);
+    return date.getTime() < other.getTime();
+  }
+  const after = (_timestamp:any) => {
+    const other = ComparableDate(_timestamp);
+    return date.getTime() > other.getTime();
+  }
+  const getTime = () => {
+    return date.getTime();
+  }
+  return { before, after, getTime }
+}
+
+
+/**
+ * Turn an object like 
+ *   { fldname1: { L: [{ M: { fldname2: { S: 'fld-value' }}}] }} 
+ * into 
+ *   fldname1 = list_append(fldname1, { M: { fldname2: { S: 'fld-value' }}})
+ * @param fld 
+ * @returns 
+ */
+export const getListAppendStatement = (fld:any):string => {
+  const key = Object.keys(fld)[0];
+  let val = fld[key];
+  if(val.L) {
+    val = val.L[0];
+  }
+  return `${key} = list_append(${key}, ${val})`;
+}
+
+/**
+ * Determine if two objects are equal from a full depth comparison.
+ * @param obj1 
+ * @param obj2 
+ * @param log 
+ * @returns 
+ */
+export const deepEqual = (obj1:any, obj2:any, parm?:'log.console'|'log.temp'|'alt'):boolean => {
+  const log = (obj:string, idx:number) => {
+    if( ! parm) return;
+    const logMethod = parm.substring(4);
+    switch(logMethod) {
+      case 'console':
+        console.log(JSON.stringify(obj, null, 2))
+        break;
+      case 'temp':
+        const logfile = `${tmpdir()}/log${idx}.json`;
+        console.log(`Writing ${logfile}...`)
+        writeFileSync(`${logfile}`, JSON.stringify(obj, null, 2), 'utf-8');
+        break;
+    }
+  }
+
+  /**
+   * Perform a deep equality check between two objects based on the 2022 assert.deepEqual native nodejs method.
+   * @returns 
+   */
+  const method1 = ():boolean => {
+    try {
+      assert.deepEqual(obj1, obj2);
+      return true;
+    }
+    catch(e) {
+      return false;
+    }
+  };
+
+  /**
+   * Useful if method1 is returning unexpected results and you want a temporary 
+   * "second opinion" and/or some logic to step through
+   * @returns 
+   */
+  const method2 = ():boolean => {
+    if (obj1 === obj2) {
+      return true;
+    }
+    if(obj1 === null || obj2 === null) {
+      return false;
+    }
+    if (typeof obj1 !== 'object' || typeof obj2 !== 'object') {
+      return false;
+    }
+    const keys1 = Object.keys(obj1);
+    const keys2 = Object.keys(obj2);
+    if (keys1.length !== keys2.length) {
+      return false;
+    }
+    for (const key of keys1) {
+      if ( ! keys2.includes(key) || ! deepEqual(obj1[key], obj2[key], parm)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  log(obj1, 1);
+  log(obj2, 2);
+
+  if(parm && parm == 'alt') {
+    return method2();
+  }
+
+  return method1();
+}
+
+export const deepClone = (obj:any) => JSON.parse(JSON.stringify(obj));

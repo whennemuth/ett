@@ -1,17 +1,19 @@
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { DAOFactory } from "../../_lib/dao/dao";
+import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
 import { Entity, Roles, User, YN, Affiliate, ExhibitForm as ExhibitFormData, Consenter, AffiliateTypes, ConsenterFields } from "../../_lib/dao/entity";
 import { ConsentFormData } from "../../_lib/pdf/ConsentForm";
 import { PdfForm } from "../../_lib/pdf/PdfForm";
-import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../Utils";
+import { ComparableDate, debugLog, deepClone, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
 import { ConsentFormEmail } from "./ConsentEmail";
 import { ExhibitEmail, FormTypes } from "./ExhibitEmail";
 
 export enum Task {
-  SAVE_AFFILIATE_DATA = 'save-affiliate-data',
-  SEND_AFFILIATE_DATA = 'send-affiliate-data',
+  SAVE_NEW_EXHIBIT_FORM = 'save-new-exhibit-form',
+  SAVE_OLD_EXHIBIT_FORM = 'save-old-exhibit-form',
+  SEND_EXHIBIT_FORM = 'send-exhibit-form',
   GET_CONSENTER = 'get-consenter',
   REGISTER_CONSENT = 'register-consent',
   RENEW_CONSENT = 'renew-consent',
@@ -27,11 +29,13 @@ export const INVALID_RESPONSE_MESSAGES = {
   missingEmail: 'Missing email parameter',
   missingExhibitData: 'Missing exhibit form data!',
   missingAffiliateRecords: 'Missing affiliates in exhibit form data!',
-  invalidAffiliateRecords: 'Affiliate item with missing/invalid value',
+  missingExhibitFormIssuerEmail: 'Missing email of exhibit form issuer!',
   missingEntityId: 'Missing entity_id!',
   missingConsent: 'Consent is required before the requested operation can be performed',
+  exhibitFormAlreadyExists: 'Cannot create new exhibit_form since it already exists in the database',
+  invalidAffiliateRecords: 'Affiliate item with missing/invalid value',
   inactiveConsenter: 'Consenter is inactive',
-  missingExhibitFormIssuerEmail: 'Missing email of exhibit form issuer!',
+  noSuchConenter: 'No such consenter',
   emailFailure: 'Email failed for one or more recipients!'
 }
 
@@ -76,10 +80,12 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           return await sendConsent( { email } as Consenter, entityName);
         case Task.CORRECT_CONSENT:
           return await correctConsent(parameters);
-        case Task.SAVE_AFFILIATE_DATA:
-          return await saveExhibitData(email, exhibit_data);
-        case Task.SEND_AFFILIATE_DATA:
-          return await processExhibitData(email, exhibit_data);
+        case Task.SAVE_NEW_EXHIBIT_FORM:
+          return await saveExhibitData(email, exhibit_data, true);
+        case Task.SAVE_OLD_EXHIBIT_FORM:
+          return await saveExhibitData(email, exhibit_data, false);
+        case Task.SEND_EXHIBIT_FORM:
+          return await sendExhibitData(email, exhibit_data);
         case Task.PING:
           return okResponse('Ping!', parameters); 
       }
@@ -117,10 +123,20 @@ export const isActiveConsent = (consenter:Consenter):boolean => {
   const { consented_timestamp, rescinded_timestamp, renewed_timestamp, active } = consenter;
   let activeConsent:boolean = false;
   if(consented_timestamp && `${active}` == YN.Yes) {
-    const added:Date = new Date(consented_timestamp);
-    const removed:Date = rescinded_timestamp ? new Date(rescinded_timestamp) : new Date(0);
-    const restored:Date = renewed_timestamp ? new Date(renewed_timestamp) : new Date(0);
-    activeConsent = ( added.getTime() > removed.getTime() ) || ( restored.getTime() >= removed.getTime() );
+
+    const consented = ComparableDate(consented_timestamp);
+    const rescinded = ComparableDate(rescinded_timestamp);
+    const renewed = ComparableDate(renewed_timestamp);
+
+    if(consented.after(rescinded) && consented.after(renewed)) {
+      activeConsent = true; // Consent was given
+    }
+    if(renewed.after(consented) && renewed.after(rescinded)) {
+      activeConsent = true; // Consent was rescinded but later restored
+    }
+    if(rescinded.after(consented) && rescinded.after(renewed)) {
+      activeConsent = false; // Consent was rescinded
+    }
   }
   return activeConsent;
 }
@@ -266,16 +282,22 @@ export const sendConsent = async (consenter:Consenter, entityName:string): Promi
  * Save exhibit form submission
  * @param email 
  * @param data 
+ * @param isNew Save a new exhibit form (true) or update and existing one (false)
  * @returns 
  */
-export const saveExhibitData = async (email:string, data:ExhibitFormData): Promise<LambdaProxyIntegrationResponse> => {
+export const saveExhibitData = async (email:string, data:ExhibitFormData, isNew:boolean): Promise<LambdaProxyIntegrationResponse> => {
   // Validate incoming data
   if( ! data) {
     return invalidResponse(INVALID_RESPONSE_MESSAGES.missingExhibitData);
   }
 
-  // Abort if the consenter has not yet consented
+  // Abort if consenter lookup fails
   const consenterInfo = await getConsenter(email, false) as ConsenterInfo;
+  if( ! consenterInfo) {
+    return invalidResponse(INVALID_RESPONSE_MESSAGES.noSuchConenter + ' ' + email );
+  }
+
+  // Abort if the consenter has not yet consented
   if( ! consenterInfo?.activeConsent) {
     if(consenterInfo?.consenter?.active == YN.No) {
       return invalidResponse(INVALID_RESPONSE_MESSAGES.inactiveConsenter);
@@ -283,10 +305,64 @@ export const saveExhibitData = async (email:string, data:ExhibitFormData): Promi
     return invalidResponse(INVALID_RESPONSE_MESSAGES.missingConsent);
   }
 
-  // TODO: Make database record of exhibit form. Make sure it only lasts for 48 hours, enough time for 
-  // authorized individuals to make disclosure requests which will contain single exhibit form "extracts" 
-  // based on this db record as attachments.
-  return invalidResponse('Not implemented yet');
+  // Abort if the exhibit form has no affiliates
+  const { affiliates, entity_id } = data;
+  if( ! affiliates || affiliates.length == 0) {
+    return invalidResponse(INVALID_RESPONSE_MESSAGES.missingAffiliateRecords);
+  }
+
+  // Abort if the attempt is to save a new exhibit_form, but it already exists in the database
+  if(isNew) {
+    const { consenter: { exhibit_forms }} = consenterInfo;
+    consenterInfo.consenter.exhibit_forms;
+    if(exhibit_forms && exhibit_forms.length > 0) {
+      const match = exhibit_forms.find(ef => {
+        return ef.entity_id == entity_id;
+      });
+      if(match) {
+        return invalidResponse(INVALID_RESPONSE_MESSAGES.exhibitFormAlreadyExists + ': ' + match.entity_id);
+      }
+    }
+  } 
+
+  // Ensure that an existing exhibit form cannot have its create_timestamp refreshed - this would inferfere with expiration.
+  const { consenter:oldConsenter } = consenterInfo;
+  const { exhibit_forms:existingForms } = oldConsenter;
+  const matchingIdx = (existingForms ?? []).findIndex(ef => {
+    ef.entity_id == data.entity_id;
+  });
+  if(matchingIdx == -1 && ! data.create_timestamp) {
+    // Updating an existing exhibit form
+    data.create_timestamp = new Date().toISOString();
+  }
+  else {
+    // Creating a new exhibit form
+    const { create_timestamp:existingTimestamp } = (existingForms ?? [])[matchingIdx];
+    const newTimestamp = new Date().toISOString();
+    const info = `consenter:${email}, exhibit_form:${data.entity_id}`;
+    if( ! existingTimestamp) {
+      console.log(`Warning: Illegal state - existing exhibit form found without create_timestamp! ${info}`);
+    }
+    if(data.create_timestamp) {
+      if(data.create_timestamp != (existingTimestamp || data.create_timestamp)) {
+        console.log(`Warning: Updates to exhibit form create_timestamp are disallowed:  ${info}`);
+      }
+    }
+    data.create_timestamp = existingTimestamp || newTimestamp;
+  }
+
+  // Update the consenter record by creating/modifying the provided exhibit form.
+  const newConsenter = deepClone(oldConsenter);
+  newConsenter.exhibit_forms = [ data ];
+  const dao = ConsenterCrud(newConsenter);
+  await dao.update(oldConsenter, true); // NOTE: merge is set to true - means that other exhibit forms are retained.
+
+  /**
+   * TODO: Add some kind of event bridge mechanism that removes the exhibit form 48 hours after its initial
+   * insertion (creation as per create_timestamp)
+   */
+
+  return getConsenterResponse(email, true);
 };
 
 /**
@@ -294,7 +370,7 @@ export const saveExhibitData = async (email:string, data:ExhibitFormData): Promi
  * @param data 
  * @returns 
  */
-export const processExhibitData = async (email:string, data:ExhibitFormData): Promise<LambdaProxyIntegrationResponse> => {
+export const sendExhibitData = async (email:string, data:ExhibitFormData): Promise<LambdaProxyIntegrationResponse> => {
   // Validate incoming data
   if( ! data) {
     return invalidResponse(INVALID_RESPONSE_MESSAGES.missingExhibitData);
@@ -392,7 +468,7 @@ export const processExhibitData = async (email:string, data:ExhibitFormData): Pr
 const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
 
-  const task = Task.SEND_CONSENT as Task;
+  const task = Task.SAVE_NEW_EXHIBIT_FORM as Task;
   const landscape = 'dev';
   const region = 'us-east-2';
 
@@ -409,12 +485,50 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
     process.env.REGION = region;
     process.env.DEBUG = 'true';
 
-    let payload = {};
+    let payload = {
+      task,
+      parameters: {
+        email:"cp1@warhen.work",
+        exhibit_data: {
+          entity_id:"e1b64ff0-31fe-456e-ad18-ec95d18db695",
+          affiliates: [
+            {
+              affiliateType:"employer",
+              email:"bugs@warnerbros.com",
+              org:"Warner Bros.",
+              fullname:"Bugs Bunny",
+              title:"Rabbit",
+              phone_number:"6172224444"
+            },{
+              affiliateType:"academic",
+              email:"daffy@au.edu",
+              org:"Cartoon Town University",
+              fullname:"Daffy Duck",
+              title:"Fowl",
+              phone_number:"7813334444"
+            },{
+              affiliateType:"other",
+              email:"sam@anywhere.com",
+              org:"Anywhere Inc.",
+              fullname:"Yosemite Sam",
+              title:"Cowboy",
+              phone_number:"5084448888"
+            }
+          ]
+        }
+      } 
+    } as any;
 
     switch(task) {
-      case Task.SAVE_AFFILIATE_DATA:
+      case Task.SAVE_NEW_EXHIBIT_FORM:
         break;
-      case Task.SEND_AFFILIATE_DATA:
+      case Task.SAVE_OLD_EXHIBIT_FORM:
+        // Make some edits
+        payload.exhibit_data.affiliates[0].email = 'bugsbunny@gmail.com';
+        payload.exhibit_data.affiliates[1].org = 'New York School of Animation';
+        payload.exhibit_data.affiliates[1].fullname = 'Daffy D Duck';
+        break;
+      case Task.SEND_EXHIBIT_FORM:
         break;
       case Task.GET_CONSENTER:
       case Task.SEND_CONSENT:

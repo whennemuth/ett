@@ -136,8 +136,8 @@ jest.mock('../../_lib/dao/dao.ts', () => {
   }
 });
 
-jest.mock('../Utils.ts', () => {
-  const originalModule = jest.requireActual('../Utils.ts');
+jest.mock('../../Utils.ts', () => {
+  const originalModule = jest.requireActual('../../Utils.ts');
   return {
     __esModule: true,
     ...originalModule,

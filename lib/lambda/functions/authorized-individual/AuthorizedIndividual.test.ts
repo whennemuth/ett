@@ -5,7 +5,7 @@ import { Roles, User } from '../../_lib/dao/entity';
 import { entity, bugsbunny, daffyduck, yosemitesam } from './MockObjects';
 import { expectedCommandInput } from './DemolitionCommandInputMock';
 import { Task, handler } from './AuthorizedIndividual';
-import { LambdaProxyIntegrationResponse } from '../Utils';
+import { LambdaProxyIntegrationResponse, deepClone } from '../../Utils';
 import { AbstractRoleApi, IncomingPayload, OutgoingBody } from '../../../role/AbstractRole';
 import { DAOUser, FactoryParms } from '../../_lib/dao/dao';
 
@@ -15,8 +15,6 @@ const demolish = async ():Promise<any> => expectedCommandInput;
 
 enum Scenario { NORMAL, UNMATCHABLE_ENTITY, NON_EMAILS };
 let currentScenario = Scenario.NORMAL as Scenario;
-
-const deepClone = (obj:any) => JSON.parse(JSON.stringify(obj));
 
 jest.mock('./Demolition', () => {
   return {

@@ -37,7 +37,7 @@ describe('getCommandInputBuilderForUserUpdate', () => {
     } as UpdateItemCommandInput;
 
     Date.prototype.toISOString = () => { return isoString; }
-    const command = userUpdate('ett-user', user).buildUpdateItem();
+    const command = userUpdate('ett-user', user).buildUpdateItemCommandInput();
     expect(command).toEqual(expectedOutput);
   })
 });

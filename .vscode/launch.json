@@ -27,22 +27,6 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "DAO consenter",
-      "skipFiles": [ "<node_internals>/**" ],
-      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
-      "args": [
-        "${workspaceFolder}/lib/lambda/_lib/dao/dao-consenter.ts",
-        "RUN_MANUALLY_DAO_CONSENTER",
-        "update",
-        "consent"
-      ], 
-      "env": {
-        "AWS_PROFILE": "bu"
-      }, 
-    },
-    {
-      "type": "node",
-      "request": "launch",
       "name": "SysAdmin",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
@@ -100,6 +84,23 @@
       "env": {
         "AWS_PROFILE": "bu",
         "REGION": "us-east-2"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "ConsentingPerson DAO",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/dao/dao-consenter.ts",
+        "RUN_MANUALLY_DAO_CONSENTER",
+        "update",
+        "exhibit",
+        "1"
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu"
       }, 
     },
     {
@@ -507,7 +508,6 @@
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
         "--runTestsByPath", 
-        "--silent",
         "-i", 
         "${workspaceFolder}/lib/lambda/_lib/dao/db-update-builder.consenter.test.ts" 
       ],
@@ -540,6 +540,20 @@
         "--silent",
         "-i", 
         "${workspaceFolder}/lib/lambda/_lib/dao/db-update-builder.user.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Utils",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [ 
+        "--runTestsByPath", 
+        "-i", 
+        "${workspaceFolder}/lib/lambda/Utils.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",

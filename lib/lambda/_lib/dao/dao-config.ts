@@ -50,7 +50,7 @@ export function ConfigCrud(configInfo:Config, _dryRun:boolean=false): DAOConfig 
       configInfo.update_timestamp = update_timestamp;
     }
 
-    const input = configUpdate(TableName, configInfo).buildUpdateItem() as UpdateItemCommandInput;
+    const input = configUpdate(TableName, configInfo).buildUpdateItemCommandInput() as UpdateItemCommandInput;
     command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
@@ -112,7 +112,7 @@ export function ConfigCrud(configInfo:Config, _dryRun:boolean=false): DAOConfig 
       throw new Error(`Config update error: No fields to update for ${name}`);
     }
     console.log(`Updating config: ${name}`);
-    const input = configUpdate(TableName, configInfo).buildUpdateItem() as UpdateItemCommandInput;
+    const input = configUpdate(TableName, configInfo).buildUpdateItemCommandInput() as UpdateItemCommandInput;
     command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }

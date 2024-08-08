@@ -1,6 +1,7 @@
 import { AttributeValue } from "@aws-sdk/client-dynamodb";
+import { wrap } from './db-object-builder';
+import { Builder, getBlankCommandInput, getFldSetStatement } from "./db-update-builder-utils";
 import { Invitation, InvitationFields } from "./entity";
-import { Builder, utils } from "./db-update-builder-utils";
 
 /**
  * Create the command to modify an invitation in the target table, or add a new one if it does not exist.
@@ -9,12 +10,11 @@ import { Builder, utils } from "./db-update-builder-utils";
  * @returns 
  */
 export const invitationUpdate = (TableName:string, invitation:Invitation):Builder => {
-  const { getBlankItem, getFldSetStatement, wrap } = utils;
-  const buildUpdateItem = () => {
+  const buildUpdateItemCommandInput = () => {
     const key = {
       [ InvitationFields.code ]: { S: invitation.code }
     } as Record<string, AttributeValue>;
-    const item = getBlankItem(TableName, key);
+    const item = getBlankCommandInput(TableName, key);
     const fieldset = [] as any[];
     let fld: keyof typeof InvitationFields;
     for(fld in InvitationFields) {
@@ -27,5 +27,5 @@ export const invitationUpdate = (TableName:string, invitation:Invitation):Builde
     item.UpdateExpression = `SET ${fieldset.map((o:any) => { return getFldSetStatement(o); }).join(', ')}`
     return item;
   }  
-  return { buildUpdateItem };
+  return { buildUpdateItemCommandInput };
 };

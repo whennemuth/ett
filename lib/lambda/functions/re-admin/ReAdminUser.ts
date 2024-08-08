@@ -5,7 +5,7 @@ import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
 import { Entity, Invitation, Role, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
 import { UserInvitation } from '../../_lib/invitation/Invitation';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
-import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, lookupPendingInvitations, lookupSingleActiveEntity, lookupSingleUser, lookupUser, okResponse } from "../Utils";
+import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, lookupPendingInvitations, lookupSingleActiveEntity, lookupSingleUser, lookupUser, okResponse } from "../../Utils";
 
 export enum Task {
   CREATE_ENTITY = 'create-entity',
@@ -142,7 +142,12 @@ export const lookupEntity = async (email:string, role:Role):Promise<LambdaProxyI
   return okResponse('Ok', { user }) 
 }
 
-
+/**
+ * Create a single entity.
+ * @param entity 
+ * @param reAdmin 
+ * @returns 
+ */
 export const createEntity = async (entity:Entity, reAdmin?:User):Promise<LambdaProxyIntegrationResponse> => {
 
   if( ! entity.entity_name) {
@@ -151,6 +156,10 @@ export const createEntity = async (entity:Entity, reAdmin?:User):Promise<LambdaP
 
   if( ! entity.description) {
     entity.description = entity.entity_name;
+  }
+
+  if( ! entity.active) {
+    entity.active = YN.Yes;
   }
 
   // Create the entity

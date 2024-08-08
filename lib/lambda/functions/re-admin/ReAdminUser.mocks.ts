@@ -3,7 +3,7 @@ import { IncomingPayload, OutgoingBody } from "../../../role/AbstractRole";
 import { DAOEntity, DAOInvitation, DAOUser, FactoryParms } from "../../_lib/dao/dao";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
 import { Entity, Invitation, Role, Roles, User, YN } from "../../_lib/dao/entity";
-import { MockCalls, TestParms, invokeAndAssert } from "../UtilsTest";
+import { MockCalls, TestParms, invokeAndAssert } from "../../UtilsTest";
 
 /**
  * Keeps track of how many times any method of any mock has been called.
