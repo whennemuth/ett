@@ -62,6 +62,7 @@ export class ReAdminUserApi extends AbstractRole {
 export class LambdaFunction extends AbstractFunction {
   constructor(scope:Construct, constructId:string, parms:AdminUserParms) {
     const context:IContext = scope.node.getContext('stack-parms');
+    const { ACCOUNT, REGION, CONFIG, STACK_ID } = context;
     const { userPool, cloudfrontDomain, landscape } = parms;
     const { userPoolArn, userPoolId } = userPool;
     
@@ -69,7 +70,7 @@ export class LambdaFunction extends AbstractFunction {
       runtime: Runtime.NODEJS_18_X,
       entry: 'lib/lambda/functions/re-admin/ReAdminUser.ts',
       // handler: 'handler',
-      functionName: `ett-${landscape}-${Roles.RE_ADMIN}-user`,
+      functionName: `${STACK_ID}-${landscape}-${Roles.RE_ADMIN}-user`,
       memorySize: 1024,
       description: 'Function for all re admin user activity.',
       cleanup: true,
@@ -87,7 +88,7 @@ export class LambdaFunction extends AbstractFunction {
               new PolicyStatement({
                 actions: [ 'ses:Send*', 'ses:Get*' ],
                 resources: [
-                  `arn:aws:ses:${context.REGION}:${context.ACCOUNT}:identity/*`
+                  `arn:aws:ses:${REGION}:${ACCOUNT}:identity/*`
                 ],
                 effect: Effect.ALLOW
               })
@@ -110,10 +111,10 @@ export class LambdaFunction extends AbstractFunction {
         }
       }),
       environment: {
-        REGION: context.REGION,
+        REGION: REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
         USERPOOL_ID: userPoolId,
-        [Configurations.ENV_VAR_NAME]: new Configurations(context.CONFIG).getJson()
+        [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });
   }

@@ -5,6 +5,8 @@ import { Entity, Invitation, User, YN } from "./_lib/dao/entity";
 import assert = require("assert");
 import { writeFileSync } from 'fs';
 import { tmpdir } from 'os';
+import * as ctx from '../../contexts/context.json';
+import { IContext } from "../../contexts/IContext";
 
 export type LambdaProxyIntegrationResponse<T extends string = string> = {
   isBase64Encoded: boolean;
@@ -191,11 +193,13 @@ export const lookupPendingInvitations = async (entity_id?:string|null):Promise<I
 }
 
 export const lookupCloudfrontDomain = async (landscape:string):Promise<string|undefined> => {
+  const context:IContext = <IContext>ctx;
+  const { STACK_ID } = context;
   const client = new CloudFrontClient({});
   const command = new ListDistributionsCommand({});
   const response = await client.send(command) as ListDistributionsResult;
   const distributions = response.DistributionList?.Items?.filter((ds:DistributionSummary) => {
-    return ds.Comment && ds.Comment == `ett-${landscape}-distribution`;
+    return ds.Comment && ds.Comment == `${STACK_ID}-${landscape}-distribution`;
   }) as DistributionSummary[]
   if(distributions!.length > 0) {
     return distributions[0]!.DomainName;

@@ -18,8 +18,8 @@ export class DynamoDbConstruct extends Construct {
 
   static getTableName = (basename:TableBaseNames):string => {
     const context:IContext = <IContext>ctx;
-    const { TAGS: { Landscape }} = context;
-    return `ett-${Landscape}-${basename}`
+    const { TAGS: { Landscape }, STACK_ID } = context;
+    return `${STACK_ID}-${Landscape}-${basename}`
   }
 
   static getTableNames = ():string[] => {

@@ -82,7 +82,7 @@ export class AbstractRoleApi extends Construct {
     super(scope, constructId);
     
     const context: IContext = scope.node.getContext('stack-parms');
-    const stageName = context.TAGS.Landscape;
+    const { TAGS: { Landscape:stageName }, STACK_ID } = context;
     const { userPool, cloudfrontDomain, lambdaFunction, role, role:resourceServerId, roleFullName, description, bannerImage, resourceId, scopes, methods } = parms;
     this.role = role;
     this.roleFullName = roleFullName;
@@ -90,14 +90,14 @@ export class AbstractRoleApi extends Construct {
 
     // Create a log group for the api gateway to log to.
     const log_group = new LogGroup(this, `RestApiLogGroup`, {
-      logGroupName: `/aws/lambda/ett-${stageName}-${role}-rest-api-log-group`,
+      logGroupName: `/aws/lambda/${STACK_ID}-${stageName}-${role}-rest-api-log-group`,
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
     // Create the api gateway REST api.
     const api = new RestApi(this, `LambdaRestApi`, {
       description,
-      restApiName: `ett-${stageName}-${role}-rest-api`,
+      restApiName: `${STACK_ID}-${stageName}-${role}-rest-api`,
       deployOptions: { 
         stageName,
         accessLogDestination: new LogGroupLogDestination(log_group),
@@ -125,7 +125,7 @@ export class AbstractRoleApi extends Construct {
 
     // Let the cognito user pool control access to the api. Add an api gateway authorizer of type "COGNITO_USER_POOLS"
     const authorizer = new CognitoUserPoolsAuthorizer(this, 'UserPoolAuthorizer', {
-      authorizerName: `ett-${stageName}-${constructId}-authorizer`,
+      authorizerName: `${STACK_ID}-${stageName}-${constructId}-authorizer`,
       cognitoUserPools: [ userPool ],
       identitySource: 'method.request.header.Authorization',
     });
@@ -146,7 +146,7 @@ export class AbstractRoleApi extends Construct {
     // validity based on token expiration, and access level based on the scopes in token claims
     const resourceServer = userPool.addResourceServer(`${constructId}ResourceServer`, {
       identifier: resourceServerId,
-      userPoolResourceServerName: `ett-${stageName}-${resourceServerId}-resource-server`,
+      userPoolResourceServerName: `${STACK_ID}-${stageName}-${resourceServerId}-resource-server`,
       scopes
     });
 

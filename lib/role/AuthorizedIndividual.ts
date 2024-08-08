@@ -58,6 +58,7 @@ export class AuthorizedIndividualApi extends AbstractRole {
 export class LambdaFunction extends AbstractFunction {
   constructor(scope: Construct, constructId: string, parms:ApiConstructParms) {
     const context:IContext = scope.node.getContext('stack-parms');
+    const { STACK_ID, ACCOUNT, REGION, CONFIG } = context;
     const { userPool, landscape } = parms;
     const { userPoolId, userPoolArn } = userPool;
     super(scope, constructId, {
@@ -65,7 +66,7 @@ export class LambdaFunction extends AbstractFunction {
       memorySize: 1024,
       entry: 'lib/lambda/functions/authorized-individual/AuthorizedIndividual.ts',
       // handler: 'handler',
-      functionName: `ett-${landscape}-${Roles.RE_AUTH_IND}-user`,
+      functionName: `${STACK_ID}-${landscape}-${Roles.RE_AUTH_IND}-user`,
       description: 'Function for all authorized individual activity.',
       cleanup: true,
       bundling: {
@@ -82,7 +83,7 @@ export class LambdaFunction extends AbstractFunction {
               new PolicyStatement({
                 actions: [ 'ses:Send*', 'ses:Get*' ],
                 resources: [
-                  `arn:aws:ses:${context.REGION}:${context.ACCOUNT}:identity/*`
+                  `arn:aws:ses:${REGION}:${ACCOUNT}:identity/*`
                 ],
                 effect: Effect.ALLOW
               })
@@ -105,9 +106,9 @@ export class LambdaFunction extends AbstractFunction {
         }
       }),
       environment: {
-        REGION: scope.node.getContext('stack-parms').REGION,
+        REGION,
         USERPOOL_ID: userPoolId,
-        [Configurations.ENV_VAR_NAME]: new Configurations(context.CONFIG).getJson()
+        [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });
   }

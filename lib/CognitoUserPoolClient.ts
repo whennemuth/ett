@@ -1,7 +1,8 @@
 import { Duration } from "aws-cdk-lib";
 import { OAuthScope, UserPool, UserPoolClient, UserPoolClientIdentityProvider, UserPoolClientProps } from "aws-cdk-lib/aws-cognito";
-import { Role, Roles } from './lambda/_lib/dao/entity';
+import { Role } from './lambda/_lib/dao/entity';
 import { Actions } from "./role/AbstractRole";
+import { IContext } from "../contexts/IContext";
 
 export interface EttUserPoolClientProps { callbackDomainName:string, role:Role, customScopes?:OAuthScope[] }
 
@@ -22,6 +23,8 @@ export class EttUserPoolClient extends UserPoolClient {
 
   public static buildCustomScopedClient(userPool: UserPool, id: string, props: EttUserPoolClientProps): EttUserPoolClient {
     
+    const context: IContext = userPool.node.getContext('stack-parms');
+    const { TAGS: {Landscape }, STACK_ID } = context;
     let scopes:OAuthScope[] = [ OAuthScope.EMAIL, OAuthScope.PHONE, OAuthScope.PROFILE ];
     const {customScopes, callbackDomainName, role } = props;
     if(customScopes) {
@@ -30,7 +33,7 @@ export class EttUserPoolClient extends UserPoolClient {
 
     const client = new EttUserPoolClient(userPool, id, {
       userPool,
-      userPoolClientName: `${role}-ett-userpool-client`,
+      userPoolClientName: `${STACK_ID}-${Landscape}-${role}-userpool-client`,
       supportedIdentityProviders: [ UserPoolClientIdentityProvider.COGNITO ],
       oAuth: {
         flows: {
