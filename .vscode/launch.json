@@ -166,15 +166,14 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Cognito post signup handler",
+      "name": "Cognito pre authentication handler",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
-        "${workspaceFolder}/lib/lambda/functions/cognito/_runner.ts",
-        "postsignup"
+        "${workspaceFolder}/lib/lambda/functions/cognito/PreAuthentication.ts",
+        "RUN_MANUALLY_PRE_AUTHENTICATION"
       ], 
       "env": {
-        "TODO": "Merge this into PostSignup.test.ts and run unmocked with jest.",
         "AWS_PROFILE": "bu",
         "REGION": "us-east-2"
       }, 
