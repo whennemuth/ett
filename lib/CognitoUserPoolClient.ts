@@ -33,7 +33,7 @@ export class EttUserPoolClient extends UserPoolClient {
 
     const client = new EttUserPoolClient(userPool, id, {
       userPool,
-      userPoolClientName: `${STACK_ID}-${Landscape}-${role}-userpool-client`,
+      userPoolClientName: `${role}-${STACK_ID}-${Landscape}-userpool-client`,
       supportedIdentityProviders: [ UserPoolClientIdentityProvider.COGNITO ],
       oAuth: {
         flows: {

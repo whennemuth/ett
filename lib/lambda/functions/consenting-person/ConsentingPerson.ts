@@ -5,14 +5,16 @@ import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
 import { Entity, Roles, User, YN, Affiliate, ExhibitForm as ExhibitFormData, Consenter, AffiliateTypes, ConsenterFields } from "../../_lib/dao/entity";
 import { ConsentFormData } from "../../_lib/pdf/ConsentForm";
-import { PdfForm } from "../../_lib/pdf/PdfForm";
+import { IPdfForm, PdfForm } from "../../_lib/pdf/PdfForm";
 import { ComparableDate, debugLog, deepClone, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
 import { ConsentFormEmail } from "./ConsentEmail";
+import { ExhibitBucket } from "./ConsenterBucketItems";
 import { ExhibitEmail, FormTypes } from "./ExhibitEmail";
 
 export enum Task {
   SAVE_NEW_EXHIBIT_FORM = 'save-new-exhibit-form',
   SAVE_OLD_EXHIBIT_FORM = 'save-old-exhibit-form',
+  CORRECT_EXHIBIT_FORM = 'correct-exhibit-form',
   SEND_EXHIBIT_FORM = 'send-exhibit-form',
   GET_CONSENTER = 'get-consenter',
   REGISTER_CONSENT = 'register-consent',
@@ -86,6 +88,8 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           return await saveExhibitData(email, exhibit_data, false);
         case Task.SEND_EXHIBIT_FORM:
           return await sendExhibitData(email, exhibit_data);
+        case Task.CORRECT_EXHIBIT_FORM:
+          return await correctExhibitData(email, exhibit_data);
         case Task.PING:
           return okResponse('Ping!', parameters); 
       }
@@ -279,7 +283,7 @@ export const sendConsent = async (consenter:Consenter, entityName:string): Promi
 };
 
 /**
- * Save exhibit form submission
+ * Save exhibit form data to the database.
  * @param email 
  * @param data 
  * @param isNew Save a new exhibit form (true) or update and existing one (false)
@@ -366,98 +370,206 @@ export const saveExhibitData = async (email:string, data:ExhibitFormData, isNew:
 };
 
 /**
- * Send full exhibit form to each authorized individual of the entity.
+ * Send full exhibit form to each authorized individual of the entity, remove it from the database, and save
+ * each constituent single exhibit form to s3 for temporary storage.
  * @param data 
  * @returns 
  */
 export const sendExhibitData = async (email:string, data:ExhibitFormData): Promise<LambdaProxyIntegrationResponse> => {
-  // Validate incoming data
-  if( ! data) {
-    return invalidResponse(INVALID_RESPONSE_MESSAGES.missingExhibitData);
-  }
-  let { affiliates, entity_id } = data as ExhibitFormData;
-  if( ! entity_id ) {
-    return invalidResponse(INVALID_RESPONSE_MESSAGES.missingEntityId);
-  }
-  if( ! email) {
-    return invalidResponse(INVALID_RESPONSE_MESSAGES.missingExhibitFormIssuerEmail);
-  }
-
-  // Validate incoming affiliate data
-  if(affiliates && affiliates.length > 0) {
-    for(const affiliate of affiliates) {
-      let { affiliateType, email, fullname, org, phone_number, title } = affiliate;
-
-      if( ! Object.values<string>(AffiliateTypes).includes(affiliateType)) {
-        return invalidResponse(`${INVALID_RESPONSE_MESSAGES.invalidAffiliateRecords} - affiliatetype: ${affiliateType}`);
-      }
-      if( ! email) {
-        return invalidResponse(`${INVALID_RESPONSE_MESSAGES.invalidAffiliateRecords}: email`);
-      }
-      if( ! fullname) {
-        return invalidResponse(`${INVALID_RESPONSE_MESSAGES.invalidAffiliateRecords}: fullname`);
-      }
-      if( ! org) {
-        return invalidResponse(`${INVALID_RESPONSE_MESSAGES.invalidAffiliateRecords}: org`);
-      }
-      // TODO: Should phone_number and title be left optional?            
-    };
-  }
-  else {
-    return invalidResponse(INVALID_RESPONSE_MESSAGES.missingAffiliateRecords);
-  }
-
-  // Get the consenter
-  const consenterInfo = await getConsenter(email, false) as ConsenterInfo;
-  const { consenter, activeConsent } = consenterInfo ?? {};
-
-  // Abort if the consenter has not yet consented
-  if( ! activeConsent) {
-    return invalidResponse(INVALID_RESPONSE_MESSAGES.missingConsent);
-  }
-
-  // Get the entity
-  const daoEntity = DAOFactory.getInstance({ DAOType:"entity", Payload: { entity_id }});
-  const entity = await daoEntity.read() as Entity;
-
-  // Get the authorized individuals of the entity.
-  const daoUser = DAOFactory.getInstance({ DAOType:'user', Payload: { entity_id }});
-  let users = await daoUser.read() as User[];
-  users = users.filter(user => user.active == YN.Yes && (user.role == Roles.RE_AUTH_IND || user.role == Roles.RE_ADMIN));
-
-  // Send the full exhibit form to each authorized individual and the RE admin.
-  const emailFailures = [] as string[];
-  for(let i=0; i<users.length; i++) {
-    var sent:boolean = await new ExhibitEmail(data, FormTypes.FULL, entity, consenter).send(users[i].email);
-    if( ! sent) {
-      emailFailures.push(users[i].email);
-    }
-  }
-
-  // Make sure affiliates is always an array.
-  if(affiliates instanceof Array) {
-    affiliates = affiliates as Affiliate[];
-  }
-  else {
-    affiliates = [ affiliates ];
-  }
   
-  // Send the single exhibit form excerpts to each affiliate
-  for(let i=0; i<affiliates.length; i++) {
-    var sent:boolean = await new ExhibitEmail(data, FormTypes.SINGLE, entity, consenter).send(affiliates[i].email);
-    if( ! sent) {
-      emailFailures.push(affiliates[i].email);
-    }
-    // TODO: It may instead be ok to send a disclosure request instead of just the single exhibit form.
-    //       This is pending confirmation from the client.
-    // TODO: Make database record of email
-    // TODO: Put some code here to make sure any database records of the same affiliate data that are
-    //       pending their 48 hour deletion timeout are deleted now instead.  
+  const affiliates = [] as Affiliate[];
+  const emailFailures = [] as string[];
+  let badResponse:LambdaProxyIntegrationResponse|undefined;
+  let entity_id:string|undefined;
+  let consenter = {} as Consenter;
+  let entity = {} as Entity;
+  let users = [] as User[];
+
+  const throwError = (msg:string) => {
+    badResponse = invalidResponse(msg);
+    throw new Error(msg);
   }
 
-  if(emailFailures.length > 0) {
-    return errorResponse(INVALID_RESPONSE_MESSAGES.emailFailure, { emailFailures });
+  const validatePayload = () => {
+
+    // Validate incoming data
+    if( ! data) {
+      throwError(INVALID_RESPONSE_MESSAGES.missingExhibitData);
+    }
+    let { affiliates: _affiliates, entity_id: _entity_id } = data as ExhibitFormData;
+    if( ! _entity_id ) {
+      throwError(INVALID_RESPONSE_MESSAGES.missingEntityId);
+    }
+    entity_id = _entity_id;
+    if( ! email) {
+      throwError(INVALID_RESPONSE_MESSAGES.missingExhibitFormIssuerEmail);
+    }
+
+    // Validate incoming affiliate data
+    if(_affiliates && _affiliates.length > 0) {
+      for(const affiliate of _affiliates) {
+        let { affiliateType, email, fullname, org, phone_number, title } = affiliate;
+
+        if( ! Object.values<string>(AffiliateTypes).includes(affiliateType)) {
+          throwError(`${INVALID_RESPONSE_MESSAGES.invalidAffiliateRecords} - affiliatetype: ${affiliateType}`);
+        }
+        if( ! email) {
+          throwError(`${INVALID_RESPONSE_MESSAGES.invalidAffiliateRecords}: email`);
+        }
+        if( ! fullname) {
+          throwError(`${INVALID_RESPONSE_MESSAGES.invalidAffiliateRecords}: fullname`);
+        }
+        if( ! org) {
+          throwError(`${INVALID_RESPONSE_MESSAGES.invalidAffiliateRecords}: org`);
+        }
+        // TODO: Should phone_number and title be left optional?
+      };
+    }
+    else {
+      throwError(INVALID_RESPONSE_MESSAGES.missingAffiliateRecords);
+    }
+
+    if(_affiliates) {
+      if(_affiliates instanceof Array) {
+        affiliates.push(... _affiliates as Affiliate[]);
+      }
+      else {
+        affiliates.push(_affiliates);
+      }
+    }
   }
+
+  const loadInfoFromDatabase = async () => {
+    // Get the consenter
+    const consenterInfo = await getConsenter(email, false) as ConsenterInfo;
+    const { consenter: _consenter, activeConsent } = consenterInfo ?? {};
+
+    // Abort if the consenter has not yet consented
+    if( ! activeConsent) {
+      throwError(INVALID_RESPONSE_MESSAGES.missingConsent);
+    }
+
+    consenter = _consenter;
+
+    // Get the entity
+    const daoEntity = DAOFactory.getInstance({ DAOType:"entity", Payload: { entity_id }});
+    entity = await daoEntity.read() as Entity;
+
+    // Get the authorized individuals of the entity.
+    const daoUser = DAOFactory.getInstance({ DAOType:'user', Payload: { entity_id }});
+    let _users = await daoUser.read() as User[];
+    _users = _users.filter(user => user.active == YN.Yes && (user.role == Roles.RE_AUTH_IND || user.role == Roles.RE_ADMIN));
+    users.push(..._users);
+  }
+
+  /**
+   * end the full exhibit form to each authorized individual and the RE admin.
+   */
+  const sendFullExhibitFormToEntityStaff = async () => {
+    for(let i=0; i<users.length; i++) {
+      var sent:boolean = await new ExhibitEmail(data, FormTypes.FULL, entity, consenter).send(users[i].email);
+      if( ! sent) {
+        emailFailures.push(users[i].email);
+      }
+    }
+    if(emailFailures.length > 0) {
+      const e = new Error(`The following email(s) to entity staff with exhibit forms failed. 
+        Deletion of the corresponding database data has been deferred to the scheduled purge:
+        ${JSON.stringify(emailFailures, null, 2)}`);
+    }
+  }
+
+  /**
+   * Send the single exhibit form excerpts of the full exhibit form to each affiliate
+   */
+  const sendSingleExhibitFormToAffiliates = async () => {
+    const sendEmailToAffiliate = async (affiliateEmail:string):Promise<IPdfForm|null> => {
+      const email = new ExhibitEmail(data, FormTypes.SINGLE, entity, consenter);
+      const sent = await email.send(affiliateEmail);
+      return sent ? email.getAttachment() : null;
+    }
+    for(let i=0; i<affiliates.length; i++) {
+      const pdf = await sendEmailToAffiliate(affiliates[i].email);
+      if( ! pdf) {
+        emailFailures.push(affiliates[i].email);
+        continue;
+      }
+      await saveAffiliateFormToBucket(affiliates[i].email);
+    }
+    if(emailFailures.length > 0) {
+      const e = new Error(`The following email(s) to affiliates with exhibit forms failed. 
+        Deletion of the corresponding database data has been deferred to the scheduled purge:
+        ${JSON.stringify(emailFailures, null, 2)}`)
+    }
+  }
+
+  /**
+   * Render the single exhibit form pdf file and save it to the s3 bucket
+   * @param affiliateEmail 
+   */
+  const saveAffiliateFormToBucket = async (affiliateEmail:string) => {
+    const bucket = new ExhibitBucket(consenter);
+    await bucket.add({ entityId:entity.entity_id, affiliateEmail });
+  }
+
+  /**
+   * Prune a full exhibit form from the consenters database record
+   */
+  const pruneExhibitFormFromDatabaseRecord = async () => {
+    const updatedConsenter = deepClone(consenter) as Consenter;
+    const { exhibit_forms:efs=[]} = updatedConsenter;
+    // Prune the exhibit form that corresponds to the entity from the consenters exhibit form listing.
+    updatedConsenter.exhibit_forms = efs.filter(ef => {
+      return ef.entity_id != entity.entity_id;
+    })
+    // Update the database record with the pruned exhibit form listing.
+    const dao = ConsenterCrud(updatedConsenter);
+    await dao.update(consenter);
+  }
+
+  const cancelEventBridgeDatabasePruningRule = async () => {
+    // RESUME NEXT.
+    return;
+  }
+
+  const createEventBridgeBucketPruningRule = async () => {
+    // RESUME NEXT.
+    return;
+  }
+
+  try {
+
+    validatePayload();
+
+    await loadInfoFromDatabase();
+    
+    await sendFullExhibitFormToEntityStaff();
+    
+    await sendSingleExhibitFormToAffiliates();
+
+    await pruneExhibitFormFromDatabaseRecord();
+
+    await cancelEventBridgeDatabasePruningRule();
+
+    await createEventBridgeBucketPruningRule();
+
+    return okResponse('Ok');
+  }
+  catch(e:any) {
+    if(badResponse) {
+      return badResponse;
+    }
+    return errorResponse(e);
+  }
+}
+
+/**
+ * Send corrected single exhibit form to each authorized individual of the entity.
+ * @param data 
+ * @returns 
+ */
+export const correctExhibitData = async (email:string, data:ExhibitFormData): Promise<LambdaProxyIntegrationResponse> => {
+
   return okResponse('Ok');
 }
 
@@ -494,21 +606,21 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
           affiliates: [
             {
               affiliateType:"employer",
-              email:"bugs@warnerbros.com",
+              email:"affiliate1@warhen.work",
               org:"Warner Bros.",
               fullname:"Bugs Bunny",
               title:"Rabbit",
               phone_number:"6172224444"
             },{
               affiliateType:"academic",
-              email:"daffy@au.edu",
+              email:"affiliate2@warhen.work",
               org:"Cartoon Town University",
               fullname:"Daffy Duck",
               title:"Fowl",
               phone_number:"7813334444"
             },{
               affiliateType:"other",
-              email:"sam@anywhere.com",
+              email:"affiliate3@warhen.work",
               org:"Anywhere Inc.",
               fullname:"Yosemite Sam",
               title:"Cowboy",

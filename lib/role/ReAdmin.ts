@@ -7,17 +7,12 @@ import { AbstractFunction } from "../AbstractFunction";
 import { Roles } from '../lambda/_lib/dao/entity';
 import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
 import { Configurations } from "../lambda/_lib/config/Config";
-
-export interface AdminUserParms {
-  userPool: UserPool, 
-  cloudfrontDomain: string,
-  landscape: string,
-}
+import { ApiConstructParms } from "../Api";
 
 export class ReAdminUserApi extends AbstractRole {
   private api: AbstractRoleApi;
 
-  constructor(scope:Construct, constructId:string, parms:AdminUserParms) {
+  constructor(scope:Construct, constructId:string, parms:ApiConstructParms) {
 
     super(scope, constructId);
 
@@ -60,10 +55,10 @@ export class ReAdminUserApi extends AbstractRole {
  * Just the lambda function without the api gateway and cognito scoping resources.
  */
 export class LambdaFunction extends AbstractFunction {
-  constructor(scope:Construct, constructId:string, parms:AdminUserParms) {
+  constructor(scope:Construct, constructId:string, parms:ApiConstructParms) {
     const context:IContext = scope.node.getContext('stack-parms');
     const { ACCOUNT, REGION, CONFIG, STACK_ID } = context;
-    const { userPool, cloudfrontDomain, landscape } = parms;
+    const { userPool, cloudfrontDomain, landscape, exhibitFormsBucketName } = parms;
     const { userPoolArn, userPoolId } = userPool;
     
     super(scope, constructId, {
@@ -114,6 +109,7 @@ export class LambdaFunction extends AbstractFunction {
         REGION: REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
         USERPOOL_ID: userPoolId,
+        EXHIBIT_FORMS_BUCKET_NAME: exhibitFormsBucketName,
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });

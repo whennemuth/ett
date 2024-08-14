@@ -59,7 +59,7 @@ export class LambdaFunction extends AbstractFunction {
   constructor(scope: Construct, constructId: string, parms:ApiConstructParms) {
     const context:IContext = scope.node.getContext('stack-parms');
     const { STACK_ID, ACCOUNT, REGION, CONFIG } = context;
-    const { userPool, landscape } = parms;
+    const { userPool, landscape, exhibitFormsBucketName } = parms;
     const { userPoolId, userPoolArn } = userPool;
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
@@ -108,6 +108,7 @@ export class LambdaFunction extends AbstractFunction {
       environment: {
         REGION,
         USERPOOL_ID: userPoolId,
+        EXHIBIT_FORMS_BUCKET_NAME: exhibitFormsBucketName,
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });

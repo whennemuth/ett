@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { App, CfnOutput, StackProps, Tags } from 'aws-cdk-lib';
+import { App, CfnOutput, RemovalPolicy, StackProps, Tags } from 'aws-cdk-lib';
 import 'source-map-support/register';
 import { IContext, SCENARIO } from '../contexts/IContext';
 import * as ctx from '../contexts/context.json';
@@ -12,6 +12,7 @@ import { SignupApiConstruct, SignupApiConstructParms } from '../lib/SignupApi';
 import { StaticSiteConstruct } from '../lib/StaticSite';
 import { StaticSiteCustomInConstruct, StaticSiteCustomInConstructParms } from '../lib/StaticSiteCustomIn';
 import { Roles } from '../lib/lambda/_lib/dao/entity';
+import { BlockPublicAccess, Bucket } from 'aws-cdk-lib/aws-s3';
 
 const context:IContext = <IContext>ctx;
 
@@ -35,10 +36,19 @@ Tags.of(stack).add('Function', Function);
 Tags.of(stack).add('Landscape', Landscape);
 
 const buildAll = () => {
-  // Set up the bucket only.
-  const bucket = new class extends StaticSiteConstruct{
+  // Set up the static site bucket only.
+  const bucket = new class extends StaticSiteConstruct {
     public customize(): void { console.log('No customization'); }
   }(stack, 'StaticSiteBucket', {}).getBucket();
+
+  // Create a bucket for exhibit forms
+  const exhibitFormsBucket = new Bucket(stack, 'ExhibitFormsBucket', {
+    bucketName: `${STACK_ID}-${Landscape}-exhibit-forms`,
+    publicReadAccess: false,
+    blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+    removalPolicy: RemovalPolicy.DESTROY,    
+    autoDeleteObjects: true  
+  });
 
   // Set up the cloudfront distribution, origins, behaviors, and oac
   const cloudfront = new CloudfrontConstruct(stack, 'Cloudfront', { bucket } as CloudfrontConstructProps);
@@ -61,11 +71,12 @@ const buildAll = () => {
     userPoolName: cognito.getUserPoolName(),    
     cloudfrontDomain: cloudfront.getDistributionDomainName(),
     redirectPath: 'index.htm',
-    landscape: Landscape
+    landscape: Landscape,
+    exhibitFormsBucketName: exhibitFormsBucket.bucketName
   } as ApiConstructParms);
 
   // Grant the apis the necessary permissions (policy actions).
-  api.grantPermissionsTo(dynamodb, cognito);
+  api.grantPermissionsTo(dynamodb, cognito, exhibitFormsBucket);
   signupApi.grantPermissionsTo(dynamodb);
 
   // Set up the event, lambda and associated policies for modification of html files as they are uploaded to the bucket.
