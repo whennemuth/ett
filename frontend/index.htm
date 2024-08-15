@@ -900,83 +900,18 @@
               <h3 class="display-7 fw-bold">Welcome <span id="RE_AUTH_IND_username"></span></h3>
               <h3 class="display-7 fw-bold">Authorized Individual</h3>
 
-              <!-- Temporarily hiding this block -->
-              <div style="display:none;">
-                <div class="d-inline-block" style="width:fit-content;">
-                  <nav aria-label="Page navigation example " style="width:fit-content;">
-                    <ul class="pagination pagination-lg fw-bold" style="width:fit-content" >
-                      <li class="page-item"><a class="page-link" href="#">Previous</a></li>
-                      <li class="page-item"><a class="page-link" href="#">1</a></li>
-                      <li class="page-item"><a class="page-link" href="#">2</a></li>
-                      <li class="page-item"><a class="page-link" href="#">3</a></li>
-                      <li class="page-item"><a class="page-link" href="#">Next</a></li>
-                    </ul>
-                  </nav>
+              <div style="display:flex; margin-top:40px;">
+                <div style="float:left; padding:5px; display: flex; flex-direction: row; align-items: center; font-weight: bold;">
+                  Send a disclosure request
                 </div>
-                <div id="divAuthIndFilter" class="container d-inline-block fw-bold p-2" style="width:fit-content" >
-                  Filters:&nbsp;
-                  <input type="checkbox" class="btn-check" id="chkAuthIndFilter1" autocomplete="off">
-                  <label class="btn btn-outline-dark" for="chkAuthIndFilter1">All Consenting<br>Individuals</label>
-                  <input type="checkbox" class="btn-check" id="chkAuthIndFilter2" autocomplete="off" checked>
-                  <label class="btn btn-outline-dark" for="chkAuthIndFilter2">Needing Exhibit<br>Form Request</label>
-                  <input type="checkbox" class="btn-check" id="chkAuthIndFilter3" autocomplete="off">
-                  <label class="btn btn-outline-dark" for="chkAuthIndFilter3">Pending Exhibit<br>Form Delivery</label>
-                  <input type="checkbox" class="btn-check" id="chkAuthIndFilter4" autocomplete="off">
-                  <label class="btn btn-outline-dark" for="chkAuthIndFilter4">Needing Disclosure<br>Request</label>
-                  <input type="checkbox" class="btn-check" id="chkAuthIndFilter5" autocomplete="off">
-                  <label class="btn btn-outline-dark" for="chkAuthIndFilter5">Pending Disclosure<br>Delivery</label>
-                  <input type="checkbox" class="btn-check" id="chkAuthIndFilter6" autocomplete="off">
-                  <label class="btn btn-outline-dark" for="chkAuthIndFilter6">Disclosures<br>Delivered</label>
+                <div style="float:left; padding:5px; display: flex; flex-direction: row; align-items: center;">
+                  <input type="text" class="form-control" style="width:200px; height: 67px;">
+                </div>
+                <div class="float:left; padding:5px; display: flex; flex-direction: row; align-items: center;">
+                  <button class="btn btn-primary btn-lg" style="margin-top: 5px;" type="button">Send <i class="bi-send-check"></i></button>
                 </div>
 
-                <div id="john_doe">
-                  <div class="container-fluid bg-success bg-opacity-25 fw-bold">
-                    John Doe
-                  </div>
-                  <div class="container-fluid border border-success border-opacity-25 text-center">
-                    <div class="row align-items-start p-2 fw-bold">
-                      <div id="stage" class="stage col bg-success p-2 text-dark bg-opacity-25">
-                        <div class="idiv" style="float: left;"><i class="bi-1-circle"></i></div>
-                        <div class="idiv">
-                          <div class="idiv"><i class="bi-send-check"></i></div> 
-                          <div class="idiv">Exhibit Form Requests</div>                                  
-                        </div>
-                      </div>
-                      <div id="stage" class="col stage bg-success p-2 text-dark bg-opacity-50">
-                        <div class="idiv" style="float: left;"><i class="bi-2-circle"></i></div>
-                        <div class="idiv">
-                          <div class="idiv"><i class="bi-envelope-check"></i></div> 
-                          <div class="idiv">Exhibit Forms Delivered</div>                                  
-                        </div>
-                      </div>
-                      <div id="stage" class="col stage bg-success p-2 text-white bg-opacity-75">
-                        <div class="idiv" style="float: left;"><i class="bi-3-circle"></i></div>
-                        <div class="idiv">
-                          <div class="idiv"><i class="bi-send-check"></i></div> 
-                          <div class="idiv">Disclosures Requested</div>                                  
-                        </div>
-                      </div>
-                      <div id="stage" class="col stage bg-success p-2 text-white">
-                        <div class="idiv" style="float: left;"><i class="bi-4-circle"></i></div>
-                        <div class="idiv">
-                          <div class="idiv"><i class="bi-envelope-check"></i></div> 
-                          <div class="idiv">Disclosures Delivered</div>                                  
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <script>
-                  document.write(document.getElementById('john_doe').outerHTML.replace('John Doe', 'Bugs Bunny'));
-                  document.write(document.getElementById('john_doe').outerHTML.replace('John Doe', 'Daffy Duck'));
-                  document.write(document.getElementById('john_doe').outerHTML.replace('John Doe', 'Porky Pig'));
-                  document.write(document.getElementById('john_doe').outerHTML.replace('John Doe', 'Yosemite Sam'));
-                  document.write(document.getElementById('john_doe').outerHTML.replace('John Doe', 'Wile E. Coyote'));
-                  document.write(document.getElementById('john_doe').outerHTML.replace('John Doe', 'Foghorn Leghorn'));
-                </script>
               </div>
-
-
             </div>
 
 
