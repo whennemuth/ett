@@ -2310,6 +2310,10 @@
       }
 
       await doConsentTask('register-consent', parms);
+
+      // Retrieve the consenter info that was just saved to the backend to get the list of entities 
+      // that accompanies it in order to populate the related picklists that must now be presented.
+      await getConsenter();
     }
 
     /**
