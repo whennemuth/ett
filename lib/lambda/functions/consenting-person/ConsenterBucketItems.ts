@@ -61,7 +61,7 @@ export class ExhibitBucket {
     const pdf = new ExhibitFormSingle(new ExhibitForm({
       entity_id: entityId,
       affiliates: [ affiliate ]
-    }), this.consenter);
+    }), this.consenter, affiliate.email);
 
     // Save the new single exhibit form pdf file to the s3 bucket
     const s3 = new S3({ region });

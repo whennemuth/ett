@@ -8,13 +8,15 @@ import { Page } from "./lib/Page";
 export class ExhibitFormSingle extends PdfForm implements IPdfForm {
   private baseForm:ExhibitForm
   private consenter:Consenter;
+  private affiliateEmail:string;
   private font:PDFFont;
   private boldfont:PDFFont;
   
-  constructor(baseForm:ExhibitForm, consenter:Consenter) {
+  constructor(baseForm:ExhibitForm, consenter:Consenter, affiliateEmail:string) {
     super();
     this.baseForm = baseForm;
     this.consenter = consenter;
+    this.affiliateEmail = affiliateEmail;
     this.page = baseForm.page;
   }
 
@@ -22,7 +24,7 @@ export class ExhibitFormSingle extends PdfForm implements IPdfForm {
    * @returns The bytes for the entire pdf form.
    */
   public async getBytes():Promise<Uint8Array> {
-    const { baseForm, drawTitle, drawIntro, drawLogo } = this;
+    const { baseForm, affiliateEmail, drawTitle, drawIntro, drawLogo } = this;
 
     await baseForm.initialize();
     
@@ -36,13 +38,21 @@ export class ExhibitFormSingle extends PdfForm implements IPdfForm {
     this.page = new Page(doc.addPage([620, 785]) as PDFPage, pageMargins, embeddedFonts);
     baseForm.page = this.page;
 
+    const affiliate = (data.affiliates ?? []).find(a => {
+      return a.email == affiliateEmail;
+    });
+
+    if( ! affiliate) {
+      throw new Error(`Error: Unknown affiliate: ${affiliateEmail}`);
+    }
+
     await drawLogo(this.page);
 
     await drawTitle();
 
     await drawIntro();
 
-    await drawAffliate(data.affiliates![0] as Affiliate, 10);
+    await drawAffliate(affiliate, 10);
 
     const pdfBytes = await doc.save();
     return pdfBytes;
@@ -93,21 +103,19 @@ export class ExhibitFormSingle extends PdfForm implements IPdfForm {
 const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY_EXHIBIT_FORM_SINGLE') {
 
-  const baseForm = new ExhibitForm({
-    entity_id: 'abc123',
-    affiliates: [{ 
-      affiliateType: AffiliateTypes.EMPLOYER,
-      org: 'Warner Bros.', 
-      fullname: 'Foghorn Leghorn', 
-      email: 'foghorn@warnerbros.com',
-      title: 'Lead animation coordinator',
-      phone_number: '617-333-4444'
-    }]
-  } as ExhibitFormData);
+  const affiliates = [{ 
+    affiliateType: AffiliateTypes.EMPLOYER,
+    org: 'Warner Bros.', 
+    fullname: 'Foghorn Leghorn', 
+    email: 'foghorn@warnerbros.com',
+    title: 'Lead animation coordinator',
+    phone_number: '617-333-4444'
+  }];
+  const baseForm = new ExhibitForm({ entity_id: 'abc123', affiliates } as ExhibitFormData);
   
   new ExhibitFormSingle(baseForm, { 
     firstname:'Pig', middlename: 'P', lastname: 'Pig'
-  } as Consenter).writeToDisk('./lib/lambda/_lib/pdf/outputSingle.pdf')
+  } as Consenter, affiliates[0].email).writeToDisk('./lib/lambda/_lib/pdf/outputSingle.pdf')
     .then((bytes) => {
       console.log('done');
     })

@@ -54,7 +54,7 @@ export class ExhibitEmail {
           }
         });
       case FormTypes.SINGLE:
-        this.pdf = new ExhibitFormSingle(new ExhibitForm(data), consenter);
+        this.pdf = new ExhibitFormSingle(new ExhibitForm(data), consenter, emailAddress);
         return await sendEmail({
           subject: 'ETT Notice of Consent',
           message: `Consenting individual ${consenterFullname} has named you as an affilate for disclosure to ${entity_name}`,

@@ -40,7 +40,7 @@ export class DisclosureRequestEmail {
           description: 'disclosure-form.pdf'
         },
         {
-          pdf: new ExhibitFormSingle(new ExhibitForm(exhibitData), consenter),
+          pdf: new ExhibitFormSingle(new ExhibitForm(exhibitData), consenter, emailAddress),
           name: 'exhibit-form-single.pdf',
           description: 'exhibit-form-single.pdf'
         },
