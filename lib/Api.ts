@@ -77,6 +77,7 @@ export class ApiConstruct extends Construct {
     exhibitFormsBucket.grantDelete(authIndApi.getLambdaFunction());
 
     // Grant the consenter api permissions to read/write from the users table
+    dynamodb.getUsersTable().grantReadData(consentingPersonApi.getLambdaFunction());
     dynamodb.getConsentersTable().grantReadWriteData(consentingPersonApi.getLambdaFunction());
     dynamodb.getEntitiesTable().grantReadWriteData(consentingPersonApi.getLambdaFunction());
     dynamodb.getConfigTable().grantReadData(consentingPersonApi.getLambdaFunction());
