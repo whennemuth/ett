@@ -2032,7 +2032,7 @@
     }
 
     let consenterInfo;
-    let selectedEntityId;
+    let selectedEntity;
 
     /**
      * Perform a consent related api task
@@ -2285,7 +2285,7 @@
     function toggleHighlight(fld, on_off) {
       let _on_off = on_off;
       if(on_off == undefined) {
-        _on_off = fld.id == 'requestingEntityDropdown' && ! selectedEntityId;
+        _on_off = fld.id == 'requestingEntityDropdown' && ! selectedEntity;
         _on_off ||= fld.nodeName == 'SELECT' && fld.selectedIndex == 0;
         _on_off ||= fld.nodeName == 'INPUT' && ! fld.value;
       }
@@ -2415,7 +2415,10 @@
       const dropdownButton = document.getElementById('requestingEntityDropdownButton');
       const dropdownList = document.getElementById('requestingEntityDropdownList');
       const a = dropdownList.children[0];
-      selectedEntityId = a.id;
+      const { entities } = consenterInfo;
+      selectedEntity = entities.find(e => {
+        return e.entity_id == a.id;
+      });
       dropdownButton.innerText = a.name;
       populateExhibitForm(getDummyConsenter());
       validExhibitForm();
@@ -2443,6 +2446,7 @@
       document.querySelector('#txtExhibitEmail').value = '';
       document.querySelector('#txtExhibitPhone').value = '';
       document.querySelector('#txtExhibitSignature').value = '';
+      document.querySelector('#spanRequestingEntity').innerText = '[INSERT NAME]';
     }
 
     /**
@@ -2454,10 +2458,12 @@
       let { fullName, consenter: { email, phone_number, exhibit_forms }} = _consenterInfo;
       exhibit_forms = exhibit_forms ?? [];
 
-      clearExhibitForm(); 
+      clearExhibitForm();
+
+      document.querySelector('#spanRequestingEntity').innerText = selectedEntity.entity_name;
 
       const exhibit_form = exhibit_forms.find(ef => {
-        return ef.entity_id == selectedEntityId;
+        return ef.entity_id == selectedEntity.entity_id;
       });
 
       if( ! exhibit_form) {
@@ -2659,7 +2665,8 @@
         }
         affiliates.push(affiliate);
       })
-      const payload = { email, exhibit_data: { entity_id:selectedEntityId, affiliates }};
+      const { entity_id } = selectedEntity;
+      const payload = { email, exhibit_data: { entity_id, affiliates }};
       return payload;
     }
 
@@ -3430,8 +3437,11 @@
         const { srcElement:a } = event;
         if(a.tagName == 'A' && a.name && a.id) {
           const button = document.getElementById('requestingEntityDropdownButton');
+          const { entities } = consenterInfo;
           button.innerText = a.name;
-          selectedEntityId = a.id;
+          selectedEntity = entities.find(e => {
+            return e.entity_id == a.id;
+          });
           populateExhibitForm();
           toggleHighlight(document.querySelector('#requestingEntityDropdown'));
         }
