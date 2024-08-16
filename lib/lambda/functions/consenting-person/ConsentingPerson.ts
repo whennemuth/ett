@@ -3,7 +3,7 @@ import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { DAOFactory } from "../../_lib/dao/dao";
 import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
-import { Entity, Roles, User, YN, Affiliate, ExhibitForm as ExhibitFormData, Consenter, AffiliateTypes, ConsenterFields } from "../../_lib/dao/entity";
+import { Entity, Roles, User, YN, Affiliate, ExhibitForm, Consenter, AffiliateTypes, ConsenterFields } from "../../_lib/dao/entity";
 import { ConsentFormData } from "../../_lib/pdf/ConsentForm";
 import { IPdfForm, PdfForm } from "../../_lib/pdf/PdfForm";
 import { ComparableDate, debugLog, deepClone, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
@@ -66,7 +66,7 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
       log(`Performing task: ${task}`);
       const callerUsername = event?.requestContext?.authorizer?.claims?.username;
       const callerSub = callerUsername || event?.requestContext?.authorizer?.claims?.sub;
-      const { email, exhibit_data, entityName } = parameters;
+      const { email, exhibit_data:exhibitForm, entityName } = parameters;
       switch(task as Task) {
         case Task.GET_CONSENTER:
           return await getConsenterResponse(email);
@@ -81,11 +81,11 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
         case Task.CORRECT_CONSENT:
           return await correctConsent(parameters);
         case Task.SAVE_EXHIBIT_FORM:
-          return await saveExhibitData(email, exhibit_data);
+          return await saveExhibitData(email, exhibitForm);
         case Task.SEND_EXHIBIT_FORM:
-          return await sendExhibitData(email, exhibit_data);
+          return await sendExhibitData(email, exhibitForm);
         case Task.CORRECT_EXHIBIT_FORM:
-          return await correctExhibitData(email, exhibit_data);
+          return await correctExhibitData(email, exhibitForm);
         case Task.PING:
           return okResponse('Ping!', parameters); 
       }
@@ -281,13 +281,13 @@ export const sendConsent = async (consenter:Consenter, entityName:string): Promi
 /**
  * Save exhibit form data to the database.
  * @param email 
- * @param data 
+ * @param exhibitForm 
  * @param isNew Save a new exhibit form (true) or update and existing one (false)
  * @returns 
  */
-export const saveExhibitData = async (email:string, data:ExhibitFormData): Promise<LambdaProxyIntegrationResponse> => {
+export const saveExhibitData = async (email:string, exhibitForm:ExhibitForm): Promise<LambdaProxyIntegrationResponse> => {
   // Validate incoming data
-  if( ! data) {
+  if( ! exhibitForm) {
     return invalidResponse(INVALID_RESPONSE_MESSAGES.missingExhibitData);
   }
 
@@ -306,7 +306,7 @@ export const saveExhibitData = async (email:string, data:ExhibitFormData): Promi
   }
 
   // Abort if the exhibit form has no affiliates
-  const { affiliates, entity_id } = data;
+  const { affiliates, entity_id } = exhibitForm;
   if( ! affiliates || affiliates.length == 0) {
     return invalidResponse(INVALID_RESPONSE_MESSAGES.missingAffiliateRecords);
   }
@@ -315,31 +315,31 @@ export const saveExhibitData = async (email:string, data:ExhibitFormData): Promi
   const { consenter:oldConsenter } = consenterInfo;
   const { exhibit_forms:existingForms } = oldConsenter;
   const matchingIdx = (existingForms ?? []).findIndex(ef => {
-    ef.entity_id == data.entity_id;
+    ef.entity_id == exhibitForm.entity_id;
   });
-  if(matchingIdx == -1 && ! data.create_timestamp) {
+  if(matchingIdx == -1 && ! exhibitForm.create_timestamp) {
     // Updating an existing exhibit form
-    data.create_timestamp = new Date().toISOString();
+    exhibitForm.create_timestamp = new Date().toISOString();
   }
   else {
     // Creating a new exhibit form
     const { create_timestamp:existingTimestamp } = (existingForms ?? [])[matchingIdx];
     const newTimestamp = new Date().toISOString();
-    const info = `consenter:${email}, exhibit_form:${data.entity_id}`;
+    const info = `consenter:${email}, exhibit_form:${exhibitForm.entity_id}`;
     if( ! existingTimestamp) {
       console.log(`Warning: Illegal state - existing exhibit form found without create_timestamp! ${info}`);
     }
-    if(data.create_timestamp) {
-      if(data.create_timestamp != (existingTimestamp || data.create_timestamp)) {
+    if(exhibitForm.create_timestamp) {
+      if(exhibitForm.create_timestamp != (existingTimestamp || exhibitForm.create_timestamp)) {
         console.log(`Warning: Updates to exhibit form create_timestamp are disallowed:  ${info}`);
       }
     }
-    data.create_timestamp = existingTimestamp || newTimestamp;
+    exhibitForm.create_timestamp = existingTimestamp || newTimestamp;
   }
 
   // Update the consenter record by creating/modifying the provided exhibit form.
   const newConsenter = deepClone(oldConsenter);
-  newConsenter.exhibit_forms = [ data ];
+  newConsenter.exhibit_forms = [ exhibitForm ];
   const dao = ConsenterCrud(newConsenter);
   await dao.update(oldConsenter, true); // NOTE: merge is set to true - means that other exhibit forms are retained.
 
@@ -354,10 +354,10 @@ export const saveExhibitData = async (email:string, data:ExhibitFormData): Promi
 /**
  * Send full exhibit form to each authorized individual of the entity, remove it from the database, and save
  * each constituent single exhibit form to s3 for temporary storage.
- * @param data 
+ * @param exhibitForm 
  * @returns 
  */
-export const sendExhibitData = async (email:string, data:ExhibitFormData): Promise<LambdaProxyIntegrationResponse> => {
+export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Promise<LambdaProxyIntegrationResponse> => {
   
   const affiliates = [] as Affiliate[];
   const emailFailures = [] as string[];
@@ -375,10 +375,10 @@ export const sendExhibitData = async (email:string, data:ExhibitFormData): Promi
   const validatePayload = () => {
 
     // Validate incoming data
-    if( ! data) {
+    if( ! exhibitForm) {
       throwError(INVALID_RESPONSE_MESSAGES.missingExhibitData);
     }
-    let { affiliates: _affiliates, entity_id: _entity_id } = data as ExhibitFormData;
+    let { affiliates: _affiliates, entity_id: _entity_id } = exhibitForm as ExhibitForm;
     if( ! _entity_id ) {
       throwError(INVALID_RESPONSE_MESSAGES.missingEntityId);
     }
@@ -449,7 +449,7 @@ export const sendExhibitData = async (email:string, data:ExhibitFormData): Promi
    */
   const sendFullExhibitFormToEntityStaff = async () => {
     for(let i=0; i<users.length; i++) {
-      var sent:boolean = await new ExhibitEmail(data, FormTypes.FULL, entity, consenter).send(users[i].email);
+      var sent:boolean = await new ExhibitEmail(exhibitForm, FormTypes.FULL, entity, consenter).send(users[i].email);
       if( ! sent) {
         emailFailures.push(users[i].email);
       }
@@ -466,7 +466,7 @@ export const sendExhibitData = async (email:string, data:ExhibitFormData): Promi
    */
   const sendSingleExhibitFormToAffiliates = async () => {
     const sendEmailToAffiliate = async (affiliateEmail:string):Promise<IPdfForm|null> => {
-      const email = new ExhibitEmail(data, FormTypes.SINGLE, entity, consenter);
+      const email = new ExhibitEmail(exhibitForm, FormTypes.SINGLE, entity, consenter);
       const sent = await email.send(affiliateEmail);
       return sent ? email.getAttachment() : null;
     }
@@ -481,7 +481,7 @@ export const sendExhibitData = async (email:string, data:ExhibitFormData): Promi
     if(emailFailures.length > 0) {
       const e = new Error(`The following email(s) to affiliates with exhibit forms failed. 
         Deletion of the corresponding database data has been deferred to the scheduled purge:
-        ${JSON.stringify(emailFailures, null, 2)}`)
+        ${JSON.stringify(emailFailures, null, 2)}`);
     }
   }
 
@@ -547,10 +547,11 @@ export const sendExhibitData = async (email:string, data:ExhibitFormData): Promi
 
 /**
  * Send corrected single exhibit form to each authorized individual of the entity.
- * @param data 
+ * @param email 
+ * @param exhibitForm 
  * @returns 
  */
-export const correctExhibitData = async (email:string, data:ExhibitFormData): Promise<LambdaProxyIntegrationResponse> => {
+export const correctExhibitData = async (email:string, exhibitForm:ExhibitForm): Promise<LambdaProxyIntegrationResponse> => {
 
   return okResponse('Ok');
 }
