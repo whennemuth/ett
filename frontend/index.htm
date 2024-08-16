@@ -7,6 +7,9 @@
     <meta name="author" content="Don Yurt, Warren Hennemuth">
     <title>ETT Home Page</title>
 
+    <!-- download jquery -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+
     <!-- download bootstrap -->
     <link rel="canonical" href="https://getbootstrap.com/docs/5.3.2/examples/jumbotron/">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
@@ -20,9 +23,6 @@
 
     <!-- Favicons -->
     <meta name="theme-color" content="#712cf9">
-
-    <!-- download jquery -->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 
     <style>
       .bd-placeholder-img {
@@ -914,10 +914,7 @@
                     <a class="nav-link active" id="consenter-consent-link" data-toggle="tab" href="#consenter-consent" role="tab" aria-controls="consenter-consent" aria-selected="true">Your Consent</a>
                   </li>
                   <li class="nav-item">
-                    <a class="nav-link" id="consenter-new-exhibit-link" data-toggle="tab" href="#consenter-new-exhibit" role="tab" aria-controls="consenter-new-exhibit" aria-selected="false">New Exhibit Form</a>
-                  </li>
-                  <li class="nav-item">
-                    <a class="nav-link" id="consenter-saved-exhibit-link" data-toggle="tab" href="#consenter-saved-exhibit" role="tab" aria-controls="consenter-saved-exhibit" aria-selected="false">Saved Exhibit Forms</a>
+                    <a class="nav-link" id="consenter-exhibit-link" data-toggle="tab" href="#consenter-exhibit" role="tab" aria-controls="consenter-exhibit" aria-selected="false">Your Exhibit Forms</a>
                   </li>
                 </ul>
                 <div class="tab-content" id="consenterContent">
@@ -1094,21 +1091,7 @@
                     </div>
                   </div>
 
-                  <div class="tab-pane fade" id="consenter-new-exhibit" role="tabpanel" aria-labelledby="consenter-new-exhibit-link" style="overflow:auto;">
-
-                  </div>
-
-                  <div class="tab-pane fade" id="consenter-saved-exhibit" role="tabpanel" aria-labelledby="consenter-saved-exhibit-link" style="overflow:auto;">
-                    <div style="overflow:auto; display: flex; justify-content: center; align-items: center; margin-top:10px;">
-                      <b>Exhibit forms saved withing the last 48 hours:</b>
-                      <select id="lbxSavedExhibitForms" class="form-control" style="width:300px; height:48px; margin-left: 10px;">
-                        <option><- Select One -></option>
-                      </select>
-                    </div>
-                    <div id="savedExhibitForm"></div>
-                  </div>
-
-                  <div id="exhibit-form-template" style="display:none;">
+                  <div class="tab-pane fade" id="consenter-exhibit" role="tabpanel" aria-labelledby="consenter-exhibit-link" style="overflow:auto;">
                     <h3 class="display-7 fw-bold">Full Exhibit Form - Consent Recipients/Affiliates</h3>
 
                     <p style="margin-top:40px; margin-bottom:40px;">
@@ -1117,15 +1100,21 @@
                       in the Consent Form also apply to this Full Exhibit Form.</b> My known Consent Recipient(s) are listed below: 
                     </p>
 
-                    <div id="divRequestingEntity" style="float:left; clear:both; overflow:auto;">
-                      <div style="float:left; margin-right:10px; text-align: right;" ><span id='exhibit-tooltip-0' data-toggle="tooltip">Requesting<br>Organizations/Entities</span></div>
+                    <div id="divRequestingEntity">
                       <div style="float:left;">
-                        <select id="lbxRequestingEntity" class="form-control" style="width:300px; height:48px; margin-right: 10px;">
-                          <option><- Select One -></option>
-                        </select>
+                        <div id="requestingEntityDropdown" class="dropdown">
+                          <b>Select One:</b>&nbsp;
+                          <span id='exhibit-tooltip-0' data-toggle="tooltip">
+                            <button id="requestingEntityDropdownButton" class="btn btn-primary btn-lg dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                              Requesting Organizations/Entities
+                            </button>
+                            <div id="requestingEntityDropdownList" class="dropdown-menu" aria-labelledby="requestingEntityDropdownButton">
+                            </div>
+                          </span>
+                        </div>
                       </div>
-                      <div style="float:left;">
-                        <button id="btnDummyData" class="btn btn-primary btn-lg" type="button" onclick="addDummyExhibitData()">Use Dummy Data</button>
+                      <div style="float:right;">
+                        <button id="btnDummyData" class="btn btn-primary btn-lg" type="button" onclick="addDummyExhibitData()">Use Mock Data</button>
                       </div>
                     </div>
 
@@ -1307,7 +1296,7 @@
                       following entity is one of my <u>Consent Recipients</u> referenced in and covered by my Consent Form:
                     </p>
 
-                    <div style="float:left; clear:both; overflow: auto;">
+                    <div style="float:left; clear:both; overflow: auto;;">
                       <table name="tblPoc">
                         <thead>
                           <tr>
@@ -1420,7 +1409,7 @@
           <p>&nbsp;</p>              
           <p>&nbsp;</p>              
           <div>
-            <button id="btnSignout" type="button" class="btn btn-danger">Sign out</button>           
+            <button id="btnSignout" type="button" class="btn btn-danger">Sign out</button>  
           </div>
         </div>
 
@@ -2043,6 +2032,7 @@
     }
 
     let consenterInfo;
+    let selectedEntityId;
 
     /**
      * Perform a consent related api task
@@ -2102,7 +2092,7 @@
               id: task == 'register-consent' ? 'apiResponse' : 'consentTimestamp',
               html: task == 'register-consent' ? failureMsg: pendingMsg
             };
-            hide('consenter-new-exhibit-link');
+            hide('consenter-exhibit-link');
             hide('consentOptions');
             show('consentFieldSet');
             fill(msg.id, msg.html);
@@ -2117,7 +2107,7 @@
             show('consentRenew');
             show('consentCorrect');
             show('consentSend');
-            show('consenter-new-exhibit-link');
+            show('consenter-exhibit-link');
             show('consentOptions');
             hide('consentFieldSet');
             fill('consentSendEmail', email);
@@ -2126,7 +2116,7 @@
 
           // Hide all consent options
           hideConsentFields = () => {
-            document.getElementById('consenter-new-exhibit-link').style.display = 'none';
+            document.getElementById('consenter-exhibit-link').style.display = 'none';
             document.getElementById('consentFieldSet').style.display = 'none';
             document.getElementById('consentOptions').style.display = 'none';
             fill('apiResponse', `${email} found to be deactivated`);
@@ -2151,7 +2141,7 @@
               hide('consentRescind');
               hide('consentCorrect');
               hide('consentSend');
-              hide('consenter-new-exhibit-link');
+              hide('consenter-exhibit-link');
               break;
             case 'deactivated':
               hideConsentFields();
@@ -2167,21 +2157,34 @@
       }
     }
 
-    const populateEntityList = (entities, parentDivId) => {
-      if( ! entities) {
-        return;
-      }
+    const populateEntityList = () => {
+      const { consenter: { exhibit_forms=[] }, entities } = consenterInfo;
       if( entities.length == 0) {
         return;
       }
-
-      const lbx = document.querySelector(`#${parentDivId} #lbxRequestingEntity`);
+      const lbx = document.querySelector(`#requestingEntityDropdownList`);
+      lbx.innerHTML = '';
       entities.forEach(entity => {
         const { entity_id, entity_name } = entity;
-        const opt = document.createElement("option");
-        opt.value = entity_id;
-        opt.text = entity_name;
-        lbx.add(opt, null);
+        const a = document.createElement("a");
+        a.id = entity_id;
+        a.name = entity_name;
+        a.className = 'dropdown-item';
+        a.href = '#';
+        const idx = exhibit_forms.findIndex(ef => {
+          return ef.entity_id == entity_id;
+        });
+        if(idx > -1) {
+          // An exhibit form has already been saved for this entity
+          a.style.color = 'green';
+          a.style.fontWeight = 'bold';
+          a.innerHTML = `${entity_name} <span style="font-style:italic">(Saved)</span>`;
+        }
+        else {
+          // No exhbit form has yet been saved for this entity
+          a.innerText = entity_name;
+        }
+        lbx.appendChild(a);
       });
     }
 
@@ -2191,11 +2194,11 @@
     const getConsenter = async () => {
       const { email } = IDJwtCookie.getUser() ?? {};
       await doConsentTask('get-consenter', { email });
-      setConsenter();;
+      setConsenter();
     }
 
     const setConsenter = () => {
-      const { consenter: { email, phone_number }, fullName, entities } = consenterInfo ?? {};
+      const { consenter: { email, phone_number }, fullName } = consenterInfo ?? {};
       const role = AccessJwtCookie.getRole();
       const rolename = role.name ?? 'CONSENTING_PERSON';
       document.getElementById(`${rolename}_username`).innerHTML = fullName;
@@ -2205,8 +2208,7 @@
       document.getElementById('txtConsentEditFullname').value = fullName;
       document.getElementById('txtConsentEditEmail').value = email;
       document.getElementById('txtConsentEditPhone').value = phone_number;
-      populateEntityList(entities, "consenter-new-exhibit");
-      populateSavedExhibitFormsList();
+      populateEntityList();
       return consenterInfo;
     }
 
@@ -2283,7 +2285,8 @@
     function toggleHighlight(fld, on_off) {
       let _on_off = on_off;
       if(on_off == undefined) {
-        _on_off = fld.nodeName == 'SELECT' && fld.selectedIndex == 0;
+        _on_off = fld.id == 'requestingEntityDropdown' && ! selectedEntityId;
+        _on_off ||= fld.nodeName == 'SELECT' && fld.selectedIndex == 0;
         _on_off ||= fld.nodeName == 'INPUT' && ! fld.value;
       }
       fld.style.borderStyle = _on_off ? 'solid' : '';
@@ -2345,12 +2348,29 @@
     }
 
     function getDummyConsenter() {
+
+      // Favor any entity info that might be already be in consenterInfo (not running locally)
+      const { entities } = consenterInfo ?? {};
+      let entityId1 = 'entity_id_1';
+      let entityId2 = 'entity_id_2';
+      let entityName1 = 'Anytown University';
+      let entityName2 = 'Somewhere State University';
+      if(entities && entities.length > 0) {
+        entityId1 = entities[0].entity_id;
+        entityName1 = entities[0].entity_name;
+      }
+      if(entities && entities.length > 1) {
+        entityId2 = entities[1].entity_id;
+        entityName2 = entities[1].entity_name;
+      }
+
+      // Return a mock consenterInfo object.
       return {
         activeConsent: true,
         fullName: 'Roger R Rabbit',
         entities: [
-          { active: 'Y', entity_id: 'entity_id_1', entity_name: 'Anytown University'},
-          { active: 'Y', entity_id: 'entity_id_2', entity_name: 'Somewhere State University'},
+          { active: 'Y', entity_id: entityId1, entity_name: entityName1},
+          { active: 'Y', entity_id: entityId2, entity_name: entityName2},
         ],
         consenter: {
           email: "roger@warnerbros.com",
@@ -2360,7 +2380,7 @@
           create_timestamp: "2024-07-05T16:24:56.068Z",
           exhibit_forms: [
             {
-              entity_id: 'entity_id_1',
+              entity_id: entityId1,
               affiliates: [
                 {
                   affiliateType:"employer",
@@ -2392,58 +2412,84 @@
     }
 
     function addDummyExhibitData() {
-      const tab = event.srcElement.closest('div[role="tabpanel"]');
-      let lbx;
-      switch(tab.id) {
-        case 'consenter-new-exhibit':
-          lbx = tab.querySelector('#lbxRequestingEntity');
-          break;
-        case 'consenter-saved-exhibit':
-          lbx = tab.querySelector('#lbxSavedExhibitForms');
-          break;
-      }
-      const entity_id = lbx.item(1).value;
-      lbx.value = entity_id;
-      lbx.dispatchEvent(new Event('change'));      
-      populateExhibitFormTable(tab, entity_id, getDummyConsenter());
+      const dropdownButton = document.getElementById('requestingEntityDropdownButton');
+      const dropdownList = document.getElementById('requestingEntityDropdownList');
+      const a = dropdownList.children[0];
+      selectedEntityId = a.id;
+      dropdownButton.innerText = a.name;
+      populateExhibitFormTable(getDummyConsenter());
+      validExhibitForm();
     }
 
-    function populateExhibitFormTable(tab, entity_id, substituteConsenterInfo) {
-      const button = tab.querySelector('#btnAddPoc');
+    /**
+     * Clear out the entire exhbit form
+     */
+    function clearExhibitForm() {
+      const removeButtons = document.querySelectorAll('#btnRemovePoc') ?? [];
+      for(let i=0; i<removeButtons.length; i++) {
+        const tr = removeButtons[i].closest('#trPoc');
+        if(i == 0) {
+          tr.querySelector('input[name="org-name"]').value = '';
+          tr.querySelector('select[name="org-type"]').selectedIndex = 0;
+          tr.querySelector('input[name="poc-name"]').value = '';
+          tr.querySelector('input[name="poc-title"]').value = '';
+          tr.querySelector('input[name="poc-email"]').value = '';
+          tr.querySelector('input[name="poc-phone"]').value = '';
+          continue;
+        }
+        removeButtons[i].click();
+      }
+      document.querySelector('#txtExhibitFullname').value = '';
+      document.querySelector('#txtExhibitEmail').value = '';
+      document.querySelector('#txtExhibitPhone').value = '';
+      document.querySelector('#txtExhibitSignature').value = '';
+    }
+
+    /**
+     * Fill out the exhibit form with an item from the consenters exhibit_forms collection.
+     */
+    function populateExhibitFormTable(substituteConsenterInfo) {
+      const button = document.querySelector('#btnAddPoc');
       const _consenterInfo = substituteConsenterInfo ?? consenterInfo;
       let { fullName, consenter: { email, phone_number, exhibit_forms }} = _consenterInfo;
       exhibit_forms = exhibit_forms ?? [];
+
+      clearExhibitForm(); 
+
       const exhibit_form = exhibit_forms.find(ef => {
-        return ef.entity_id = entity_id;
+        return ef.entity_id == selectedEntityId;
       });
 
-      if(exhibit_form) {
-        const { affiliates } = exhibit_form;
-        if(affiliates && affiliates.length > 0) {
-          while(tab.querySelectorAll('input[name="org-name"]').length < affiliates.length) {
-            button.click();
-          }
-          const setValue = (name, index, value) => {
-            const input = tab.querySelectorAll(`[name="${name}"]`)[index];
-            input.value = value;
-          }
-          for(let i=0; i<affiliates.length; i++) {
-            const a = affiliates[i];
-            setValue('org-name', i, a.org);
-            setValue('org-type', i, a.affiliateType);
-            setValue('poc-name', i, a.fullname);
-            setValue('poc-title', i, a.title);
-            setValue('poc-email', i, a.email);
-            setValue('poc-phone', i, a.phone_number);
-          }
+      if( ! exhibit_form) {
+        return
+      }
+
+      const { affiliates } = exhibit_form;
+        
+      // Repopulate the affiliates table
+      if(affiliates && affiliates.length > 0) {
+        while(document.querySelectorAll('input[name="org-name"]').length < affiliates.length) {
+          button.click();
+        }
+        const setValue = (name, index, value) => {
+          const input = document.querySelectorAll(`[name="${name}"]`)[index];
+          input.value = value;
+        }
+        for(let i=0; i<affiliates.length; i++) {
+          const a = affiliates[i];
+          setValue('org-name', i, a.org);
+          setValue('org-type', i, a.affiliateType);
+          setValue('poc-name', i, a.fullname);
+          setValue('poc-title', i, a.title);
+          setValue('poc-email', i, a.email);
+          setValue('poc-phone', i, a.phone_number);
         }
       }
 
-      tab.querySelector('#lbxRequestingEntity').value = entity_id;
-      tab.querySelector('#txtExhibitFullname').value = fullName;
-      tab.querySelector('#txtExhibitEmail').value = email;
-      tab.querySelector('#txtExhibitPhone').value = phone_number;
-      tab.querySelector('#txtExhibitSignature').value = 'My Signature';
+      document.querySelector('#txtExhibitFullname').value = fullName;
+      document.querySelector('#txtExhibitEmail').value = email;
+      document.querySelector('#txtExhibitPhone').value = phone_number;
+      document.querySelector('#txtExhibitSignature').value = 'My Signature';
     }
 
     /**
@@ -2479,21 +2525,20 @@
      */
     function validExhibitForm() {     
       let emptyFieldFound = false;
-      const parentDiv = event.srcElement.closest('div[role="tabpanel"]');
 
       // Put a red border on the requesting entity picklist if no entity is selected from it.
-      emptyFieldFound ||= toggleHighlight(parentDiv.querySelector('#lbxRequestingEntity'));
+      emptyFieldFound ||= toggleHighlight(document.querySelector('#requestingEntityDropdown'));
 
       // Put red borders on any affliate field that is empty.
       [ 'select', 'input'].forEach(tagname => {
-        const flds = parentDiv.querySelector('#tblPoc').getElementsByTagName(tagname);
+        const flds = document.querySelector('#tblPoc').getElementsByTagName(tagname);
         for (const fld of flds) {
           const empty = toggleHighlight(fld);
           emptyFieldFound ||= empty;
         };
       });
       [ 'txtExhibitSignature', 'txtExhibitFullname', 'txtExhibitEmail', 'txtExhibitPhone' ].forEach(fldId => {
-        const empty = toggleHighlight(parentDiv.querySelector(`#${fldId}`));
+        const empty = toggleHighlight(document.querySelector(`#${fldId}`));
         emptyFieldFound ||= empty;
       });
       return  ! emptyFieldFound;
@@ -2510,7 +2555,6 @@
       exhibit_data = [];
 
       // Blank out the carousel inside the modal dialog
-      const parentDiv = event.srcElement.closest('div[role="tabpanel"]');
       const indicators = document.querySelector('#exhibitFormCarouselIndicators');
       const inner = document.querySelector('#exhibitFormCarouselInner');
       indicators.innerHTML = '';
@@ -2518,7 +2562,7 @@
 
       // Populate a javascript object with data entered for each point of contact (affiliate)
       const createExhibitDataObject = () => {
-        const rows = parentDiv.querySelectorAll('tr[name="trPoc"]');
+        const rows = document.querySelectorAll('tr[name="trPoc"]');
         rows.forEach(row => {
           const affiliate = {};
           const inputs = row.getElementsByTagName('input');
@@ -2570,9 +2614,9 @@
           div2.querySelector('td[name="poc-email"]').innerHTML = data['poc-email'];
           div2.querySelector('td[name="poc-title"]').innerHTML = data['poc-title'];
           div2.querySelector('td[name="poc-phone"]').innerHTML = data['poc-phone'];
-          div2.querySelector('div[name="divExhibitFullname"]').innerHTML = parentDiv.querySelector('#txtExhibitFullname').value;
-          div2.querySelector('div[name="divExhibitEmail"]').innerHTML = parentDiv.querySelector('#txtExhibitEmail').value;
-          div2.querySelector('div[name="divExhibitPhone"]').innerHTML = parentDiv.querySelector('#txtExhibitPhone').value;
+          div2.querySelector('div[name="divExhibitFullname"]').innerHTML = document.querySelector('#txtExhibitFullname').value;
+          div2.querySelector('div[name="divExhibitEmail"]').innerHTML = document.querySelector('#txtExhibitEmail').value;
+          div2.querySelector('div[name="divExhibitPhone"]').innerHTML = document.querySelector('#txtExhibitPhone').value;
         }
 
         createBodyContainer();
@@ -2595,43 +2639,16 @@
         backdrop: 'static'
       }).show();
 
-      parentDiv.parentElement.querySelector('#signSingleExhibitForms').addEventListener('hidden.bs.modal', event => {
+      document.querySelector('#signSingleExhibitForms').addEventListener('hidden.bs.modal', event => {
         inner.innerHTML = '';
       })
     }
 
-    function showSavedExhibitForm() {
-      const lbx = document.querySelector('#lbxSavedExhibitForms');
-      const entity_id = lbx.value;
-      const entity_name = lbx.options[lbx.selectedIndex].innerText;
-
-      // Set the innerHTML of the saved exhibit form, minus the field values.
-      const tab = document.querySelector('#savedExhibitForm');
-      const templateDiv = document.querySelector('#exhibit-form-template');      
-
-      // Hide the lbxRequestingEntity and its label since lbxSavedExhibitForms is the relevant picklist here.
-      tab.innerHTML = templateDiv.innerHTML;
-      const reqEntityDiv = tab.querySelector('#divRequestingEntity');
-
-      reqEntityDiv.querySelectorAll('div').forEach(div => {
-        // Hide all child divs except for the dummy data button.
-        if( ! div.querySelector('#btnDummyData')) {
-          div.style.display = 'none';
-        }
-      });
-
-      populateExhibitFormTable(tab, entity_id);
-      tab.querySelector('#btnDummyData').parentElement.style.display = 'none';
-      tab.querySelector('#spanRequestingEntity').innerText = entity_name;
-    }
-
-    function getExhibitFormPayload(tab) {
+    function getExhibitFormPayload() {
       const { email } = IDJwtCookie.getUser() ?? {}; 
       const affiliates = [];
-      const lbxId = tab.id == 'consenter-new-exhibit' ? 'lbxRequestingEntity' : 'lbxSavedExhibitForms';
-      const entity_id = tab.querySelector(`#${lbxId}`).value;
 
-      tab.querySelectorAll('#trPoc').forEach(tr => {
+      document.querySelectorAll('#trPoc').forEach(tr => {
         const affiliate = {
           affiliateType: tr.querySelector('select[name="org-type"]').value,
           email: tr.querySelector('input[name="poc-email"]').value,
@@ -2642,7 +2659,7 @@
         }
         affiliates.push(affiliate);
       })
-      const payload = { email, exhibit_data: { entity_id, affiliates }};
+      const payload = { email, exhibit_data: { entity_id:selectedEntityId, affiliates }};
       return payload;
     }
 
@@ -2688,57 +2705,11 @@
      * Save the full exhibit form to the database. This is NOT the same as submitting an exhibit form.
      */
     const saveExhibitForm = async () => {
-      const tab = event.srcElement.closest('div[role="tabpanel"]');
-      const payload = getExhibitFormPayload(tab);
-      switch(tab.id) {
-        case 'consenter-new-exhibit':
-          await sendExhibitFormPayload('save-exhibit-form', payload, () => {
-            alert('Exhibit form saved.');
-            document.getElementById('consenter-new-exhibit').innerHTML = document.getElementById('exhibit-form-template').innerHTML;
-            const { entities } = consenterInfo; 
-            populateEntityList(entities, "consenter-new-exhibit");
-            populateSavedExhibitFormsList();
-            showSavedExhibitForm();
-          });
-          break;
-        case 'consenter-saved-exhibit':
-          await sendExhibitFormPayload('save-old-exhibit-form', payload, () => {
-            alert('Exhibit form updated.');
-          });
-          break;
-      }
-    }
-
-    /**
-     * Make an api call to acquire an updated listing of exhibit forms the user has saved but not
-     * submitted yet. This is needed after a new exhibit form is save for the first time.
-     */
-    const populateSavedExhibitFormsList = () => {
-      const { consenter: { exhibit_forms }, entities } = consenterInfo;
-      if(exhibit_forms && exhibit_forms.length > 0) {
-        const list = document.getElementById('lbxSavedExhibitForms');
-        // Clear the list
-        while(list.options.length > 0) {
-          list.remove(0);
-        }
-        // Repopulate the list
-        const addItem = (value, text) => {
-          const item = document.createElement("option");
-          item.value = value;
-          item.text = text;
-          list.add(item, null);
-        }
-        addItem('', '<- Select One ->');
-        exhibit_forms.forEach(ef => {
-          const  { entity_id } = ef;
-          const match = entities.find(e => {
-            return e.entity_id == entity_id;
-          });
-          if(match) {
-            addItem(ef.entity_id, match.entity_name);
-          }          
-        })
-      }      
+      const payload = getExhibitFormPayload();
+      await sendExhibitFormPayload('save-exhibit-form', payload, () => {
+        alert('Exhibit form saved.');
+        populateEntityList();
+      });
     }
 
     /**
@@ -2746,9 +2717,11 @@
      * storage, and trigger emails to the entity and the affiliates listed in the exhibit form.
      */
     const submitExhibitForm = async () => {
-      const tab = event.srcElement.closest('div[role="tabpanel"]');
-      const payload = getExhibitFormPayload(tab);
-      sendExhibitFormPayload('send-exhibit-form', payload);
+      const payload = getExhibitFormPayload();
+      await sendExhibitFormPayload('send-exhibit-form', payload, () => {
+        alert('Exhibit form submitted.');
+        populateEntityList();
+      });
     }
 
     const refreshDbTable = async (tableName) => {
@@ -3420,19 +3393,6 @@
       document.getElementById('btnCorrectConsent').addEventListener('click', () => {
         correctConsent();
       });
-      document.getElementById('lbxRequestingEntity').addEventListener('change', (event) => {
-        const lbx = event.srcElement;
-        toggleHighlight(lbx);
-        document.getElementById('spanRequestingEntity').innerText = lbx.options[lbx.selectedIndex].innerText;
-      });
-      document.getElementById('lbxSavedExhibitForms').addEventListener('change', () => {
-        showSavedExhibitForm();
-      });
-      // document.getElementById('btnExhibitNext').addEventListener('click', () => {
-      //   if(validExhibitForm()) {
-      //     signSingleExhibitForms();
-      //   }
-      // });
       document.getElementById('txtExhibitSignature').addEventListener('keyup', () => {
         toggleHighlight(event.srcElement);
       });
@@ -3464,6 +3424,18 @@
         e.preventDefault()
         $(this).tab('show')
       });
+
+      // Add behavior to selection activity on the entity picklist
+      $('#requestingEntityDropdownButton').on('hide.bs.dropdown', function () {
+        const { srcElement:a } = event;
+        if(a.tagName == 'A' && a.name && a.id) {
+          const button = document.getElementById('requestingEntityDropdownButton');
+          button.innerText = a.name;
+          selectedEntityId = a.id;
+          populateExhibitFormTable();
+          toggleHighlight(document.querySelector('#requestingEntityDropdown'));
+        }
+      })
 
       if(selected_role == 'SYS_ADMIN') {
         await buildConfigurationsTable();
@@ -3535,14 +3507,6 @@
             case 'CONSENTING_PERSON':
               document.getElementById('app-section-CONSENTING_PERSON').style.display = 'inline';
               
-              const newExhibitDiv = document.getElementById('consenter-new-exhibit');
-              newExhibitDiv.innerHTML = document.getElementById('exhibit-form-template').innerHTML;
-              newExhibitDiv.querySelector('#lbxRequestingEntity').addEventListener('change', (event) => {
-                const lbx = event.target;
-                toggleHighlight(lbx);
-                newExhibitDiv.querySelector('#spanRequestingEntity').innerText = lbx.options[lbx.selectedIndex].innerText;
-              });
-
               if(localTesting()) {
                 setDummyConsenter();
                 setConsenter();
