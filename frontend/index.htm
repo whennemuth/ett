@@ -2692,7 +2692,7 @@
       const payload = getExhibitFormPayload(tab);
       switch(tab.id) {
         case 'consenter-new-exhibit':
-          await sendExhibitFormPayload('save-new-exhibit-form', payload, () => {
+          await sendExhibitFormPayload('save-exhibit-form', payload, () => {
             alert('Exhibit form saved.');
             document.getElementById('consenter-new-exhibit').innerHTML = document.getElementById('exhibit-form-template').innerHTML;
             const { entities } = consenterInfo; 

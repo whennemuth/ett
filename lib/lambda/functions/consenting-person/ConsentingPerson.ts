@@ -12,8 +12,7 @@ import { ExhibitBucket } from "./ConsenterBucketItems";
 import { ExhibitEmail, FormTypes } from "./ExhibitEmail";
 
 export enum Task {
-  SAVE_NEW_EXHIBIT_FORM = 'save-new-exhibit-form',
-  SAVE_OLD_EXHIBIT_FORM = 'save-old-exhibit-form',
+  SAVE_EXHIBIT_FORM = 'save-exhibit-form',
   CORRECT_EXHIBIT_FORM = 'correct-exhibit-form',
   SEND_EXHIBIT_FORM = 'send-exhibit-form',
   GET_CONSENTER = 'get-consenter',
@@ -34,7 +33,6 @@ export const INVALID_RESPONSE_MESSAGES = {
   missingExhibitFormIssuerEmail: 'Missing email of exhibit form issuer!',
   missingEntityId: 'Missing entity_id!',
   missingConsent: 'Consent is required before the requested operation can be performed',
-  exhibitFormAlreadyExists: 'Cannot create new exhibit_form since it already exists in the database',
   invalidAffiliateRecords: 'Affiliate item with missing/invalid value',
   inactiveConsenter: 'Consenter is inactive',
   noSuchConenter: 'No such consenter',
@@ -82,10 +80,8 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           return await sendConsent( { email } as Consenter, entityName);
         case Task.CORRECT_CONSENT:
           return await correctConsent(parameters);
-        case Task.SAVE_NEW_EXHIBIT_FORM:
-          return await saveExhibitData(email, exhibit_data, true);
-        case Task.SAVE_OLD_EXHIBIT_FORM:
-          return await saveExhibitData(email, exhibit_data, false);
+        case Task.SAVE_EXHIBIT_FORM:
+          return await saveExhibitData(email, exhibit_data);
         case Task.SEND_EXHIBIT_FORM:
           return await sendExhibitData(email, exhibit_data);
         case Task.CORRECT_EXHIBIT_FORM:
@@ -289,7 +285,7 @@ export const sendConsent = async (consenter:Consenter, entityName:string): Promi
  * @param isNew Save a new exhibit form (true) or update and existing one (false)
  * @returns 
  */
-export const saveExhibitData = async (email:string, data:ExhibitFormData, isNew:boolean): Promise<LambdaProxyIntegrationResponse> => {
+export const saveExhibitData = async (email:string, data:ExhibitFormData): Promise<LambdaProxyIntegrationResponse> => {
   // Validate incoming data
   if( ! data) {
     return invalidResponse(INVALID_RESPONSE_MESSAGES.missingExhibitData);
@@ -314,20 +310,6 @@ export const saveExhibitData = async (email:string, data:ExhibitFormData, isNew:
   if( ! affiliates || affiliates.length == 0) {
     return invalidResponse(INVALID_RESPONSE_MESSAGES.missingAffiliateRecords);
   }
-
-  // Abort if the attempt is to save a new exhibit_form, but it already exists in the database
-  if(isNew) {
-    const { consenter: { exhibit_forms }} = consenterInfo;
-    consenterInfo.consenter.exhibit_forms;
-    if(exhibit_forms && exhibit_forms.length > 0) {
-      const match = exhibit_forms.find(ef => {
-        return ef.entity_id == entity_id;
-      });
-      if(match) {
-        return invalidResponse(INVALID_RESPONSE_MESSAGES.exhibitFormAlreadyExists + ': ' + match.entity_id);
-      }
-    }
-  } 
 
   // Ensure that an existing exhibit form cannot have its create_timestamp refreshed - this would inferfere with expiration.
   const { consenter:oldConsenter } = consenterInfo;
@@ -580,7 +562,7 @@ export const correctExhibitData = async (email:string, data:ExhibitFormData): Pr
 const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
 
-  const task = Task.SAVE_NEW_EXHIBIT_FORM as Task;
+  const task = Task.SAVE_EXHIBIT_FORM as Task;
   const landscape = 'dev';
   const region = 'us-east-2';
 
@@ -632,9 +614,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
     } as any;
 
     switch(task) {
-      case Task.SAVE_NEW_EXHIBIT_FORM:
-        break;
-      case Task.SAVE_OLD_EXHIBIT_FORM:
+      case Task.SAVE_EXHIBIT_FORM:
         // Make some edits
         payload.exhibit_data.affiliates[0].email = 'bugsbunny@gmail.com';
         payload.exhibit_data.affiliates[1].org = 'New York School of Animation';
