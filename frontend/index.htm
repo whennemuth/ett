@@ -2417,7 +2417,7 @@
       const a = dropdownList.children[0];
       selectedEntityId = a.id;
       dropdownButton.innerText = a.name;
-      populateExhibitFormTable(getDummyConsenter());
+      populateExhibitForm(getDummyConsenter());
       validExhibitForm();
     }
 
@@ -2448,7 +2448,7 @@
     /**
      * Fill out the exhibit form with an item from the consenters exhibit_forms collection.
      */
-    function populateExhibitFormTable(substituteConsenterInfo) {
+    function populateExhibitForm(substituteConsenterInfo) {
       const button = document.querySelector('#btnAddPoc');
       const _consenterInfo = substituteConsenterInfo ?? consenterInfo;
       let { fullName, consenter: { email, phone_number, exhibit_forms }} = _consenterInfo;
@@ -3432,7 +3432,7 @@
           const button = document.getElementById('requestingEntityDropdownButton');
           button.innerText = a.name;
           selectedEntityId = a.id;
-          populateExhibitFormTable();
+          populateExhibitForm();
           toggleHighlight(document.querySelector('#requestingEntityDropdown'));
         }
       })
