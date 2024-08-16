@@ -421,6 +421,24 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
     }
   }
 
+  /**
+   * If the consenter did not save their last exhibit form entries before submitting them, their database
+   * record will not reflect those latest entries, so merge the two now.
+   */
+  const mergeExhibitFormIntoConsenterData = () => {
+    const { exhibit_forms=[] } = consenter;
+    const efIdx = exhibit_forms.findIndex(ef => {
+      return ef.entity_id == exhibitForm.entity_id;
+    });
+    if(efIdx == -1) {
+      exhibit_forms.push(exhibitForm);
+    }
+    else {
+      exhibit_forms[efIdx] = exhibitForm;
+    }
+    consenter.exhibit_forms = exhibit_forms;
+  }
+
   const loadInfoFromDatabase = async () => {
     // Get the consenter
     const consenterInfo = await getConsenter(email, false) as ConsenterInfo;
@@ -432,6 +450,8 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
     }
 
     consenter = _consenter;
+
+    mergeExhibitFormIntoConsenterData();
 
     // Get the entity
     const daoEntity = DAOFactory.getInstance({ DAOType:"entity", Payload: { entity_id }});
@@ -535,7 +555,7 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
 
     await createEventBridgeBucketPruningRule();
 
-    return okResponse('Ok');
+    return getConsenterResponse(email, true);
   }
   catch(e:any) {
     if(badResponse) {
