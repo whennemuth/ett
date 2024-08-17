@@ -22,8 +22,10 @@ export class HelloWorldApi extends AbstractRole {
 
     super(scope, constructId);
 
+    const context:IContext = scope.node.getContext('stack-parms');
+    const { STACK_ID} = context;
     const { userPool, cloudfrontDomain, landscape } = parms;
-    const functionName = `ett-${landscape}-${Roles.HELLO_WORLD}-user`;
+    const functionName = `${STACK_ID}-${landscape}-${Roles.HELLO_WORLD}-user`;
 
     const lambdaFunction = new Function(scope, `${constructId}Lambda`, {
       runtime: Runtime.NODEJS_18_X,

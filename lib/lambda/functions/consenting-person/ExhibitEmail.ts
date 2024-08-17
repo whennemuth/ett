@@ -2,7 +2,7 @@ import { AffiliateTypes, Consenter, Entity, ExhibitForm as ExhibitFormData, YN }
 import { ExhibitForm } from "../../_lib/pdf/ExhibitForm";
 import { ExhibitFormFull } from "../../_lib/pdf/ExhibitFormFull";
 import { ExhibitFormSingle } from "../../_lib/pdf/ExhibitFormSingle";
-import { PdfForm } from "../../_lib/pdf/PdfForm";
+import { IPdfForm, PdfForm } from "../../_lib/pdf/PdfForm";
 import { sendEmail } from "../EmailWithAttachments";
 
 
@@ -21,6 +21,7 @@ export class ExhibitEmail {
   private formType:FormType;
   private entity:Entity;
   private consenter:Consenter;
+  private pdf:IPdfForm; 
 
   /**
    * @param data The data to build the exhibit form from.
@@ -38,30 +39,37 @@ export class ExhibitEmail {
     const { fullName } = PdfForm;
     const consenterFullname = fullName(firstname, middlename, lastname);
     const { entity_name } = entity;
+    
     switch(formType) {
       case FormTypes.FULL:
+        this.pdf = new ExhibitFormFull(new ExhibitForm(data), consenter);
         return await sendEmail({
           subject: 'ETT Exhibit Form Submission',
           message: `Consenting individual ${consenterFullname} is forwarding you their full affliate list via ETT`,
           emailAddress,
           attachments: {
-            pdf: new ExhibitFormFull(new ExhibitForm(data), consenter),
+            pdf: this.pdf,
             name: 'exhibit-form-full.pdf',
             description: 'exhibit-form-full.pdf'
           }
         });
       case FormTypes.SINGLE:
+        this.pdf = new ExhibitFormSingle(new ExhibitForm(data), consenter, emailAddress);
         return await sendEmail({
           subject: 'ETT Notice of Consent',
           message: `Consenting individual ${consenterFullname} has named you as an affilate for disclosure to ${entity_name}`,
           emailAddress,
           attachments: {
-            pdf: new ExhibitFormSingle(new ExhibitForm(data), consenter),
+            pdf: this.pdf,
             name: 'exhibit-form-single.pdf',
             description: 'exhibit-form-single.pdf'
           }
         });
     }
+  }
+
+  public getAttachment = ():IPdfForm => {
+    return this.pdf;
   }
 }
 

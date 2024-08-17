@@ -157,7 +157,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_DEMOLITION') {
   const entity_id = 'db542060-7de0-4c55-be58-adc92671d63a';
 
   
-  lookupUserPoolId('ett-cognito-userpool', region)
+  lookupUserPoolId('ett-dev-cognito-userpool', region)
     .then((userpoolId) => {
 
       process.env.USERPOOL_ID = userpoolId;

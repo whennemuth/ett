@@ -7,6 +7,7 @@ import { AuthorizedIndividualApi } from "./role/AuthorizedIndividual";
 import { ConsentingPersonApi } from "./role/ConsentingPerson";
 import { DynamoDbConstruct } from "./DynamoDb";
 import { CognitoConstruct } from "./Cognito";
+import { Bucket } from "aws-cdk-lib/aws-s3";
 
 export type ApiConstructParms = {
   userPool: UserPool,
@@ -14,7 +15,8 @@ export type ApiConstructParms = {
   userPoolDomain: string,
   cloudfrontDomain: string,
   redirectPath: string,
-  landscape: string
+  landscape: string,
+  exhibitFormsBucketName: string
 }
 
 /**
@@ -41,7 +43,7 @@ export class ApiConstruct extends Construct {
     this._consentingPersonApi = new ConsentingPersonApi(this, 'ConsentPersonUser', apiParms);
   }
 
-  public grantPermissionsTo = (dynamodb:DynamoDbConstruct, cognito:CognitoConstruct) => {
+  public grantPermissionsTo = (dynamodb:DynamoDbConstruct, cognito:CognitoConstruct, exhibitFormsBucket:Bucket) => {
 
     const { reAdminApi, sysAdminApi, authIndApi, consentingPersonApi } = this;
 
@@ -51,23 +53,38 @@ export class ApiConstruct extends Construct {
     dynamodb.getUsersTable().grantReadWriteData(sysAdminApi.getLambdaFunction());
     dynamodb.getConsentersTable().grantReadWriteData(sysAdminApi.getLambdaFunction());
     dynamodb.getConfigTable().grantReadWriteData(sysAdminApi.getLambdaFunction());
+    // Grant the sysadmin add, edit, delete permissions on the exhibit forms bucket
+    exhibitFormsBucket.grantReadWrite(sysAdminApi.getLambdaFunction());
+    exhibitFormsBucket.grantDelete(sysAdminApi.getLambdaFunction());
+    exhibitFormsBucket.grantPut(sysAdminApi.getLambdaFunction());
 
     // Grant the re administrator api permissions to read/write from the users table
     dynamodb.getUsersTable().grantReadWriteData(reAdminApi.getLambdaFunction());
     dynamodb.getInvitationsTable().grantReadWriteData(reAdminApi.getLambdaFunction());
     dynamodb.getEntitiesTable().grantReadWriteData(reAdminApi.getLambdaFunction());
     dynamodb.getConfigTable().grantReadData(reAdminApi.getLambdaFunction());
+    // Grant the administrator read & delete permissions on the exhibit forms bucket
+    exhibitFormsBucket.grantRead(reAdminApi.getLambdaFunction());
+    exhibitFormsBucket.grantDelete(reAdminApi.getLambdaFunction());
 
     // Grant the authorized individual api permissions to read/write from the users table
     dynamodb.getUsersTable().grantReadWriteData(authIndApi.getLambdaFunction());
     dynamodb.getInvitationsTable().grantReadWriteData(authIndApi.getLambdaFunction());
     dynamodb.getEntitiesTable().grantReadWriteData(authIndApi.getLambdaFunction());
     dynamodb.getConfigTable().grantReadData(authIndApi.getLambdaFunction());
+    // Grant the authorized individual read & delete permissions on the exhibit forms bucket
+    exhibitFormsBucket.grantRead(authIndApi.getLambdaFunction());
+    exhibitFormsBucket.grantDelete(authIndApi.getLambdaFunction());
 
     // Grant the consenter api permissions to read/write from the users table
+    dynamodb.getUsersTable().grantReadData(consentingPersonApi.getLambdaFunction());
     dynamodb.getConsentersTable().grantReadWriteData(consentingPersonApi.getLambdaFunction());
     dynamodb.getEntitiesTable().grantReadWriteData(consentingPersonApi.getLambdaFunction());
     dynamodb.getConfigTable().grantReadData(consentingPersonApi.getLambdaFunction());
+    // Grant the consenter add, edit, delete permissions on the exhibit forms bucket
+    exhibitFormsBucket.grantReadWrite(consentingPersonApi.getLambdaFunction());
+    exhibitFormsBucket.grantDelete(consentingPersonApi.getLambdaFunction());
+    exhibitFormsBucket.grantPut(consentingPersonApi.getLambdaFunction());
   }
 
   public get helloWorldApi(): HelloWorldApi {

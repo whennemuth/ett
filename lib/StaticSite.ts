@@ -32,14 +32,14 @@ export abstract class StaticSiteConstruct extends Construct {
   public abstract customize(): void;
  
   public getBucket = (): Bucket => {
-    const { TAGS: { Landscape }} = this.context;
+    const { TAGS: { Landscape }, STACK_ID } = this.context;
     if( ! this.bucket) {
       if(this.props?.bucket) {
         this.bucket = this.props.bucket;
       }
       else {
         this.bucket = new Bucket(this, 'Bucket', {
-          bucketName: `ett-${Landscape}-static-site-content`,
+          bucketName: `${STACK_ID}-${Landscape}-static-site-content`,
           publicReadAccess: false,
           blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
           removalPolicy: RemovalPolicy.DESTROY,    

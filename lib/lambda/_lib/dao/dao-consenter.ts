@@ -60,6 +60,12 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
       consenterInfo.exhibit_forms = [];
     }
 
+    exhibit_forms?.forEach(ef => {
+      if( ! ef.entity_id) {
+        throw new Error(`Consenter create error for ${email}: Exhibit form missing entity_id`);
+      }
+    });
+
     // Make sure the original userinfo object gets a create_timestamp value if a default value is invoked.
     if( ! consenterInfo.create_timestamp) consenterInfo.create_timestamp = create_timestamp;
     consenterInfo.active = active;
@@ -111,6 +117,12 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
         throw new Error(`Consenter update error: No such consenter ${email}`);
       }
     }
+
+    exhibit_forms?.forEach(ef => {
+      if( ! ef.entity_id) {
+        throw new Error(`Consenter update error for ${email}: Exhibit form missing entity_id`);
+      }
+    });
 
     // Make sure the upcoming update gets an update_timestamp
     const { update_timestamp:newTimestamp } = consenterInfo;

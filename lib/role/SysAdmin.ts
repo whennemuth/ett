@@ -58,9 +58,9 @@ export class SysAdminApi extends AbstractRole {
 export class LambdaFunction extends AbstractFunction {
   constructor(scope: Construct, constructId: string, parms:ApiConstructParms) {
     const context:IContext = scope.node.getContext('stack-parms');
-    const { CONFIG, REGION, TAGS: { Landscape:landscape } } = context;
+    const { ACCOUNT, CONFIG, REGION, TAGS: { Landscape:landscape }, STACK_ID } = context;
     const config = new Configurations(CONFIG);
-    const { userPool, userPoolName, userPoolDomain, cloudfrontDomain, redirectPath } = parms;
+    const { userPool, userPoolName, userPoolDomain, cloudfrontDomain, redirectPath, exhibitFormsBucketName } = parms;
     const { userPoolArn } = userPool;
     const redirectURI = `${cloudfrontDomain}/${redirectPath}`.replace('//', '/');
     
@@ -69,7 +69,7 @@ export class LambdaFunction extends AbstractFunction {
       memorySize: 1024,
       entry: 'lib/lambda/functions/sys-admin/SysAdminUser.ts',
       // handler: 'handler',
-      functionName: `ett-${landscape}-${Roles.SYS_ADMIN}-user`,
+      functionName: `${STACK_ID}-${landscape}-${Roles.SYS_ADMIN}-user`,
       description: 'Function for all sys admin user activity.',
       cleanup: true,
       bundling: {
@@ -86,7 +86,7 @@ export class LambdaFunction extends AbstractFunction {
               new PolicyStatement({
                 actions: [ 'ses:Send*', 'ses:Get*' ],
                 resources: [
-                  `arn:aws:ses:${context.REGION}:${context.ACCOUNT}:identity/*`
+                  `arn:aws:ses:${REGION}:${ACCOUNT}:identity/*`
                 ],
                 effect: Effect.ALLOW
               })
@@ -114,7 +114,8 @@ export class LambdaFunction extends AbstractFunction {
         USERPOOL_NAME: userPoolName,
         COGNITO_DOMAIN: userPoolDomain,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
-        REDIRECT_URI: redirectURI
+        REDIRECT_URI: redirectURI,
+        EXHIBIT_FORMS_BUCKET_NAME: exhibitFormsBucketName,
       }
     });
   }

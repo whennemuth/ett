@@ -57,14 +57,15 @@ export class ConsentingPersonApi extends AbstractRole {
 export class LambdaFunction extends AbstractFunction {
   constructor(scope: Construct, constructId: string, parms:ApiConstructParms) {
     const context:IContext = scope.node.getContext('stack-parms');
-    const { userPool, cloudfrontDomain, landscape } = parms;
+    const { ACCOUNT, REGION, CONFIG, STACK_ID } = context;
+    const { userPool, cloudfrontDomain, landscape, exhibitFormsBucketName } = parms;
     const { userPoolArn, userPoolId } = userPool;
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
       memorySize: 1024,
       entry: 'lib/lambda/functions/consenting-person/ConsentingPerson.ts',
       // handler: 'handler',
-      functionName: `ett-${landscape}-${Roles.CONSENTING_PERSON}-user`,
+      functionName: `${STACK_ID}-${landscape}-${Roles.CONSENTING_PERSON}-user`,
       description: 'Function for all consenting persons activity.',
       cleanup: true,
       bundling: {
@@ -81,7 +82,7 @@ export class LambdaFunction extends AbstractFunction {
               new PolicyStatement({
                 actions: [ 'ses:Send*', 'ses:Get*' ],
                 resources: [
-                  `arn:aws:ses:${context.REGION}:${context.ACCOUNT}:identity/*`
+                  `arn:aws:ses:${REGION}:${ACCOUNT}:identity/*`
                 ],
                 effect: Effect.ALLOW
               })
@@ -102,7 +103,8 @@ export class LambdaFunction extends AbstractFunction {
         REGION: scope.node.getContext('stack-parms').REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
         USERPOOL_ID: userPoolId,
-        [Configurations.ENV_VAR_NAME]: new Configurations(context.CONFIG).getJson()
+        EXHIBIT_FORMS_BUCKET_NAME: exhibitFormsBucketName,
+        [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });
   }

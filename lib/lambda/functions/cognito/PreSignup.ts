@@ -123,7 +123,7 @@ const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY_COGNITO_PRE_SIGNUP') {
 
   const role:Role = Roles.SYS_ADMIN;
-  const userpoolName:string = 'ett-cognito-userpool';
+  const userpoolName:string = 'ett-dev-cognito-userpool';
   const region = 'us-east-2';
   const email = 'wrh@bu.edu';
   let userPoolId:string|undefined;

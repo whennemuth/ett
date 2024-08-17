@@ -24,9 +24,9 @@ export class CognitoConstruct extends Construct {
 
     this.constructId = constructId;
     this.context = scope.node.getContext('stack-parms');
-    const { TAGS: { Landscape }} = this.context;
+    const { TAGS: { Landscape }, STACK_ID } = this.context;
     this.landscape = Landscape;
-    this.userPoolName = `ett-${Landscape}-${this.constructId.toLowerCase()}-userpool`;
+    this.userPoolName = `${STACK_ID}-${Landscape}-${this.constructId.toLowerCase()}-userpool`;
     this.buildResources();
   }
 
@@ -58,7 +58,7 @@ export class CognitoConstruct extends Construct {
     };
 
     const preSignupFunction = new AbstractFunction(this, 'PreSignupFunction', {
-      functionName: `ett-${landscape}-${constructId.toLowerCase()}-pre-signup`,
+      functionName: `${stackId}-${landscape}-${constructId.toLowerCase()}-pre-signup`,
       description: 'Intercepts cognito account creation to ensure proper registration pre-requisites have been met first.',
       runtime: Runtime.NODEJS_18_X,
       memorySize: 1024,
@@ -99,7 +99,7 @@ export class CognitoConstruct extends Construct {
     });
 
     const postSignupFunction = new AbstractFunction(this, 'PostSignupFunction', {
-      functionName: `ett-${landscape}-${constructId.toLowerCase()}-post-signup`,
+      functionName: `${stackId}-${landscape}-${constructId.toLowerCase()}-post-signup`,
       description: 'Handles entry of a user into dynamodb directly after signing up in cognito.',
       runtime: Runtime.NODEJS_18_X,
       memorySize: 1024,
@@ -149,7 +149,7 @@ export class CognitoConstruct extends Construct {
     });
 
     const preAuthenticationFunction = new AbstractFunction(this, 'PreAuthenticationFunction', {
-      functionName: `ett-${landscape}-${constructId.toLowerCase()}-pre-authentication`,
+      functionName: `${stackId}-${landscape}-${constructId.toLowerCase()}-pre-authentication`,
       description: 'Cancels login attempt if user is does not have the role they selected to sign in with',
       runtime: Runtime.NODEJS_18_X,
       memorySize: 1024,
@@ -227,7 +227,7 @@ export class CognitoConstruct extends Construct {
     // https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-app-ui-customization.html
     // const uiAttachment = new CfnUserPoolUICustomizationAttachment(
     //   this,
-    //   `ett-${this.constructId.toLowerCase()}-ui-attachment`,
+    //   `${stackId}-${this.constructId.toLowerCase()}-ui-attachment`,
     //   {
     //     clientId: this.userPoolClient.userPoolClientId,
     //     userPoolId: this.userPool.userPoolId,

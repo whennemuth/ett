@@ -36,12 +36,21 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
     }
 
     log(`Registering ${email}`);
-  
-    // Create the consenter in the database via an update (in case registration was interrupted and is being retried)
+
     const create_timestamp = new Date().toISOString();
     const active = YN.Yes
+
+    // Lookup the consenter in case registration was interrupted and is being retried
     let dao = ConsenterCrud({ email, firstname, middlename, lastname, create_timestamp, active } as Consenter);
-    await dao.update();
+    const existingConsenter = await dao.read() as Consenter;
+
+    if(existingConsenter) {
+      console.log(`Consenter ${email} already exists, updating`)
+      await dao.update(existingConsenter);
+    }
+    else {
+      await dao.create();
+    }
   
     return okResponse(`${email} created`);
   }

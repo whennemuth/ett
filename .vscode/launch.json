@@ -89,6 +89,23 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "ConsenterBucketItems",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/ConsenterBucketItems.ts",
+        "RUN_MANUALLY_CONSENTER_BUCKET_ITEM",
+        "us-east-2",
+        "correct"
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "ConsentingPerson DAO",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
@@ -166,15 +183,14 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Cognito post signup handler",
+      "name": "Cognito pre authentication handler",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
-        "${workspaceFolder}/lib/lambda/functions/cognito/_runner.ts",
-        "postsignup"
+        "${workspaceFolder}/lib/lambda/functions/cognito/PreAuthentication.ts",
+        "RUN_MANUALLY_PRE_AUTHENTICATION"
       ], 
       "env": {
-        "TODO": "Merge this into PostSignup.test.ts and run unmocked with jest.",
         "AWS_PROFILE": "bu",
         "REGION": "us-east-2"
       }, 
@@ -769,6 +785,21 @@
         "--silent",
         "-i", 
         "${workspaceFolder}/lib/lambda/functions/consenting-person/ConsentingPerson.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Consenter-Bucket-Items",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "killBehavior": "forceful",
+      "args": [ 
+        "--runTestsByPath", 
+        "-i", 
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/ConsenterBucketItems.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",

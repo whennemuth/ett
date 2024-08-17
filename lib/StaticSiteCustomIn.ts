@@ -60,9 +60,9 @@ export class StaticSiteCustomInConstruct extends StaticSiteConstruct {
   }
 
   public customize(): void {
-    const { context: { ACCOUNT, TAGS: { Landscape:landscape } }, constructId, props, getBucket } = this;
+    const { context: { ACCOUNT, TAGS: { Landscape:landscape }, STACK_ID }, constructId, props, getBucket } = this;
     const inProps = (<StaticSiteCustomInConstructParms>props);
-    const functionName = `ett-${landscape}-${constructId.toLowerCase()}-injection-function`;
+    const functionName = `${STACK_ID}-${landscape}-${constructId.toLowerCase()}-injection-function`;
     const staticParms = buildJsonEnvVar(inProps);
     const conversionFunction = new AbstractFunction(this, 'TextConverterFunction', {
       functionName,

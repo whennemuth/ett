@@ -448,7 +448,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_RE_ADMIN') {
       throw('Cloudfront domain lookup failure');
     }
     process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
-    return lookupUserPoolId('ett-cognito-userpool', region);
+    return lookupUserPoolId('ett-dev-cognito-userpool', region);
   })
   .then((userpoolId) => {
 
