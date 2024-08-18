@@ -35,8 +35,9 @@ export const INVALID_RESPONSE_MESSAGES = {
   missingConsent: 'Consent is required before the requested operation can be performed',
   invalidAffiliateRecords: 'Affiliate item with missing/invalid value',
   inactiveConsenter: 'Consenter is inactive',
-  noSuchConenter: 'No such consenter',
-  emailFailure: 'Email failed for one or more recipients!'
+  noSuchConsenter: 'No such consenter',
+  emailFailures: `There were one or more email failures related to exhibit form activty for INSERT_EMAIL. 
+  Therefore removal of the corresponding data from the consenters database record is deferred until its natural expiration`
 }
 
 export type ConsenterInfo = {
@@ -156,10 +157,18 @@ export const getConsenter = async (email:string, includeEntityList:boolean=true)
   let entities:Entity[] = [];
   if(includeEntityList && activeConsent) {
     const entityDao = DAOFactory.getInstance({ DAOType: 'entity', Payload: { active:YN.Yes }});
-    const _entities = await entityDao.read({ convertDates: false }) as Entity[];
-    entities.push(... _entities.filter((_entity:Entity) => {
-      return _entity.entity_id != ENTITY_WAITING_ROOM;
-    }));
+    const _entities = await entityDao.read({ convertDates: false }) as Entity|Entity[];
+    if(_entities instanceof Array) {
+      entities.push(... (_entities as Entity[]).filter((_entity:Entity) => {
+        return _entity.entity_id != ENTITY_WAITING_ROOM;
+      }));
+    }
+    else {
+      const entity = _entities as Entity;
+      if(entity.entity_id  != ENTITY_WAITING_ROOM) {
+        entities.push(entity);
+      }
+    }
   }
   const { firstname, middlename, lastname } = consenter;
   const retval = { 
@@ -294,7 +303,7 @@ export const saveExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
   // Abort if consenter lookup fails
   const consenterInfo = await getConsenter(email, false) as ConsenterInfo;
   if( ! consenterInfo) {
-    return invalidResponse(INVALID_RESPONSE_MESSAGES.noSuchConenter + ' ' + email );
+    return invalidResponse(INVALID_RESPONSE_MESSAGES.noSuchConsenter + ' ' + email );
   }
 
   // Abort if the consenter has not yet consented
@@ -360,15 +369,17 @@ export const saveExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
 export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Promise<LambdaProxyIntegrationResponse> => {
   
   const affiliates = [] as Affiliate[];
-  const emailFailures = [] as string[];
+  const emailFailuresForEntityStaff = [] as string[];
+  const emailFailuresForAffiliates = [] as string[];
+  const emailFailures = () => { return emailFailuresForEntityStaff.length > 0 || emailFailuresForAffiliates.length > 0; }
   let badResponse:LambdaProxyIntegrationResponse|undefined;
   let entity_id:string|undefined;
   let consenter = {} as Consenter;
   let entity = {} as Entity;
   let users = [] as User[];
 
-  const throwError = (msg:string) => {
-    badResponse = invalidResponse(msg);
+  const throwError = (msg:string, payload?:any) => {
+    badResponse = invalidResponse(msg, payload);
     throw new Error(msg);
   }
 
@@ -468,16 +479,12 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
    * end the full exhibit form to each authorized individual and the RE admin.
    */
   const sendFullExhibitFormToEntityStaff = async () => {
+    emailFailuresForEntityStaff.length = 0;
     for(let i=0; i<users.length; i++) {
       var sent:boolean = await new ExhibitEmail(exhibitForm, FormTypes.FULL, entity, consenter).send(users[i].email);
       if( ! sent) {
-        emailFailures.push(users[i].email);
+        emailFailuresForEntityStaff.push(users[i].email);
       }
-    }
-    if(emailFailures.length > 0) {
-      const e = new Error(`The following email(s) to entity staff with exhibit forms failed. 
-        Deletion of the corresponding database data has been deferred to the scheduled purge:
-        ${JSON.stringify(emailFailures, null, 2)}`);
     }
   }
 
@@ -485,39 +492,32 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
    * Send the single exhibit form excerpts of the full exhibit form to each affiliate
    */
   const sendSingleExhibitFormToAffiliates = async () => {
-    const sendEmailToAffiliate = async (affiliateEmail:string):Promise<IPdfForm|null> => {
-      const email = new ExhibitEmail(exhibitForm, FormTypes.SINGLE, entity, consenter);
-      const sent = await email.send(affiliateEmail);
-      return sent ? email.getAttachment() : null;
-    }
+    emailFailuresForAffiliates.length = 0;
     for(let i=0; i<affiliates.length; i++) {
-      const pdf = await sendEmailToAffiliate(affiliates[i].email);
-      if( ! pdf) {
-        emailFailures.push(affiliates[i].email);
-        continue;
-      }
-      await saveAffiliateFormToBucket(affiliates[i].email);
-    }
-    if(emailFailures.length > 0) {
-      const e = new Error(`The following email(s) to affiliates with exhibit forms failed. 
-        Deletion of the corresponding database data has been deferred to the scheduled purge:
-        ${JSON.stringify(emailFailures, null, 2)}`);
-    }
-  }
+      const email = new ExhibitEmail(exhibitForm, FormTypes.SINGLE, entity, consenter);
 
-  /**
-   * Render the single exhibit form pdf file and save it to the s3 bucket
-   * @param affiliateEmail 
-   */
-  const saveAffiliateFormToBucket = async (affiliateEmail:string) => {
-    const bucket = new ExhibitBucket(consenter);
-    await bucket.add({ entityId:entity.entity_id, affiliateEmail });
+      // 1) Send the email with the pdf to the affiliate
+      const sent = await email.send(affiliates[i].email);
+      const pdf = email.getAttachment()
+      if( ! sent || ! pdf) {
+        emailFailuresForAffiliates.push(affiliates[i].email);
+      }
+
+      // 2) Save a copy of the pdf to the s3 bucket
+      const bucket = new ExhibitBucket(consenter);
+      await bucket.add({ entityId:entity.entity_id, affiliateEmail:affiliates[i].email });
+    }
   }
 
   /**
    * Prune a full exhibit form from the consenters database record
    */
   const pruneExhibitFormFromDatabaseRecord = async () => {
+    if(emailFailures()) {
+      console.log(`There were email failures related to exhibit form activty for ${consenter.email}. 
+        Therefore removal of the corresponding data from the consenters database record is deferred until its natural expiration`);
+      return;
+    }
     const updatedConsenter = deepClone(consenter) as Consenter;
     const { exhibit_forms:efs=[]} = updatedConsenter;
     // Prune the exhibit form that corresponds to the entity from the consenters exhibit form listing.
@@ -525,18 +525,34 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
       return ef.entity_id != entity.entity_id;
     })
     // Update the database record with the pruned exhibit form listing.
-    const dao = ConsenterCrud(updatedConsenter);
+    const dao = DAOFactory.getInstance({ DAOType:'consenter', Payload: updatedConsenter});
+    // const dao = ConsenterCrud(updatedConsenter);
     await dao.update(consenter);
   }
 
   const cancelEventBridgeDatabasePruningRule = async () => {
-    // RESUME NEXT.
+    if(emailFailures()) {
+      return;
+    }
+    // TODO: Write the code for this
     return;
   }
 
-  const createEventBridgeBucketPruningRule = async () => {
-    // RESUME NEXT.
-    return;
+  /**
+   * Return the standard ok response with refreshed consenter info, or an error message if there were email failures
+   * @param email 
+   * @param includeEntityList 
+   * @returns 
+   */
+  const getResponse = async (email:string, includeEntityList:boolean=true): Promise<LambdaProxyIntegrationResponse> => {
+    if(emailFailures()) {
+      const msg = 'Internal server error: ' + INVALID_RESPONSE_MESSAGES.emailFailures.replace('INSERT_EMAIL', consenter.email);
+      const failedEmails = [...emailFailuresForEntityStaff];
+      failedEmails.push(...emailFailuresForAffiliates);
+      const payload = { failedEmails };
+      return errorResponse(msg, payload);
+    }
+    return getConsenterResponse(email, true);
   }
 
   try {
@@ -553,15 +569,14 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
 
     await cancelEventBridgeDatabasePruningRule();
 
-    await createEventBridgeBucketPruningRule();
-
-    return getConsenterResponse(email, true);
+    return getResponse(email, true);
   }
   catch(e:any) {
+    console.error(e);
     if(badResponse) {
       return badResponse;
     }
-    return errorResponse(e);
+    return errorResponse(`Internal server error: ${e.message}`);
   }
 }
 

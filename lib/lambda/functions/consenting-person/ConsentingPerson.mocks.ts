@@ -1,8 +1,10 @@
 import { IncomingPayload, OutgoingBody } from "../../../role/AbstractRole";
 import { DAOConsenter, DAOEntity, DAOInvitation, DAOUser, FactoryParms } from "../../_lib/dao/dao";
 import { Affiliate, AffiliateTypes, Config, Consenter, Entity, ExhibitForm as ExhibitFormData, Roles, User, YN } from "../../_lib/dao/entity";
+import { IPdfForm } from "../../_lib/pdf/PdfForm";
 import { deepClone } from "../../Utils";
 import { MockCalls, TestParms, invokeAndAssert } from "../../UtilsTest";
+import { SingleExhibitFormMetadata } from "./ConsenterBucketItems";
 import { FormType, FormTypes } from "./ExhibitEmail";
 
 /**
@@ -27,6 +29,25 @@ export function ExhibitEmailMock() {
           mockCalls.update(`email.send`);
           mockCalls.update(`email.send.${formType}.${email}`);
           return email != BAD_EXHIBIT_RECIPIENT_EMAIL;
+        },
+        getAttachment: ():IPdfForm => {
+          return {} as IPdfForm;
+        }
+      }
+    })
+  }
+}
+
+/**
+ * 
+ * @returns Define a mock for the es6 ExhibitBucket class
+ */
+export function ConsenterBucketItemsMock() {
+  return {
+    ExhibitBucket: jest.fn().mockImplementation((consenter:Consenter, bucketName?:string) => {
+      return {
+        add: async (metadata:SingleExhibitFormMetadata) => {
+          mockCalls.update(`bucket.add.${metadata.affiliateEmail}`);
         }
       }
     })
@@ -92,44 +113,49 @@ export function DaoMock(originalModule: any) {
             return {} as DAOInvitation;
           case "consenter":
             mockCalls.update('consenter.read');
-            return { read: async ():Promise<Consenter|Consenter[]> => {
-              let consenter = {} as Consenter;
-              let consented;
-              const day = 1000 * 60 * 60 * 24;
-              const retracted = new Date();
-              const consentState = parseInt(email.split('-')[0]);            
-              switch(consentState) {
-                case ConsentState.OK:
-                  consenter = Object.assign(consenter, sylvesterTheCat);
-                  consenter.consented_timestamp = new Date().toISOString();
-                  break;
-                case ConsentState.NONE:
-                  consenter = Object.assign(consenter, sylvesterTheCat);
-                  break;
-                case ConsentState.RESCINDED:
-                  consented = new Date(retracted.getTime() - day);
-                  consenter = Object.assign(consenter, sylvesterTheCat);
-                  consenter.consented_timestamp = consented.toISOString();
-                  consenter.rescinded_timestamp = retracted.toISOString();
-                  break;
-                case ConsentState.RESTORED:
-                  consented = new Date(retracted.getTime() + day);
-                  consenter = Object.assign(consenter, sylvesterTheCat);
-                  consenter.consented_timestamp = consented.toISOString();
-                  consenter.rescinded_timestamp = retracted.toISOString();
-                  break;
-                case ConsentState.INACTIVE:
-                  consenter = Object.assign(consenter, sylvesterTheCat);
-                  consenter.consented_timestamp = new Date().toISOString();
-                  consenter.active = YN.No;
-                  break;
-                default:
-                  consenter = Object.assign(consenter, sylvesterTheCat);
-                  break;                  
+            return { 
+              read: async ():Promise<Consenter|Consenter[]> => {
+                let consenter = {} as Consenter;
+                let consented;
+                const day = 1000 * 60 * 60 * 24;
+                const retracted = new Date();
+                const consentState = parseInt(email.split('-')[0]);            
+                switch(consentState) {
+                  case ConsentState.OK:
+                    consenter = Object.assign(consenter, sylvesterTheCat);
+                    consenter.consented_timestamp = new Date().toISOString();
+                    break;
+                  case ConsentState.NONE:
+                    consenter = Object.assign(consenter, sylvesterTheCat);
+                    break;
+                  case ConsentState.RESCINDED:
+                    consented = new Date(retracted.getTime() - day);
+                    consenter = Object.assign(consenter, sylvesterTheCat);
+                    consenter.consented_timestamp = consented.toISOString();
+                    consenter.rescinded_timestamp = retracted.toISOString();
+                    break;
+                  case ConsentState.RESTORED:
+                    consented = new Date(retracted.getTime() + day);
+                    consenter = Object.assign(consenter, sylvesterTheCat);
+                    consenter.consented_timestamp = consented.toISOString();
+                    consenter.rescinded_timestamp = retracted.toISOString();
+                    break;
+                  case ConsentState.INACTIVE:
+                    consenter = Object.assign(consenter, sylvesterTheCat);
+                    consenter.consented_timestamp = new Date().toISOString();
+                    consenter.active = YN.No;
+                    break;
+                  default:
+                    consenter = Object.assign(consenter, sylvesterTheCat);
+                    break;                  
+                }
+                consenter.email = email;
+                return consenter;
+              },
+              update: async (oldEntity?:any, merge?:boolean):Promise<any> => {
+                mockCalls.update('consenter.update');
               }
-              consenter.email = email;
-              return consenter;
-            }} as DAOConsenter;
+            } as DAOConsenter;
           case "config":
             mockCalls.update('config.read');
             return { read: async ():Promise<(Config|null)|Config[]> => {
@@ -405,8 +431,11 @@ export const SendAffiliateData = {
       expectedResponse: {
         statusCode: 500,
         outgoingBody: {
-          message,
-          payload: { error: true, emailFailures: [ BAD_EXHIBIT_RECIPIENT_EMAIL ] }
+          message: `${message.replace('INSERT_EMAIL', `${ConsentState.OK}-${sylvesterTheCat.email}`)}`,
+          payload: { 
+            error: true,
+            failedEmails: [ 'error@warnerbros.org' ]
+          }
         }
       },
       _handler, mockEvent,
@@ -484,8 +513,8 @@ export const SendAffiliateData = {
 
     const doTest = async (parms:TestParms) => {
       mockCalls.reset();
-      await invokeAndAssert(parms);
-      expect(mockCalls.called(`consenter.read`)).toEqual(1);
+      await invokeAndAssert(parms, true);
+      expect(mockCalls.called(`consenter.read`)).toEqual(3);
       expect(mockCalls.called(`entity.read.${entity1.entity_id}`)).toEqual(1);
       expect(mockCalls.called(`user.read`)).toEqual(1);
       expect(mockCalls.called(`email.send.${FormTypes.FULL}.${daffyduck.email}`)).toEqual(1);
@@ -493,6 +522,9 @@ export const SendAffiliateData = {
       expect(mockCalls.called(`email.send.${FormTypes.FULL}.${porkypig.email}`)).toEqual(1);
       expect(mockCalls.called(`email.send.${FormTypes.SINGLE}.${foghorLeghorn.email}`)).toEqual(1);
       expect(mockCalls.called(`email.send.${FormTypes.SINGLE}.${wileECoyote.email}`)).toEqual(1);
+      expect(mockCalls.called(`bucket.add.${foghorLeghorn.email}`)).toEqual(1);
+      expect(mockCalls.called(`bucket.add.${wileECoyote.email}`)).toEqual(1);
+      expect(mockCalls.called(`consenter.update`)).toEqual(1);
     }
 
     // Test for someone who has consented
