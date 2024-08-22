@@ -13,11 +13,12 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
   const dbclient = new DynamoDBClient({ region: process.env.REGION });
   const { getTableName } = DynamoDbConstruct;
   const { ENTITIES } = TableBaseNames;
-  const { ENTITIES_ACTIVE } = IndexBaseNames;
+  const { ENTITIES_ACTIVE, ENTITIES_NAME_LOWER } = IndexBaseNames;
   const TableName = getTableName(ENTITIES);
   const TableActiveIndex = ENTITIES_ACTIVE;
+  const TableNameIndex = ENTITIES_NAME_LOWER;
 
-  let { entity_id, entity_name, create_timestamp, update_timestamp, active=YN.Yes } = entityInfo;
+  let { entity_id, entity_name, entity_name_lower, create_timestamp, update_timestamp, active } = entityInfo;
 
   let command:any;
   
@@ -50,6 +51,8 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
       entity_id = uuidv4();
       entityInfo.entity_id = entity_id;
     }
+    // Set the lower-cased entity name
+    entityInfo.entity_name_lower = entity_name.trim().toLowerCase();
     // Make sure timestamps have values.
     if( ! create_timestamp) {
       create_timestamp = new Date().toISOString();
@@ -61,6 +64,7 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
     }
     if( ! active) {
       active = YN.Yes;
+      entityInfo.active = active;
     }
 
     const input = entityUpdate(TableName, entityInfo).buildUpdateItemCommandInput() as UpdateItemCommandInput;
@@ -72,9 +76,12 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
     if(entity_id) {
       return await _read(readParms) as Entity;
     }
+    else if(entity_name_lower) {
+      return await _queryName(readParms) as Entity[]
+    }
     else {
       const _active = active ?? YN.Yes;
-      return await _query(_active, readParms) as Entity[];
+      return await _queryActive(_active, readParms) as Entity[];
     }
   }
 
@@ -103,12 +110,14 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
   }
 
 
-  const _query = async (v1:string, readParms?:ReadParms):Promise<Entity[]> => {
-    const key = EntityFields.active; // set to the partion key
-    // NOTE: With a little more code, key could also be entity_name, which is the sort key.
-    // entity_name could contain a partial name and KeyConditionExpression could make use of
-    // comparison operators as documented in: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.OperatorsAndFunctions.html
-    // This would open up possibilites for a rudimentary entity search feature for users, based on entity_name.
+  /**
+   * Query for items by their activity status
+   * @param v1 
+   * @param readParms 
+   * @returns 
+   */
+  const _queryActive = async (v1:string, readParms?:ReadParms):Promise<Entity[]> => {
+    const key = EntityFields.active; // set to the partion key of the secondary index
     console.log(`Reading entities for ${key}: ${v1}`);
     const params = {
       TableName,
@@ -118,6 +127,33 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
       },
       KeyConditionExpression: `${key} = :v1`,
       IndexName: TableActiveIndex
+    } as QueryCommandInput;
+    command = new QueryCommand(params);
+    const retval = await sendCommand(command);
+    const entities = [] as Entity[];
+    const { convertDates } = (readParms ?? {});
+    for(const item in retval.Items) {
+      entities.push(await loadEntity(retval.Items[item], convertDates ?? true));
+    }
+    return entities as Entity[];
+  }
+
+  /**
+   * Query for items by their lower-cased name.
+   * @param readParms 
+   * @returns 
+   */
+  const _queryName = async (readParms?:ReadParms):Promise<Entity[]> => {
+    const key = EntityFields.entity_name_lower; // set to the partion key of the secondary index
+    console.log(`Reading entities for ${key}: ${entity_name_lower}`);
+    const params = {
+      TableName,
+      // ConsistentRead: true,
+      ExpressionAttributeValues: {
+        ':v1': { S: entity_name_lower }
+      },
+      KeyConditionExpression: `${key} = :v1`,
+      IndexName: TableNameIndex
     } as QueryCommandInput;
     command = new QueryCommand(params);
     const retval = await sendCommand(command);
@@ -140,6 +176,7 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
     if( Object.keys(entityInfo).length == 1 ) {
       throw new Error(`Entity update error: No fields to update for ${entity_id}`);
     }
+    entityInfo.entity_name_lower = entity_name.trim().toLowerCase();
     console.log(`Updating entity: ${entity_id}`);
     const input = entityUpdate(TableName, entityInfo).buildUpdateItemCommandInput() as UpdateItemCommandInput;
     command = new UpdateItemCommand(input);

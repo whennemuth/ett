@@ -13,6 +13,7 @@ export enum Task {
   UPDATE_ENTITY = 'update-entity',
   DEACTIVATE_ENTITY = 'deactivate-entity',
   LOOKUP_USER_CONTEXT = 'lookup-user-context',
+  INVITE_USERS = 'invite-users',
   INVITE_USER = 'invite-user',
   PING = 'ping'
 }
@@ -47,8 +48,8 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           var { email, role } = parameters;
           return await lookupEntity(email, role);
         case Task.CREATE_ENTITY:
-          const { entity_name, entity_description } = parameters;
-          var entity = { entity_name, description:entity_description } as Entity;
+          const { entity_name, description } = parameters;
+          var entity = { entity_name, description } as Entity;
           return await createEntity(entity, { sub:callerSub, role:Roles.RE_ADMIN } as User);
         case Task.UPDATE_ENTITY:
           return updateEntity(parameters);
@@ -60,6 +61,8 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           return await inviteUser(user, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
             return await new SignupLink().getRegistrationLink(entity_id);
           }, callerSub);
+        case Task.INVITE_USERS:
+          return await inviteUsers(parameters, callerSub);
         case Task.CREATE_ENTITY_INVITE:
           return await createEntityAndInviteUsers(parameters, callerSub);
         case Task.PING:
@@ -139,11 +142,13 @@ export const lookupEntity = async (email:string, role:Role):Promise<LambdaProxyI
   let user = {};
   if(userinfo.length == 1) user = userinfo[0];
   if(userinfo.length > 1) user = userinfo;
-  return okResponse('Ok', { user }) 
+  return okResponse('Ok', { user });
 }
 
 /**
- * Create a single entity.
+ * Create a single entity. This function would only be used if creation of the entity is NOT part of registration and is
+ * taking place AFTER the readmin has registered, created their account (but not the entity), and performing this action
+ * as a separate task once signed in.
  * @param entity 
  * @param reAdmin 
  * @returns 
@@ -197,7 +202,7 @@ export const createEntity = async (entity:Entity, reAdmin?:User):Promise<LambdaP
  * @param reAdminEmail 
  * @param new_entity_id 
  */
-const updateReAdminInvitationWithNewEntity = async (reAdminEmail:string, new_entity_id:string) => {
+export const updateReAdminInvitationWithNewEntity = async (reAdminEmail:string, new_entity_id:string) => {
   // Get the "homeless" invitation for the RE_ADMIN. This will be found by email hanging out in the waiting room.
   // There may be more than one if a SYS_ADMIN invited the RE_ADMIN again before the original invitation is accepted.
   console.log(`updateReAdminInvitationWithNewEntity: reAdminEmail:${reAdminEmail}, new_entity_id:${new_entity_id}`);
@@ -211,17 +216,17 @@ const updateReAdminInvitationWithNewEntity = async (reAdminEmail:string, new_ent
   }
 
   // Apply the new entity id to the invitation(s) for the RE_ADMIN
-  homelessInvitations.forEach( async (invitation) => {
+  for(let i=0; i<homelessInvitations.length; i++) {
     daoInvitation = DAOFactory.getInstance({ 
       DAOType:'invitation', 
-      Payload: { code: invitation.code, entity_id:new_entity_id } as Invitation
+      Payload: { code: homelessInvitations[i].code, entity_id:new_entity_id } as Invitation
     });
     await daoInvitation.update();
-  })
+  }
 }
 
 /**
- * Update the user record of a "entityless" RE_ADMIN so that it reflects a new entity.
+ * Update the user record of an "entityless" RE_ADMIN so that it reflects a new entity.
  * @param reAdminEmail 
  * @param new_entity_id 
  */
@@ -378,6 +383,55 @@ export const inviteUser = async (user:User, inviterRole:Role, linkGenerator:Func
   }
 }
 
+const getInvitedUsersValidationResult = (parameters:any, callerSub?:string):LambdaProxyIntegrationResponse|null => {
+  const { entity, invitations } = parameters;
+  const { entity_name } = (entity ?? {}) as Entity;
+  const { email:email1, role:role1 } = invitations?.invitee1 || {};
+  const { email:email2, role:role2 } = invitations?.invitee2 || {};
+  if( ! email1 || ! role1) {
+    return invalidResponse(`Cannot create entity ${entity_name} since invitee1 is missing/incomplete`);
+  }
+
+  if( ! email2 || ! role2) {
+    return invalidResponse(`Cannot create entity ${entity_name} since invitee2 is missing/incomplete`);
+  }
+
+  if( (email1 as string).toLowerCase() == (email2 as string).toLowerCase()) {
+    return invalidResponse(`Cannot invite two authorized individuals with the same email: ${email1}`);
+  }
+
+  return null;
+}
+
+/**
+ * Invite both authorized individuals. The entity has already been created.
+ * @param parameters 
+ * @param callerSub 
+ * @returns 
+ */
+export const inviteUsers = async (parameters:any, callerSub?:string):Promise<LambdaProxyIntegrationResponse> =>  {
+  const { entity, invitations } = parameters;
+  const { entity_id } = (entity ?? {}) as Entity;
+  const { email:email1, role:role1 } = invitations?.invitee1 || {};
+  const { email:email2, role:role2 } = invitations?.invitee2 || {};
+
+  const result = getInvitedUsersValidationResult(parameters, callerSub);
+  if(result?.statusCode == 400) return result;
+
+  const user1 = { email:email1, role:role1, entity_id } as User
+  const user2 = { email:email2, role:role2, entity_id } as User
+
+  await inviteUser(user1, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
+    return await new SignupLink().getRegistrationLink(entity_id);
+  }, callerSub);
+
+  await inviteUser(user2, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
+    return await new SignupLink().getRegistrationLink(entity_id);
+  }, callerSub);
+
+  return await lookupEntity(email1, role1);
+}
+
 /**
  * Create the entity and invite both authorized individuals in one shot.
  * @param parameters 
@@ -385,53 +439,35 @@ export const inviteUser = async (user:User, inviterRole:Role, linkGenerator:Func
  * @returns 
  */
 export const createEntityAndInviteUsers = async (parameters:any, callerSub?:string):Promise<LambdaProxyIntegrationResponse> =>  {
-  const { entity:_entity, invitations } = parameters;
-  const { email:email1, role:role1 } = invitations?.invitee1 || {};
-  const { email:email2, role:role2 } = invitations?.invitee2 || {};
+  const { entity } = parameters;
+  const { entity_name, description } = (entity ?? {}) as Entity;
 
-  var entity = { entity_name:_entity?.name, description:_entity?.description } as Entity;
-
-  if( ! entity.entity_name) {
+  if( ! entity_name) {
     return invalidResponse('Cannot proceed with unspecified entity');
   }
 
-  if( ! email1 || ! role1) {
-    return invalidResponse(`Cannot create entity ${entity.entity_name} since invitee1 is missing/incomplete`);
+  if( ! description) {
+    entity.description = entity_name;
   }
 
-  if( ! email2 || ! role2) {
-    return invalidResponse(`Cannot create entity ${entity.entity_name} since invitee2 is missing/incomplete`);
-  }
-
-  if( (email1 as string).toLowerCase() == (email2 as string).toLowerCase()) {
-    return invalidResponse(`Cannot invite two authorized individuals with the same email: ${email1}`);
-  }
-
-  if( ! entity.description) {
-    entity.description = entity.entity_name;
-  }
+  const result = getInvitedUsersValidationResult(parameters, callerSub);
+  if(result?.statusCode == 400) return result;
 
   var response = await createEntity( entity, { sub:callerSub, role:Roles.RE_ADMIN } as User ) as LambdaProxyIntegrationResponse;
+
   if(response.body) {
     var output = JSON.parse(response.body);
     const { entity_id } = output.payload;
-    const user1 = { email:email1, role:role1, entity_id } as User
-    const user2 = { email:email2, role:role2, entity_id } as User
+    parameters.entity.entity_id = entity_id;
 
-    await inviteUser(user1, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
-      return await new SignupLink().getRegistrationLink(entity_id);
-    }, callerSub);
-
-    await inviteUser(user2, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
-      return await new SignupLink().getRegistrationLink(entity_id);
-    }, callerSub);
-
-    return await lookupEntity(email1, role1);
+    return await inviteUsers(parameters, callerSub);
   }
   else {
     return errorResponse('ID of newly created entity not available'); 
   }
 }
+
+
 
 /**
  * RUN MANUALLY: Modify the task, landscape, email, role, & entity_id as needed.

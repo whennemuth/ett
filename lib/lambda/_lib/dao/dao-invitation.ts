@@ -5,6 +5,7 @@ import { convertFromApiObject } from './db-object-builder';
 import { invitationUpdate } from './db-update-builder.invitation';
 import { Invitation, InvitationFields } from './entity';
 import { DynamoDbConstruct, IndexBaseNames, TableBaseNames } from '../../../DynamoDb';
+import { debugLog } from '../../Utils';
 
 /**
  * Basic CRUD operations for the invitations table.
@@ -107,7 +108,7 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
     let parmEntityId = entity_id ? `entity_id: ${entity_id}` : '';
     if(parmEmail && parmEntityId) parmEntityId = `${parmEntityId}`;
 
-    console.log(`Reading all invitations for ${parmEmail}${parmEntityId}`);
+    console.log(`Reading all invitations for ${parmEmail}, ${parmEntityId}`);
 
     // Declare QueryCommandInput fields
     let vals = {} as any;
@@ -158,9 +159,10 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
       throw new Error(`User update error: No fields to update for ${_code}`);
     }
     
-    console.log(`Updating existing invitation in: ${_code}/${entity_id}`);
+    console.log(`Updating existing invitation to: ${JSON.stringify({ invitation_code:_code, entity_id }, null, 2)}`);
     const input = invitationUpdate(TableName, invitationInfo).buildUpdateItemCommandInput() as UpdateItemCommandInput;
     command = new UpdateItemCommand(input);
+    debugLog(command);
     return await sendCommand(command);
   }
 

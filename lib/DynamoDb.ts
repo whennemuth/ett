@@ -11,8 +11,10 @@ export enum TableBaseNames {
 export enum IndexBaseNames {
   USERS_ENTITY = 'users-entity',
   ENTITIES_ACTIVE = 'entities-active',
+  ENTITIES_NAME_LOWER = 'entities-name-lower',
   INVITATIONS_ENTITY = 'invitations-entity',
   INVITATIONS_EMAIL = 'invitations-email',
+  CONSENTERS_ACTIVE = 'consenters-active'
 }
 export class DynamoDbConstruct extends Construct {
 
@@ -46,7 +48,7 @@ export class DynamoDbConstruct extends Construct {
     const { CONFIG: { useDatabase } } = this.context;
     const { getTableName } = DynamoDbConstruct;
     const { CONFIG, CONSENTERS, ENTITIES, INVITATIONS, USERS } = TableBaseNames;
-    const { ENTITIES_ACTIVE, USERS_ENTITY, INVITATIONS_EMAIL, INVITATIONS_ENTITY } = IndexBaseNames;
+    const { ENTITIES_ACTIVE, ENTITIES_NAME_LOWER, USERS_ENTITY, INVITATIONS_EMAIL, INVITATIONS_ENTITY, CONSENTERS_ACTIVE } = IndexBaseNames;
 
     // Create a table for SYS_ADMIN, RE_ADMIN, and RE_AUTH_IND users.
     this.usersTable = new TableV2(this, 'DbUsers', {
@@ -68,7 +70,7 @@ export class DynamoDbConstruct extends Construct {
       ]    
     } as TablePropsV2);
 
-    // Create a table for ALL registerend entities, to be managed by system administrator.
+    // Create a table for ALL registerend entities.
     this.entitiesTable = new TableV2(this, 'DbEntities', {
       tableName: getTableName(ENTITIES),
       partitionKey: { name: EntityFields.entity_id, type: AttributeType.STRING },
@@ -82,6 +84,13 @@ export class DynamoDbConstruct extends Construct {
           indexName: ENTITIES_ACTIVE,
           partitionKey: { name: EntityFields.active, type: AttributeType.STRING },
           sortKey: { name: EntityFields.entity_name, type: AttributeType.STRING },
+          projectionType: ProjectionType.INCLUDE,
+          nonKeyAttributes: [ EntityFields.entity_id, EntityFields.entity_name ]
+        },
+        {
+          indexName: ENTITIES_NAME_LOWER,
+          partitionKey: { name: EntityFields.entity_name_lower, type: AttributeType.STRING },
+          sortKey: { name: EntityFields.active, type: AttributeType.STRING },
           projectionType: ProjectionType.INCLUDE,
           nonKeyAttributes: [ EntityFields.entity_id, EntityFields.entity_name ]
         }
@@ -122,6 +131,15 @@ export class DynamoDbConstruct extends Construct {
       removalPolicy: RemovalPolicy.DESTROY,
       pointInTimeRecovery: true,
       deletionProtection,
+      globalSecondaryIndexes: [
+        {
+          indexName: CONSENTERS_ACTIVE,
+          partitionKey: { name: ConsenterFields.active, type: AttributeType.STRING },
+          sortKey: { name: ConsenterFields.email, type: AttributeType.STRING },
+          projectionType: ProjectionType.INCLUDE,
+          nonKeyAttributes: [ ConsenterFields.email, ConsenterFields.sub ]
+        }
+      ]
     } as TablePropsV2);
 
     if(useDatabase) {

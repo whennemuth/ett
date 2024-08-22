@@ -1,8 +1,12 @@
-import { DaoMock, ExhibitEmailMock, ParameterValidationTests, SendAffiliateData } from "./ConsentingPerson.mocks";
+import { DaoMock, ExhibitEmailMock, ConsenterBucketItemsMock, ParameterValidationTests, SendAffiliateData, BAD_EXHIBIT_RECIPIENT_EMAIL } from "./ConsentingPerson.mocks";
 
 // Create the mock for the es6 ExhibitEmail class
 const exhibitEmailMock = jest.mock('../../functions/consenting-person/ExhibitEmail.ts', () => {
   return ExhibitEmailMock();
+});
+
+const consenterBucketItemsMock = jest.mock('../../functions/consenting-person/ConsenterBucketItems.ts', () => {
+  return ConsenterBucketItemsMock();
 });
 
 // Create the mock for the DAOFactory class
@@ -58,7 +62,7 @@ describe(`Consenting Person lambda trigger: ${Task.SEND_EXHIBIT_FORM}`, () => {
     await SendAffiliateData.userLookupFailure(handler, mockEvent, task);
   });
   it('Should behave as expected if error is encountered sending emails', async () => {
-    await SendAffiliateData.sendEmailFailure(handler, mockEvent, task, msgs.emailFailure);
+    await SendAffiliateData.sendEmailFailure(handler, mockEvent, task, `Internal server error: ${msgs.emailFailures}`);
   }); 
   it('Should behave as expected no errors are encountered', async () => {
     await SendAffiliateData.sendEmailOk(handler, mockEvent, task);

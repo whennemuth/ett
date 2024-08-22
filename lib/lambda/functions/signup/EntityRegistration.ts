@@ -1,7 +1,7 @@
 import { LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { DAOFactory } from "../../_lib/dao/dao";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
-import { Invitation, User, YN } from "../../_lib/dao/entity";
+import { Entity, Invitation, Roles, User, YN } from "../../_lib/dao/entity";
 import { Registration } from "../../_lib/invitation/Registration";
 import { debugLog, errorResponse, invalidResponse, lookupCloudfrontDomain, lookupSingleActiveEntity, okResponse, unauthorizedResponse } from "../../Utils";
 import { demolishEntity } from "../authorized-individual/AuthorizedIndividual";
@@ -44,7 +44,7 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
       return unauthorizedResponse(`Unauthorized: Unknown invitation code ${code}`);
     }
 
-    const { entity_id } = invitation;
+    const { entity_id, role } = invitation;
 
     switch(task) {
 
@@ -70,13 +70,13 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         }
         return okResponse('Ok', { entity:(entity||null), users, invitation });
 
-      // Officially set the invitation as registered, replace its dummy email with the true value, and set its fullname.
+      // Officially set the invitation as registered, replace its dummy email with the true value, and set its fullname, title, and entity_name.
       // The PostSignup trigger lambda will come by later and "scrape" these out of the invitation for its own needs.
       case Task.REGISTER:
         if( ! event.queryStringParameters) {
           return invalidResponse('Bad Request: Missing querystring parameters');
         }
-        let { email, fullname, title } = event.queryStringParameters;
+        let { email, fullname, title, entity_name } = event.queryStringParameters;
 
         if( ! email) {
           return invalidResponse('Bad Request: Missing email querystring parameter');
@@ -84,9 +84,15 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         if( ! fullname) {
           return invalidResponse('Bad Request: Missing fullname querystring parameter');
         }
+        if( ! entity_name && (role == Roles.RE_ADMIN || role == Roles.SYS_ADMIN) ) {
+           return invalidResponse('Bad Request: Missing entity_name querystring parameter');
+        }
 
         email = decodeURIComponent(email);
-        fullname = decodeURIComponent(fullname);
+        fullname = decodeURIComponent(fullname);        
+        if(entity_name) {
+          entity_name = decodeURIComponent(entity_name);
+        }
         if(title) {
           title = decodeURIComponent(title);
         }
@@ -98,7 +104,12 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         if(registered_timestamp) {
           return okResponse(`Ok: Already registered at ${registered_timestamp}`);
         }
-        if( await registration.registerUser({ email, fullname, title } as Invitation)) {
+        if(role == Roles.RE_ADMIN) {
+          if( await registration.entityNameAlreadyInUse(entity_name)) {
+            return invalidResponse(`Bad Request: The specified name: "${entity_name}", is already in use.`)
+          }
+        }
+        if( await registration.registerUser({ email, fullname, title, entity_name } as Invitation)) {
           return okResponse(`Ok: Registration completed for ${code}`);
         }
 

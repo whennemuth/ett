@@ -68,7 +68,8 @@ const buildAll = () => {
   // Set up an api for every role with cognito as the authorizer and oauth as the flow.
   const api = new ApiConstruct(stack, 'Api', {
     userPool: cognito.getUserPool(),
-    userPoolName: cognito.getUserPoolName(),    
+    userPoolName: cognito.getUserPoolName(),  
+    userPoolDomain: cognito.getUserPoolDomain(),  
     cloudfrontDomain: cloudfront.getDistributionDomainName(),
     redirectPath: 'index.htm',
     landscape: Landscape,

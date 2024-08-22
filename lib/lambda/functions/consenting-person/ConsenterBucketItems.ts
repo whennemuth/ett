@@ -68,6 +68,8 @@ export class ExhibitBucket {
     const Body = await pdf.getBytes();
     console.log(`Adding ${Key}`);
     await s3.putObject({ Bucket, Key, Body, ContentType: 'application/pdf' });    
+
+    // TODO: Create an event bridge expiration rule here
   }
 
   /**

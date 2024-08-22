@@ -168,6 +168,22 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "BlankSheetOfPaper",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/BlankSheetOfPaper.ts",
+        "RUN_MANUALLY_BLANK_SHEET_OF_PAPER",
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2",
+        "LANDSCAPE": "dev"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Cognito pre signup handler",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
@@ -193,6 +209,22 @@
       "env": {
         "AWS_PROFILE": "bu",
         "REGION": "us-east-2"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Cognito post signup handler",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/cognito/PostSignup.ts",
+        "RUN_MANUALLY_POST_SIGNUP"
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2",
+        "DEBUG": "true"
       }, 
     },
     {
@@ -473,7 +505,8 @@
       "env": {
         "ACTION_TO_TEST": ""
       }
-    },    {
+    },
+    {
       "type": "node",
       "request": "launch",
       "name": "Jest DAO invitation crud",
