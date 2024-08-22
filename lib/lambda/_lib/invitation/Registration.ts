@@ -1,5 +1,5 @@
 import { DAOFactory, DAOInvitation } from "../dao/dao";
-import { Invitation, InvitationFields } from "../dao/entity";
+import { Entity, Invitation, InvitationFields } from "../dao/entity";
 
 /**
  * The invitation has already been sent. That invitation now serves to register changes in state with regard
@@ -22,6 +22,13 @@ export class Registration {
     return this.invitation;    
   }
 
+  public entityNameAlreadyInUse = async (entity_name:string):Promise<boolean> => {
+    const entity_name_lower = entity_name.trim().toLowerCase();
+    const dao = DAOFactory.getInstance({ DAOType:'entity', Payload: { entity_name_lower } });
+    const matches = await dao.read() as Entity[];
+    return matches.length > 0;
+  }
+  
   /**
    * Update the database item for an invitation to reflect the acknowledgement time.
    * @returns 
@@ -48,7 +55,7 @@ export class Registration {
 
   /**
    * Update the database item for an invitation to reflect the registration time along with the
-   * email address and fullname values.
+   * email address, fullname, and entity_name values.
    * @returns 
    */
   public registerUser = async (invitation:Invitation, timestamp?:string):Promise<boolean> => {
@@ -63,6 +70,7 @@ export class Registration {
         [InvitationFields.email]: invitation.email,
         [InvitationFields.fullname]: invitation.fullname,
         [InvitationFields.title]: invitation.title,
+        [InvitationFields.entity_name]: invitation.entity_name,
       } as Invitation}) as DAOInvitation;
 
       const output = await dao.update();

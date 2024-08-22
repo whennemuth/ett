@@ -695,7 +695,7 @@ const getCreateAndInviteTestsBaseParms = (task:string, _handler:any, mockEvent:a
     task,
     parameters: {
       entity: {
-        name: 'Boston University',
+        entity_name: 'Boston University',
         description: 'Boston University'
       },
       invitations: {
@@ -725,12 +725,12 @@ export const CreateAndInviteTests = {
     await invokeAndAssert(parms);
     parms.incomingPayload.parameters['entity'] = { };
     await invokeAndAssert(parms);
-    parms.incomingPayload.parameters['entity'] = { name: '' };    
+    parms.incomingPayload.parameters['entity'] = { entity_name: '' };    
     await invokeAndAssert(parms);
   },
   missingAuthInd: async (_handler:any, eventMock:any, taskName:string) => {
     const parms1 = getCreateAndInviteTestsBaseParms(taskName, _handler, eventMock);
-    parms1.expectedResponse.outgoingBody.message = `Cannot create entity ${parms1.incomingPayload.parameters['entity'].name} since invitee1 is missing/incomplete`;
+    parms1.expectedResponse.outgoingBody.message = `Cannot create entity ${parms1.incomingPayload.parameters['entity'].entity_name} since invitee1 is missing/incomplete`;
     parms1.incomingPayload.parameters.invitations['invitee1'] = undefined;
     await invokeAndAssert(parms1);
     parms1.incomingPayload.parameters.invitations['invitee1'] = { };
@@ -741,7 +741,7 @@ export const CreateAndInviteTests = {
     await invokeAndAssert(parms1);
 
     const parms2 = getCreateAndInviteTestsBaseParms(taskName, _handler, eventMock);
-    parms2.expectedResponse.outgoingBody.message = `Cannot create entity ${parms2.incomingPayload.parameters['entity'].name} since invitee2 is missing/incomplete`;
+    parms2.expectedResponse.outgoingBody.message = `Cannot create entity ${parms2.incomingPayload.parameters['entity'].entity_name} since invitee2 is missing/incomplete`;
     parms2.incomingPayload.parameters.invitations['invitee2'] = undefined;
     await invokeAndAssert(parms2);
     parms2.incomingPayload.parameters.invitations['invitee2'] = { };

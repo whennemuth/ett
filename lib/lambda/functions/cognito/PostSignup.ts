@@ -1,14 +1,10 @@
 import { lookupRole, removeUserFromUserpool } from '../../_lib/cognito/Lookup';
-import { DAOUser, DAOFactory, DAOConsenter } from '../../_lib/dao/dao';
-import { Role, UserFields, User, Invitation, Roles, Consenter, ConsenterFields } from '../../_lib/dao/entity';
+import { DAOUser, DAOFactory, DAOConsenter, DAOEntity } from '../../_lib/dao/dao';
+import { Role, UserFields, User, Invitation, Roles, Consenter, ConsenterFields, Entity } from '../../_lib/dao/entity';
 import { PostSignupEventType } from './PostSignupEventType';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
-
-const debugLog = (entry:String) => { 
-  if(process.env?.DEBUG === 'true') {
-    console.log(entry);
-  }
-};
+import { updateReAdminInvitationWithNewEntity } from '../re-admin/ReAdminUser';
+import { debugLog } from '../../Utils';
 
 /**
  * After a user confirms their signup (uses verification code) in cognito, that event triggers this 
@@ -17,7 +13,7 @@ const debugLog = (entry:String) => {
  * @returns 
  */
 export const handler = async (_event:any) => {
-  debugLog(JSON.stringify(_event, null, 2)); 
+  debugLog(_event); 
   
   const event = _event as PostSignupEventType;
 
@@ -71,23 +67,32 @@ export const handler = async (_event:any) => {
     await removeCognitoUser(invalidMsg);
   }
 
-  if(role == Roles.CONSENTING_PERSON) {
-    // Update the existing database record for the consenter with sub and phone_number
-    const consenter:Consenter|undefined = await updateConsenterInDatabase(event);
-    if( ! consenter) {
-      // If consenter update failed (no new dynamodb entry made), erase the users presence in cognito AND the database.
-      await removeCognitoUser(`Failed to update new ${role} in dynamodb`);
-    }
+  let person:User|Consenter|undefined;
+
+  switch(role as Roles) {
+
+    case Roles.SYS_ADMIN:
+      person = await addSysAdminToDatabase(event);
+      break;
+
+    case Roles.RE_ADMIN:
+      person = await addReAdminToDatabase(event);      
+      break;
+
+    case Roles.RE_AUTH_IND:
+      person = await addAuthIndToDatabase(event);      
+      break;
+
+    case Roles.CONSENTING_PERSON:
+      // Update the existing database record for the consenter with sub and phone_number
+      person = await updateConsenterInDatabase(event);
+      break;
   }
-  else {
-    // Make a corresponding new user entry in dynamodb.
-    const newUser:User|undefined = await addUserToDatabase(event, role!);      
-    if( ! newUser) {
-      // If user creation failed (no new dynamodb entry made), erase the users presence in cognito.
-      await removeCognitoUser(`Failed to create new ${role} in dynamodb`);
-    }
+
+  if( ! person) {
+    // If consenter update failed (no new dynamodb entry made), erase the users presence in cognito AND the database.
+    await removeCognitoUser(`Failed to update new ${role} in dynamodb`);
   }
-  
 
   // Returning the event without change means a "pass" and cognito will carry signup to completion.
   return event;
@@ -165,19 +170,78 @@ const updateConsenterInDatabase = async (event:PostSignupEventType):Promise<Cons
  * @param role 
  * @returns 
  */
-const addUserToDatabase = async (event:PostSignupEventType, role:Role):Promise<User|undefined> => {
+const addReAdminToDatabase = async (event:PostSignupEventType):Promise<User|undefined> => {
   const { sub, email, phone_number } = event.request.userAttributes;
 
   // Lookup the original invitation for the email to get the entity_id, fullname and title values:
-  const invitation = await scrapeUserValuesFromInvitation(email, role);
+  const invitation = await scrapeUserValuesFromInvitation(email, Roles.RE_ADMIN);
 
   if( ! invitation) return;
 
+  let { entity_id, entity_name, fullname, title } = invitation;
+
+  if(entity_name && entity_name != ENTITY_WAITING_ROOM) {
+    // Create the entity
+    const daoEntity = DAOFactory.getInstance({ 
+      DAOType: 'entity', 
+      Payload: { entity_name, description:entity_name } as Entity
+    }) as DAOEntity;
+    await daoEntity.create();
+    entity_id = daoEntity.id();
+  }
+
   const user = {
     [UserFields.email]: email,
-    [UserFields.entity_id]: invitation.entity_id,
-    [UserFields.fullname]: invitation.fullname,
-    [UserFields.title]: invitation.title,
+    [UserFields.entity_id]: entity_id,
+    [UserFields.fullname]: fullname,
+    [UserFields.title]: title,
+    [UserFields.phone_number]: phone_number,
+    [UserFields.sub]: sub,
+    [UserFields.role]: Roles.RE_ADMIN
+  } as User;
+
+  const daoUser = DAOFactory.getInstance({ DAOType: 'user', Payload: user }) as DAOUser;
+  try {
+    await daoUser.create();
+
+    if(entity_id && entity_id != ENTITY_WAITING_ROOM) {
+      await updateReAdminInvitationWithNewEntity(email, entity_id);
+    }
+  } 
+  catch (e) {
+    console.error(e);
+    return;
+  } 
+
+  return user;
+}
+
+const addAuthIndToDatabase = async (event:PostSignupEventType):Promise<User|undefined> => {
+  const { sub, email, phone_number } = event.request.userAttributes;
+  // Lookup the original invitation for the email to get the entity_id, fullname and title values:
+  const invitation = await scrapeUserValuesFromInvitation(email, Roles.RE_AUTH_IND);
+  if( ! invitation) return;
+  return addUserToDatabase(event, Roles.RE_AUTH_IND, invitation);
+}
+
+const addSysAdminToDatabase = async (event:PostSignupEventType):Promise<User|undefined> => {
+  const { sub, email, phone_number } = event.request.userAttributes;
+  // Lookup the original invitation for the email to get the entity_id, fullname and title values:
+  const invitation = await scrapeUserValuesFromInvitation(email, Roles.SYS_ADMIN);
+  if( ! invitation) return;
+  return addUserToDatabase(event, Roles.SYS_ADMIN, invitation);
+}
+
+const addUserToDatabase = async (event:PostSignupEventType, role:Role, invitation:Invitation):Promise<User|undefined> => {
+  const { sub, email, phone_number } = event.request.userAttributes;
+
+  let { entity_id, fullname, title } = invitation;
+
+  const user = {
+    [UserFields.email]: email,
+    [UserFields.entity_id]: entity_id,
+    [UserFields.fullname]: fullname,
+    [UserFields.title]: title,
     [UserFields.phone_number]: phone_number,
     [UserFields.sub]: sub,
     [UserFields.role]: role

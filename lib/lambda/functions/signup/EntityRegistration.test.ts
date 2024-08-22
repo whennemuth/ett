@@ -7,11 +7,13 @@ import exp = require('constants');
 
 let goodCode:string;
 let inviteToWaitingRoom = true;
+let roleSubstitution:Roles|undefined;
 let invitationCodeForEntityMismatch:string|undefined;
 let code = event.pathParameters['invitation-code'];
 let dte = new Date().toISOString();
 let alreadyAcknowledged:boolean = true;
 let alreadyRegistered:boolean = true;
+let entityNameAlreadyInUse = false;
 
 const waitingroom = {
   entity_id: ENTITY_WAITING_ROOM, 
@@ -60,6 +62,7 @@ const daffy = {
 // A mock of an invitation to the waiting room
 const goodWaitingRoomInvitationPayload = {
   entity_id: ENTITY_WAITING_ROOM,
+  entity_name: ENTITY_WAITING_ROOM,
   message_id: '0cea3257-38fd-4c24-a12f-fd731f19cae6',
   role: Roles.SYS_ADMIN,
   sent_timestamp: dte,
@@ -68,8 +71,9 @@ const goodWaitingRoomInvitationPayload = {
 // A mock of an invitation to a real entity
 const goodNonWaitingRoomInvitationPayload = {
   entity_id: warnerbros.entity_id,
+  entity_name: warnerbros.entity_name,
   message_id: '0cea3257-38fd-4c24-a12f-fd731f19cae6',
-  role: Roles.SYS_ADMIN,
+  role: Roles.RE_ADMIN,
   sent_timestamp: dte,
 } as unknown as Invitation;
 
@@ -84,10 +88,12 @@ jest.mock('../../_lib/invitation/Registration', () => {
             const payload = {
               code: goodCode, email: alreadyRegistered ? bugs.email : goodCode
             } as Invitation
-            Object.assign(payload, goodWaitingRoomInvitationPayload);
-            if( ! inviteToWaitingRoom) {
-              payload.entity_id = goodNonWaitingRoomInvitationPayload.entity_id;
+
+            Object.assign(payload, (inviteToWaitingRoom ? goodWaitingRoomInvitationPayload : goodNonWaitingRoomInvitationPayload));
+            if(roleSubstitution) {
+              payload.role = roleSubstitution;
             }
+
             retval = payload;
             if(alreadyAcknowledged) {
               retval.acknowledged_timestamp = dte;
@@ -106,6 +112,9 @@ jest.mock('../../_lib/invitation/Registration', () => {
           }
           
           return retval;
+        },
+        entityNameAlreadyInUse: async (entity_name:string): Promise<boolean> => {
+          return entityNameAlreadyInUse;
         },
         hasInvitation: async (): Promise<boolean> => {
           return true;
@@ -339,7 +348,11 @@ describe(`Entity Registration lambda trigger: handler ${Task.REGISTER}`, () => {
     alreadyRegistered = false;
     await invokeAndAssert({
       _handler:handler, code, task: Task.REGISTER,
-      queryStringParameters: { entity_id:bugs.entity_id, fullname:bugs.fullname },
+      queryStringParameters: { 
+        entity_id:bugs.entity_id, 
+        fullname:bugs.fullname,
+        entity_name: goodNonWaitingRoomInvitationPayload.entity_name
+      },
       expectedResponse: {
         statusCode: 400,
         outgoingBody: {
@@ -356,7 +369,11 @@ describe(`Entity Registration lambda trigger: handler ${Task.REGISTER}`, () => {
     alreadyRegistered = false;
     await invokeAndAssert({
       _handler:handler, code, task: Task.REGISTER,
-      queryStringParameters: { entity_id:bugs.entity_id, email:bugs.email },
+      queryStringParameters: { 
+        entity_id:bugs.entity_id, 
+        email:bugs.email,
+        entity_name: goodNonWaitingRoomInvitationPayload.entity_name
+      },
       expectedResponse: {
         statusCode: 400,
         outgoingBody: {
@@ -366,14 +383,36 @@ describe(`Entity Registration lambda trigger: handler ${Task.REGISTER}`, () => {
       }
     });
   });
+
+  it('Should NOT attempt to update if entity_name querystring parameter is missing for RE_ADMIN', async () => {
+    goodCode = code;
+    alreadyAcknowledged = true;
+    alreadyRegistered = false;
+    await invokeAndAssert({
+      _handler:handler, code, task: Task.REGISTER,
+      queryStringParameters: { entity_id:bugs.entity_id, email:bugs.email, fullname:bugs.fullname },
+      expectedResponse: {
+        statusCode: 400,
+        outgoingBody: {
+          message: 'Bad Request: Missing entity_name querystring parameter',
+          payload: { invalid: true }
+        } as OutgoingBody
+      }
+    });
+  });
   
-  it('Should NOT attempt to update the inviation if successfully found without existing acknowledgement', async () => {
+  it('Should NOT attempt to update the invitation if successfully found without existing acknowledgement', async () => {
     goodCode = code;
     alreadyAcknowledged = false;
     alreadyRegistered = false;
     await invokeAndAssert({
       _handler:handler, code, task: Task.REGISTER,
-      queryStringParameters: { entity_id:bugs.entity_id, email:bugs.email, fullname:bugs.fullname },
+      queryStringParameters: { 
+        entity_id: bugs.entity_id, 
+        email: bugs.email, 
+        fullname: bugs.fullname ,
+        entity_name: goodNonWaitingRoomInvitationPayload.entity_name
+      },
       expectedResponse: {
         statusCode: 401,
         outgoingBody: {
@@ -384,13 +423,18 @@ describe(`Entity Registration lambda trigger: handler ${Task.REGISTER}`, () => {
     });
   });
   
-  it('Should NOT attempt to update the inviation if successfully found with existing registration', async () => {
+  it('Should NOT attempt to update the invitation if successfully found with existing registration', async () => {
     goodCode = code;
     alreadyAcknowledged = true;
     alreadyRegistered = true;
     await invokeAndAssert({
       _handler:handler, code, task: Task.REGISTER,
-      queryStringParameters: { entity_id:bugs.entity_id, email:bugs.email, fullname:bugs.fullname },
+      queryStringParameters: { 
+        entity_id:bugs.entity_id, 
+        email:bugs.email, 
+        fullname:bugs.fullname, 
+        entity_name: goodNonWaitingRoomInvitationPayload.entity_name
+      },
       expectedResponse: {
         statusCode: 200,
         outgoingBody: {
@@ -400,14 +444,65 @@ describe(`Entity Registration lambda trigger: handler ${Task.REGISTER}`, () => {
       }
     });
   });
-  
-  it('Should attempt to update the inviation if successfully found needing registration', async () => {
+
+  it('Should NOT attempt to update the registration if successfully found, but would collide with existing entity', async () => {
     goodCode = code;
     alreadyAcknowledged = true;
     alreadyRegistered = false;
+    entityNameAlreadyInUse = true;
+    inviteToWaitingRoom = false;
+
     await invokeAndAssert({
       _handler:handler, code, task: Task.REGISTER,
-      queryStringParameters: { entity_id:bugs.entity_id, email:bugs.email, fullname:bugs.fullname },
+      queryStringParameters: { 
+        entity_id:bugs.entity_id, 
+        email:bugs.email, 
+        fullname:bugs.fullname, 
+        entity_name: goodNonWaitingRoomInvitationPayload.entity_name
+      },
+      expectedResponse: {
+        statusCode: 400,
+        outgoingBody: {
+          message: `Bad Request: The specified name: "${warnerbros.entity_name}", is already in use.`,
+          payload: { invalid: true }
+        } as OutgoingBody
+      }
+    });
+    
+    roleSubstitution = Roles.RE_AUTH_IND;
+    await invokeAndAssert({
+      _handler:handler, code, task: Task.REGISTER,
+      queryStringParameters: { 
+        entity_id:bugs.entity_id, 
+        email:bugs.email, 
+        fullname:bugs.fullname, 
+        entity_name: goodNonWaitingRoomInvitationPayload.entity_name
+      },
+      expectedResponse: {
+        statusCode: 200,
+        outgoingBody: {
+          message: `Ok: Registration completed for ${code}`,
+          payload: { ok: true }
+        } as OutgoingBody
+      }
+    });
+    roleSubstitution = undefined;
+    inviteToWaitingRoom = true;
+  });
+  
+  it('Should attempt to update the invitation if successfully found needing registration', async () => {
+    goodCode = code;
+    alreadyAcknowledged = true;
+    alreadyRegistered = false;
+    entityNameAlreadyInUse = false;
+    await invokeAndAssert({
+      _handler:handler, code, task: Task.REGISTER,
+      queryStringParameters: { 
+        entity_id:bugs.entity_id, 
+        email:bugs.email, 
+        fullname:bugs.fullname, 
+        entity_name: goodNonWaitingRoomInvitationPayload.entity_name
+      },
       expectedResponse: {
         statusCode: 200,
         outgoingBody: {
@@ -419,7 +514,13 @@ describe(`Entity Registration lambda trigger: handler ${Task.REGISTER}`, () => {
     // and one more time with a title...
     await invokeAndAssert({
       _handler:handler, code, task: Task.REGISTER,
-      queryStringParameters: { entity_id:bugs.entity_id, email:bugs.email, fullname:bugs.fullname, title:bugs.title },
+      queryStringParameters: { 
+        entity_id:bugs.entity_id, 
+        email:bugs.email, 
+        fullname:bugs.fullname, 
+        entity_name: goodNonWaitingRoomInvitationPayload.entity_name,
+        title:bugs.title, 
+      },
       expectedResponse: {
         statusCode: 200,
         outgoingBody: {

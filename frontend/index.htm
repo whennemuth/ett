@@ -1640,6 +1640,9 @@
       .then((json) => {
         const { message, payload } = json;
         if(payload.ok) {
+          if(payload.entity) {
+            entityInfo = payload.entity;
+          }
           callback(payload);
         }
         else {
@@ -1721,8 +1724,15 @@
         const sameUser = user =>  invEmail == user.email;
         const setField = (user, userfld, basename, index) => {
           let html = user[userfld] || '';
-          if(userfld == 'email' && user.hasAccount() == false) {
-            html = '';
+          if( ! user.hasAccount()) {
+            switch(userfld) {
+              case 'email':
+                html = '';
+                break;
+              case 'entity_name':
+                html = '';
+                break;
+            }
           }
           if(sameUser(user)) { 
             if(userfld == 'phone_number') {
@@ -1733,9 +1743,13 @@
               html = `<input type="text" class="form-control" id="txt${basename}${index}" value="${html}">`
             }                  
           }
-          document.getElementById(`td${basename}${index}`).innerHTML = html;
+          const td = document.getElementById(`td${basename}${index}`);
+          if(td) {
+            td.innerHTML = html;
+          }
         }
         const setFields = (user, basename, index) => {
+          setField(user, 'entity_name', `EntityName`, index||'');
           setField(user, 'fullname', `${basename}Name`, index||'');
           setField(user, 'title', `${basename}Title`, index||'');
           setField(user, 'phone_number', `${basename}Phone`, index||'');
@@ -1756,6 +1770,7 @@
           if(users && users.length > 0) {
             users.forEach((user) => {
               user.hasAccount = () => true;
+              user.entity_name = entity.entity_name;
               switch(user.role) {
                 case 'RE_ADMIN':
                   setFields(user, 'ReAdmin');
@@ -1771,26 +1786,19 @@
               document.getElementById(`tblAuthInd${authIndCounter+1}`).style.display = 'none';
             }
             else {
+              let { entity_name, email, code, fullname, title, phone_number } = invitation;
               setFields({
-                email: invitation.email,
-                hasAccount: () => invitation.email != invitation.code,
-                fullname: invitation.fullname,
-                title: invitation.title,
-                phone_number: invitation.phone_number
+                entity_name, email, fullname, title, phone_number, hasAccount: () => email != code
               }, 'AuthInd', authIndCounter+1);
             }
           }
         }
         else if(role == 'RE_ADMIN') {
-          document.getElementById('tblEntityName').style.display = 'none';
+          // document.getElementById('tblEntityName').style.display = 'none';
+          let { entity_name, email, code, fullname, title, phone_number } = invitation;
           setFields({
-            email: invitation.email,
-            hasAccount: () => invitation.email != invitation.code,
-            fullname: invitation.fullname,
-            title: invitation.title,
-            phone_number: invitation.phone_number
+            entity_name, email, fullname, title, phone_number, hasAccount: () => email != code
           }, 'ReAdmin');
-
         }
         else {
           showAcknowledgeEntityScreen(invitation);
@@ -1851,6 +1859,9 @@
         email: $(`#txt${basename}Email${index}`).val(),
         fullname: $(`#txt${basename}Name${index}`).val(),
         title: $(`#txt${basename}Title${index}`).val()
+      }
+      if(selected_role == 'RE_ADMIN') {
+        formdata.entity_name = $('#txtEntityName').val();
       }
       const querystring = Object.keys(formdata).map(key => `${encodeURIComponent(key)}=${encodeURIComponent(formdata[key])}`).join('&');
 
@@ -1916,45 +1927,6 @@
       }
     }
 
-    /**
-     * Invite a user
-     */
-    function invite(role, email, apiUri) {
-      const msg = document.getElementById('apiResponse');
-      msg.innerHTML = '';
-      if( ! email) {
-        alert("No email was entered");
-        return;
-      }
-      const payload = {
-        task: 'invite-user',
-        parameters: { email, role }
-      }
-      fetch(apiUri, {
-        method: 'GET',
-        mode: "cors",
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
-          'Content-Type': 'application/json',
-          [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify(payload)
-        }
-      })
-      .then(response => response.json())
-      .then((package) => {
-        const { message, payload } = package;
-        if(payload.ok) {
-          alert('Invitation sent!');
-          msg.innerHTML = 'Invitation sent!';
-        }
-        else {
-          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
-        }
-      })
-      .catch((e) => {
-        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
-      });      
-    }
 
     /**
      * Register the consenter. 
@@ -3058,14 +3030,14 @@
       try {
         const role = AccessJwtCookie.getRole().name;
         const entity_name = $('#txtReAdminEntityName').val();
-        const entity_description = entity_name;
+        const description = entity_name;
         if( ! entity_name) {
           alert('Required entry: Entity name');
           return;
         }
         const outgoingPayload = {
           task: 'create-entity',
-          parameters: { entity_name, entity_description }
+          parameters: { entity_name, description }
         }
 
         const response = await fetch(apiUri(role), {
@@ -3096,23 +3068,54 @@
     }
 
     /**
-     * Combines createEntity and invite (twice) as a consolidated RE_ADMIN task
+     * Invite a user
      */
-    const createEntityAndInviteUsers = async () => {
+    function invite(role, email, apiUri) {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      if( ! email) {
+        alert("No email was entered");
+        return;
+      }
+      const payload = {
+        task: 'invite-user',
+        parameters: { email, role }
+      }
+      fetch(apiUri, {
+        method: 'GET',
+        mode: "cors",
+        credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+          'Content-Type': 'application/json',
+          [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify(payload)
+        }
+      })
+      .then(response => response.json())
+      .then((package) => {
+        const { message, payload } = package;
+        if(payload.ok) {
+          alert('Invitation sent!');
+          msg.innerHTML = 'Invitation sent!';
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      })
+      .catch((e) => {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      });      
+    }
+
+    const inviteUsers = async (createEntity=false) => {
       const msg = document.getElementById('apiResponse');
       msg.innerHTML = '';
       try {
         const email = IDJwtCookie.getUser().email;
         const role = AccessJwtCookie.getRole().name;
-        const apiUri = STATIC_PARAMETERS.ROLES[role].API_URI
-        const entity_name = $('#txtReAdminEntityName').val();
         const email1 = $('#txtReAdminEmailToInvite1').val();
         const email2 = $('#txtReAdminEmailToInvite2').val();
-        const description = entity_name;
-        if( ! entity_name) {
-          alert('Required entry: Entity name');
-          return;
-        } 
+
         if( ! email1) {
           alert('Required entry: Authorized Individual 1 email address');
           return;
@@ -3121,13 +3124,11 @@
           alert('Required entry: Authorized Individual 2 email address');
           return;
         }
+
         const outgoingPayload = {
-          task: 'create-entity-invite',
-          // parameters: { email, role, entity_name, description, email1, email2 }
+          task: 'invite-users',
           parameters: {
-            entity: {
-              name:entity_name, description:entity_name
-            },
+            entity: { },
             invitations: {
               from: {
                 email, role
@@ -3136,6 +3137,23 @@
               invitee2: { email: email2, role:'RE_AUTH_IND' }
             }
           }
+        }
+
+        let successMessage;
+        if(createEntity) {
+          if( ! entity_name) {
+            alert('Required entry: Entity name');
+            return;
+          } 
+          outgoingPayload.task = 'create-entity-invite';
+          const entity_name = $('#txtReAdminEntityName').val();
+          const description = entity_name;
+          outgoingPayload.parameters.entity = { entity_name, description };
+          successMessage = 'Entity created and users invited';
+        }
+        else {
+          outgoingPayload.parameters.entity = userContext?.entity || {};
+          successMessage = 'Users invited';
         }
 
         document.body.style.cursor = 'progress';
@@ -3156,7 +3174,7 @@
         if(payload.ok) {
           userContext = payload.user;
           document.getElementById('btnReAdminEntityUpdate').style.display = 'inline';
-          alert('Entity created');
+          alert(successMessage);
         }
         else {
           msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
@@ -3165,6 +3183,13 @@
       catch(e) {
         msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
       }
+    }
+
+    /**
+     * Combines createEntity and invite (twice) as a consolidated RE_ADMIN task
+     */
+    const createEntityAndInviteUsers = async () => {
+      await inviteUsers(true);
     }
 
     /**
@@ -3350,10 +3375,7 @@
         const role = $("input[name='rdoSysAdminInvite']:checked").val();
         const email = $('#txtSysAdminEmailToInvite').val();
         invite(role, email, apiUri('SYS_ADMIN'));
-      });
-      document.getElementById('btnReAdminInvite').addEventListener('click', async () => {
-        await createEntityAndInviteUsers();
-      });
+      });      
       document.getElementsByName('rdoSysAdminInvite').forEach(rdo => {
         rdo.addEventListener('click', () => {
           const val = event.srcElement.value;
@@ -3496,12 +3518,27 @@
 
             case 'RE_ADMIN':
               await setUserContext();
-              const entity = userContext?.entity || {};
-              const isEmpty = e => Object.keys(e).length == 0;
-              if(isEmpty(entity)) {
+              const noEntityYet = () => { 
+                const { entity } = userContext;
+                const { entity_id, entity_name } = (entity ?? {});
+                return ! entity_id || entity_id == '__UNASSIGNED__'; 
+              };
+              const inviteButton = document.getElementById('btnReAdminInvite');
+              if(noEntityYet()) {
                 $('#btnReAdminEntityUpdate').hide();
               }
-              $('#txtReAdminEntityName').val(entity.entity_name);
+              else {
+                $('#btnReAdminInvite').html('Invite');
+              }
+              document.getElementById('btnReAdminInvite').addEventListener('click', async () => {
+                if(noEntityYet()) {
+                  await createEntityAndInviteUsers();
+                }
+                else {
+                  await inviteUsers();
+                }
+              });
+              $('#txtReAdminEntityName').val(userContext.entity.entity_name);
               document.getElementById('app-section-RE_ADMIN').style.display = 'inline';
               break;
 

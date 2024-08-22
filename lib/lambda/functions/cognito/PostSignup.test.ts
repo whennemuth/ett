@@ -1,9 +1,10 @@
 import 'aws-sdk-client-mock-jest';
-import { DAOInvitation, DAOUser } from '../../_lib/dao/dao';
-import { Invitation, Role, Roles, User } from '../../_lib/dao/entity';
+import { DAOEntity, DAOInvitation, DAOUser } from '../../_lib/dao/dao';
+import { Entity, Invitation, Role, Roles, User } from '../../_lib/dao/entity';
 import { handler } from './PostSignup';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
 import { AdminDeleteUserCommandOutput } from '@aws-sdk/client-cognito-identity-provider';
+import { UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
 
 // ---------------------- EVENT DETAILS ----------------------
 const clientId = '6s4a2ilv9e5solo78f4d75hlp8';
@@ -40,6 +41,20 @@ jest.mock('../../_lib/cognito/Lookup.ts', () => {
 });
 
 /**
+ * Define a partial mock for the ReAdminUser.ts module
+ */
+jest.mock('../re-admin/ReAdminUser.ts', () => {
+  const originalModule = jest.requireActual('../re-admin/ReAdminUser.ts');
+  return {
+    __esModule: true,
+    ...originalModule,
+    updateReAdminInvitationWithNewEntity: async (reAdminEmail:string, new_entity_id:string) => {
+      return;
+    }
+  }
+});  
+
+/**
  * Define a partial mock for the dao.ts module
  */
 jest.mock('../../_lib/dao/dao.ts', () => {
@@ -48,20 +63,26 @@ jest.mock('../../_lib/dao/dao.ts', () => {
     DAOFactory: {
       getInstance: jest.fn().mockImplementation(() => {
         return {
-          create: async ():Promise<any> => { 
+          create: async (): Promise<any> => {
             create_user_attempts++;
-            return {} as User|void;
-          }, 
-          read: async ():Promise<Invitation|Invitation[]> => {
+            return {} as User | Entity | void;
+          },
+          id: (): string => {
+            return 'entity_id_1';
+          },
+          update: async (): Promise<UpdateItemCommandOutput> => {
+            return { } as UpdateItemCommandOutput;
+          },
+          read: async (): Promise<Invitation | Invitation[]> => {
             invitation_lookup_attempts++;
             const dte = new Date().toISOString();
-            const basicMatch = { 
+            const basicMatch = {
               entity_id: ENTITY_WAITING_ROOM,
-              email: 'bugsbunny@warnerbros.com', 
-              acknowledged_timestamp: dte, 
-              registered_timestamp: dte 
-            } as Invitation
-            switch(invitationRole) {
+              email: 'bugsbunny@warnerbros.com',
+              acknowledged_timestamp: dte,
+              registered_timestamp: dte
+            } as Invitation;
+            switch (invitationRole) {
               case Roles.RE_ADMIN:
                 var match = Object.assign({}, basicMatch);
                 match.role = Roles.RE_ADMIN;
@@ -73,8 +94,8 @@ jest.mock('../../_lib/dao/dao.ts', () => {
                 registrationMismatch.registered_timestamp = undefined;
                 var entityMismatch = Object.assign({}, match);
                 entityMismatch.entity_id = 'abc123';
-                var retval = [ roleMismatch, acknowledgeMismatch, registrationMismatch, entityMismatch ] as Invitation[];
-                if(invitationScenario == 'match') {
+                var retval = [roleMismatch, acknowledgeMismatch, registrationMismatch, entityMismatch] as Invitation[];
+                if (invitationScenario == 'match') {
                   retval.push(match);
                 }
                 return retval;
@@ -83,8 +104,8 @@ jest.mock('../../_lib/dao/dao.ts', () => {
                 match.role = Roles.SYS_ADMIN;
                 var entityMismatch = Object.assign({}, match);
                 entityMismatch.entity_id = 'abc123';
-                var retval = [ entityMismatch ] as Invitation[];
-                if(invitationScenario == 'match') {
+                var retval = [entityMismatch] as Invitation[];
+                if (invitationScenario == 'match') {
                   retval.push(match);
                 }
                 return retval;
@@ -94,18 +115,29 @@ jest.mock('../../_lib/dao/dao.ts', () => {
                 match.entity_id = 'not_the_waiting_room';
                 var entityMismatch = Object.assign({}, match);
                 entityMismatch.entity_id = ENTITY_WAITING_ROOM;
-                var retval = [ entityMismatch ] as Invitation[];
-                if(invitationScenario == 'match') {
+                var retval = [entityMismatch] as Invitation[];
+                if (invitationScenario == 'match') {
                   retval.push(match);
                 }
                 return retval;
             }
             return [] as Invitation[];
           }
-        } as DAOInvitation|DAOUser
+        } as unknown as DAOInvitation|DAOUser|DAOEntity
       })
     }
   }
+});
+
+const resetMockCounters = () => {
+  role_lookup_attempts = 0;
+  create_user_attempts = 0;
+  remove_user_attempts = 0;
+  invitation_lookup_attempts = 0;
+}
+
+beforeEach(() => {
+  resetMockCounters();
 });
 
 describe('Post signup lambda trigger: handler', () => {
@@ -119,13 +151,6 @@ describe('Post signup lambda trigger: handler', () => {
     }
   }
 
-  const resetMockCounters = () => {
-    role_lookup_attempts = 0;
-    create_user_attempts = 0;
-    remove_user_attempts = 0;
-    invitation_lookup_attempts = 0;
-  }
-
   it('Should skip all SDK use if the event has no userpoolId, and throw error.', async () => {
     await expect(async () => {
       await handler({});
@@ -134,7 +159,6 @@ describe('Post signup lambda trigger: handler', () => {
     expect(invitation_lookup_attempts).toEqual(0);
     expect(create_user_attempts).toEqual(0);
     expect(remove_user_attempts).toEqual(0);
-    resetMockCounters();
   });
 
   it('Should skip all SDK use if the event has no clientId, and throw error.' , async () => {
@@ -148,7 +172,6 @@ describe('Post signup lambda trigger: handler', () => {
     expect(invitation_lookup_attempts).toEqual(0);
     expect(create_user_attempts).toEqual(0);
     expect(remove_user_attempts).toEqual(1);
-    resetMockCounters();
   });
 
   it('Should NOT attempt to make a dynamodb entry for the user if lookupRole fails', async () => {
@@ -159,7 +182,6 @@ describe('Post signup lambda trigger: handler', () => {
     expect(invitation_lookup_attempts).toEqual(0);
     expect(create_user_attempts).toEqual(0);
     expect(remove_user_attempts).toEqual(1);
-    resetMockCounters();
   });
 
   it('Should NOT attempt to make a dynamodb entry for the user if client lookup found a match, \
@@ -193,7 +215,6 @@ describe('Post signup lambda trigger: handler', () => {
     expect(role_lookup_attempts).toEqual(1);
     expect(invitation_lookup_attempts).toEqual(0);
     expect(create_user_attempts).toEqual(0);
-    resetMockCounters();
   });
 
   it('Should make it as far as the invitation lookup if role lookup succeeds and \
@@ -207,13 +228,13 @@ describe('Post signup lambda trigger: handler', () => {
     invitationRole = Roles.RE_ADMIN;
     invitationScenario = 'lookup_failure';
     await expect(async () => {
-      await handler(event);     
+      await handler(event);
     }).rejects.toThrow();
     expect(role_lookup_attempts).toEqual(1);
     expect(invitation_lookup_attempts).toEqual(1);
     expect(create_user_attempts).toEqual(0);
     expect(remove_user_attempts).toEqual(1);
-    resetMockCounters();
+    resetMockCounters();    
 
     invitationRole = Roles.SYS_ADMIN;
     invitationScenario = 'lookup_failure';
@@ -224,7 +245,7 @@ describe('Post signup lambda trigger: handler', () => {
     expect(invitation_lookup_attempts).toEqual(1);
     expect(create_user_attempts).toEqual(0);
     expect(remove_user_attempts).toEqual(1);
-    resetMockCounters();
+    resetMockCounters();    
 
     invitationRole = Roles.RE_AUTH_IND;
     invitationScenario = 'lookup_failure';
@@ -235,7 +256,6 @@ describe('Post signup lambda trigger: handler', () => {
     expect(invitation_lookup_attempts).toEqual(1);
     expect(create_user_attempts).toEqual(0);
     expect(remove_user_attempts).toEqual(1);
-    resetMockCounters();
   });
 
   it('Should carry out user creation if both role and invitation lookups succeed and sufficient \
@@ -253,7 +273,7 @@ describe('Post signup lambda trigger: handler', () => {
     expect(invitation_lookup_attempts).toEqual(1);
     expect(create_user_attempts).toEqual(1);
     expect(remove_user_attempts).toEqual(0);
-    resetMockCounters();
+    resetMockCounters();    
 
     invitationRole = Roles.SYS_ADMIN;
     invitationScenario = 'match';
@@ -262,7 +282,7 @@ describe('Post signup lambda trigger: handler', () => {
     expect(invitation_lookup_attempts).toEqual(1);
     expect(create_user_attempts).toEqual(1);
     expect(remove_user_attempts).toEqual(0);
-    resetMockCounters();
+    resetMockCounters();    
 
     invitationRole = Roles.RE_AUTH_IND;
     invitationScenario = 'match';
@@ -271,7 +291,6 @@ describe('Post signup lambda trigger: handler', () => {
     expect(invitation_lookup_attempts).toEqual(1);
     expect(create_user_attempts).toEqual(1);
     expect(remove_user_attempts).toEqual(0);
-    resetMockCounters();
   });
 });
 

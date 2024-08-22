@@ -154,7 +154,9 @@ export class UserInvitation {
    */
   private persist = async ():Promise<any> => {
     try {
-      let { email, entity_id, role, sent_timestamp } = this.invitation;
+      const { invitation, entity_name } = this;
+      let { email, entity_id, role, sent_timestamp } = invitation;
+
 
       if( ! sent_timestamp) {
         sent_timestamp = new Date().toISOString();
@@ -164,6 +166,7 @@ export class UserInvitation {
         code: this._code, 
         email: this._code,
         entity_id, 
+        entity_name,
         role, 
         message_id: this.messageId,
         sent_timestamp
