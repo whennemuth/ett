@@ -237,3 +237,42 @@ const scrapeUserValuesFromInvitation = async (email:string, role:Role):Promise<I
   // to the same person before that person had a chance to register to and setup an account against the first invitation.
   return invitations[0];
 }
+
+
+
+/**
+ * RUN MANUALLY:
+ */
+const { argv:args } = process;
+if(args.length > 2 && args[2] == 'RUN_MANUALLY_POST_SIGNUP') {
+
+  const mockEvent = {
+    "version": "1",
+    "region": "us-east-2",
+    "userPoolId": "us-east-2_FFxJkLmaJ",
+    "userName": "51bbc580-30e1-7065-2eb0-1ac0362e7d60",
+    "callerContext": {
+        "awsSdkVersion": "aws-sdk-unknown-unknown",
+        "clientId": "1c74v2fe28ti22gf4fala0ce62"
+    },
+    "triggerSource": "PostConfirmation_ConfirmSignUp",
+    "request": {
+        "userAttributes": {
+            "sub": "51bbc580-30e1-7065-2eb0-1ac0362e7d60",
+            "email_verified": "true",
+            "cognito:user_status": "CONFIRMED",
+            "phone_number_verified": "false",
+            "phone_number": "+6172224444",
+            "email": "asp.au.edu@warhen.work"
+        }
+    },
+    "response": {}
+  }
+
+  handler(mockEvent).then(() => {
+    console.log('done');
+  })
+  .catch((reason) => {
+    console.error(reason);
+  });
+}

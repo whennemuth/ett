@@ -214,6 +214,22 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Cognito post signup handler",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/cognito/PostSignup.ts",
+        "RUN_MANUALLY_POST_SIGNUP"
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2",
+        "DEBUG": "true"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "DB Object Builder",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
@@ -489,7 +505,8 @@
       "env": {
         "ACTION_TO_TEST": ""
       }
-    },    {
+    },
+    {
       "type": "node",
       "request": "launch",
       "name": "Jest DAO invitation crud",
