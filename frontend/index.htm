@@ -1432,6 +1432,9 @@
     const STATIC_PARAMETERS = 'STATIC_PARAMETERS_PLACEHOLDER';
     
     const localTesting = () => /^STATIC_PARAMETERS_.*$/.test(STATIC_PARAMETERS);
+    const clientId = () => { return STATIC_PARAMETERS.ROLES[selected_role].CLIENT_ID; }
+    const redirectUri = () => { return STATIC_PARAMETERS.ROLES[selected_role].REDIRECT_URI; }
+    const apiUri = () => { return STATIC_PARAMETERS.ROLES[selected_role].API_URI; }
 
     const roleChange = () => {
       selected_role = document.forms['formRole']['rdoRole'].value;
@@ -1471,15 +1474,14 @@
 
     let userContext = {};
 
+    let entityInfo = {};
+
+    let invitation;
+
     const rdoRoles = document.getElementsByName('rdoRole');
     rdoRoles.forEach(rdoRole => {
       rdoRole.addEventListener('change', roleChange);
     });
-
-    const clientId = () => { return STATIC_PARAMETERS.ROLES[selected_role].CLIENT_ID; }
-    const redirectUri = () => { return STATIC_PARAMETERS.ROLES[selected_role].REDIRECT_URI; }
-    const apiUri = () => { return STATIC_PARAMETERS.ROLES[selected_role].API_URI; }
-    let invitation;
 
     /**
      * Generate a code verifier
@@ -1547,7 +1549,7 @@
       };
       
       const queryString = Object.keys(params).map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`).join('&');
-      const authorizationUrl = `${STATIC_PARAMETERS.COGNITO_DOMAIN}/oauth2/authorize?${queryString}`;
+      const authorizationUrl = `https://${STATIC_PARAMETERS.COGNITO_DOMAIN}/oauth2/authorize?${queryString}`;
  
       window.location.href = authorizationUrl;
     }
@@ -1585,7 +1587,7 @@
       };
 
       const formData = Object.keys(params).map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`).join('&');
-      const tokenUrl = `${STATIC_PARAMETERS.COGNITO_DOMAIN}/oauth2/token`;
+      const tokenUrl = `https://${STATIC_PARAMETERS.COGNITO_DOMAIN}/oauth2/token`;
 
       const response = await fetch(tokenUrl, {
         method: 'POST',
@@ -2042,7 +2044,7 @@
       msg.innerHTML = '';
       try {
         // Perform the consent task.
-        const response = await fetch(STATIC_PARAMETERS.ROLES['CONSENTING_PERSON'].API_URI, {
+        const response = await fetch(apiUri('CONSENTING_PERSON'), {
           method: 'GET',
           mode: 'cors',
           credentials: 'include',
@@ -2678,10 +2680,9 @@
       msg.innerHTML = '';
       try {
         const role = AccessJwtCookie.getRole().name;
-        const apiUri = STATIC_PARAMETERS.ROLES[role].API_URI
 
         document.body.style.cursor = 'progress';
-        const response = await fetch(apiUri, {
+        const response = await fetch(apiUri(role), {
           method: 'GET',
           mode: 'cors',
           credentials: 'include',
@@ -2736,10 +2737,9 @@
       msg.innerHTML = '';
       try {
         const role = AccessJwtCookie.getRole().name;
-        const apiUri = STATIC_PARAMETERS.ROLES[role].API_URI
         
         document.body.style.cursor = 'progress';
-        const response = await fetch(apiUri, {
+        const response = await fetch(apiUri(role), {
           method: 'GET',
           mode: 'cors',
           credentials: 'include',
@@ -2777,10 +2777,9 @@
       msg.innerHTML = '';
       try {
         const role = AccessJwtCookie.getRole().name;
-        const apiUri = STATIC_PARAMETERS.ROLES[role].API_URI
         
         document.body.style.cursor = 'progress';
-        const response = await fetch(apiUri, {
+        const response = await fetch(apiUri(role), {
           method: 'GET',
           mode: 'cors',
           credentials: 'include',
@@ -2905,11 +2904,10 @@
       msg.innerHTML = '';
       try {
         const role = AccessJwtCookie.getRole().name;
-        const apiUri = STATIC_PARAMETERS.ROLES[role].API_URI;
         const { value } = document.getElementById(name);
         
         document.body.style.cursor = 'progress';
-        const response = await fetch(apiUri, {
+        const response = await fetch(apiUri(role), {
           method: 'GET',
           mode: 'cors',
           credentials: 'include',
@@ -2952,7 +2950,7 @@
         params.username = email;
       }
       const queryString = Object.keys(params).map(key => `${key}=${params[key]}`).join('&');
-      const signUpUrl = `${STATIC_PARAMETERS.COGNITO_DOMAIN}/signup?${queryString}`;
+      const signUpUrl = `https://${STATIC_PARAMETERS.COGNITO_DOMAIN}/signup?${queryString}`;
       window.location.href = signUpUrl;
     }
 
@@ -2981,7 +2979,7 @@
         logout_uri: encodeURIComponent(`https://${redirectUri()}?action=logout`)
       };
       const queryString = Object.keys(params).map(key => `${key}=${params[key]}`).join('&');
-      const signOutUrl = `${STATIC_PARAMETERS.COGNITO_DOMAIN}/logout?${queryString}`;
+      const signOutUrl = `https://${STATIC_PARAMETERS.COGNITO_DOMAIN}/logout?${queryString}`;
 
       window.location.href = signOutUrl;
     }
@@ -2989,7 +2987,7 @@
     // https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-the-access-token.html
     // https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-integrate-with-cognito.html
     function pingApi() {
-      fetch(apiUri(), {
+      fetch(apiUri('HELLO_WORLD'), {
         method: 'GET',
         mode: "cors",
         credentials: 'include',
@@ -3024,13 +3022,12 @@
       try {
         const role = AccessJwtCookie.getRole().name;
         const email = IDJwtCookie.getUser().email;
-        const apiUri = STATIC_PARAMETERS.ROLES[role].API_URI
         const outgoingPayload = {
           task: 'lookup-user-context',
           parameters: { email, role }
         }
   
-        const response = await fetch(apiUri, {
+        const response = await fetch(apiUri(role), {
           method: 'GET',
           mode: "cors",
           credentials: 'include',
@@ -3060,7 +3057,6 @@
       msg.innerHTML = '';
       try {
         const role = AccessJwtCookie.getRole().name;
-        const apiUri = STATIC_PARAMETERS.ROLES[role].API_URI
         const entity_name = $('#txtReAdminEntityName').val();
         const entity_description = entity_name;
         if( ! entity_name) {
@@ -3072,7 +3068,7 @@
           parameters: { entity_name, entity_description }
         }
 
-        const response = await fetch(apiUri, {
+        const response = await fetch(apiUri(role), {
           method: 'GET',
           mode: 'cors',
           credentials: 'include',
@@ -3143,7 +3139,7 @@
         }
 
         document.body.style.cursor = 'progress';
-        const response = await fetch(apiUri, {
+        const response = await fetch(apiUri(role), {
           method: 'GET',
           mode: 'cors',
           credentials: 'include',
@@ -3322,7 +3318,7 @@
       const queryParams = new URLSearchParams(window.location.search);
       const action = queryParams.get('action');
       const invitationCode = queryParams.get('code');
-
+ 
       // Assign events to buttons
       document.getElementById('btnSignin').addEventListener('click', () => {
         signIn();
@@ -3353,8 +3349,7 @@
       document.getElementById('btnSysAdminInvite').addEventListener('click', () => {
         const role = $("input[name='rdoSysAdminInvite']:checked").val();
         const email = $('#txtSysAdminEmailToInvite').val();
-        const apiUri = STATIC_PARAMETERS.ROLES['SYS_ADMIN'].API_URI;
-        invite(role, email, apiUri);
+        invite(role, email, apiUri('SYS_ADMIN'));
       });
       document.getElementById('btnReAdminInvite').addEventListener('click', async () => {
         await createEntityAndInviteUsers();

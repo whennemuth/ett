@@ -245,6 +245,12 @@ export class CognitoConstruct extends Construct {
   }
   
   public getUserPoolDomain(): string {
-    return this.userPoolDomain.baseUrl();
+    const { context: { REGION }} = this;
+    const defaultVal = `${this.userPoolDomain.domainName}.auth.${REGION}.amazoncognito.com`;
+    const baseUrlParts = /https?\:\/\/(.*)/.exec(this.userPoolDomain.baseUrl()) ?? [];
+    if(baseUrlParts.length > 1) {
+      return baseUrlParts[1];
+    }
+    return defaultVal;
   }
 };
