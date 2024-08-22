@@ -168,6 +168,22 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "BlankSheetOfPaper",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/BlankSheetOfPaper.ts",
+        "RUN_MANUALLY_BLANK_SHEET_OF_PAPER",
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2",
+        "LANDSCAPE": "dev"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Cognito pre signup handler",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],

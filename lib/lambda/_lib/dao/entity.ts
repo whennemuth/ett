@@ -100,6 +100,7 @@ export type Consenter = {
 export enum EntityFields {
   entity_id = 'entity_id',
   entity_name = 'entity_name',
+  entity_name_lower = 'entity_name_lower',
   description = 'description',
   create_timestamp = 'create_timestamp',
   update_timestamp = 'update_timestamp',
@@ -108,6 +109,7 @@ export enum EntityFields {
 export type Entity = {
   entity_id: string,
   entity_name: string,
+  entity_name_lower: string,
   description: string,
   create_timestamp?: string,
   update_timestamp?: string,

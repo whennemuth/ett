@@ -113,7 +113,7 @@ export const errorResponse = (message:string, payload?:any): LambdaProxyIntegrat
 }
 
 export const log = (o:any) => {
-  if(o instanceof Object) {
+  if(o instanceof Object || o instanceof Array) {
     console.log(JSON.stringify(o, null, 2))
     return;
   }

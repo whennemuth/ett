@@ -1,6 +1,6 @@
-import { DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, PutItemCommandOutput, TransactWriteItem, TransactWriteItemsCommand, TransactWriteItemsCommandInput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from "@aws-sdk/client-dynamodb";
+import { DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, PutItemCommandOutput, QueryCommand, QueryCommandInput, TransactWriteItem, TransactWriteItemsCommand, TransactWriteItemsCommandInput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
-import { DynamoDbConstruct, TableBaseNames } from "../../../DynamoDb";
+import { DynamoDbConstruct, IndexBaseNames, TableBaseNames } from "../../../DynamoDb";
 import { DAOConsenter, ReadParms } from "./dao";
 import { convertFromApiObject } from "./db-object-builder";
 import { consenterUpdate } from "./db-update-builder.consenter";
@@ -13,6 +13,7 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
   const docClient = DynamoDBDocumentClient.from(dbclient);
   const { getTableName } = DynamoDbConstruct;
   const { CONSENTERS } = TableBaseNames;
+  const { CONSENTERS_ACTIVE } = IndexBaseNames;
   const TableName = getTableName(CONSENTERS);
   
   let { email, active=YN.Yes, firstname, middlename, lastname, exhibit_forms, 
@@ -77,6 +78,16 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
   }
 
   const read = async (readParms?:ReadParms):Promise<(Consenter|null)|Consenter[]> => {
+    if(email) {
+      return  _read(readParms);
+    }
+    else if(active) {
+      return  _query(active, readParms);
+    }
+    return null;
+  }
+
+  const _read = async (readParms?:ReadParms):Promise<Consenter|null> => {
     // Handle missing field validation
     if( ! email) throwMissingError('read', ConsenterFields.email);
 
@@ -96,6 +107,27 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
     const { convertDates } = (readParms ?? {});
 
     return await loadConsenter(retval.Item, convertDates ?? true);
+  }
+
+  const _query = async (active:YN, readParms?:ReadParms):Promise<Consenter[]> => {
+
+    // Declare QueryCommandInput
+    const params = {
+      TableName,
+      IndexName: CONSENTERS_ACTIVE,
+      ExpressionAttributeValues: { ':v1': { S: active }  },
+      KeyConditionExpression: `${ConsenterFields.active} = :v1`
+    } as QueryCommandInput;
+
+    // Run the query
+    command = new QueryCommand(params);
+    const retval = await sendCommand(command);
+    const consenters = [] as Consenter[];
+    const { convertDates } = (readParms ?? {});
+    for(const item in retval.Items) {
+      consenters.push(await loadConsenter(retval.Items[item], convertDates ?? true));
+    }
+    return consenters as Consenter[];
   }
 
   /**
@@ -318,7 +350,8 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_DAO_CONSENTER') {
       execute(dao.update, task);
       break;
     case TASK.read:
-      dao = ConsenterCrud({ email });
+      // dao = ConsenterCrud({ email });
+      dao = ConsenterCrud({ active: YN.Yes } as Consenter);
       execute(dao.read, task);
     break;
     case TASK.Delete:
