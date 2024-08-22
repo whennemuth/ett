@@ -19,9 +19,8 @@ const debugLog = (entry:String) => {
 
 /**
  * Intercept all signup attempts early, before they reach the confirmation stage, and lookup the email in the
- * invitations dynamodb table. Mark any table entries that match the email and role with a timestamp for the
- * accepted_timestamp field - this will designate the invitation as accepted. If no table entries are found,
- * error out - this will cancel the signup for the user with a message in the hosted UI taken from the error.
+ * invitations dynamodb table. If no table entries are found, error out - this will cancel the signup for the 
+ * user with a message in the hosted UI taken from the error.
  * 
  * NOTE: While it is technically possible for the dynamodb invitations table to contain multiple unaccepted
  * entries for the same email & role for different entities, the invite user api should prevent this state
