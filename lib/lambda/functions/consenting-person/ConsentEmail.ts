@@ -1,7 +1,7 @@
 import { YN } from "../../_lib/dao/entity";
 import { ConsentForm, ConsentFormData } from "../../_lib/pdf/ConsentForm";
 import { PdfForm } from "../../_lib/pdf/PdfForm";
-import { sendEmail } from "../EmailWithAttachments";
+import { sendEmail } from "../../_lib/EmailWithAttachments";
 
 /**
  * This class represents an email that is issued to a recipient who has requested a copy of a consenters

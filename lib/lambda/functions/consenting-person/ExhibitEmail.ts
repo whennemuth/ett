@@ -3,7 +3,7 @@ import { ExhibitForm } from "../../_lib/pdf/ExhibitForm";
 import { ExhibitFormFull } from "../../_lib/pdf/ExhibitFormFull";
 import { ExhibitFormSingle } from "../../_lib/pdf/ExhibitFormSingle";
 import { IPdfForm, PdfForm } from "../../_lib/pdf/PdfForm";
-import { sendEmail } from "../EmailWithAttachments";
+import { sendEmail } from "../../_lib/EmailWithAttachments";
 
 
 export const enum FormTypes { FULL = 'full', SINGLE = 'single' };

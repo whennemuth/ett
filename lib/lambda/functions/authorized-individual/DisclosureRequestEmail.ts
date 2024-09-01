@@ -4,7 +4,7 @@ import { DisclosureForm, DisclosureFormData } from "../../_lib/pdf/DisclosureFor
 import { ExhibitForm } from "../../_lib/pdf/ExhibitForm";
 import { ExhibitFormSingle } from '../../_lib/pdf/ExhibitFormSingle';
 import { PdfForm } from "../../_lib/pdf/PdfForm";
-import { sendEmail } from "../EmailWithAttachments";
+import { sendEmail } from "../../_lib/EmailWithAttachments";
 import { test_data as test_exhibit_data } from '../consenting-person/ExhibitEmail';
 import { bugsbunny, daffyduck, yosemitesam } from "./MockObjects";
 
