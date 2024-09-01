@@ -49,13 +49,14 @@ export type OutgoingBody = {
  * This is the type that brings api responses into compliance with lambda proxy integration.
  * SEE: https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-integration-settings-integration-response.html
  */
-export type LambdaProxyIntegrationResponse = {
-  isBase64Encoded?:boolean,
-  statusCode:number,
+export type LambdaProxyIntegrationResponse<T extends string = string> = {
+  isBase64Encoded?: boolean;
+  statusCode: number;
   statusDescription?:string,
-  headers?:any,
-  body?:string
-}
+  headers?: { [headerName in T]: string };
+  multiValueHeaders?: { [headerName in T]: string[] };
+  body?: string
+};
 
 /**
  * This class serves as a baseline for a role, upon which broad division for api access for the app is based -
