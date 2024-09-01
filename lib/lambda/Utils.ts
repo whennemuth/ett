@@ -7,14 +7,7 @@ import { writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import * as ctx from '../../contexts/context.json';
 import { IContext } from "../../contexts/IContext";
-
-export type LambdaProxyIntegrationResponse<T extends string = string> = {
-  isBase64Encoded: boolean;
-  statusCode: number;
-  headers?: { [headerName in T]: string };
-  multiValueHeaders?: { [headerName in T]: string[] };
-  body: string
-};
+import { LambdaProxyIntegrationResponse } from "../role/AbstractRole";
 
 /**
  * https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-output-format
@@ -113,7 +106,11 @@ export const errorResponse = (message:string, payload?:any): LambdaProxyIntegrat
 }
 
 export const log = (o:any) => {
-  if(o instanceof Object || o instanceof Array) {
+  if(o instanceof Object) {
+    console.log(JSON.stringify(o, Object.getOwnPropertyNames(o), 2));
+    return;
+  }
+  if(o instanceof Array) {
     console.log(JSON.stringify(o, null, 2))
     return;
   }

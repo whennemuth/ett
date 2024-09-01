@@ -50,7 +50,7 @@ describe('Acknowledgement lambda trigger: handler', () => {
     const response = await handler(noCodeEvent);
     expect(response.statusCode).toEqual(400);
     expect(response.body).toBeDefined()
-    const body = JSON.parse(response.body);
+    const body = JSON.parse(response.body ?? '{}');
     expect(body).toEqual({ 
       message: 'Bad Request: task not specified (lookup-invitation|register)', 
       payload: { invalid:true } 
@@ -66,7 +66,7 @@ describe('Acknowledgement lambda trigger: handler', () => {
     const response = await handler(noCodeEvent);
     expect(response.statusCode).toEqual(401);
     expect(response.body).toBeDefined()
-    const body = JSON.parse(response.body);
+    const body = JSON.parse(response.body ?? '{}');
     expect(body).toEqual({ 
       message: 'Unauthorized: Invitation code missing', 
       payload: { unauthorized:true } 
@@ -78,7 +78,7 @@ describe('Acknowledgement lambda trigger: handler', () => {
     const response = await handler(event);
     expect(response.statusCode).toEqual(401);
     expect(response.body).toBeDefined();
-    const body = JSON.parse(response.body);
+    const body = JSON.parse(response.body ?? '{}');
     expect(body).toEqual({ 
       message: `Unauthorized: Unknown invitation code ${code}`,
       payload: { unauthorized:true }
@@ -92,7 +92,7 @@ describe('Acknowledgement lambda trigger: handler', () => {
     const response = await handler(event);
     expect(response.statusCode).toEqual(200);
     expect(response.body).toBeDefined();
-    const body = JSON.parse(response.body);
+    const body = JSON.parse(response.body ?? '{}');
     expect(body).toEqual({ 
       message: `Ok: Already acknowledged at ${timestamp}`,
       payload: { ok:true } 
@@ -107,7 +107,7 @@ describe('Acknowledgement lambda trigger: handler', () => {
     const response = await handler(event);
     expect(response.statusCode).toEqual(200);
     expect(response.body).toBeDefined();
-    const body = JSON.parse(response.body);
+    const body = JSON.parse(response.body ?? '{}');
     expect(body).toEqual({ 
       message: `Ok: Acknowledgement registered for ${code}`,
       payload: { ok:true }
