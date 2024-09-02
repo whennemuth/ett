@@ -184,6 +184,23 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "DelayedExecution",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/timer/DelayedExecution.ts",
+        "RUN_MANUALLY_DELAYED_EXECUTION",
+        "test"
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2",
+        "LANDSCAPE": "dev"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Cognito pre signup handler",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
