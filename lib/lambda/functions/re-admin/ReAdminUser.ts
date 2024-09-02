@@ -5,7 +5,7 @@ import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
 import { Entity, Invitation, Role, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
 import { UserInvitation } from '../../_lib/invitation/Invitation';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
-import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, lookupPendingInvitations, lookupSingleActiveEntity, lookupSingleUser, lookupUser, okResponse } from "../../Utils";
+import { debugLog, errorResponse, invalidResponse, isOk, log, lookupCloudfrontDomain, lookupPendingInvitations, lookupSingleActiveEntity, lookupSingleUser, lookupUser, mergeResponses, okResponse } from "../../Utils";
 
 export enum Task {
   CREATE_ENTITY = 'create-entity',
@@ -421,15 +421,21 @@ export const inviteUsers = async (parameters:any, callerSub?:string):Promise<Lam
   const user1 = { email:email1, role:role1, entity_id } as User
   const user2 = { email:email2, role:role2, entity_id } as User
 
-  await inviteUser(user1, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
+  const response1 = await inviteUser(user1, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
     return await new SignupLink().getRegistrationLink(entity_id);
   }, callerSub);
 
-  await inviteUser(user2, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
+  const response2 = await inviteUser(user2, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
     return await new SignupLink().getRegistrationLink(entity_id);
   }, callerSub);
 
-  return await lookupEntity(email1, role1);
+  let response = await lookupEntity(email1, role1);
+
+  if( ! isOk(response1) || ! isOk(response2)) {
+    response = mergeResponses([ response1, response2, response ]);
+  }
+
+  return response;
 }
 
 /**
@@ -453,14 +459,22 @@ export const createEntityAndInviteUsers = async (parameters:any, callerSub?:stri
   const result = getInvitedUsersValidationResult(parameters, callerSub);
   if(result?.statusCode == 400) return result;
 
-  var response = await createEntity( entity, { sub:callerSub, role:Roles.RE_ADMIN } as User ) as LambdaProxyIntegrationResponse;
+  const response1 = await createEntity( entity, { sub:callerSub, role:Roles.RE_ADMIN } as User ) as LambdaProxyIntegrationResponse;
 
-  if(response.body) {
-    var output = JSON.parse(response.body);
+  if( ! isOk(response1)) {
+    return response1;
+  }
+
+  if(response1.body) {
+    var output = JSON.parse(response1.body);
     const { entity_id } = output.payload;
     parameters.entity.entity_id = entity_id;
 
-    return await inviteUsers(parameters, callerSub);
+    const response2 = await inviteUsers(parameters, callerSub);
+    if( ! isOk(response2)) {
+      return mergeResponses([ response1, response2 ]);
+    }
+    return response2
   }
   else {
     return errorResponse('ID of newly created entity not available'); 
@@ -475,7 +489,7 @@ export const createEntityAndInviteUsers = async (parameters:any, callerSub?:stri
 const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY_RE_ADMIN') {
 
-  const task = Task.CREATE_ENTITY_INVITE as Task;
+  const task = Task.INVITE_USERS as Task;
   const landscape = 'dev';
   const region = 'us-east-2';
 
@@ -499,7 +513,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_RE_ADMIN') {
         payload = {
           task,
           parameters: {
-            email: 'warhen8@gmail.com',
+            email: 'asp.ssu.edu@warhen.work',
             role: Roles.RE_AUTH_IND,
           }
         } as IncomingPayload;
@@ -517,6 +531,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_RE_ADMIN') {
           }
         } as any;
         break;
+      case Task.INVITE_USERS: // entity will be ignored if included
       case Task.CREATE_ENTITY_INVITE:
         payload = {
           task,
@@ -543,8 +558,8 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_RE_ADMIN') {
           requestContext: {
             authorizer: {
               claims: {
-                username: '214b8500-c0b1-70ac-086f-b6fe744794a5',
-                sub: '214b8500-c0b1-70ac-086f-b6fe744794a5'
+                username: '014b3590-5021-7023-e057-97a4ceab432e',
+                sub: '014b3590-5021-7023-e057-97a4ceab432e'
               }
             }
           }

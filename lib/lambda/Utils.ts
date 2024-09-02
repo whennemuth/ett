@@ -105,8 +105,37 @@ export const errorResponse = (message:string, payload?:any): LambdaProxyIntegrat
   return response;
 }
 
+export const mergeResponses = (responses:LambdaProxyIntegrationResponse[]) => {
+  // 1) Condense the response bodies into an array of their parsed values.
+  const bodies = responses.map(response => {
+    return JSON.parse(response.body ?? '{}');
+  }) as any[];
+
+  // 2) Determine the highest (probably most severe) status code
+  const statusCode = responses.reduce((priorValue, currentValue) => {
+    return currentValue.statusCode > priorValue.statusCode ? currentValue : priorValue;
+  }, { statusCode:200 }).statusCode;
+
+  const headers = {
+    "Content-Type": "application/json"
+  }
+  addCorsHeaders(headers);
+  const response = {
+    isBase64Encoded: false,
+    statusCode,
+    headers,
+    body: JSON.stringify(bodies)
+  };
+  debugLog(response);
+  return response;
+}
+
+export const isOk = (response:LambdaProxyIntegrationResponse) => {
+  return /^2\d+/.test(`${response.statusCode}`);
+}
+
 export const log = (o:any) => {
-  if(o instanceof Object) {
+  if(o instanceof Error) {
     console.log(JSON.stringify(o, Object.getOwnPropertyNames(o), 2));
     return;
   }
