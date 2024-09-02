@@ -4,7 +4,7 @@ import { Affiliate, AffiliateTypes, Config, Consenter, Entity, ExhibitForm as Ex
 import { IPdfForm } from "../../_lib/pdf/PdfForm";
 import { deepClone } from "../../Utils";
 import { MockCalls, TestParms, invokeAndAssert } from "../../UtilsTest";
-import { SingleExhibitFormMetadata } from "./ConsenterBucketItems";
+import { SingleExhibitFormMetadata } from "./ConsenterBucketItemMetadata";
 import { FormType, FormTypes } from "./ExhibitEmail";
 
 /**

@@ -1,5 +1,4 @@
-import { deepClone } from "../../Utils";
-import { ExhibitBucket, ExhibitBucketItemMetadata } from "./ConsenterBucketItems";
+import { BucketItemMetadata, ExhibitBucketItemMetadata } from "./ConsenterBucketItemMetadata";
 
 const testISOString = '2024-08-08T20:48:32.162Z'
 const safeISOString = testISOString.replace(/\:/g, '!');
@@ -35,16 +34,25 @@ const assertions: { [key: string]: ExhibitBucketItemMetadata } = {
   [`bugs(at)warnerbros.com/entity1`]: {
     consenterEmail: 'bugs@warnerbros.com',
     entityId: 'entity1',
-  }
+  },
+  [`bugs(at)warnerbros.com/entity1/daffy-duck(at)warnerbros.com`]: {
+    consenterEmail: 'bugs@warnerbros.com',
+    entityId: 'entity1',
+    affiliateEmail: 'daffy-duck@warnerbros.com' 
+  },
 };
 
 describe('ConsenterBucketItems.toBucketItemPath()', () => {
   let counter = 1;
-  for(const expectedObjectKey in assertions) {
+  for(let expectedObjectKey in assertions) {
     if (assertions.hasOwnProperty(expectedObjectKey)) {
       const metadata = assertions[expectedObjectKey];
-      const key = ExhibitBucket.toBucketObjectKey(metadata);
+      const key = BucketItemMetadata.toBucketObjectKey(metadata);
       it(`Should produce the expected s3 object key from specified metadata: ${counter++}`, () => {
+        if(expectedObjectKey == `bugs(at)warnerbros.com/entity1/daffy-duck(at)warnerbros.com`) {
+          // In this one case, the key represents only part of the expected value (it is missing the file name)
+          expectedObjectKey = `${expectedObjectKey}/${safeISOString}.pdf`
+        }
         expect(key).toEqual(expectedObjectKey);
       })
     }
@@ -56,11 +64,14 @@ describe('ConsenterBucketItems.fromBucketItemPath()', () => {
   for(const key in assertions) {
     if(assertions.hasOwnProperty(key)) {
       const expectedMetadata = assertions[key];
-      const metadata = ExhibitBucket.fromBucketObjectKey(key);
+      const metadata = BucketItemMetadata.fromBucketObjectKey(key);
       const getClone = (metadata:ExhibitBucketItemMetadata) => {
         const { affiliateEmail, consenterEmail, correction, entityId, savedDate } = metadata;
         if( ! affiliateEmail) {
           return { consenterEmail, entityId };
+        }
+        if( correction == undefined && ! savedDate) {
+          return { consenterEmail, entityId, affiliateEmail }
         }
         return {
           affiliateEmail, consenterEmail, correction, entityId, savedDate: (savedDate ?? testdate)
