@@ -31,21 +31,27 @@ export interface ScheduledLambdaInput {
  */
 export class DelayedLambdaExecution implements DelayedExecution {
   private lambdaArn:string;
-  private lambdaInput:any
+  private lambdaInput:any;
+  /** 
+   * Set putInvokePrivileges to true only if the target lambda does not already grant invoke  
+   * privileges to the events service principal through a role or inline policy statement
+   */
+  private putInvokePrivileges:boolean;
 
   // private scheduledLambdaInput:ScheduledLambdaInput;
   private uuid:string;
 
-  constructor(lambdaArn:string, lambdaInput:any) {
+  constructor(lambdaArn:string, lambdaInput:any, putInvokePrivileges:boolean=false) {
     this.lambdaArn = lambdaArn;
     this.lambdaInput = lambdaInput;
+    this.putInvokePrivileges = putInvokePrivileges;
     this.uuid = uuidv4();
     // this.scheduledLambdaInput = scheduledLambdaInput;
   }
 
   public startCountdown = async (timer:EggTimer):Promise<any> => {
     return timer.startTimer(async () => {
-      const { lambdaArn, lambdaInput, uuid } = this;
+      const { lambdaArn, lambdaInput, putInvokePrivileges, uuid } = this;
       const { REGION:region, PREFIX } = process.env
       const eventBridgeRuleName = `${PREFIX}-${uuid}`
       const targetId = `${eventBridgeRuleName}-targetId`; 
@@ -55,7 +61,7 @@ export class DelayedLambdaExecution implements DelayedExecution {
       const response = await eventBridgeClient.send(new PutRuleCommand({
         Name: eventBridgeRuleName,
         ScheduleExpression: timer.getCronExpression(),
-        State: "ENABLED"
+        State: "ENABLED",
       })) as PutRuleCommandOutput;
       const { RuleArn } = response;
 
@@ -65,7 +71,7 @@ export class DelayedLambdaExecution implements DelayedExecution {
         Rule: eventBridgeRuleName,
         Targets: [{ 
           Id: targetId, 
-          Arn: lambdaArn, 
+          Arn: lambdaArn,
           Input: JSON.stringify({
             lambdaInput,
             eventBridgeRuleName,
@@ -76,15 +82,16 @@ export class DelayedLambdaExecution implements DelayedExecution {
       await eventBridgeClient.send(putTargetsCommand);
 
       // 3) Add a permission to the lambda for the event bridge rule to invoke it
-      const addPermissionCommand = new AddPermissionCommand({
-        FunctionName: lambdaArn,
-        StatementId: `allow-eventbridge-invoke-${Date.now()}`,
-        Action: "lambda:InvokeFunction",
-        Principal: "events.amazonaws.com",
-        SourceArn: RuleArn,
-      });
-      await lambdaClient.send(addPermissionCommand);
-
+      if(putInvokePrivileges) {
+        const addPermissionCommand = new AddPermissionCommand({
+          FunctionName: lambdaArn,
+          StatementId: `allow-eventbridge-invoke-${Date.now()}`,
+          Action: "lambda:InvokeFunction",
+          Principal: "events.amazonaws.com",
+          SourceArn: RuleArn,
+        });
+        await lambdaClient.send(addPermissionCommand);
+      }
     })
   }
 }

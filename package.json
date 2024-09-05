@@ -35,6 +35,8 @@
     "@aws-sdk/client-cloudfront": "^3.511.0",
     "@aws-sdk/client-cognito-identity-provider": "^3.468.0",
     "@aws-sdk/client-dynamodb": "^3.429.0",
+    "@aws-sdk/client-eventbridge": "^3.637.0",
+    "@aws-sdk/client-lambda": "^3.637.0",
     "@aws-sdk/client-s3": "^3.410.0",
     "@aws-sdk/client-sesv2": "^3.509.0",
     "@aws-sdk/lib-dynamodb": "^3.564.0",

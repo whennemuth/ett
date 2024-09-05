@@ -8,6 +8,7 @@ import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
 import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { IContext } from "../../contexts/IContext";
 import { Configurations } from "../lambda/_lib/config/Config";
+import { EXHIBIT_FORM_DB_PURGE } from "../DelayedExecution";
 
 export class ConsentingPersonApi extends AbstractRole {
   private api: AbstractRoleApi
@@ -58,14 +59,15 @@ export class LambdaFunction extends AbstractFunction {
   constructor(scope: Construct, constructId: string, parms:ApiConstructParms) {
     const context:IContext = scope.node.getContext('stack-parms');
     const { ACCOUNT, REGION, CONFIG, STACK_ID } = context;
-    const { userPool, cloudfrontDomain, landscape, exhibitFormsBucketName } = parms;
+    const { userPool, cloudfrontDomain, landscape, exhibitFormsBucketName, databaseExhibitFormPurgeLambdaArn } = parms;
     const { userPoolArn, userPoolId } = userPool;
+    const prefix = `${STACK_ID}-${landscape}`
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
       memorySize: 1024,
       entry: 'lib/lambda/functions/consenting-person/ConsentingPerson.ts',
       // handler: 'handler',
-      functionName: `${STACK_ID}-${landscape}-${Roles.CONSENTING_PERSON}-user`,
+      functionName: `${prefix}-${Roles.CONSENTING_PERSON}-user`,
       description: 'Function for all consenting persons activity.',
       cleanup: true,
       bundling: {
@@ -96,6 +98,24 @@ export class LambdaFunction extends AbstractFunction {
                 effect: Effect.ALLOW
               })
             ]
+          }),
+          'EttConsentingPersonEventBridgePolicy': new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'events:PutRule', 'events:PutTargets' ],
+                resources: [
+                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/*`
+                ],
+                effect: Effect.ALLOW
+              }),
+              new PolicyStatement({
+                actions: [ 'lambda:AddPermission' ],
+                resources: [
+                  `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${prefix}-${EXHIBIT_FORM_DB_PURGE}`
+                ],
+                effect: Effect.ALLOW
+              })
+            ]
           })
         }
       }),
@@ -103,7 +123,9 @@ export class LambdaFunction extends AbstractFunction {
         REGION: scope.node.getContext('stack-parms').REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
         USERPOOL_ID: userPoolId,
+        PREFIX: prefix,
         EXHIBIT_FORMS_BUCKET_NAME: exhibitFormsBucketName,
+        EXHIBIT_FORM_DATABASE_PURGE_FUNCTION_ARN: databaseExhibitFormPurgeLambdaArn,
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });

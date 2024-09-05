@@ -16,7 +16,8 @@ export type ApiConstructParms = {
   cloudfrontDomain: string,
   redirectPath: string,
   landscape: string,
-  exhibitFormsBucketName: string
+  exhibitFormsBucketName: string,
+  databaseExhibitFormPurgeLambdaArn: string,
 }
 
 /**
