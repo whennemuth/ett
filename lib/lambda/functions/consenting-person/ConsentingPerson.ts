@@ -1,20 +1,25 @@
 import { IContext } from "../../../../contexts/IContext";
-import { EXHIBIT_FORM_DB_PURGE } from "../../../DelayedExecution";
+import { DISCLOSURE_REQUEST_REMINDER, EXHIBIT_FORM_DB_PURGE } from "../../../DelayedExecution";
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { Configurations } from "../../_lib/config/Config";
 import { DAOFactory } from "../../_lib/dao/dao";
 import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
-import { Affiliate, AffiliateTypes, ConfigNames, Consenter, ConsenterFields, Entity, ExhibitForm, Roles, User, YN } from "../../_lib/dao/entity";
+import { Affiliate, AffiliateTypes, ConfigName, ConfigNames, Consenter, ConsenterFields, Entity, ExhibitForm, Roles, User, YN } from "../../_lib/dao/entity";
 import { ConsentFormData } from "../../_lib/pdf/ConsentForm";
 import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { ComparableDate, debugLog, deepClone, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
 import { ConsentFormEmail } from "./ConsentEmail";
-import { ExhibitBucket } from "./ConsenterBucketItems";
+import { ExhibitBucket } from "./BucketExhibitForms";
 import { ExhibitEmail, FormTypes } from "./ExhibitEmail";
+import { DisclosureFormBucket } from "./BucketDisclosureForms";
+import { BucketItemMetadataParms, ItemType } from "./BucketItemMetadata";
+import { BucketItem } from "./BucketItem";
+import { DisclosureRequestReminderLambdaParms } from "../delayed-execution/SendDisclosureRequestReminder";
+import { DisclosureEmailParms } from "../authorized-individual/DisclosureRequestEmail";
 
 export enum Task {
   SAVE_EXHIBIT_FORM = 'save-exhibit-form',
@@ -375,7 +380,7 @@ export const saveExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
     }
   }
   else {
-    console.error('functionArn variable is missing from the environment!');
+    console.error('Cannot schedule exhibit form purge from database: functionArn variable is missing from the environment!');
   }
 
   return getConsenterResponse(email, true);
@@ -497,7 +502,37 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
   }
 
   /**
-   * end the full exhibit form to each authorized individual and the RE admin.
+   * Save the single exhibit form excerpts of the full exhibit form to the s3 bucket.
+   */
+  const transferSingleExhibitFormsToBucket = async () => {
+    emailFailuresForAffiliates.length = 0;
+    const now = new Date();
+    const { EXHIBIT, DISCLOSURE } = ItemType;
+    for(let i=0; i<affiliates.length; i++) {
+      const parms = { 
+        entityId:entity.entity_id, 
+        affiliateEmail:affiliates[i].email,
+        savedDate: now
+      } as BucketItemMetadataParms;
+
+      // 1) Save a copy of the single exhibit form pdf to the s3 bucket
+      parms.itemType = EXHIBIT;
+      const exhibitsBucket = new ExhibitBucket(new BucketItem(consenter));
+      const s3ObjectKeyForExhibitForm = await exhibitsBucket.add(parms);
+
+      // 2) Save a copy of the disclosure form to the s3 bucket
+      parms.itemType = DISCLOSURE;
+      const disclosuresBucket = new DisclosureFormBucket(new BucketItem(consenter));
+      const s3ObjectKeyForDisclosureForm = await disclosuresBucket.add(parms);
+
+      // 3) Schedule database purging actions for the forms that were just saved to the bucket.
+      // Perhaps combine as a pair into one rule?
+    }
+  }
+
+  
+  /**
+   * Send the full exhibit form to each authorized individual and the RE admin.
    */
   const sendFullExhibitFormToEntityStaff = async () => {
     emailFailuresForEntityStaff.length = 0;
@@ -506,31 +541,6 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
       if( ! sent) {
         emailFailuresForEntityStaff.push(users[i].email);
       }
-    }
-  }
-
-  /**
-   * Send the single exhibit form excerpts of the full exhibit form to each affiliate
-   */
-  const sendSingleExhibitFormToAffiliates = async () => {
-    emailFailuresForAffiliates.length = 0;
-    for(let i=0; i<affiliates.length; i++) {
-      const email = new ExhibitEmail(exhibitForm, FormTypes.SINGLE, entity, consenter);
-
-      // 1) Send the email with the pdf to the affiliate
-      const sent = await email.send(affiliates[i].email);
-      const pdf = email.getAttachment()
-      if( ! sent || ! pdf) {
-        emailFailuresForAffiliates.push(affiliates[i].email);
-      }
-
-      // 2) Save a copy of the pdf to the s3 bucket
-      const bucket = new ExhibitBucket(consenter);
-      const key = await bucket.add({ entityId:entity.entity_id, affiliateEmail:affiliates[i].email });
-
-      // 3) Create an event bridge rule to schedule an expiration for the pdf file that limits how 
-      // long it can survive in s3 without a disclosure request being issued against it.
-      
     }
   }
 
@@ -560,6 +570,9 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
       return;
     }
     // TODO: Write the code for this
+    // NOTE: It may be worth simply letting the rule remain so that it triggers the lambda function, 
+    // which, although performing a non-action (db content to delete is already deleted), will 
+    // ultimately result in the rule deletion anyway as a final cleanup action.
     return;
   }
 
@@ -588,7 +601,7 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
     
     await sendFullExhibitFormToEntityStaff();
     
-    await sendSingleExhibitFormToAffiliates();
+    await transferSingleExhibitFormsToBucket();
 
     await pruneExhibitFormFromDatabaseRecord();
 
@@ -623,7 +636,7 @@ export const correctExhibitData = async (email:string, exhibitForm:ExhibitForm):
 const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
 
-  const task = Task.SAVE_EXHIBIT_FORM as Task;
+  const task = Task.SEND_EXHIBIT_FORM as Task;
   let payload = {
     task,
     parameters: {
@@ -663,7 +676,8 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
       // 1) Get context variables
       const context:IContext = await require('../../../../contexts/context.json');
       const { STACK_ID, REGION, ACCOUNT, TAGS: { Landscape }} = context;
-
+      const prefix = `${STACK_ID}-${Landscape}`;
+  
       // 2) Get the cloudfront domain
       const cloudfrontDomain = await lookupCloudfrontDomain(Landscape);
       if( ! cloudfrontDomain) {
@@ -672,9 +686,11 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
       process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
 
       // 3) Get the userpool ID
-      const userpoolId = await lookupUserPoolId('ett-dev-cognito-userpool', REGION);
+      const userpoolId = await lookupUserPoolId(`${prefix}-cognito-userpool`, REGION);
 
       // 4) Set environment variables
+      const bucketName = `${prefix}-exhibit-forms`;
+      process.env.EXHIBIT_FORMS_BUCKET_NAME = bucketName;
       process.env.USERPOOL_ID = userpoolId;
       process.env.REGION = REGION;
       process.env.DEBUG = 'true';
@@ -691,6 +707,33 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
           payload.parameters.exhibit_data.affiliates[1].fullname = 'Daffy D Duck';
           break;
         case Task.SEND_EXHIBIT_FORM:
+          payload = {
+            "task": "send-exhibit-form",
+            "parameters": {
+              "email": "cp1@warhen.work",
+              "exhibit_data": {
+                "entity_id": "3ef70b3e-456b-42e8-86b0-d8fbd0066628",
+                "affiliates": [
+                  {
+                    "affiliateType": "ACADEMIC",
+                    "email": "affiliate2@warhen.work",
+                    "org": "My Neighborhood University",
+                    "fullname": "Mister Rogers",
+                    "title": "Daytime child television host",
+                    "phone_number": "781-333-5555"
+                  },
+                  {
+                    "affiliateType": "OTHER",
+                    "email": "affiliate3@warhen.work",
+                    "org": "Thingamagig University",
+                    "fullname": "Elvis Presley",
+                    "title": "Entertainer",
+                    "phone_number": "508-333-9999"
+                  }
+                ]
+              }
+            }
+          }
           break;
         case Task.GET_CONSENTER:
         case Task.SEND_CONSENT:
@@ -725,5 +768,5 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
     catch(reason) {
       console.error(reason);
     }
-  });
+  })();
 }

@@ -9,6 +9,7 @@ import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 
 import { IContext } from "../../contexts/IContext";
 import { Configurations } from "../lambda/_lib/config/Config";
 import { EXHIBIT_FORM_DB_PURGE } from "../DelayedExecution";
+import { Duration } from "aws-cdk-lib";
 
 export class ConsentingPersonApi extends AbstractRole {
   private api: AbstractRoleApi
@@ -59,12 +60,13 @@ export class LambdaFunction extends AbstractFunction {
   constructor(scope: Construct, constructId: string, parms:ApiConstructParms) {
     const context:IContext = scope.node.getContext('stack-parms');
     const { ACCOUNT, REGION, CONFIG, STACK_ID } = context;
-    const { userPool, cloudfrontDomain, landscape, exhibitFormsBucketName, databaseExhibitFormPurgeLambdaArn } = parms;
+    const { userPool, cloudfrontDomain, landscape, exhibitFormsBucket, databaseExhibitFormPurgeLambdaArn } = parms;
     const { userPoolArn, userPoolId } = userPool;
     const prefix = `${STACK_ID}-${landscape}`
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
       memorySize: 1024,
+      timeout: Duration.seconds(15),
       entry: 'lib/lambda/functions/consenting-person/ConsentingPerson.ts',
       // handler: 'handler',
       functionName: `${prefix}-${Roles.CONSENTING_PERSON}-user`,
@@ -124,7 +126,7 @@ export class LambdaFunction extends AbstractFunction {
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
         USERPOOL_ID: userPoolId,
         PREFIX: prefix,
-        EXHIBIT_FORMS_BUCKET_NAME: exhibitFormsBucketName,
+        EXHIBIT_FORMS_BUCKET_NAME: exhibitFormsBucket.bucketName,
         EXHIBIT_FORM_DATABASE_PURGE_FUNCTION_ARN: databaseExhibitFormPurgeLambdaArn,
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }

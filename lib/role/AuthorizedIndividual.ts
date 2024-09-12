@@ -8,6 +8,8 @@ import { ApiConstructParms } from "../Api";
 import { Roles } from "../lambda/_lib/dao/entity";
 import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
 import { Configurations } from "../lambda/_lib/config/Config";
+import { DISCLOSURE_REQUEST_REMINDER } from "../DelayedExecution";
+import { Duration } from "aws-cdk-lib";
 
 
 export class AuthorizedIndividualApi extends AbstractRole {
@@ -59,14 +61,16 @@ export class LambdaFunction extends AbstractFunction {
   constructor(scope: Construct, constructId: string, parms:ApiConstructParms) {
     const context:IContext = scope.node.getContext('stack-parms');
     const { STACK_ID, ACCOUNT, REGION, CONFIG } = context;
-    const { userPool, landscape, exhibitFormsBucketName } = parms;
+    const { userPool, cloudfrontDomain, landscape, exhibitFormsBucket, disclosureRequestReminderLambdaArn } = parms;
     const { userPoolId, userPoolArn } = userPool;
+    const prefix = `${STACK_ID}-${landscape}`;
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
       memorySize: 1024,
+      timeout: Duration.seconds(15),
       entry: 'lib/lambda/functions/authorized-individual/AuthorizedIndividual.ts',
       // handler: 'handler',
-      functionName: `${STACK_ID}-${landscape}-${Roles.RE_AUTH_IND}-user`,
+      functionName: `${prefix}-${Roles.RE_AUTH_IND}-user`,
       description: 'Function for all authorized individual activity.',
       cleanup: true,
       bundling: {
@@ -102,13 +106,43 @@ export class LambdaFunction extends AbstractFunction {
                 effect: Effect.ALLOW
               })
             ]
+          }),
+          'EttAuthIndEventBridgePolicy': new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'events:PutRule', 'events:PutTargets' ],
+                resources: [
+                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/*`
+                ],
+                effect: Effect.ALLOW
+              }),
+              new PolicyStatement({
+                actions: [ 'lambda:AddPermission' ],
+                resources: [
+                  `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${prefix}-${DISCLOSURE_REQUEST_REMINDER}`
+                ],
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
+          'EttAuthIndExhibitFormBucketPolicy': new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 's3:ListBucket', 's3:DeleteObject', 's3:GetObject' ],
+                resources: [ exhibitFormsBucket.bucketArn, `${exhibitFormsBucket.bucketArn}/*` ],
+                effect: Effect.ALLOW
+              })
+            ]
           })
         }
       }),
       environment: {
         REGION,
+        CLOUDFRONT_DOMAIN: cloudfrontDomain,
         USERPOOL_ID: userPoolId,
-        EXHIBIT_FORMS_BUCKET_NAME: exhibitFormsBucketName,
+        PREFIX: prefix,
+        EXHIBIT_FORMS_BUCKET_NAME: exhibitFormsBucket.bucketName,
+        DISCLOSURE_REQUEST_REMINDER_FUNCTION_ARN: disclosureRequestReminderLambdaArn,
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });

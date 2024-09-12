@@ -80,8 +80,9 @@ const buildAll = () => {
     cloudfrontDomain: cloudfront.getDistributionDomainName(),
     redirectPath: 'index.htm',
     landscape: Landscape,
-    exhibitFormsBucketName: exhibitFormsBucket.bucketName,
-    databaseExhibitFormPurgeLambdaArn: delayedExecutionLambdas.databaseExhibitFormPurgeLambda.functionArn
+    exhibitFormsBucket: exhibitFormsBucket,
+    databaseExhibitFormPurgeLambdaArn: delayedExecutionLambdas.databaseExhibitFormPurgeLambda.functionArn,
+    disclosureRequestReminderLambdaArn: delayedExecutionLambdas.disclosureRequestReminderLambda.functionArn
   } as ApiConstructParms);
 
   // Grant the apis the necessary permissions (policy actions).

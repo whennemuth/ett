@@ -1,14 +1,14 @@
+import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
+import { Runtime } from "aws-cdk-lib/aws-lambda";
+import { Bucket } from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
 import { IContext } from "../contexts/IContext";
 import { AbstractFunction } from "./AbstractFunction";
-import { Runtime } from "aws-cdk-lib/aws-lambda";
-import { Configurations } from "./lambda/_lib/config/Config";
-import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
-import { Bucket } from "aws-cdk-lib/aws-s3";
 import { TableBaseNames } from "./DynamoDb";
-import { Queue } from "aws-cdk-lib/aws-sqs";
+import { Configurations } from "./lambda/_lib/config/Config";
 
 export const EXHIBIT_FORM_DB_PURGE = 'purge-exhibit-form-from-database';
+export const DISCLOSURE_REQUEST_REMINDER = 'disclosure-request-reminder';
 
 export type DelayedExecutionLambdaParms = {
   cloudfrontDomain: string,
@@ -20,6 +20,7 @@ export class DelayedExecutionLambdas extends Construct {
   private context:IContext;
   private parms:DelayedExecutionLambdaParms;
   private _databaseExhibitFormPurgeLambda:AbstractFunction;
+  private _disclosureRequestReminderLambda:AbstractFunction;
 
   constructor(scope:Construct, constructId:string, parms:DelayedExecutionLambdaParms) {
     super(scope, constructId);
@@ -30,6 +31,8 @@ export class DelayedExecutionLambdas extends Construct {
     this.parms = parms;
 
     this.createDatabaseExhibitFormPurgeLambda();
+
+    this.createDisclosureRequestReminderLambda();
   }
 
   private createDatabaseExhibitFormPurgeLambda = () => {
@@ -46,7 +49,7 @@ export class DelayedExecutionLambdas extends Construct {
       // memorySize: 1024,
       entry: 'lib/lambda/functions/delayed-execution/PurgeExhibitFormFromDatabase.ts',
       // handler: 'handler',
-      functionName: `${functionName}`,
+      functionName,
       description,
       cleanup: true,
       bundling: {
@@ -54,7 +57,7 @@ export class DelayedExecutionLambdas extends Construct {
           '@aws-sdk/*',
         ]
       },
-      role: new Role(scope, 'DatabaseExhibitFormPurgeRole', {
+      role: new Role(this, `DatabaseExhibitFormPurgeRole`, {
         assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
         description: 'Grants access to dynamodb for updates to consenters',
         inlinePolicies: {
@@ -96,10 +99,102 @@ export class DelayedExecutionLambdas extends Construct {
       principal: new ServicePrincipal('events.amazonaws.com'),
       action: 'lambda:InvokeFunction',
       sourceArn: `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
+    });
+  }
+
+  private createDisclosureRequestReminderLambda = () => {
+    const { scope } = this;
+    const { constructId, parms: { cloudfrontDomain, exhibitFormsBucket: { bucketArn, bucketName } }, context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } } = this;
+    const baseId = `${constructId}DisclosureRequestReminder`;
+    const prefix = `${STACK_ID}-${landscape}`
+    const functionName = `${prefix}-${DISCLOSURE_REQUEST_REMINDER}`;
+    const description = 'Function for issuing disclosure reminder emails to affiliates, triggered by event bridge';
+
+    // Create the lambda function
+    this._disclosureRequestReminderLambda = new class extends AbstractFunction { }(this, baseId, {
+      runtime: Runtime.NODEJS_18_X,
+      memorySize: 512,
+      entry: 'lib/lambda/functions/delayed-execution/SendDisclosureRequestReminder.ts',
+      // handler: 'handler',
+      functionName: `${functionName}`,
+      description,
+      cleanup: true,
+      bundling: {
+        externalModules: [
+          '@aws-sdk/*',
+        ]
+      },
+      role: new Role(this, `DisclosureRequestReminderRole`, {
+        assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+        description: 'Grants access to dynamodb, s3, ses, and event-bridge',
+        inlinePolicies: {
+          [`${functionName}--db-policy`]: new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'dynamodb:DeleteItem', 'dynamodb:Query', 'dynamodb:GetItem' ],
+                resources: [
+                  `arn:aws:dynamodb:${REGION}:${ACCOUNT}:table/${prefix}-*`,
+                  `arn:aws:dynamodb:${REGION}:${ACCOUNT}:table/${prefix}-*/index/*`
+                ],
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
+          [`${functionName}-s3-policy`]: new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 's3:ListBucket', 's3:DeleteObject', 's3:GetObject' ],
+                resources: [ bucketArn, `${bucketArn}/*` ],
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
+          [`${functionName}-ses-policy`]: new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'ses:Send*', 'ses:Get*' ],
+                resources: [
+                  `arn:aws:ses:${REGION}:${ACCOUNT}:identity/*`
+                ],
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
+          [`${functionName}-eventbridge-policy`]: new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'events:DeleteRule', 'events:RemoveTargets' ],
+                resources: [
+                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
+                ],
+                effect: Effect.ALLOW
+              })
+            ]
+          })
+        }
+      }),
+      environment: {
+        REGION,
+        CLOUDFRONT_DOMAIN: cloudfrontDomain,
+        PREFIX: prefix,
+        EXHIBIT_FORMS_BUCKET_NAME: bucketName,
+        [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
+      }
+    });
+
+    // Grant event bridge permission to invoke the lambda function.
+    this._disclosureRequestReminderLambda.addPermission(`${functionName}-invoke-permission`, {
+      principal: new ServicePrincipal('events.amazonaws.com'),
+      action: 'lambda:InvokeFunction',
+      sourceArn: `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
     })
   }
 
   public get databaseExhibitFormPurgeLambda(): AbstractFunction {
     return this._databaseExhibitFormPurgeLambda;
+  }
+
+  public get disclosureRequestReminderLambda(): AbstractFunction {
+    return this._disclosureRequestReminderLambda;
   }
 }

@@ -4,7 +4,7 @@ import { Affiliate, AffiliateTypes, Config, Consenter, Entity, ExhibitForm as Ex
 import { IPdfForm } from "../../_lib/pdf/PdfForm";
 import { deepClone } from "../../Utils";
 import { MockCalls, TestParms, invokeAndAssert } from "../../UtilsTest";
-import { SingleExhibitFormMetadata } from "./ConsenterBucketItemMetadata";
+import { BucketItemMetadataParms } from "./BucketItemMetadata";
 import { FormType, FormTypes } from "./ExhibitEmail";
 
 /**
@@ -46,8 +46,8 @@ export function ConsenterBucketItemsMock() {
   return {
     ExhibitBucket: jest.fn().mockImplementation((consenter:Consenter, bucketName?:string) => {
       return {
-        add: async (metadata:SingleExhibitFormMetadata) => {
-          mockCalls.update(`bucket.add.${metadata.affiliateEmail}`);
+        add: async (parms:BucketItemMetadataParms) => {
+          mockCalls.update(`bucket.add.${parms.affiliateEmail}`);
         }
       }
     })

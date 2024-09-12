@@ -104,7 +104,8 @@ export enum EntityFields {
   description = 'description',
   create_timestamp = 'create_timestamp',
   update_timestamp = 'update_timestamp',
-  active = 'active'
+  active = 'active',
+  // TODO: registered = 'registered'
 };
 export type Entity = {
   entity_id: string,

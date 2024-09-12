@@ -106,6 +106,16 @@ export const PostExecution = () => {
       const { REGION:region } = process.env;
       const client = new EventBridgeClient({ region });
 
+      if( ! targetId ) {
+        console.error(`Cannot delete rule, missing targetId: ${JSON.stringify({ eventBridgeRuleName, targetId }, null, 2)}`);
+        return;
+      }
+
+      if( ! eventBridgeRuleName) {
+        console.error(`Cannot delete rule, missing eventBridgeRuleName: ${JSON.stringify({ eventBridgeRuleName, targetId }, null, 2)}`);
+        return;
+      }
+
       // 1) Remove the lambda target from the rule
       const removeRequest = {
         Rule: eventBridgeRuleName,
