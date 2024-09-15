@@ -10,7 +10,7 @@ import { ConfigNames, Entity, Roles, User } from "../../_lib/dao/entity";
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
-import { BucketItem } from "../consenting-person/BucketItem";
+import { BucketItem, Tags } from "../consenting-person/BucketItem";
 import { BucketItemMetadata, ItemType } from "../consenting-person/BucketItemMetadata";
 import { DisclosureRequestReminderLambdaParms } from "../delayed-execution/SendDisclosureRequestReminder";
 import { lookupEntity } from "../re-admin/ReAdminUser";
@@ -242,21 +242,15 @@ export const sendDisclosureRequest = async (consenterEmail:string, entity_id:str
       } as DisclosureRequestReminderLambdaParms;
       const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
       const waitTime = (await configs.getAppConfig(configName)).getDuration();
-      if(waitTime > 0) {
-        const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
-        await delayedTestExecution.startCountdown(timer);
-        console.log(`Event bridge rule started for timeout: ${timer.getCronExpression()}`);
-      }
-      else {
-        console.log(`${configName} Disclosure request reminder NOT SCHEDULED (the corresponding cron has been deactivated)`);
-      }
+      const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
+      await delayedTestExecution.startCountdown(timer, `Disclosure request: ${configName}`);
     }
     else {
-      console.error(`Cannot schedule ${configName} disclosure request reminder: functionArn variable is missing from the environment!`);
+      console.error(`Cannot schedule ${configName} disclosure request reminder: DISCLOSURE_REQUEST_REMINDER_FUNCTION_ARN variable is missing from the environment!`);
     }
   }
 
-  // 1) Send the disclosure request
+  // Send the disclosure request
   const parms = {
     consenterEmail,
     emailType: "request",
@@ -264,14 +258,26 @@ export const sendDisclosureRequest = async (consenterEmail:string, entity_id:str
     s3ObjectKeyForDisclosureForm
   } as DisclosureEmailParms;
 
-  await new DisclosureRequestEmail(parms).send();
+  const sent = await new DisclosureRequestEmail(parms).send();
 
+  // Bail out if the email failed
+  if( ! sent) {
+    return errorResponse(`Email failure for disclosure request: ${JSON.stringify(parms, null, 2)}`);
+  }
+
+  // Tag the pdfs so that they are skipped over by the event bridge stale pdf purging rule:
+  const now = new Date().toISOString();
+  const bucketItem = new BucketItem({ email:consenterEmail });
+  let tagged = false;
+  tagged ||= await bucketItem.tag(s3ObjectKeyForExhibitForm, Tags.DISCLOSED, now);  
+  tagged &&= await bucketItem.tag(s3ObjectKeyForDisclosureForm, Tags.DISCLOSED, now);
+  if( ! tagged) {
+    console.warn(`Tagging failed for pdf forms and so they may be purged from s3 BEFORE disclosure request reminders are triggered and will look for them.`);
+  }
+
+  // Schedule the disclosure request reminders:
   parms.emailType = "reminder";
-
-  // 2) Schedule the first of 2 reminders to be sent to the disclosure request recipient.
   await scheduleDisclosureRequestReminder(parms, ConfigNames.FIRST_REMINDER);
-
-  // 3) Schedule the second of 2 reminders to be sent to the disclosure request recipient.
   await scheduleDisclosureRequestReminder(parms, ConfigNames.SECOND_REMINDER);
 
   return okResponse('Ok', {});
@@ -341,7 +347,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_AUTH_IND') {
         // Create a reduced app config just for this test
         const { FIRST_REMINDER, SECOND_REMINDER } = ConfigNames;
         const configs = { useDatabase:false, configs: [
-          { name: FIRST_REMINDER, value: '120', config_type: 'duration', description: 'testing' },
+          { name: FIRST_REMINDER, value: '180', config_type: 'duration', description: 'testing' },
           { name: SECOND_REMINDER, value: '240', config_type: 'duration', description: 'testing' },
         ]} as CONFIG;
         

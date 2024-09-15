@@ -128,7 +128,7 @@ export class LambdaFunction extends AbstractFunction {
           'EttAuthIndExhibitFormBucketPolicy': new PolicyDocument({
             statements: [
               new PolicyStatement({
-                actions: [ 's3:ListBucket', 's3:DeleteObject', 's3:GetObject' ],
+                actions: [ 's3:*' ],
                 resources: [ exhibitFormsBucket.bucketArn, `${exhibitFormsBucket.bucketArn}/*` ],
                 effect: Effect.ALLOW
               })

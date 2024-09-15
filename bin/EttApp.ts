@@ -82,7 +82,8 @@ const buildAll = () => {
     landscape: Landscape,
     exhibitFormsBucket: exhibitFormsBucket,
     databaseExhibitFormPurgeLambdaArn: delayedExecutionLambdas.databaseExhibitFormPurgeLambda.functionArn,
-    disclosureRequestReminderLambdaArn: delayedExecutionLambdas.disclosureRequestReminderLambda.functionArn
+    disclosureRequestReminderLambdaArn: delayedExecutionLambdas.disclosureRequestReminderLambda.functionArn,
+    bucketExhibitFormPurgeLambdaArn: delayedExecutionLambdas.bucketExhibitFormPurgeLambda.functionArn
   } as ApiConstructParms);
 
   // Grant the apis the necessary permissions (policy actions).

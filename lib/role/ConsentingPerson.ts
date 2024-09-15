@@ -60,7 +60,7 @@ export class LambdaFunction extends AbstractFunction {
   constructor(scope: Construct, constructId: string, parms:ApiConstructParms) {
     const context:IContext = scope.node.getContext('stack-parms');
     const { ACCOUNT, REGION, CONFIG, STACK_ID } = context;
-    const { userPool, cloudfrontDomain, landscape, exhibitFormsBucket, databaseExhibitFormPurgeLambdaArn } = parms;
+    const { userPool, cloudfrontDomain, landscape, exhibitFormsBucket, databaseExhibitFormPurgeLambdaArn, bucketExhibitFormPurgeLambdaArn } = parms;
     const { userPoolArn, userPoolId } = userPool;
     const prefix = `${STACK_ID}-${landscape}`
     super(scope, constructId, {
@@ -128,6 +128,7 @@ export class LambdaFunction extends AbstractFunction {
         PREFIX: prefix,
         EXHIBIT_FORMS_BUCKET_NAME: exhibitFormsBucket.bucketName,
         EXHIBIT_FORM_DATABASE_PURGE_FUNCTION_ARN: databaseExhibitFormPurgeLambdaArn,
+        EXHIBIT_FORM_BUCKET_PURGE_FUNCTION_ARN: bucketExhibitFormPurgeLambdaArn,
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });

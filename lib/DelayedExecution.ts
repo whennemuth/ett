@@ -7,8 +7,9 @@ import { AbstractFunction } from "./AbstractFunction";
 import { TableBaseNames } from "./DynamoDb";
 import { Configurations } from "./lambda/_lib/config/Config";
 
-export const EXHIBIT_FORM_DB_PURGE = 'purge-exhibit-form-from-database';
+export const EXHIBIT_FORM_DB_PURGE = 'purge-exhibit-forms-from-database';
 export const DISCLOSURE_REQUEST_REMINDER = 'disclosure-request-reminder';
+export const EXHIBIT_FORM_S3_PURGE = 'purge-exhibit-forms-from-bucket';
 
 export type DelayedExecutionLambdaParms = {
   cloudfrontDomain: string,
@@ -21,6 +22,7 @@ export class DelayedExecutionLambdas extends Construct {
   private parms:DelayedExecutionLambdaParms;
   private _databaseExhibitFormPurgeLambda:AbstractFunction;
   private _disclosureRequestReminderLambda:AbstractFunction;
+  private _bucketExhibitFormPurgeLambda:AbstractFunction;
 
   constructor(scope:Construct, constructId:string, parms:DelayedExecutionLambdaParms) {
     super(scope, constructId);
@@ -33,12 +35,14 @@ export class DelayedExecutionLambdas extends Construct {
     this.createDatabaseExhibitFormPurgeLambda();
 
     this.createDisclosureRequestReminderLambda();
+
+    this.createBucketExhibitFormPurgeLambda();
   }
 
   private createDatabaseExhibitFormPurgeLambda = () => {
     const { scope } = this;
     const { constructId, parms: { cloudfrontDomain }, context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } } = this;
-    const baseId = `${constructId}DatabaseExhbitFormPurge`;
+    const baseId = `${constructId}DatabaseExhibitFormPurge`;
     const prefix = `${STACK_ID}-${landscape}`
     const functionName = `${prefix}-${EXHIBIT_FORM_DB_PURGE}`;
     const description = 'Function for removing exhibit forms from consenter records';
@@ -143,7 +147,7 @@ export class DelayedExecutionLambdas extends Construct {
           [`${functionName}-s3-policy`]: new PolicyDocument({
             statements: [
               new PolicyStatement({
-                actions: [ 's3:ListBucket', 's3:DeleteObject', 's3:GetObject' ],
+                actions: [ 's3:*' ],
                 resources: [ bucketArn, `${bucketArn}/*` ],
                 effect: Effect.ALLOW
               })
@@ -190,11 +194,91 @@ export class DelayedExecutionLambdas extends Construct {
     })
   }
 
+  private createBucketExhibitFormPurgeLambda = () => {
+    const { scope } = this;
+    const { constructId, parms: { cloudfrontDomain, exhibitFormsBucket: { bucketArn, bucketName } }, context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } } = this;
+    const baseId = `${constructId}BucketPurge`;
+    const prefix = `${STACK_ID}-${landscape}`
+    const functionName = `${prefix}-${EXHIBIT_FORM_S3_PURGE}`;
+    const description = 'Function for removing exhibit forms from consenter records';
+    
+    this._bucketExhibitFormPurgeLambda = new class extends AbstractFunction { }(this, baseId, {
+      runtime: Runtime.NODEJS_18_X,
+      // memorySize: 1024,
+      entry: 'lib/lambda/functions/delayed-execution/PurgeExhibitFormFromBucket.ts',
+      // handler: 'handler',
+      functionName,
+      description,
+      cleanup: true,
+      bundling: {
+        externalModules: [
+          '@aws-sdk/*',
+        ]
+      },
+      role: new Role(this, 'BucketPurgeRole', {
+        assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+        description: 'Grants access to dynamodb, s3, ses, and event-bridge',
+        inlinePolicies: {
+          [`${functionName}--db-policy`]: new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'dynamodb:DeleteItem', 'dynamodb:Query', 'dynamodb:GetItem' ],
+                resources: [
+                  `arn:aws:dynamodb:${REGION}:${ACCOUNT}:table/${prefix}-*`,
+                  `arn:aws:dynamodb:${REGION}:${ACCOUNT}:table/${prefix}-*/index/*`
+                ],
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
+          [`${functionName}-s3-policy`]: new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 's3:*' ],
+                resources: [ bucketArn, `${bucketArn}/*` ],
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
+          [`${functionName}-eventbridge-policy`]: new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'events:DeleteRule', 'events:RemoveTargets' ],
+                resources: [
+                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
+                ],
+                effect: Effect.ALLOW
+              })
+            ]
+          })
+        }
+      }),
+      environment: {
+        REGION,
+        CLOUDFRONT_DOMAIN: cloudfrontDomain,
+        PREFIX: prefix,
+        EXHIBIT_FORMS_BUCKET_NAME: bucketName,
+        [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
+      }
+    });
+
+    // Grant event bridge permission to invoke the lambda function.
+    this._bucketExhibitFormPurgeLambda.addPermission(`${functionName}-invoke-permission`, {
+      principal: new ServicePrincipal('events.amazonaws.com'),
+      action: 'lambda:InvokeFunction',
+      sourceArn: `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
+    })
+  }
+
   public get databaseExhibitFormPurgeLambda(): AbstractFunction {
     return this._databaseExhibitFormPurgeLambda;
   }
 
   public get disclosureRequestReminderLambda(): AbstractFunction {
     return this._disclosureRequestReminderLambda;
+  }
+
+  public get bucketExhibitFormPurgeLambda(): AbstractFunction {
+    return this._bucketExhibitFormPurgeLambda;
   }
 }

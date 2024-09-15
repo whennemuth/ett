@@ -88,8 +88,7 @@ if(args.length > 3 && args[2] == 'RUN_MANUALLY_PURGE_EXHIBIT_FORM_FROM_DATABASE'
         const lambdaInput = { consenterEmail, entity_id };
         const delayedTestExecution = new DelayedLambdaExecution(lambdaArn, lambdaInput);
         const timer = EggTimer.getInstanceSetFor(2, MINUTES);
-        await delayedTestExecution.startCountdown(timer);
-        console.log(`Event bridge rule started for timeout: ${timer.getCronExpression()}`);
+        await delayedTestExecution.startCountdown(timer, `Dynamodb exhibit form purge (TESTING)`);
         break;
       default:
         console.log(`Unknown task "${task}" specified!`);

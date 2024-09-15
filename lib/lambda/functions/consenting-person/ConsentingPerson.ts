@@ -1,25 +1,23 @@
-import { IContext } from "../../../../contexts/IContext";
-import { DISCLOSURE_REQUEST_REMINDER, EXHIBIT_FORM_DB_PURGE } from "../../../DelayedExecution";
+import { CONFIG, IContext } from "../../../../contexts/IContext";
+import { EXHIBIT_FORM_DB_PURGE, EXHIBIT_FORM_S3_PURGE } from "../../../DelayedExecution";
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { Configurations } from "../../_lib/config/Config";
 import { DAOFactory } from "../../_lib/dao/dao";
 import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
-import { Affiliate, AffiliateTypes, ConfigName, ConfigNames, Consenter, ConsenterFields, Entity, ExhibitForm, Roles, User, YN } from "../../_lib/dao/entity";
+import { Affiliate, AffiliateTypes, ConfigNames, Consenter, ConsenterFields, Entity, ExhibitForm, Roles, User, YN } from "../../_lib/dao/entity";
 import { ConsentFormData } from "../../_lib/pdf/ConsentForm";
 import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { ComparableDate, debugLog, deepClone, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
-import { ConsentFormEmail } from "./ConsentEmail";
-import { ExhibitBucket } from "./BucketExhibitForms";
-import { ExhibitEmail, FormTypes } from "./ExhibitEmail";
 import { DisclosureFormBucket } from "./BucketDisclosureForms";
+import { ExhibitBucket } from "./BucketExhibitForms";
+import { BucketItem, DisclosureItemsParms } from "./BucketItem";
 import { BucketItemMetadataParms, ItemType } from "./BucketItemMetadata";
-import { BucketItem } from "./BucketItem";
-import { DisclosureRequestReminderLambdaParms } from "../delayed-execution/SendDisclosureRequestReminder";
-import { DisclosureEmailParms } from "../authorized-individual/DisclosureRequestEmail";
+import { ConsentFormEmail } from "./ConsentEmail";
+import { ExhibitEmail, FormTypes } from "./ExhibitEmail";
 
 export enum Task {
   SAVE_EXHIBIT_FORM = 'save-exhibit-form',
@@ -370,14 +368,8 @@ export const saveExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
     const configs = new Configurations();
     const { SECONDS } = PeriodType;
     const waitTime = (await configs.getAppConfig(ConfigNames.DELETE_DRAFTS_AFTER)).getDuration();
-    if(waitTime > 0) {
-      const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
-      await delayedTestExecution.startCountdown(timer);
-      console.log(`Purge of exhibit form from database scheduled for: ${timer.getCronExpression()}`);
-    }
-    else {
-      console.log(`Purge of exhibit form from database NOT SCHEDULED (the corresponding cron has been deactivated)`);
-    }
+    const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
+    await delayedTestExecution.startCountdown(timer, `Dynamodb exhibit form purge`);
   }
   else {
     console.error('Cannot schedule exhibit form purge from database: functionArn variable is missing from the environment!');
@@ -508,6 +500,10 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
     emailFailuresForAffiliates.length = 0;
     const now = new Date();
     const { EXHIBIT, DISCLOSURE } = ItemType;
+    const { SECONDS } = PeriodType;
+    const configs = new Configurations();
+    const { DELETE_EXHIBIT_FORMS_AFTER: deleteAfter} = ConfigNames;   
+
     for(let i=0; i<affiliates.length; i++) {
       const parms = { 
         entityId:entity.entity_id, 
@@ -525,8 +521,22 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
       const disclosuresBucket = new DisclosureFormBucket(new BucketItem(consenter));
       const s3ObjectKeyForDisclosureForm = await disclosuresBucket.add(parms);
 
-      // 3) Schedule database purging actions for the forms that were just saved to the bucket.
-      // Perhaps combine as a pair into one rule?
+      // 3) Schedule actions against the pdfs that limit how long they survive in the bucket the were just saved to.
+      const { EXHIBIT_FORM_BUCKET_PURGE_FUNCTION_ARN:functionArn } = process.env;
+      if(functionArn) {        
+        const lambdaInput = {
+          consenterEmail:consenter.email,
+          s3ObjectKeyForDisclosureForm,
+          s3ObjectKeyForExhibitForm
+        } as DisclosureItemsParms;        
+        const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
+        const waitTime = (await configs.getAppConfig(deleteAfter)).getDuration();
+        const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
+        await delayedTestExecution.startCountdown(timer, `S3 exhibit form purge`);
+      }
+      else {
+        console.error(`Cannot schedule ${deleteAfter} bucket item purge: EXHIBIT_FORM_BUCKET_PURGE_FUNCTION_ARN variable is missing from the environment!`);
+      }
     }
   }
 
@@ -565,17 +575,6 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
     await dao.update(consenter);
   }
 
-  const cancelEventBridgeDatabasePruningRule = async () => {
-    if(emailFailures()) {
-      return;
-    }
-    // TODO: Write the code for this
-    // NOTE: It may be worth simply letting the rule remain so that it triggers the lambda function, 
-    // which, although performing a non-action (db content to delete is already deleted), will 
-    // ultimately result in the rule deletion anyway as a final cleanup action.
-    return;
-  }
-
   /**
    * Return the standard ok response with refreshed consenter info, or an error message if there were email failures
    * @param email 
@@ -604,8 +603,6 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
     await transferSingleExhibitFormsToBucket();
 
     await pruneExhibitFormFromDatabaseRecord();
-
-    await cancelEventBridgeDatabasePruningRule();
 
     return getResponse(email, true);
   }
@@ -688,25 +685,40 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
       // 3) Get the userpool ID
       const userpoolId = await lookupUserPoolId(`${prefix}-cognito-userpool`, REGION);
 
-      // 4) Set environment variables
+      // 4) Get bucket name & lambda function arns
       const bucketName = `${prefix}-exhibit-forms`;
+      const drFuntionName = `${prefix}-${EXHIBIT_FORM_DB_PURGE}`;
+      const efFunctionName = `${prefix}-${EXHIBIT_FORM_S3_PURGE}`;
+
+      // 5) Set environment variables
+      process.env.EXHIBIT_FORM_DATABASE_PURGE_FUNCTION_ARN = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${drFuntionName}`;
+      process.env.EXHIBIT_FORM_BUCKET_PURGE_FUNCTION_ARN = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${efFunctionName}`;
       process.env.EXHIBIT_FORMS_BUCKET_NAME = bucketName;
       process.env.USERPOOL_ID = userpoolId;
+      process.env.PREFIX = prefix
       process.env.REGION = REGION;
       process.env.DEBUG = 'true';
 
-      // 5) Define task-specific input
+      // 6) Define task-specific input
       switch(task) {
-        case Task.SAVE_EXHIBIT_FORM:
-          const prefix = `${STACK_ID}-${Landscape}`
-          const functionName = `${prefix}-${EXHIBIT_FORM_DB_PURGE}`;
-          process.env.EXHIBIT_FORM_DATABASE_PURGE_FUNCTION_ARN = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${functionName}`;
+        case Task.SAVE_EXHIBIT_FORM:          
           // Make some edits
           payload.parameters.exhibit_data.affiliates[0].email = 'bugsbunny@gmail.com';
           payload.parameters.exhibit_data.affiliates[1].org = 'New York School of Animation';
           payload.parameters.exhibit_data.affiliates[1].fullname = 'Daffy D Duck';
           break;
+
         case Task.SEND_EXHIBIT_FORM:
+          // Create a reduced app config just for this test
+          const { DELETE_EXHIBIT_FORMS_AFTER } = ConfigNames;
+          const configs = { useDatabase: false, configs: [
+            { name:DELETE_EXHIBIT_FORMS_AFTER, value:'120', config_type:'duration', description:'testing' }
+          ]} as CONFIG;
+
+          // Set the config as an environment variable
+          process.env[Configurations.ENV_VAR_NAME] = JSON.stringify(configs);
+
+          // Set the payload
           payload = {
             "task": "send-exhibit-form",
             "parameters": {
@@ -741,6 +753,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
         case Task.RESCIND_CONSENT:
           payload = { task, parameters: { email: 'cp1@warhen.work' } };
           break;
+
         case Task.REGISTER_CONSENT:
           payload = {
             task,
@@ -754,14 +767,14 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
           break;
       }
 
-      // 6) Build the lambda event object
+      // 7) Build the lambda event object
       let sub = '417bd590-f021-70f6-151f-310c0a83985c';
       let _event = {
         headers: { [AbstractRoleApi.ETTPayloadHeader]: JSON.stringify(payload) },
         requestContext: { authorizer: { claims: { username:sub, sub } } }
       } as any;
 
-      // 7) Execute the lambda event handler to perform the task
+      // 8) Execute the lambda event handler to perform the task
       await handler(_event);
       console.log(`${task} complete.`);
     }

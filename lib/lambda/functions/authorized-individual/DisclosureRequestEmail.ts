@@ -8,15 +8,12 @@ import { ExhibitFormSingle } from '../../_lib/pdf/ExhibitFormSingle';
 import { IPdfForm, PdfForm } from "../../_lib/pdf/PdfForm";
 import { DisclosureFormBucket } from "../consenting-person/BucketDisclosureForms";
 import { ExhibitBucket } from "../consenting-person/BucketExhibitForms";
-import { BucketItem } from "../consenting-person/BucketItem";
+import { BucketItem, DisclosureItemsParms } from "../consenting-person/BucketItem";
 import { BucketItemMetadata } from "../consenting-person/BucketItemMetadata";
 import { test_data as test_exhibit_data } from '../consenting-person/ExhibitEmail';
 import { bugsbunny, daffyduck, yosemitesam } from "./MockObjects";
 
-export type DisclosureEmailParms = {
-  consenterEmail:string;
-  s3ObjectKeyForDisclosureForm:string;
-  s3ObjectKeyForExhibitForm:string;
+export type DisclosureEmailParms = DisclosureItemsParms & {
   emailType?: 'request' | 'reminder'
 }
 

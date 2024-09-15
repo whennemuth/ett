@@ -4,7 +4,7 @@ import { EggTimer, PeriodType } from "./EggTimer";
 import { v4 as uuidv4 } from 'uuid';
 
 export interface DelayedExecution {
-  startCountdown(timer:EggTimer):Promise<void>
+  startCountdown(timer:EggTimer, Description?:string):Promise<void>
 }
 
 /**
@@ -32,10 +32,6 @@ export interface ScheduledLambdaInput {
 export class DelayedLambdaExecution implements DelayedExecution {
   private lambdaArn:string;
   private lambdaInput:any;
-  /** 
-   * Set putInvokePrivileges to true only if the target lambda does not already grant invoke  
-   * privileges to the events service principal through a role or inline policy statement
-   */
   private putInvokePrivileges:boolean;
 
   // private scheduledLambdaInput:ScheduledLambdaInput;
@@ -49,17 +45,23 @@ export class DelayedLambdaExecution implements DelayedExecution {
     // this.scheduledLambdaInput = scheduledLambdaInput;
   }
 
-  public startCountdown = async (timer:EggTimer):Promise<any> => {
+  public startCountdown = async (timer:EggTimer, Description:string='Event bridge rule'):Promise<any> => {
     return timer.startTimer(async () => {
       const { lambdaArn, lambdaInput, putInvokePrivileges, uuid } = this;
       const { REGION:region, PREFIX } = process.env
       const eventBridgeRuleName = `${PREFIX}-${uuid}`
       const targetId = `${eventBridgeRuleName}-targetId`; 
 
+      if(timer.getMilliseconds() == 0) {
+        console.log(`${Description} NOT SCHEDULED (the corresponding cron has been deactivated)`);
+        return;
+      }
+
       // 1) Create the event bridge rule
       const eventBridgeClient = new EventBridgeClient({ region });
       const response = await eventBridgeClient.send(new PutRuleCommand({
         Name: eventBridgeRuleName,
+        Description,
         ScheduleExpression: timer.getCronExpression(),
         State: "ENABLED",
       })) as PutRuleCommandOutput;
@@ -81,7 +83,11 @@ export class DelayedLambdaExecution implements DelayedExecution {
       });
       await eventBridgeClient.send(putTargetsCommand);
 
-      // 3) Add a permission to the lambda for the event bridge rule to invoke it
+      /** 
+       * 3) Add a permission to the lambda for the event bridge rule to invoke it
+       * NOTE: Set putInvokePrivileges to true only if the target lambda does not already grant invoke  
+       * privileges to the events service principal through a role or inline policy statement
+       */
       if(putInvokePrivileges) {
         const addPermissionCommand = new AddPermissionCommand({
           FunctionName: lambdaArn,
@@ -92,6 +98,8 @@ export class DelayedLambdaExecution implements DelayedExecution {
         });
         await lambdaClient.send(addPermissionCommand);
       }
+
+      console.log(`${Description} scheduled: ${timer.getCronExpression()}`);
     })
   }
 }
@@ -159,13 +167,13 @@ if(args.length > 3 && args[2] == 'RUN_MANUALLY_DELAYED_EXECUTION') {
       const timer = EggTimer.getInstanceSetFor(howManySeconds, SECONDS);
       (async () => {
         const delayedTestExecution = new class implements DelayedExecution {
-          startCountdown(timer: EggTimer): Promise<any> {
+          startCountdown(timer:EggTimer, Description?:string): Promise<any> {
             return new Promise(resolve => setTimeout(resolve, timer.getMilliseconds()));
           }
         }();
 
         console.log(`Start waiting for ${howManySeconds} seconds...`);
-        await delayedTestExecution.startCountdown(timer);    
+        await delayedTestExecution.startCountdown(timer, 'Testing 123...');    
         console.log(`${howManySeconds} seconds have passed!`);
       })();
       break;
@@ -188,7 +196,7 @@ if(args.length > 3 && args[2] == 'RUN_MANUALLY_DELAYED_EXECUTION') {
           targetId: `${eventBridgeRuleName}-targetId`
         });
         const timer = EggTimer.getInstanceSetFor(2, MINUTES); 
-        await delayedTestExecution.startCountdown(timer);
+        await delayedTestExecution.startCountdown(timer, 'Testing 123...');
         // If the lambda is one that sends you an email after the timeout, check your inbox.
       })();
       break;

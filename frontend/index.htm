@@ -2430,6 +2430,9 @@
 
     function setDummyConsenter() {
       consenterInfo = getDummyConsenter();
+      // Remove the 2nd exhibit form so dummy entries will not be autopopulated when selecting the corresponding
+      // entity. However, the "Use Mock Data" button will still put dummy entries in for that entity.  
+      consenterInfo.consenter.exhibit_forms.pop();
     }
 
     function getDummyConsenter() {
@@ -2449,6 +2452,47 @@
         entityName2 = entities[1].entity_name;
       }
 
+      const affiliate1 = {
+        affiliateType:"EMPLOYER",
+        email:"affiliate1@warhen.work",
+        org:"Warner Bros.",
+        fullname:"Bugs Bunny",
+        title:"Rabbit",
+        phone_number:"6172224444"
+      };
+      const affiliate2 = {
+        affiliateType:"ACADEMIC",
+        email:"affiliate2@warhen.work",
+        org:"Cartoon Town University",
+        fullname:"Daffy Duck",
+        title:"Fowl",
+        phone_number:"7813334444"
+      };
+      const affiliate3 = {
+        affiliateType:"OTHER",
+        email:"affiliate3@warhen.work",
+        org:"Anywhere Inc.",
+        fullname:"Yosemite Sam",
+        title:"Cowboy",
+        phone_number:"5084448888"
+      };
+      const affiliate4 = {
+        affiliateType: "ACADEMIC",
+        email: "affiliate2@warhen.work",
+        org: "My Neighborhood University",
+        fullname: "Mister Rogers",
+        title: "Daytime child television host",
+        phone_number: "781-333-5555"
+      };
+      const affiliate5 = {
+        affiliateType: "OTHER",
+        email: "affiliate3@warhen.work",
+        org: "Thingamagig University",
+        fullname: "Elvis Presley",
+        title: "Entertainer",
+        phone_number: "508-333-9999"
+      }
+
       // Return a mock consenterInfo object.
       return {
         activeConsent: true,
@@ -2464,33 +2508,8 @@
           consented_timestamp: "2024-07-05T17:16:31.352Z",
           create_timestamp: "2024-07-05T16:24:56.068Z",
           exhibit_forms: [
-            {
-              entity_id: entityId1,
-              affiliates: [
-                {
-                  affiliateType:"EMPLOYER",
-                  email:"affiliate1@warhen.work",
-                  org:"Warner Bros.",
-                  fullname:"Bugs Bunny",
-                  title:"Rabbit",
-                  phone_number:"6172224444"
-                },{
-                  affiliateType:"ACADEMIC",
-                  email:"affiliate2@warhen.work",
-                  org:"Cartoon Town University",
-                  fullname:"Daffy Duck",
-                  title:"Fowl",
-                  phone_number:"7813334444"
-                },{
-                  affiliateType:"OTHER",
-                  email:"affiliate3@warhen.work",
-                  org:"Anywhere Inc.",
-                  fullname:"Yosemite Sam",
-                  title:"Cowboy",
-                  phone_number:"5084448888"
-                }
-              ]
-            }
+            { entity_id: entityId1, affiliates: [ affiliate1, affiliate2, affiliate3 ] },
+            { entity_id: entityId2, affiliates: [ affiliate4, affiliate5 ] },
           ]
         }
       };
@@ -2499,12 +2518,15 @@
     function addDummyExhibitData() {
       const dropdownButton = document.getElementById('requestingEntityDropdownButton');
       const dropdownList = document.getElementById('requestingEntityDropdownList');
-      const a = dropdownList.children[0];
-      const { entities } = consenterInfo;
-      selectedEntity = entities.find(e => {
-        return e.entity_id == a.id;
-      });
-      dropdownButton.innerText = a.name;
+      if(/Requesting Organizations\/Entities/.test(dropdownButton.innerText)) {
+        const a = dropdownList.children[0];
+        const { entities } = consenterInfo;
+        selectedEntity = entities.find(e => {
+          return e.entity_id == a.id;
+        });
+        dropdownButton.innerText = a.name;
+      }
+
       populateExhibitForm(getDummyConsenter());
       validExhibitForm();
     }
@@ -2540,7 +2562,7 @@
     function populateExhibitForm(substituteConsenterInfo) {
       const button = document.querySelector('#btnAddPoc');
       const _consenterInfo = substituteConsenterInfo ?? consenterInfo;
-      let { fullName, consenter: { email, phone_number, exhibit_forms }} = _consenterInfo;
+      var { fullName, consenter: { email, phone_number, exhibit_forms }} = _consenterInfo;
       exhibit_forms = exhibit_forms ?? [];
 
       clearExhibitForm();
@@ -2577,6 +2599,7 @@
         }
       }
 
+      var { fullName, consenter: { email, phone_number }} = consenterInfo;
       document.querySelector('#txtExhibitFullname').value = fullName;
       document.querySelector('#txtExhibitEmail').value = email;
       document.querySelector('#txtExhibitPhone').value = phone_number;

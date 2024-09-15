@@ -218,6 +218,23 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "DelayedExecutionPurgeExhibitFormFromBucket",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/delayed-execution/PurgeExhibitFormFromBucket.ts",
+        "RUN_MANUALLY_PURGE_EXHIBIT_FORM_FROM_BUCKET",
+        "scheduled"
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2",
+        "LANDSCAPE": "dev"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "DelayedExecutionSendDisclosureRequestReminder",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
