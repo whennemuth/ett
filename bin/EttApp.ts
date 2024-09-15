@@ -13,6 +13,7 @@ import { StaticSiteConstruct } from '../lib/StaticSite';
 import { StaticSiteCustomInConstruct, StaticSiteCustomInConstructParms } from '../lib/StaticSiteCustomIn';
 import { Roles } from '../lib/lambda/_lib/dao/entity';
 import { BlockPublicAccess, Bucket } from 'aws-cdk-lib/aws-s3';
+import { DelayedExecutionLambdaParms, DelayedExecutionLambdas } from '../lib/DelayedExecution';
 
 const context:IContext = <IContext>ctx;
 
@@ -65,6 +66,12 @@ const buildAll = () => {
     userPool:cognito.getUserPool()
   } as SignupApiConstructParms);
 
+  // Create all the delayed execution lambda functions
+  const delayedExecutionLambdas = new DelayedExecutionLambdas(stack, 'DelayedExecution', {
+    cloudfrontDomain: cloudfront.getDistributionDomainName(),
+    exhibitFormsBucket
+  } as DelayedExecutionLambdaParms);
+
   // Set up an api for every role with cognito as the authorizer and oauth as the flow.
   const api = new ApiConstruct(stack, 'Api', {
     userPool: cognito.getUserPool(),
@@ -73,7 +80,10 @@ const buildAll = () => {
     cloudfrontDomain: cloudfront.getDistributionDomainName(),
     redirectPath: 'index.htm',
     landscape: Landscape,
-    exhibitFormsBucketName: exhibitFormsBucket.bucketName
+    exhibitFormsBucket: exhibitFormsBucket,
+    databaseExhibitFormPurgeLambdaArn: delayedExecutionLambdas.databaseExhibitFormPurgeLambda.functionArn,
+    disclosureRequestReminderLambdaArn: delayedExecutionLambdas.disclosureRequestReminderLambda.functionArn,
+    bucketExhibitFormPurgeLambdaArn: delayedExecutionLambdas.bucketExhibitFormPurgeLambda.functionArn
   } as ApiConstructParms);
 
   // Grant the apis the necessary permissions (policy actions).

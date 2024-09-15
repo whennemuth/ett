@@ -1,13 +1,13 @@
 import { SESv2Client, SendEmailCommand, SendEmailCommandInput, SendEmailResponse } from '@aws-sdk/client-sesv2';
 import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest';
-import { Roles, User } from '../../_lib/dao/entity';
-import { entity, bugsbunny, daffyduck, yosemitesam } from './MockObjects';
-import { expectedCommandInput } from './DemolitionCommandInputMock';
-import { Task, handler } from './AuthorizedIndividual';
-import { LambdaProxyIntegrationResponse, deepClone } from '../../Utils';
-import { AbstractRoleApi, IncomingPayload, OutgoingBody } from '../../../role/AbstractRole';
+import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse, OutgoingBody } from '../../../role/AbstractRole';
 import { DAOUser, FactoryParms } from '../../_lib/dao/dao';
+import { Roles, User } from '../../_lib/dao/entity';
+import { deepClone } from '../../Utils';
+import { Task, handler } from './AuthorizedIndividual';
+import { expectedCommandInput } from './DemolitionCommandInputMock';
+import { bugsbunny, daffyduck, entity, yosemitesam } from './MockObjects';
 
 const deletedUsers = [ bugsbunny, daffyduck, yosemitesam ] as User[];
 const dryRun = false;
@@ -82,7 +82,7 @@ describe('AuthInd lambda trigger: pre-task validation', () => {
     } as any;
     let response = await handler(event) as LambdaProxyIntegrationResponse;
     expect(response.statusCode).toEqual(400);
-    let body = JSON.parse(response.body);
+    let body = JSON.parse(response.body ?? '{}');
     expect(body).toEqual({ 
       message: `Bad Request: Invalid/Missing task parameter: undefined`,
       payload: { invalid:true } 
@@ -99,7 +99,7 @@ describe('AuthInd lambda trigger: pre-task validation', () => {
     } as any;
     response = await handler(event) as LambdaProxyIntegrationResponse;
     expect(response.statusCode).toEqual(400);
-    body = JSON.parse(response.body);
+    body = JSON.parse(response.body ?? '{}');
     expect(body).toEqual({ 
       message: `Bad Request: Invalid/Missing task parameter: BOGUS`,
       payload: { invalid:true } 
@@ -116,7 +116,7 @@ describe('AuthInd lambda trigger: pre-task validation', () => {
     } as any;
     const response = await handler(event) as LambdaProxyIntegrationResponse;
     expect(response.statusCode).toEqual(400);
-    const body = JSON.parse(response.body);
+    const body = JSON.parse(response.body ?? '{}');
     expect(body).toEqual({ 
       message: `Bad Request: Missing parameters parameter for ${Task.DEMOLISH_ENTITY}`,
       payload: { invalid:true } 
@@ -213,7 +213,7 @@ describe('AuthInd lambda trigger: demolition', () => {
 
     const response = await handler(_event) as LambdaProxyIntegrationResponse;
     expect(response.statusCode).toEqual(400);
-    const body = JSON.parse(response.body);
+    const body = JSON.parse(response.body ?? '{}');
     expect(body).toEqual({ 
       message: 'Bad Request: Missing entity_id parameter',
       payload: { invalid:true } 
@@ -227,7 +227,7 @@ describe('AuthInd lambda trigger: demolition', () => {
 
     const response = await handler(event) as LambdaProxyIntegrationResponse;
     expect(response.statusCode).toEqual(400);
-    const body = JSON.parse(response.body);
+    const body = JSON.parse(response.body ?? '{}');
     expect(body).toEqual({ 
       message: `Bad Request: Invalid entity_id: ${entity_id}`,
       payload: { invalid:true } 

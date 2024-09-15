@@ -89,14 +89,14 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "ConsenterBucketItems",
+      "name": "BucketExhibitForms",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
-        "${workspaceFolder}/lib/lambda/functions/consenting-person/ConsenterBucketItems.ts",
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/BucketExhibitForms.ts",
         "RUN_MANUALLY_CONSENTER_BUCKET_ITEM",
         "us-east-2",
-        "correct"
+        "add"
       ], 
       "env": {
         "AWS_PROFILE": "bu",
@@ -174,6 +174,74 @@
       "args": [
         "${workspaceFolder}/lib/lambda/_lib/BlankSheetOfPaper.ts",
         "RUN_MANUALLY_BLANK_SHEET_OF_PAPER",
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2",
+        "LANDSCAPE": "dev"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "DelayedExecution",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/timer/DelayedExecution.ts",
+        "RUN_MANUALLY_DELAYED_EXECUTION",
+        "test"
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2",
+        "LANDSCAPE": "dev"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "DelayedExecutionPurgeExhibitFormFromDatabase",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/delayed-execution/PurgeExhibitFormFromDatabase.ts",
+        "RUN_MANUALLY_PURGE_EXHIBIT_FORM_FROM_DATABASE",
+        "scheduled"
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2",
+        "LANDSCAPE": "dev"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "DelayedExecutionPurgeExhibitFormFromBucket",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/delayed-execution/PurgeExhibitFormFromBucket.ts",
+        "RUN_MANUALLY_PURGE_EXHIBIT_FORM_FROM_BUCKET",
+        "scheduled"
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2",
+        "LANDSCAPE": "dev"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "DelayedExecutionSendDisclosureRequestReminder",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/delayed-execution/SendDisclosureRequestReminder.ts",
+        "RUN_MANUALLY_SEND_DISCLOSURE_REQUEST_REMINDER",
+        "scheduled"
       ], 
       "env": {
         "AWS_PROFILE": "bu",
@@ -832,7 +900,7 @@
       "args": [ 
         "--runTestsByPath", 
         "-i", 
-        "${workspaceFolder}/lib/lambda/functions/consenting-person/ConsenterBucketItems.test.ts" 
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/BucketExhibitForms.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",

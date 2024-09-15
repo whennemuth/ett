@@ -1,14 +1,22 @@
+import { CONFIG, IContext } from "../../../../contexts/IContext";
+import { EXHIBIT_FORM_DB_PURGE, EXHIBIT_FORM_S3_PURGE } from "../../../DelayedExecution";
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
+import { Configurations } from "../../_lib/config/Config";
 import { DAOFactory } from "../../_lib/dao/dao";
 import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
-import { Entity, Roles, User, YN, Affiliate, ExhibitForm, Consenter, AffiliateTypes, ConsenterFields } from "../../_lib/dao/entity";
+import { Affiliate, AffiliateTypes, ConfigNames, Consenter, ConsenterFields, Entity, ExhibitForm, Roles, User, YN } from "../../_lib/dao/entity";
 import { ConsentFormData } from "../../_lib/pdf/ConsentForm";
-import { IPdfForm, PdfForm } from "../../_lib/pdf/PdfForm";
+import { PdfForm } from "../../_lib/pdf/PdfForm";
+import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
+import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { ComparableDate, debugLog, deepClone, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
+import { DisclosureFormBucket } from "./BucketDisclosureForms";
+import { ExhibitBucket } from "./BucketExhibitForms";
+import { BucketItem, DisclosureItemsParms } from "./BucketItem";
+import { BucketItemMetadataParms, ItemType } from "./BucketItemMetadata";
 import { ConsentFormEmail } from "./ConsentEmail";
-import { ExhibitBucket } from "./ConsenterBucketItems";
 import { ExhibitEmail, FormTypes } from "./ExhibitEmail";
 
 export enum Task {
@@ -347,15 +355,25 @@ export const saveExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
   }
 
   // Update the consenter record by creating/modifying the provided exhibit form.
-  const newConsenter = deepClone(oldConsenter);
+  const newConsenter = deepClone(oldConsenter) as Consenter;
   newConsenter.exhibit_forms = [ exhibitForm ];
   const dao = ConsenterCrud(newConsenter);
   await dao.update(oldConsenter, true); // NOTE: merge is set to true - means that other exhibit forms are retained.
 
-  /**
-   * TODO: Add some kind of event bridge mechanism that removes the exhibit form 48 hours after its initial
-   * insertion (creation as per create_timestamp)
-   */
+  // Create a delayed execution to remove the exhibit form 2 days from now
+  const { EXHIBIT_FORM_DATABASE_PURGE_FUNCTION_ARN:functionArn } = process.env;
+  if(functionArn) {
+    const lambdaInput = { consenterEmail: newConsenter.email, entity_id: exhibitForm.entity_id };
+    const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
+    const configs = new Configurations();
+    const { SECONDS } = PeriodType;
+    const waitTime = (await configs.getAppConfig(ConfigNames.DELETE_DRAFTS_AFTER)).getDuration();
+    const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
+    await delayedTestExecution.startCountdown(timer, `Dynamodb exhibit form purge`);
+  }
+  else {
+    console.error('Cannot schedule exhibit form purge from database: functionArn variable is missing from the environment!');
+  }
 
   return getConsenterResponse(email, true);
 };
@@ -476,7 +494,55 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
   }
 
   /**
-   * end the full exhibit form to each authorized individual and the RE admin.
+   * Save the single exhibit form excerpts of the full exhibit form to the s3 bucket.
+   */
+  const transferSingleExhibitFormsToBucket = async () => {
+    emailFailuresForAffiliates.length = 0;
+    const now = new Date();
+    const { EXHIBIT, DISCLOSURE } = ItemType;
+    const { SECONDS } = PeriodType;
+    const configs = new Configurations();
+    const { DELETE_EXHIBIT_FORMS_AFTER: deleteAfter} = ConfigNames;   
+
+    for(let i=0; i<affiliates.length; i++) {
+      const parms = { 
+        entityId:entity.entity_id, 
+        affiliateEmail:affiliates[i].email,
+        savedDate: now
+      } as BucketItemMetadataParms;
+
+      // 1) Save a copy of the single exhibit form pdf to the s3 bucket
+      parms.itemType = EXHIBIT;
+      const exhibitsBucket = new ExhibitBucket(new BucketItem(consenter));
+      const s3ObjectKeyForExhibitForm = await exhibitsBucket.add(parms);
+
+      // 2) Save a copy of the disclosure form to the s3 bucket
+      parms.itemType = DISCLOSURE;
+      const disclosuresBucket = new DisclosureFormBucket(new BucketItem(consenter));
+      const s3ObjectKeyForDisclosureForm = await disclosuresBucket.add(parms);
+
+      // 3) Schedule actions against the pdfs that limit how long they survive in the bucket the were just saved to.
+      const { EXHIBIT_FORM_BUCKET_PURGE_FUNCTION_ARN:functionArn } = process.env;
+      if(functionArn) {        
+        const lambdaInput = {
+          consenterEmail:consenter.email,
+          s3ObjectKeyForDisclosureForm,
+          s3ObjectKeyForExhibitForm
+        } as DisclosureItemsParms;        
+        const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
+        const waitTime = (await configs.getAppConfig(deleteAfter)).getDuration();
+        const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
+        await delayedTestExecution.startCountdown(timer, `S3 exhibit form purge`);
+      }
+      else {
+        console.error(`Cannot schedule ${deleteAfter} bucket item purge: EXHIBIT_FORM_BUCKET_PURGE_FUNCTION_ARN variable is missing from the environment!`);
+      }
+    }
+  }
+
+  
+  /**
+   * Send the full exhibit form to each authorized individual and the RE admin.
    */
   const sendFullExhibitFormToEntityStaff = async () => {
     emailFailuresForEntityStaff.length = 0;
@@ -485,27 +551,6 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
       if( ! sent) {
         emailFailuresForEntityStaff.push(users[i].email);
       }
-    }
-  }
-
-  /**
-   * Send the single exhibit form excerpts of the full exhibit form to each affiliate
-   */
-  const sendSingleExhibitFormToAffiliates = async () => {
-    emailFailuresForAffiliates.length = 0;
-    for(let i=0; i<affiliates.length; i++) {
-      const email = new ExhibitEmail(exhibitForm, FormTypes.SINGLE, entity, consenter);
-
-      // 1) Send the email with the pdf to the affiliate
-      const sent = await email.send(affiliates[i].email);
-      const pdf = email.getAttachment()
-      if( ! sent || ! pdf) {
-        emailFailuresForAffiliates.push(affiliates[i].email);
-      }
-
-      // 2) Save a copy of the pdf to the s3 bucket
-      const bucket = new ExhibitBucket(consenter);
-      await bucket.add({ entityId:entity.entity_id, affiliateEmail:affiliates[i].email });
     }
   }
 
@@ -528,14 +573,6 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
     const dao = DAOFactory.getInstance({ DAOType:'consenter', Payload: updatedConsenter});
     // const dao = ConsenterCrud(updatedConsenter);
     await dao.update(consenter);
-  }
-
-  const cancelEventBridgeDatabasePruningRule = async () => {
-    if(emailFailures()) {
-      return;
-    }
-    // TODO: Write the code for this
-    return;
   }
 
   /**
@@ -563,11 +600,9 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
     
     await sendFullExhibitFormToEntityStaff();
     
-    await sendSingleExhibitFormToAffiliates();
+    await transferSingleExhibitFormsToBucket();
 
     await pruneExhibitFormFromDatabaseRecord();
-
-    await cancelEventBridgeDatabasePruningRule();
 
     return getResponse(email, true);
   }
@@ -598,101 +633,153 @@ export const correctExhibitData = async (email:string, exhibitForm:ExhibitForm):
 const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
 
-  const task = Task.SAVE_EXHIBIT_FORM as Task;
-  const landscape = 'dev';
-  const region = 'us-east-2';
+  const task = Task.SEND_EXHIBIT_FORM as Task;
+  let payload = {
+    task,
+    parameters: {
+      email:"cp1@warhen.work",
+      exhibit_data: {
+        entity_id:"8ea27b83-1e13-40b0-9192-8f2ce6a5817d",
+        affiliates: [
+          {
+            affiliateType:"employer",
+            email:"affiliate1@warhen.work",
+            org:"Warner Bros.",
+            fullname:"Bugs Bunny",
+            title:"Rabbit",
+            phone_number:"6172224444"
+          },{
+            affiliateType:"academic",
+            email:"affiliate2@warhen.work",
+            org:"Cartoon Town University",
+            fullname:"Daffy Duck",
+            title:"Fowl",
+            phone_number:"7813334444"
+          },{
+            affiliateType:"other",
+            email:"affiliate3@warhen.work",
+            org:"Anywhere Inc.",
+            fullname:"Yosemite Sam",
+            title:"Cowboy",
+            phone_number:"5084448888"
+          }
+        ]
+      }
+    } 
+  } as any;
 
-  lookupCloudfrontDomain(landscape).then((cloudfrontDomain) => {
-    if( ! cloudfrontDomain) {
-      throw('Cloudfront domain lookup failure');
-    }
-    process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
-    return lookupUserPoolId('ett-dev-cognito-userpool', region);
-  })
-  .then((userpoolId) => {
+  (async () => {
+    try {
+      // 1) Get context variables
+      const context:IContext = await require('../../../../contexts/context.json');
+      const { STACK_ID, REGION, ACCOUNT, TAGS: { Landscape }} = context;
+      const prefix = `${STACK_ID}-${Landscape}`;
+  
+      // 2) Get the cloudfront domain
+      const cloudfrontDomain = await lookupCloudfrontDomain(Landscape);
+      if( ! cloudfrontDomain) {
+        throw('Cloudfront domain lookup failure');
+      }
+      process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
 
-    process.env.USERPOOL_ID = userpoolId;
-    process.env.REGION = region;
-    process.env.DEBUG = 'true';
+      // 3) Get the userpool ID
+      const userpoolId = await lookupUserPoolId(`${prefix}-cognito-userpool`, REGION);
 
-    let payload = {
-      task,
-      parameters: {
-        email:"cp1@warhen.work",
-        exhibit_data: {
-          entity_id:"e1b64ff0-31fe-456e-ad18-ec95d18db695",
-          affiliates: [
-            {
-              affiliateType:"employer",
-              email:"affiliate1@warhen.work",
-              org:"Warner Bros.",
-              fullname:"Bugs Bunny",
-              title:"Rabbit",
-              phone_number:"6172224444"
-            },{
-              affiliateType:"academic",
-              email:"affiliate2@warhen.work",
-              org:"Cartoon Town University",
-              fullname:"Daffy Duck",
-              title:"Fowl",
-              phone_number:"7813334444"
-            },{
-              affiliateType:"other",
-              email:"affiliate3@warhen.work",
-              org:"Anywhere Inc.",
-              fullname:"Yosemite Sam",
-              title:"Cowboy",
-              phone_number:"5084448888"
+      // 4) Get bucket name & lambda function arns
+      const bucketName = `${prefix}-exhibit-forms`;
+      const drFuntionName = `${prefix}-${EXHIBIT_FORM_DB_PURGE}`;
+      const efFunctionName = `${prefix}-${EXHIBIT_FORM_S3_PURGE}`;
+
+      // 5) Set environment variables
+      process.env.EXHIBIT_FORM_DATABASE_PURGE_FUNCTION_ARN = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${drFuntionName}`;
+      process.env.EXHIBIT_FORM_BUCKET_PURGE_FUNCTION_ARN = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${efFunctionName}`;
+      process.env.EXHIBIT_FORMS_BUCKET_NAME = bucketName;
+      process.env.USERPOOL_ID = userpoolId;
+      process.env.PREFIX = prefix
+      process.env.REGION = REGION;
+      process.env.DEBUG = 'true';
+
+      // 6) Define task-specific input
+      switch(task) {
+        case Task.SAVE_EXHIBIT_FORM:          
+          // Make some edits
+          payload.parameters.exhibit_data.affiliates[0].email = 'bugsbunny@gmail.com';
+          payload.parameters.exhibit_data.affiliates[1].org = 'New York School of Animation';
+          payload.parameters.exhibit_data.affiliates[1].fullname = 'Daffy D Duck';
+          break;
+
+        case Task.SEND_EXHIBIT_FORM:
+          // Create a reduced app config just for this test
+          const { DELETE_EXHIBIT_FORMS_AFTER } = ConfigNames;
+          const configs = { useDatabase: false, configs: [
+            { name:DELETE_EXHIBIT_FORMS_AFTER, value:'120', config_type:'duration', description:'testing' }
+          ]} as CONFIG;
+
+          // Set the config as an environment variable
+          process.env[Configurations.ENV_VAR_NAME] = JSON.stringify(configs);
+
+          // Set the payload
+          payload = {
+            "task": "send-exhibit-form",
+            "parameters": {
+              "email": "cp1@warhen.work",
+              "exhibit_data": {
+                "entity_id": "3ef70b3e-456b-42e8-86b0-d8fbd0066628",
+                "affiliates": [
+                  {
+                    "affiliateType": "ACADEMIC",
+                    "email": "affiliate2@warhen.work",
+                    "org": "My Neighborhood University",
+                    "fullname": "Mister Rogers",
+                    "title": "Daytime child television host",
+                    "phone_number": "781-333-5555"
+                  },
+                  {
+                    "affiliateType": "OTHER",
+                    "email": "affiliate3@warhen.work",
+                    "org": "Thingamagig University",
+                    "fullname": "Elvis Presley",
+                    "title": "Entertainer",
+                    "phone_number": "508-333-9999"
+                  }
+                ]
+              }
             }
-          ]
-        }
-      } 
-    } as any;
+          }
+          break;
+        case Task.GET_CONSENTER:
+        case Task.SEND_CONSENT:
+        case Task.RENEW_CONSENT:
+        case Task.RESCIND_CONSENT:
+          payload = { task, parameters: { email: 'cp1@warhen.work' } };
+          break;
 
-    switch(task) {
-      case Task.SAVE_EXHIBIT_FORM:
-        // Make some edits
-        payload.exhibit_data.affiliates[0].email = 'bugsbunny@gmail.com';
-        payload.exhibit_data.affiliates[1].org = 'New York School of Animation';
-        payload.exhibit_data.affiliates[1].fullname = 'Daffy D Duck';
-        break;
-      case Task.SEND_EXHIBIT_FORM:
-        break;
-      case Task.GET_CONSENTER:
-      case Task.SEND_CONSENT:
-      case Task.RENEW_CONSENT:
-      case Task.RESCIND_CONSENT:
-        payload = {
-          task,
-          parameters: {
-            email: 'cp1@warhen.work'
-          }
-        };
-        break;
-      case Task.REGISTER_CONSENT:
-        payload = {
-          task,
-          parameters: {
-            signature: "Yosemite Sam",
-            fullname: "Yosemite S Sam",
-            email: "cp1@warhen.work",
-            phone: "+7812224444"
-          }
-        };
-        break;
+        case Task.REGISTER_CONSENT:
+          payload = {
+            task,
+            parameters: {
+              signature: "Yosemite Sam",
+              fullname: "Yosemite S Sam",
+              email: "cp1@warhen.work",
+              phone: "+7812224444"
+            }
+          };
+          break;
+      }
+
+      // 7) Build the lambda event object
+      let sub = '417bd590-f021-70f6-151f-310c0a83985c';
+      let _event = {
+        headers: { [AbstractRoleApi.ETTPayloadHeader]: JSON.stringify(payload) },
+        requestContext: { authorizer: { claims: { username:sub, sub } } }
+      } as any;
+
+      // 8) Execute the lambda event handler to perform the task
+      await handler(_event);
+      console.log(`${task} complete.`);
     }
-
-    let sub = '417bd590-f021-70f6-151f-310c0a83985c';
-    let _event = {
-      headers: { [AbstractRoleApi.ETTPayloadHeader]: JSON.stringify(payload) },
-      requestContext: { authorizer: { claims: { username:sub, sub } } }
-    } as any;
-
-    return handler(_event);
-  }).then(() => {
-    console.log(`${task} complete.`)
-  })
-  .catch((reason) => {
-    console.error(reason);
-  });;
+    catch(reason) {
+      console.error(reason);
+    }
+  })();
 }

@@ -60,7 +60,7 @@ export class LambdaFunction extends AbstractFunction {
     const context:IContext = scope.node.getContext('stack-parms');
     const { ACCOUNT, CONFIG, REGION, TAGS: { Landscape:landscape }, STACK_ID } = context;
     const config = new Configurations(CONFIG);
-    const { userPool, userPoolName, userPoolDomain, cloudfrontDomain, redirectPath, exhibitFormsBucketName } = parms;
+    const { userPool, userPoolName, userPoolDomain, cloudfrontDomain, redirectPath, exhibitFormsBucket } = parms;
     const { userPoolArn } = userPool;
     const redirectURI = `${cloudfrontDomain}/${redirectPath}`.replace('//', '/');
     
@@ -115,7 +115,7 @@ export class LambdaFunction extends AbstractFunction {
         COGNITO_DOMAIN: userPoolDomain,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
         REDIRECT_URI: redirectURI,
-        EXHIBIT_FORMS_BUCKET_NAME: exhibitFormsBucketName,
+        EXHIBIT_FORMS_BUCKET_NAME: exhibitFormsBucket.bucketName,
       }
     });
   }

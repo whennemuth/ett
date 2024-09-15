@@ -136,7 +136,7 @@ export const isOk = (response:LambdaProxyIntegrationResponse) => {
 
 export const log = (o:any) => {
   if(o instanceof Error) {
-    console.log(JSON.stringify(o, Object.getOwnPropertyNames(o), 2));
+    console.error(JSON.stringify(o, Object.getOwnPropertyNames(o), 2));
     return;
   }
   if(o instanceof Array) {

@@ -28,7 +28,7 @@
         "name": "delete-exhibit-forms-after", 
         "value": "5184000",
         "config_type": "duration",
-        "description": "Duration exhibit forms, once submitted, can survive in the ETT system before failure to send disclosure request(s) will result their deletion"
+        "description": "Duration exhibit forms, once submitted, can survive in the ETT system before failure to send disclosure request(s) will result in their deletion"
       },
       { 
         "name": "delete-drafts-after", 

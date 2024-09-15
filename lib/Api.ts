@@ -16,7 +16,10 @@ export type ApiConstructParms = {
   cloudfrontDomain: string,
   redirectPath: string,
   landscape: string,
-  exhibitFormsBucketName: string
+  exhibitFormsBucket: Bucket,
+  databaseExhibitFormPurgeLambdaArn: string,
+  disclosureRequestReminderLambdaArn: string,
+  bucketExhibitFormPurgeLambdaArn: string
 }
 
 /**
@@ -58,25 +61,27 @@ export class ApiConstruct extends Construct {
     exhibitFormsBucket.grantDelete(sysAdminApi.getLambdaFunction());
     exhibitFormsBucket.grantPut(sysAdminApi.getLambdaFunction());
 
-    // Grant the re administrator api permissions to read/write from the users table
+    // Grant the re administrator api appropriate permissions against dynamodb tables
     dynamodb.getUsersTable().grantReadWriteData(reAdminApi.getLambdaFunction());
     dynamodb.getInvitationsTable().grantReadWriteData(reAdminApi.getLambdaFunction());
     dynamodb.getEntitiesTable().grantReadWriteData(reAdminApi.getLambdaFunction());
     dynamodb.getConfigTable().grantReadData(reAdminApi.getLambdaFunction());
+    dynamodb.getConsentersTable().grantReadWriteData(reAdminApi.getLambdaFunction());
     // Grant the administrator read & delete permissions on the exhibit forms bucket
     exhibitFormsBucket.grantRead(reAdminApi.getLambdaFunction());
     exhibitFormsBucket.grantDelete(reAdminApi.getLambdaFunction());
 
-    // Grant the authorized individual api permissions to read/write from the users table
+    // Grant the authorized individual api appropriate permissions against dynamodb tables
     dynamodb.getUsersTable().grantReadWriteData(authIndApi.getLambdaFunction());
     dynamodb.getInvitationsTable().grantReadWriteData(authIndApi.getLambdaFunction());
     dynamodb.getEntitiesTable().grantReadWriteData(authIndApi.getLambdaFunction());
     dynamodb.getConfigTable().grantReadData(authIndApi.getLambdaFunction());
+    dynamodb.getConsentersTable().grantReadWriteData(authIndApi.getLambdaFunction());
     // Grant the authorized individual read & delete permissions on the exhibit forms bucket
     exhibitFormsBucket.grantRead(authIndApi.getLambdaFunction());
     exhibitFormsBucket.grantDelete(authIndApi.getLambdaFunction());
 
-    // Grant the consenter api permissions to read/write from the users table
+    // Grant the consenter api appropriate permissions against dynamodb tables
     dynamodb.getUsersTable().grantReadData(consentingPersonApi.getLambdaFunction());
     dynamodb.getConsentersTable().grantReadWriteData(consentingPersonApi.getLambdaFunction());
     dynamodb.getEntitiesTable().grantReadWriteData(consentingPersonApi.getLambdaFunction());
