@@ -1,5 +1,7 @@
 import { BucketItem, ListObjectsOutput } from "./BucketItem";
 
+export const ExhibitFormsBucketEnvironmentVariableName = 'EXHIBIT_FORMS_BUCKET_NAME';
+
 export enum ItemType {
   EXHIBIT = 'exhibit', DISCLOSURE = 'disclosure'
 }

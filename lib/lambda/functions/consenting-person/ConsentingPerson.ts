@@ -1,5 +1,5 @@
 import { CONFIG, IContext } from "../../../../contexts/IContext";
-import { EXHIBIT_FORM_DB_PURGE, EXHIBIT_FORM_S3_PURGE } from "../../../DelayedExecution";
+import { DelayedExecutions } from "../../../DelayedExecution";
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { Configurations } from "../../_lib/config/Config";
@@ -15,7 +15,7 @@ import { ComparableDate, debugLog, deepClone, errorResponse, invalidResponse, lo
 import { DisclosureFormBucket } from "./BucketDisclosureForms";
 import { ExhibitBucket } from "./BucketExhibitForms";
 import { BucketItem, DisclosureItemsParms } from "./BucketItem";
-import { BucketItemMetadataParms, ItemType } from "./BucketItemMetadata";
+import { BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "./BucketItemMetadata";
 import { ConsentFormEmail } from "./ConsentEmail";
 import { ExhibitEmail, FormTypes } from "./ExhibitEmail";
 
@@ -361,7 +361,8 @@ export const saveExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
   await dao.update(oldConsenter, true); // NOTE: merge is set to true - means that other exhibit forms are retained.
 
   // Create a delayed execution to remove the exhibit form 2 days from now
-  const { EXHIBIT_FORM_DATABASE_PURGE_FUNCTION_ARN:functionArn } = process.env;
+  const envVarName = DelayedExecutions.ExhibitFormDbPurge.targetArnEnvVarName;
+  const functionArn = process.env[envVarName];
   if(functionArn) {
     const lambdaInput = { consenterEmail: newConsenter.email, entity_id: exhibitForm.entity_id };
     const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
@@ -372,7 +373,7 @@ export const saveExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
     await delayedTestExecution.startCountdown(timer, `Dynamodb exhibit form purge`);
   }
   else {
-    console.error('Cannot schedule exhibit form purge from database: functionArn variable is missing from the environment!');
+    console.error(`Cannot schedule exhibit form purge from database: ${envVarName} variable is missing from the environment!`);
   }
 
   return getConsenterResponse(email, true);
@@ -522,7 +523,8 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
       const s3ObjectKeyForDisclosureForm = await disclosuresBucket.add(parms);
 
       // 3) Schedule actions against the pdfs that limit how long they survive in the bucket the were just saved to.
-      const { EXHIBIT_FORM_BUCKET_PURGE_FUNCTION_ARN:functionArn } = process.env;
+      const envVarName = DelayedExecutions.ExhibitFormBucketPurge.targetArnEnvVarName;
+      const functionArn = process.env[envVarName];
       if(functionArn) {        
         const lambdaInput = {
           consenterEmail:consenter.email,
@@ -535,7 +537,7 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
         await delayedTestExecution.startCountdown(timer, `S3 exhibit form purge`);
       }
       else {
-        console.error(`Cannot schedule ${deleteAfter} bucket item purge: EXHIBIT_FORM_BUCKET_PURGE_FUNCTION_ARN variable is missing from the environment!`);
+        console.error(`Cannot schedule ${deleteAfter} bucket item purge: ${envVarName} variable is missing from the environment!`);
       }
     }
   }
@@ -687,13 +689,14 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
 
       // 4) Get bucket name & lambda function arns
       const bucketName = `${prefix}-exhibit-forms`;
-      const drFuntionName = `${prefix}-${EXHIBIT_FORM_DB_PURGE}`;
-      const efFunctionName = `${prefix}-${EXHIBIT_FORM_S3_PURGE}`;
+      const { ExhibitFormBucketPurge: s3DE, ExhibitFormDbPurge: dbDE} = DelayedExecutions
+      const dbFunctionName = `${prefix}-${dbDE.coreName}`;
+      const s3FunctionName = `${prefix}-${s3DE.coreName}`;
 
       // 5) Set environment variables
-      process.env.EXHIBIT_FORM_DATABASE_PURGE_FUNCTION_ARN = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${drFuntionName}`;
-      process.env.EXHIBIT_FORM_BUCKET_PURGE_FUNCTION_ARN = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${efFunctionName}`;
-      process.env.EXHIBIT_FORMS_BUCKET_NAME = bucketName;
+      process.env[dbDE.targetArnEnvVarName] = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${dbFunctionName}`;
+      process.env[s3DE.targetArnEnvVarName] = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${s3FunctionName}`;
+      process.env[ExhibitFormsBucketEnvironmentVariableName] = bucketName;
       process.env.USERPOOL_ID = userpoolId;
       process.env.PREFIX = prefix
       process.env.REGION = REGION;

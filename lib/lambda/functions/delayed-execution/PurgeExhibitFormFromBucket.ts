@@ -1,11 +1,11 @@
 import { DeleteObjectCommandOutput, GetObjectTaggingCommand, S3, Tag } from "@aws-sdk/client-s3";
 import { IContext } from "../../../../contexts/IContext";
-import { EXHIBIT_FORM_S3_PURGE } from "../../../DelayedExecution";
+import { DelayedExecutions } from "../../../DelayedExecution";
 import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, log } from "../../Utils";
 import { DisclosureItemsParms, Tags } from "../consenting-person/BucketItem";
-import { ItemType } from "../consenting-person/BucketItemMetadata";
+import { ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
 import { getTestItem } from "./TestBucketItem";
 
 
@@ -52,10 +52,11 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
 export const checkAbort = async (Key:string):Promise<boolean> => {
   log(`Checking tags for: ${Key}`);
   try {
-    const { REGION, EXHIBIT_FORMS_BUCKET_NAME } = process.env;
+    const { REGION } = process.env;
+    const Bucket = process.env[ExhibitFormsBucketEnvironmentVariableName];
     const { DISCLOSED } = Tags;
     const s3 = new S3({ region:REGION });
-    const command = new GetObjectTaggingCommand({ Bucket: EXHIBIT_FORMS_BUCKET_NAME, Key });
+    const command = new GetObjectTaggingCommand({ Bucket, Key });
     const response = await s3.send(command);
     const disclosed = (response.TagSet ?? [] as Tag[]).find(tag => {
       const { Key, Value } = tag;
@@ -88,17 +89,19 @@ export const purgeFormFromBucket = async (itemType:ItemType, Key:string, checkAb
     }
   }
   log(`Deleting ${itemType} form: ${Key}`);
-  const { REGION, EXHIBIT_FORMS_BUCKET_NAME } = process.env;
+  const { REGION } = process.env;
+  const Bucket = process.env[ExhibitFormsBucketEnvironmentVariableName];
   const s3 = new S3({ region:REGION });
-  const output = await s3.deleteObject({ Bucket: EXHIBIT_FORMS_BUCKET_NAME, Key }) as DeleteObjectCommandOutput;  
+  const output = await s3.deleteObject({ Bucket, Key }) as DeleteObjectCommandOutput;  
   log(`${Key} deleted.`);
   log(output);
 }
 
 const validateEnvironment = ():void => {
-  const { EXHIBIT_FORMS_BUCKET_NAME, REGION } = process.env;
-  if( ! EXHIBIT_FORMS_BUCKET_NAME) {
-    throw new Error('EXHIBIT_FORMS_BUCKET_NAME enviroment variable not found!');
+  const { REGION } = process.env;
+  const bucketName = process.env[ExhibitFormsBucketEnvironmentVariableName];
+  if( ! bucketName) {
+    throw new Error(`${bucketName} enviroment variable not found!`);
   }
   if( ! REGION) {
     throw new Error('REGION enviroment variable not found!');
@@ -134,7 +137,7 @@ if(args.length > 3 && args[2] == 'RUN_MANUALLY_PURGE_EXHIBIT_FORM_FROM_BUCKET') 
     const { STACK_ID, REGION, ACCOUNT, TAGS: { Landscape }} = context;
     const prefix = `${STACK_ID}-${Landscape}`;
     const bucketName = `${prefix}-exhibit-forms`;
-    process.env.EXHIBIT_FORMS_BUCKET_NAME = bucketName;
+    process.env[ExhibitFormsBucketEnvironmentVariableName] = bucketName;
     process.env.PREFIX = prefix;
     process.env.REGION = REGION;
 
@@ -143,7 +146,7 @@ if(args.length > 3 && args[2] == 'RUN_MANUALLY_PURGE_EXHIBIT_FORM_FROM_BUCKET') 
      * @param s3ObjectKey 
      */
     const createDelayedExectionToRemoveBucketItem = async(lambdaInput:DisclosureItemsParms, callback:Function) => {
-      const functionName = `${prefix}-${EXHIBIT_FORM_S3_PURGE}`;
+      const functionName = `${prefix}-${DelayedExecutions.ExhibitFormBucketPurge.coreName}`;
       const lambdaArn = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${functionName}`;
       await callback(lambdaArn, lambdaInput);
     }

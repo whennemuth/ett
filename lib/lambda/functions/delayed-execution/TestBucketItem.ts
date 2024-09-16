@@ -3,7 +3,7 @@ import { AffiliateTypes, Consenter, YN } from "../../_lib/dao/entity"
 import { DisclosureFormBucket } from "../consenting-person/BucketDisclosureForms";
 import { ExhibitBucket } from "../consenting-person/BucketExhibitForms";
 import { BucketItem } from "../consenting-person/BucketItem";
-import { ItemType } from "../consenting-person/BucketItemMetadata";
+import { ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
 import { v4 as uuidv4 } from 'uuid';
 
 export const getConsenter = (dummyDate:string) => {
@@ -43,7 +43,7 @@ export const getTestItem = async () => {
   const { STACK_ID, REGION, TAGS: { Landscape } } = context;
   const prefix = `${STACK_ID}-${Landscape}`;
   const bucketName = `${prefix}-exhibit-forms`;
-  process.env.EXHIBIT_FORMS_BUCKET_NAME = bucketName;
+  process.env[ExhibitFormsBucketEnvironmentVariableName] = bucketName;
   process.env.PREFIX = prefix;
   process.env.REGION = REGION;
 

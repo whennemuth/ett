@@ -5,7 +5,7 @@ import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../
 import { debugLog, deepClone, log } from "../../Utils";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { IContext } from "../../../../contexts/IContext";
-import { EXHIBIT_FORM_DB_PURGE } from "../../../DelayedExecution";
+import { DelayedExecutions } from "../../../DelayedExecution";
 
 
 export const handler = async(event:ScheduledLambdaInput, context:any) => {
@@ -83,7 +83,7 @@ if(args.length > 3 && args[2] == 'RUN_MANUALLY_PURGE_EXHIBIT_FORM_FROM_DATABASE'
         const prefix = `${STACK_ID}-${Landscape}`;
         process.env.PREFIX = prefix;
         process.env.REGION = REGION;
-        const functionName = `${prefix}-${EXHIBIT_FORM_DB_PURGE}`;
+        const functionName = `${prefix}-${DelayedExecutions.ExhibitFormDbPurge.coreName}`;
         const lambdaArn = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${functionName}`;
         const lambdaInput = { consenterEmail, entity_id };
         const delayedTestExecution = new DelayedLambdaExecution(lambdaArn, lambdaInput);

@@ -6,10 +6,25 @@ import { IContext } from "../contexts/IContext";
 import { AbstractFunction } from "./AbstractFunction";
 import { TableBaseNames } from "./DynamoDb";
 import { Configurations } from "./lambda/_lib/config/Config";
+import { ExhibitFormsBucketEnvironmentVariableName } from "./lambda/functions/consenting-person/BucketItemMetadata";
 
-export const EXHIBIT_FORM_DB_PURGE = 'purge-exhibit-forms-from-database';
-export const DISCLOSURE_REQUEST_REMINDER = 'disclosure-request-reminder';
-export const EXHIBIT_FORM_S3_PURGE = 'purge-exhibit-forms-from-bucket';
+export type DelayedExecutionNames = {
+  coreName: string, targetArnEnvVarName: string
+}
+export const DelayedExecutions = {
+  ExhibitFormDbPurge: { 
+    coreName: 'purge-exhibit-forms-from-database', 
+    targetArnEnvVarName: 'EXHIBIT_FORM_DATABASE_PURGE_FUNCTION_ARN' 
+  } as DelayedExecutionNames,
+  DisclosureRequestReminder: {
+    coreName: 'disclosure-request-reminder',
+    targetArnEnvVarName: 'DISCLOSURE_REQUEST_REMINDER_FUNCTION_ARN'
+  } as DelayedExecutionNames,
+  ExhibitFormBucketPurge: {
+    coreName: 'purge-exhibit-forms-from-bucket',
+    targetArnEnvVarName: 'EXHIBIT_FORM_BUCKET_PURGE_FUNCTION_ARN'
+  } as DelayedExecutionNames
+}
 
 export type DelayedExecutionLambdaParms = {
   cloudfrontDomain: string,
@@ -44,7 +59,7 @@ export class DelayedExecutionLambdas extends Construct {
     const { constructId, parms: { cloudfrontDomain }, context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } } = this;
     const baseId = `${constructId}DatabaseExhibitFormPurge`;
     const prefix = `${STACK_ID}-${landscape}`
-    const functionName = `${prefix}-${EXHIBIT_FORM_DB_PURGE}`;
+    const functionName = `${prefix}-${DelayedExecutions.ExhibitFormDbPurge.coreName}`;
     const description = 'Function for removing exhibit forms from consenter records';
 
     // Create the lambda function
@@ -111,7 +126,7 @@ export class DelayedExecutionLambdas extends Construct {
     const { constructId, parms: { cloudfrontDomain, exhibitFormsBucket: { bucketArn, bucketName } }, context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } } = this;
     const baseId = `${constructId}DisclosureRequestReminder`;
     const prefix = `${STACK_ID}-${landscape}`
-    const functionName = `${prefix}-${DISCLOSURE_REQUEST_REMINDER}`;
+    const functionName = `${prefix}-${DelayedExecutions.DisclosureRequestReminder.coreName}`;
     const description = 'Function for issuing disclosure reminder emails to affiliates, triggered by event bridge';
 
     // Create the lambda function
@@ -181,7 +196,7 @@ export class DelayedExecutionLambdas extends Construct {
         REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
         PREFIX: prefix,
-        EXHIBIT_FORMS_BUCKET_NAME: bucketName,
+        [ExhibitFormsBucketEnvironmentVariableName]: bucketName,
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });
@@ -199,7 +214,7 @@ export class DelayedExecutionLambdas extends Construct {
     const { constructId, parms: { cloudfrontDomain, exhibitFormsBucket: { bucketArn, bucketName } }, context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } } = this;
     const baseId = `${constructId}BucketPurge`;
     const prefix = `${STACK_ID}-${landscape}`
-    const functionName = `${prefix}-${EXHIBIT_FORM_S3_PURGE}`;
+    const functionName = `${prefix}-${DelayedExecutions.ExhibitFormBucketPurge.coreName}`;
     const description = 'Function for removing exhibit forms from consenter records';
     
     this._bucketExhibitFormPurgeLambda = new class extends AbstractFunction { }(this, baseId, {
@@ -257,7 +272,7 @@ export class DelayedExecutionLambdas extends Construct {
         REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
         PREFIX: prefix,
-        EXHIBIT_FORMS_BUCKET_NAME: bucketName,
+        [ExhibitFormsBucketEnvironmentVariableName]: bucketName,
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });

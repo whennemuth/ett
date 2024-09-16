@@ -8,8 +8,9 @@ import { ApiConstructParms } from "../Api";
 import { Roles } from "../lambda/_lib/dao/entity";
 import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
 import { Configurations } from "../lambda/_lib/config/Config";
-import { DISCLOSURE_REQUEST_REMINDER } from "../DelayedExecution";
+import { DelayedExecutions } from "../DelayedExecution";
 import { Duration } from "aws-cdk-lib";
+import { ExhibitFormsBucketEnvironmentVariableName } from "../lambda/functions/consenting-person/BucketItemMetadata";
 
 
 export class AuthorizedIndividualApi extends AbstractRole {
@@ -119,7 +120,7 @@ export class LambdaFunction extends AbstractFunction {
               new PolicyStatement({
                 actions: [ 'lambda:AddPermission' ],
                 resources: [
-                  `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${prefix}-${DISCLOSURE_REQUEST_REMINDER}`
+                  `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${prefix}-${DelayedExecutions.DisclosureRequestReminder.coreName}`
                 ],
                 effect: Effect.ALLOW
               })
@@ -141,8 +142,8 @@ export class LambdaFunction extends AbstractFunction {
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
         USERPOOL_ID: userPoolId,
         PREFIX: prefix,
-        EXHIBIT_FORMS_BUCKET_NAME: exhibitFormsBucket.bucketName,
-        DISCLOSURE_REQUEST_REMINDER_FUNCTION_ARN: disclosureRequestReminderLambdaArn,
+        [ExhibitFormsBucketEnvironmentVariableName]: exhibitFormsBucket.bucketName,
+        [DelayedExecutions.DisclosureRequestReminder.targetArnEnvVarName]: disclosureRequestReminderLambdaArn,
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });

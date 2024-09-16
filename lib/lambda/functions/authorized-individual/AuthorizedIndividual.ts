@@ -1,6 +1,6 @@
 import { SESv2Client, SendEmailCommand, SendEmailCommandInput, SendEmailResponse } from "@aws-sdk/client-sesv2";
 import { CONFIG, IContext } from "../../../../contexts/IContext";
-import { DISCLOSURE_REQUEST_REMINDER } from "../../../DelayedExecution";
+import { DelayedExecutions } from "../../../DelayedExecution";
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { Configurations } from "../../_lib/config/Config";
@@ -11,7 +11,7 @@ import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
 import { BucketItem, Tags } from "../consenting-person/BucketItem";
-import { BucketItemMetadata, ItemType } from "../consenting-person/BucketItemMetadata";
+import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
 import { DisclosureRequestReminderLambdaParms } from "../delayed-execution/SendDisclosureRequestReminder";
 import { lookupEntity } from "../re-admin/ReAdminUser";
 import { DemolitionRecord, EntityToDemolish } from "./Demolition";
@@ -203,7 +203,8 @@ const getSysAdminEmail = async ():Promise<string|null> => {
 
 export const sendDisclosureRequest = async (consenterEmail:string, entity_id:string, affiliateEmail:string):Promise<LambdaProxyIntegrationResponse> => {
 
-  const { DISCLOSURE_REQUEST_REMINDER_FUNCTION_ARN: functionArn } = process.env;
+  const envVarName = DelayedExecutions.DisclosureRequestReminder.targetArnEnvVarName;
+  const functionArn = process.env[envVarName];
   const configs = new Configurations();
   const { SECONDS } = PeriodType;
 
@@ -234,7 +235,8 @@ export const sendDisclosureRequest = async (consenterEmail:string, entity_id:str
    * @param s3ObjectKey 
    */
   const scheduleDisclosureRequestReminder = async (disclosureEmailParms:DisclosureEmailParms, configName:ConfigNames) => {
-    const { DISCLOSURE_REQUEST_REMINDER_FUNCTION_ARN: functionArn } = process.env;
+    const envVarName = DelayedExecutions.DisclosureRequestReminder.targetArnEnvVarName;
+    const functionArn = process.env[envVarName];
     if(functionArn) {
       const lambdaInput = { 
         disclosureEmailParms,
@@ -246,7 +248,7 @@ export const sendDisclosureRequest = async (consenterEmail:string, entity_id:str
       await delayedTestExecution.startCountdown(timer, `Disclosure request: ${configName}`);
     }
     else {
-      console.error(`Cannot schedule ${configName} disclosure request reminder: DISCLOSURE_REQUEST_REMINDER_FUNCTION_ARN variable is missing from the environment!`);
+      console.error(`Cannot schedule ${configName} disclosure request reminder: ${envVarName} variable is missing from the environment!`);
     }
   }
 
@@ -308,11 +310,11 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_AUTH_IND') {
 
     // 4) Get bucket name & lambda function arn
     const bucketName = `${prefix}-exhibit-forms`;
-    const functionName = `${prefix}-${DISCLOSURE_REQUEST_REMINDER}`;
+    const functionName = `${prefix}-${DelayedExecutions.DisclosureRequestReminder.coreName}`;
 
     // 5) Set environment variables
-    process.env.DISCLOSURE_REQUEST_REMINDER_FUNCTION_ARN = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${functionName}`;
-    process.env.EXHIBIT_FORMS_BUCKET_NAME = bucketName;
+    process.env[DelayedExecutions.DisclosureRequestReminder.targetArnEnvVarName] = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${functionName}`;
+    process.env[ExhibitFormsBucketEnvironmentVariableName] = bucketName;
     process.env.PREFIX = prefix
     process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
     process.env.USERPOOL_ID = userpoolId;

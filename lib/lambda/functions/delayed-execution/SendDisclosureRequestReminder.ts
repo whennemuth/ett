@@ -1,10 +1,10 @@
 import { IContext } from "../../../../contexts/IContext";
-import { DISCLOSURE_REQUEST_REMINDER } from "../../../DelayedExecution";
+import { DelayedExecutions } from "../../../DelayedExecution";
 import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, log } from "../../Utils";
 import { DisclosureEmailParms, DisclosureRequestReminderEmail } from "../authorized-individual/DisclosureRequestEmail";
-import { ItemType } from "../consenting-person/BucketItemMetadata";
+import { ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
 import { purgeFormFromBucket } from "./PurgeExhibitFormFromBucket";
 import { getTestItem } from "./TestBucketItem";
 
@@ -59,9 +59,11 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
 }
 
 const validateEnvironment = ():void => {
-  const { EXHIBIT_FORMS_BUCKET_NAME, REGION } = process.env;
-  if( ! EXHIBIT_FORMS_BUCKET_NAME) {
-    throw new Error('EXHIBIT_FORMS_BUCKET_NAME enviroment variable not found!');
+  const { REGION } = process.env;
+  const bucketName = process.env[ExhibitFormsBucketEnvironmentVariableName];
+
+  if( ! bucketName) {
+    throw new Error(`${ExhibitFormsBucketEnvironmentVariableName} enviroment variable not found!`);
   }
   if( ! REGION) {
     throw new Error('REGION enviroment variable not found!');
@@ -98,7 +100,7 @@ if(args.length > 3 && args[2] == 'RUN_MANUALLY_SEND_DISCLOSURE_REQUEST_REMINDER'
     const { STACK_ID, REGION, ACCOUNT, TAGS: { Landscape } } = context;
     const prefix = `${STACK_ID}-${Landscape}`;
     const bucketName = `${prefix}-exhibit-forms`;
-    process.env.EXHIBIT_FORMS_BUCKET_NAME = bucketName;
+    process.env[ExhibitFormsBucketEnvironmentVariableName] = bucketName;
     process.env.PREFIX = prefix;
     process.env.REGION = REGION;
 
@@ -108,7 +110,7 @@ if(args.length > 3 && args[2] == 'RUN_MANUALLY_SEND_DISCLOSURE_REQUEST_REMINDER'
      * @param s3ObjectKey 
      */
     const scheduleDisclosureRequestReminder = async (disclosureEmailParms:DisclosureEmailParms, callback:Function) => {
-      const functionName = `${prefix}-${DISCLOSURE_REQUEST_REMINDER}`;
+      const functionName = `${prefix}-${DelayedExecutions.DisclosureRequestReminder.coreName}`;
       const lambdaArn = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${functionName}`;
       const lambdaInput = { disclosureEmailParms, purgeForms:true } as DisclosureRequestReminderLambdaParms;
       await callback(lambdaArn, lambdaInput);

@@ -1,6 +1,6 @@
 import { DeleteObjectsCommandOutput, ListObjectsV2CommandOutput, ObjectIdentifier, PutObjectTaggingCommand, PutObjectTaggingCommandOutput, S3 } from "@aws-sdk/client-s3";
 import { Consenter } from "../../_lib/dao/entity";
-import { BucketItemMetadata, BucketItemMetadataParms } from "./BucketItemMetadata";
+import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName } from "./BucketItemMetadata";
 import { log } from "../../Utils";
 
 export type DisclosureItemsParms = {
@@ -22,7 +22,7 @@ export class BucketItem {
 
   constructor(consenter:Consenter, bucketName?:string) {
     this.consenter = consenter;
-    this.bucketName = bucketName ?? process.env.EXHIBIT_FORMS_BUCKET_NAME;
+    this.bucketName = bucketName ?? process.env[ExhibitFormsBucketEnvironmentVariableName];
     this.region = process.env.REGION ?? 'us-east-2';
   }
 

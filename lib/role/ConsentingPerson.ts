@@ -8,8 +8,9 @@ import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
 import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { IContext } from "../../contexts/IContext";
 import { Configurations } from "../lambda/_lib/config/Config";
-import { EXHIBIT_FORM_DB_PURGE } from "../DelayedExecution";
+import { DelayedExecutions } from "../DelayedExecution";
 import { Duration } from "aws-cdk-lib";
+import { ExhibitFormsBucketEnvironmentVariableName } from "../lambda/functions/consenting-person/BucketItemMetadata";
 
 export class ConsentingPersonApi extends AbstractRole {
   private api: AbstractRoleApi
@@ -113,7 +114,7 @@ export class LambdaFunction extends AbstractFunction {
               new PolicyStatement({
                 actions: [ 'lambda:AddPermission' ],
                 resources: [
-                  `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${prefix}-${EXHIBIT_FORM_DB_PURGE}`
+                  `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${prefix}-${DelayedExecutions.ExhibitFormDbPurge.coreName}`
                 ],
                 effect: Effect.ALLOW
               })
@@ -126,9 +127,9 @@ export class LambdaFunction extends AbstractFunction {
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
         USERPOOL_ID: userPoolId,
         PREFIX: prefix,
-        EXHIBIT_FORMS_BUCKET_NAME: exhibitFormsBucket.bucketName,
-        EXHIBIT_FORM_DATABASE_PURGE_FUNCTION_ARN: databaseExhibitFormPurgeLambdaArn,
-        EXHIBIT_FORM_BUCKET_PURGE_FUNCTION_ARN: bucketExhibitFormPurgeLambdaArn,
+        [ExhibitFormsBucketEnvironmentVariableName]: exhibitFormsBucket.bucketName,
+        [DelayedExecutions.ExhibitFormDbPurge.targetArnEnvVarName]: databaseExhibitFormPurgeLambdaArn,
+        [DelayedExecutions.ExhibitFormBucketPurge.targetArnEnvVarName]: bucketExhibitFormPurgeLambdaArn,
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });

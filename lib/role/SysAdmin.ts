@@ -8,6 +8,7 @@ import { ApiConstructParms } from "../Api";
 import { Roles } from '../lambda/_lib/dao/entity';
 import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
 import { Configurations } from "../lambda/_lib/config/Config";
+import { ExhibitFormsBucketEnvironmentVariableName } from "../lambda/functions/consenting-person/BucketItemMetadata";
 
 export class SysAdminApi extends AbstractRole {
   private api: AbstractRoleApi;
@@ -115,7 +116,7 @@ export class LambdaFunction extends AbstractFunction {
         COGNITO_DOMAIN: userPoolDomain,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
         REDIRECT_URI: redirectURI,
-        EXHIBIT_FORMS_BUCKET_NAME: exhibitFormsBucket.bucketName,
+        [ExhibitFormsBucketEnvironmentVariableName]: exhibitFormsBucket.bucketName,
       }
     });
   }
