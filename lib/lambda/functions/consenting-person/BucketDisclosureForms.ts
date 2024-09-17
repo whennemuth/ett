@@ -7,9 +7,13 @@ import { BucketItemMetadata, BucketItemMetadataParms, ItemType } from "./BucketI
 
 export class DisclosureFormBucket {
   private bucket:BucketItem;
+  private requestingEntity?:Entity;
+  private requestingEntityAuthorizedIndividuals?:User[];
 
-  constructor(bucket:BucketItem) {
+  constructor(bucket:BucketItem, requestingEntity?:Entity, requestingEntityAuthorizedIndividuals?:User[]) {
     this.bucket = bucket;
+    this.requestingEntity = requestingEntity;
+    this.requestingEntityAuthorizedIndividuals = requestingEntityAuthorizedIndividuals
   }
 
   public add = async (parms:BucketItemMetadataParms):Promise<string> => {
@@ -31,15 +35,19 @@ export class DisclosureFormBucket {
       } as DisclosureFormData;
 
       // Populate the name for the requesting entity details
-      const daoEntity = DAOFactory.getInstance({ DAOType:"entity", Payload: { entity_id:entityId }});
-      const entity = await daoEntity.read() as Entity;
-      data.requestingEntity.name = entity.entity_name;
+      if( ! this.requestingEntity) {
+        const daoEntity = DAOFactory.getInstance({ DAOType:"entity", Payload: { entity_id:entityId }});
+        this.requestingEntity = await daoEntity.read() as Entity;
+      }
+      data.requestingEntity.name = this.requestingEntity.entity_name;
 
       // Populate the authorized individuals for the requesting entity details
-      const daoUser = DAOFactory.getInstance({ DAOType:'user', Payload: { entity_id:entityId }});
-      const users = await daoUser.read() as User[];
-      const authUsers = users.filter(user => user.active == YN.Yes && (user.role == Roles.RE_AUTH_IND));
-      data.requestingEntity.authorizedIndividuals.push(...authUsers);
+      if( ! this.requestingEntityAuthorizedIndividuals) {
+        const daoUser = DAOFactory.getInstance({ DAOType:'user', Payload: { entity_id:entityId }});
+        const users = await daoUser.read() as User[];
+        this.requestingEntityAuthorizedIndividuals = users.filter(user => user.active == YN.Yes && (user.role == Roles.RE_AUTH_IND));
+      }
+      data.requestingEntity.authorizedIndividuals.push(...this.requestingEntityAuthorizedIndividuals);
       
 
       // Populate the disclosing entity details

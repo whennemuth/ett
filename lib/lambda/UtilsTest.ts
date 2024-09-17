@@ -1,5 +1,4 @@
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse, OutgoingBody } from "../role/AbstractRole";
-import { deepEqual } from "./Utils";
 
 /**
  * Helper class used in unit tests to keep track of and reset calls to mocks.

@@ -1,12 +1,12 @@
-import { DaoMock, ExhibitEmailMock, ConsenterBucketItemsMock, ParameterValidationTests, SendAffiliateData, BAD_EXHIBIT_RECIPIENT_EMAIL } from "./ConsentingPerson.mocks";
+import { DaoMock, ExhibitEmailMock, DisclosureFormMock, ExhibitFormBucketItemsMock, ParameterValidationTests, SendAffiliateData } from "./ConsentingPerson.mocks";
 
 // Create the mock for the es6 ExhibitEmail class
 const exhibitEmailMock = jest.mock('../../functions/consenting-person/ExhibitEmail.ts', () => {
   return ExhibitEmailMock();
 });
 
-const consenterBucketItemsMock = jest.mock('../../functions/consenting-person/ConsenterBucketItems.ts', () => {
-  return ConsenterBucketItemsMock();
+const consenterBucketItemsMock = jest.mock('../../functions/consenting-person/BucketExhibitForms.ts', () => {
+  return ExhibitFormBucketItemsMock();
 });
 
 // Create the mock for the DAOFactory class
@@ -14,6 +14,10 @@ const daoMock = jest.mock('../../_lib/dao/dao.ts', () => {
   const originalModule = jest.requireActual('../../_lib/dao/dao.ts');
   return DaoMock(originalModule);
 });
+
+const disclosureFormMock = jest.mock('../../_lib/pdf/DisclosureForm.ts', () => {
+  return DisclosureFormMock();
+})
 
 import { mockEvent } from './MockEvent';
 import { Task, handler, INVALID_RESPONSE_MESSAGES as msgs } from './ConsentingPerson';

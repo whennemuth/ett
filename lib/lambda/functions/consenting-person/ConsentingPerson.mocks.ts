@@ -1,11 +1,16 @@
+import { mockClient } from "aws-sdk-client-mock";
+import 'aws-sdk-client-mock-jest';
 import { IncomingPayload, OutgoingBody } from "../../../role/AbstractRole";
 import { DAOConsenter, DAOEntity, DAOInvitation, DAOUser, FactoryParms } from "../../_lib/dao/dao";
 import { Affiliate, AffiliateTypes, Config, Consenter, Entity, ExhibitForm as ExhibitFormData, Roles, User, YN } from "../../_lib/dao/entity";
 import { IPdfForm } from "../../_lib/pdf/PdfForm";
 import { deepClone } from "../../Utils";
 import { MockCalls, TestParms, invokeAndAssert } from "../../UtilsTest";
+import { BucketItem } from "./BucketItem";
 import { BucketItemMetadataParms } from "./BucketItemMetadata";
 import { FormType, FormTypes } from "./ExhibitEmail";
+import { S3Client } from "@aws-sdk/client-s3";
+import { DisclosureFormData } from "../../_lib/pdf/DisclosureForm";
 
 /**
  * Keeps track of how many times any method of any mock has been called.
@@ -42,17 +47,46 @@ export function ExhibitEmailMock() {
  * 
  * @returns Define a mock for the es6 ExhibitBucket class
  */
-export function ConsenterBucketItemsMock() {
+export function ExhibitFormBucketItemsMock() {
   return {
-    ExhibitBucket: jest.fn().mockImplementation((consenter:Consenter, bucketName?:string) => {
+    ExhibitBucket: jest.fn().mockImplementation((bucketItem:BucketItem) => {
       return {
         add: async (parms:BucketItemMetadataParms) => {
-          mockCalls.update(`bucket.add.${parms.affiliateEmail}`);
+          mockCalls.update(`bucket.add.exhibit.${parms.affiliateEmail}`);
         }
       }
     })
   }
 }
+
+/**
+ * 
+ * @returns Define a mock for the es6 ExhibitBucket class
+ */
+export function DisclosureFormBucketItemsMock() {
+  return {
+    DisclosureFormBucket: jest.fn().mockImplementation((bucketItem:BucketItem) => {
+      return {
+        add: async (parms:BucketItemMetadataParms) => {
+          mockCalls.update(`bucket.add.disclosure.${parms.affiliateEmail}`);
+        }
+      }
+    })
+  }
+}
+
+export function DisclosureFormMock() {
+  return {
+    DisclosureForm: jest.fn().mockImplementation((data:DisclosureFormData) => {
+      return {
+        getBytes: async ():Promise<Uint8Array> => {
+          return new Uint8Array();
+        }
+      }
+    })
+  }
+}
+
 
 /**
  * Define a mock for the es6 DAOFactory class
@@ -425,7 +459,8 @@ export const SendAffiliateData = {
     expect(mockCalls.called(`user.read`)).toEqual(1);
     expect(mockCalls.called('email.send')).toEqual(0);
   },
-  sendEmailFailure: async(_handler:any, mockEvent:any, task:string, message:string) => {
+  sendEmailFailure: async (_handler:any, mockEvent:any, task:string, message:string) => {
+    const s3ClientMock = mockClient(S3Client);
     let _affiliates = deepClone(affiliates);
     let parms = {
       expectedResponse: {
@@ -464,25 +499,25 @@ export const SendAffiliateData = {
     expect(mockCalls.called(`email.send.${FormTypes.FULL}.${bugsbunny.email}`)).toEqual(1);
     expect(mockCalls.called(`email.send.${FormTypes.FULL}.${badUser.email}`)).toEqual(1);
     expect(mockCalls.called(`email.send.${FormTypes.FULL}.${porkypig.email}`)).toEqual(0);
-    expect(mockCalls.called(`email.send.${FormTypes.SINGLE}.${foghorLeghorn.email}`)).toEqual(1);
-    expect(mockCalls.called(`email.send.${FormTypes.SINGLE}.${wileECoyote.email}`)).toEqual(1);
+    expect(s3ClientMock.calls().length).toEqual(2);
 
-    _affiliates = deepClone(affiliates);
-    _affiliates[0].email = BAD_EXHIBIT_RECIPIENT_EMAIL;
-    parms.incomingPayload.parameters['exhibit_data'].entity_id = entity1.entity_id;
-    parms.incomingPayload.parameters['exhibit_data'].affiliates = _affiliates;
-    const badAffiliate = _affiliates[0];
-    const goodAffiliate = _affiliates[1];
-    mockCalls.reset();
-    await invokeAndAssert(parms);
-    expect(mockCalls.called(`email.send.${FormTypes.FULL}.${daffyduck.email}`)).toEqual(1);
-    expect(mockCalls.called(`email.send.${FormTypes.FULL}.${bugsbunny.email}`)).toEqual(1);
-    expect(mockCalls.called(`email.send.${FormTypes.FULL}.${porkypig.email}`)).toEqual(1);
-    // Attempt to send email to one of the affiliates will fail, but should not stop email attempt on the other.
-    expect(mockCalls.called(`email.send.${FormTypes.SINGLE}.${badAffiliate.email}`)).toEqual(1);
-    expect(mockCalls.called(`email.send.${FormTypes.SINGLE}.${goodAffiliate.email}`)).toEqual(1);
+    // _affiliates = deepClone(affiliates);
+    // _affiliates[0].email = BAD_EXHIBIT_RECIPIENT_EMAIL;
+    // parms.incomingPayload.parameters['exhibit_data'].entity_id = entity1.entity_id;
+    // parms.incomingPayload.parameters['exhibit_data'].affiliates = _affiliates;
+    // const badAffiliate = _affiliates[0];
+    // const goodAffiliate = _affiliates[1];
+    // mockCalls.reset();
+    // await invokeAndAssert(parms);
+    // expect(mockCalls.called(`email.send.${FormTypes.FULL}.${daffyduck.email}`)).toEqual(1);
+    // expect(mockCalls.called(`email.send.${FormTypes.FULL}.${bugsbunny.email}`)).toEqual(1);
+    // expect(mockCalls.called(`email.send.${FormTypes.FULL}.${porkypig.email}`)).toEqual(1);
+    // // Attempt to send email to one of the affiliates will fail, but should not stop email attempt on the other.
+    // expect(mockCalls.called(`email.send.${FormTypes.SINGLE}.${badAffiliate.email}`)).toEqual(1);
+    // expect(mockCalls.called(`email.send.${FormTypes.SINGLE}.${goodAffiliate.email}`)).toEqual(1);
   },
   sendEmailOk: async(_handler:any, mockEvent:any, task:string) => {
+    const s3ClientMock = mockClient(S3Client);
     mockCalls.reset();
     const _affiliates = deepClone(affiliates);
     const getParms = (email:string) => {
@@ -513,6 +548,7 @@ export const SendAffiliateData = {
 
     const doTest = async (parms:TestParms) => {
       mockCalls.reset();
+      s3ClientMock.reset();
       await invokeAndAssert(parms, true);
       expect(mockCalls.called(`consenter.read`)).toEqual(3);
       expect(mockCalls.called(`entity.read.${entity1.entity_id}`)).toEqual(1);
@@ -520,11 +556,10 @@ export const SendAffiliateData = {
       expect(mockCalls.called(`email.send.${FormTypes.FULL}.${daffyduck.email}`)).toEqual(1);
       expect(mockCalls.called(`email.send.${FormTypes.FULL}.${bugsbunny.email}`)).toEqual(1);
       expect(mockCalls.called(`email.send.${FormTypes.FULL}.${porkypig.email}`)).toEqual(1);
-      expect(mockCalls.called(`email.send.${FormTypes.SINGLE}.${foghorLeghorn.email}`)).toEqual(1);
-      expect(mockCalls.called(`email.send.${FormTypes.SINGLE}.${wileECoyote.email}`)).toEqual(1);
-      expect(mockCalls.called(`bucket.add.${foghorLeghorn.email}`)).toEqual(1);
-      expect(mockCalls.called(`bucket.add.${wileECoyote.email}`)).toEqual(1);
+      expect(mockCalls.called(`bucket.add.exhibit.${foghorLeghorn.email}`)).toEqual(1);
+      expect(mockCalls.called(`bucket.add.exhibit.${wileECoyote.email}`)).toEqual(1);
       expect(mockCalls.called(`consenter.update`)).toEqual(1);
+      expect(s3ClientMock.calls().length).toEqual(2);
     }
 
     // Test for someone who has consented

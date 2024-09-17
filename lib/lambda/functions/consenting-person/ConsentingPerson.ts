@@ -389,13 +389,12 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
   
   const affiliates = [] as Affiliate[];
   const emailFailuresForEntityStaff = [] as string[];
-  const emailFailuresForAffiliates = [] as string[];
-  const emailFailures = () => { return emailFailuresForEntityStaff.length > 0 || emailFailuresForAffiliates.length > 0; }
+  const emailFailures = () => { return emailFailuresForEntityStaff.length > 0; }
   let badResponse:LambdaProxyIntegrationResponse|undefined;
   let entity_id:string|undefined;
   let consenter = {} as Consenter;
   let entity = {} as Entity;
-  let users = [] as User[];
+  let entityReps = [] as User[];
 
   const throwError = (msg:string, payload?:any) => {
     badResponse = invalidResponse(msg, payload);
@@ -491,14 +490,13 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
     const daoUser = DAOFactory.getInstance({ DAOType:'user', Payload: { entity_id }});
     let _users = await daoUser.read() as User[];
     _users = _users.filter(user => user.active == YN.Yes && (user.role == Roles.RE_AUTH_IND || user.role == Roles.RE_ADMIN));
-    users.push(..._users);
+    entityReps.push(..._users);
   }
 
   /**
    * Save the single exhibit form excerpts of the full exhibit form to the s3 bucket.
    */
   const transferSingleExhibitFormsToBucket = async () => {
-    emailFailuresForAffiliates.length = 0;
     const now = new Date();
     const { EXHIBIT, DISCLOSURE } = ItemType;
     const { SECONDS } = PeriodType;
@@ -519,7 +517,8 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
 
       // 2) Save a copy of the disclosure form to the s3 bucket
       parms.itemType = DISCLOSURE;
-      const disclosuresBucket = new DisclosureFormBucket(new BucketItem(consenter));
+      const authorizedIndividuals = entityReps.filter(user => user.active == YN.Yes && (user.role == Roles.RE_AUTH_IND));
+      const disclosuresBucket = new DisclosureFormBucket(new BucketItem(consenter), entity, authorizedIndividuals);
       const s3ObjectKeyForDisclosureForm = await disclosuresBucket.add(parms);
 
       // 3) Schedule actions against the pdfs that limit how long they survive in the bucket the were just saved to.
@@ -548,10 +547,10 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
    */
   const sendFullExhibitFormToEntityStaff = async () => {
     emailFailuresForEntityStaff.length = 0;
-    for(let i=0; i<users.length; i++) {
-      var sent:boolean = await new ExhibitEmail(exhibitForm, FormTypes.FULL, entity, consenter).send(users[i].email);
+    for(let i=0; i<entityReps.length; i++) {
+      var sent:boolean = await new ExhibitEmail(exhibitForm, FormTypes.FULL, entity, consenter).send(entityReps[i].email);
       if( ! sent) {
-        emailFailuresForEntityStaff.push(users[i].email);
+        emailFailuresForEntityStaff.push(entityReps[i].email);
       }
     }
   }
@@ -587,7 +586,6 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
     if(emailFailures()) {
       const msg = 'Internal server error: ' + INVALID_RESPONSE_MESSAGES.emailFailures.replace('INSERT_EMAIL', consenter.email);
       const failedEmails = [...emailFailuresForEntityStaff];
-      failedEmails.push(...emailFailuresForAffiliates);
       const payload = { failedEmails };
       return errorResponse(msg, payload);
     }
