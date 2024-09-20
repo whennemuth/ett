@@ -1,5 +1,7 @@
+import { IContext } from '../../../../contexts/IContext';
 import { DynamoDbConstruct } from '../../../DynamoDb';
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
+import { wipeClean } from '../../_lib/BlankSheetOfPaper';
 import { Configurations } from '../../_lib/config/Config';
 import { DAOEntity, DAOFactory } from '../../_lib/dao/dao';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
@@ -15,7 +17,8 @@ export enum Task {
   GET_DB_TABLE = 'get-db-table',
   GET_APP_CONFIGS = 'get-app-configs',
   GET_APP_CONFIG = 'get-app-config',
-  SET_APP_CONFIG = 'set-app-config'
+  SET_APP_CONFIG = 'set-app-config',
+  CLEAN_SHEET_OF_PAPER = 'clean-sheet'
 }
 
 /**
@@ -81,6 +84,8 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           return await getAppConfig(parameters);
         case Task.SET_APP_CONFIG:
           return await setAppConfig(parameters);
+        case Task.CLEAN_SHEET_OF_PAPER:
+          return await cleanSheet();
       } 
     }
   }
@@ -170,6 +175,17 @@ export const setAppConfig = async (parms:any):Promise<LambdaProxyIntegrationResp
   return okResponse('Ok');
 }
 
+export const cleanSheet = async ():Promise<LambdaProxyIntegrationResponse> => {
+  try {
+    await wipeClean(false);
+    return okResponse('Ok');
+  }
+  catch(e:any) {
+    log(e);
+    return errorResponse(`Internal server error: ${e.message}`);
+  }
+}
+
 
 /**
  * RUN MANUALLY: Modify the task, landscape, email & role as needed.
@@ -177,71 +193,66 @@ export const setAppConfig = async (parms:any):Promise<LambdaProxyIntegrationResp
 const { argv:args } = process;
 if(args.length > 3 && args[2] == 'RUN_MANUALLY_SYS_ADMIN') {
 
-  const task = ReAdminTasks.INVITE_USER;
-  const email = args[3];
-  const landscape = args[4];
-  
-  process.env.USERPOOL_NAME = 'ett-dev-cognito-userpool'; 
-  process.env.COGNITO_DOMAIN = 'ett-dev.auth.us-east-2.amazoncognito.com'; //  `${this.context.STACK_ID}-${this.context.TAGS.Landscape}.${REGION}.amazoncognito.com`
-  process.env.REGION = 'us-east-2';
-  process.env.DEBUG = 'true';
+  (async () => {
 
-  const daoEntityRead = DAOFactory.getInstance({ 
-    DAOType: 'entity',
-    Payload: { [EntityFields.entity_id]: ENTITY_WAITING_ROOM }
-  }) as DAOEntity;
+    try {
+      const task = ReAdminTasks.INVITE_USER;
+      const email = args[3];
+      const context:IContext = await require('../../../../contexts/context.json');
+      const { STACK_ID, REGION, TAGS: { Landscape } } = context;
+      const prefix = `${STACK_ID}-${Landscape}`;
+      
+      process.env.USERPOOL_NAME = `${prefix}-cognito-userpool`; 
+      process.env.COGNITO_DOMAIN = `${prefix}.auth.${REGION}.amazoncognito.com`;
+      process.env.REGION = REGION;
+      process.env.DEBUG = 'true';
 
-  daoEntityRead.read()
-  .then((entity:(Entity|null)|Entity[]) => {
-    if(entity) {
-      return new Promise((resolve, reject) => {
-        console.log(`${ENTITY_WAITING_ROOM} already exists`);
-        resolve(entity);
-      })
-    }
-    else {
-      const daoEntityCreate = DAOFactory.getInstance({ 
-        DAOType: 'entity', 
-        Payload: { 
-          [EntityFields.entity_id]: ENTITY_WAITING_ROOM, 
-          [EntityFields.entity_name]: ENTITY_WAITING_ROOM, 
-          [EntityFields.description]: 'The "waiting room", a pseudo-entity for new users not associated yet with a real entity.',
-          [EntityFields.active]: YN.Yes,
-        }
+      const daoEntityRead = DAOFactory.getInstance({ 
+        DAOType: 'entity',
+        Payload: { [EntityFields.entity_id]: ENTITY_WAITING_ROOM }
       }) as DAOEntity;
-      return daoEntityCreate.create();
-    }
-  })
-  .then((entity:Entity) => {
-    return lookupCloudfrontDomain(landscape) as Promise<string>;
-  })  
-  .then((cloudfrontDomain:string) => {
-    if( ! cloudfrontDomain) {
-      throw('Cloudfront domain lookup failure');
-    }
-    process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
-    process.env.REDIRECT_URI = `${cloudfrontDomain}/index.htm`;
 
-    const payload = {
-      task,
-      parameters: {
-        email,
-        role: Roles.SYS_ADMIN
+      let entity:(Entity|null)|Entity[] = await daoEntityRead.read();
+      if( ! entity) {
+        const daoEntityCreate = DAOFactory.getInstance({ 
+          DAOType: 'entity', 
+          Payload: { 
+            [EntityFields.entity_id]: ENTITY_WAITING_ROOM, 
+            [EntityFields.entity_name]: ENTITY_WAITING_ROOM, 
+            [EntityFields.description]: 'The "waiting room", a pseudo-entity for new users not associated yet with a real entity.',
+            [EntityFields.active]: YN.Yes,
+          }
+        }) as DAOEntity;
+        entity = await daoEntityCreate.create();
       }
-    } as IncomingPayload;
 
-    const _event = {
-      headers: {
-        [AbstractRoleApi.ETTPayloadHeader]: JSON.stringify(payload)
+      const cloudfrontDomain:string|undefined = await lookupCloudfrontDomain(Landscape);
+      if( ! cloudfrontDomain) {
+        throw('Cloudfront domain lookup failure');
       }
+
+      process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
+      process.env.REDIRECT_URI = `${cloudfrontDomain}/index.htm`;
+
+      const payload = {
+        task, parameters: {
+          email,
+          role: Roles.SYS_ADMIN
+        }
+      } as IncomingPayload;
+
+      const _event = {
+        headers: {
+          [AbstractRoleApi.ETTPayloadHeader]: JSON.stringify(payload)
+        }
+      }
+
+      const retval = await handler(_event);
+      console.log(`${task} complete. Returned value: ${JSON.stringify(retval, null, 2)}`);
     }
-
-    return handler(_event);
-
-  }).then(() => {
-    console.log(`${task} complete.`)
-  }).catch((reason) => {
-    console.error(reason);
-  });
- 
+    catch(e) {
+      console.error(e);
+    }
+  })(); 
 }
+
