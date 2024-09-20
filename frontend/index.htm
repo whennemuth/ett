@@ -785,6 +785,9 @@
                 <li class="nav-item">
                   <a class="nav-link" id="sys-admin-db-tab" data-toggle="tab" href="#sys-admin-db" role="tab" aria-controls="sys-admin-db" aria-selected="false">Database</a>
                 </li>
+                <li class="nav-item"></li>
+                  <a class="nav-link" id="sys-clean-sheet-tab" data-toggle="tab" href="#sys-admin-clean-sheet" role="tab" aria-controls="sys-admin-clean-sheet" aria-selected="false">Clean Sheet of Paper</a>
+                </li>
               </ul>
               <div class="tab-content" id="sysAdminContent">
                 <div class="tab-pane fade show active" id="sys-admin-invitation" role="tabpanel" aria-labelledby="sys-admin-invitation-tab">
@@ -851,6 +854,29 @@
                       <div class="dbTableLabel">Consenters</div>
                       <button class="btn btn-primary btn" type="button" onclick="refreshDbTable('consenters')">Load/Refresh</button>
                       <div id="db-table-consenters" style="margin-top:10px;"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="tab-pane fade" id="sys-admin-clean-sheet" role="tabpanel" aria-labelledby="sys-admin-clean-sheet-tab">
+                  <h3 class="display-7 fw-bold" style="text-align:center; margin-bottom: 20px;">"Clean sheet of paper"</h3>
+                  <div style="overflow:auto;">
+                    <div style="float:left; clear:both; margin-bottom: 30px;">
+                      <p>
+                        This is a "nuclear option" for developers/testers to bring the state of the app back to "factory settings".<br>
+                        <span style="font-style: italic;">NOTE: Probably a good idea not to expose this tab in any production deployment</span>
+                      </p>
+                      <p>
+                        All accumulated records and activity will be wiped out so that one can begin from scratch.<br>
+                        Among the items wiped out are:<br>
+                        <ul>
+                          <li><b>Dynamodb:</b> All records from every table <span style="font-style: italic;">(except sysadmins and configurations)</span></li>
+                          <li><b>Cognito:</b> All records for every user <span style="font-style: italic;">(except sysadmins)</span></li>
+                          <li><b>S3:</b> Everything</li>
+                        </ul>
+                      </p>
+                      <p>
+                        <button id="btnCleanSheet" class="btn btn-danger btn-lg">DETONATE <i class="bi bi-lightning-fill"></i></button>
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1960,6 +1986,47 @@
         const { message, payload } = package;
         if(payload.ok) {
           alert('Entity terminated');
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
+    const cleanSheet = async () => {
+      if( ! confirm("Are you sure about this?\n\n" +
+      "Click 'Ok' to proceed,\n" +
+      "Click 'Cancel' to abort")) {
+        alert('Cancelled');
+        return;
+      }
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+        const role = AccessJwtCookie.getRole().name;
+        const outgoingPayload = {
+          task: 'clean-sheet',
+          parameters: {}
+        }
+
+        const response = await fetch(apiUri(role), {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify(outgoingPayload)
+          }
+        });
+
+        const package = await response.json();
+        const { message, payload } = package;
+        if(payload.ok) {
+          alert('Completed! You now have a clean sheet of paper');
         }
         else {
           msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
@@ -3505,6 +3572,9 @@
       document.getElementById('btnTerminateEntity').addEventListener('click', async () => {
         await terminateEntity(invitationCode);
       });
+      document.getElementById('btnCleanSheet').addEventListener('click', async () => {
+        await cleanSheet();
+      });
       document.getElementById('btnSendDisclosureRequest').addEventListener('click', async () => {
         await sendDisclosureRequest();
       });
@@ -3685,7 +3755,7 @@
               const { users=[], entity_name } = (entity ?? {});
               const validUsers = users.filter(u => { return u.active == 'Y'; });
               document.getElementById('app-section-RE_AUTH_IND').style.display = 'inline';
-              if(validUsers < 2) {
+              if(validUsers.length < 2) {
                 document.getElementById('authNotReady').style.display = 'inline';
                 if(entity_name) {
                   document.getElementById('disclosureRequestEntityName').innerText = entity_name;

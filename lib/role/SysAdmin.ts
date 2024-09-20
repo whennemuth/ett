@@ -64,13 +64,14 @@ export class LambdaFunction extends AbstractFunction {
     const { userPool, userPoolName, userPoolDomain, cloudfrontDomain, redirectPath, exhibitFormsBucket } = parms;
     const { userPoolArn } = userPool;
     const redirectURI = `${cloudfrontDomain}/${redirectPath}`.replace('//', '/');
-    
+    const prefix = `${STACK_ID}-${landscape}`;
+
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
       memorySize: 1024,
       entry: 'lib/lambda/functions/sys-admin/SysAdminUser.ts',
       // handler: 'handler',
-      functionName: `${STACK_ID}-${landscape}-${Roles.SYS_ADMIN}-user`,
+      functionName: `${prefix}-${Roles.SYS_ADMIN}-user`,
       description: 'Function for all sys admin user activity.',
       cleanup: true,
       bundling: {
@@ -106,11 +107,20 @@ export class LambdaFunction extends AbstractFunction {
                 effect: Effect.ALLOW
               })
             ]
-          })
-        }
+          }),
+          'EttAuthIndExhibitFormBucketPolicy': new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 's3:*' ],
+                resources: [ exhibitFormsBucket.bucketArn, `${exhibitFormsBucket.bucketArn}/*` ],
+                effect: Effect.ALLOW
+              })
+            ]
+          })        }
       }),
       environment: {
         REGION,
+        PREFIX: prefix,
         [Configurations.ENV_VAR_NAME]: config.getJson(),
         USERPOOL_NAME: userPoolName,
         COGNITO_DOMAIN: userPoolDomain,

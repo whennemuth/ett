@@ -33,8 +33,7 @@
       "args": [
         "${workspaceFolder}/lib/lambda/functions/sys-admin/SysAdminUser.ts",
         "RUN_MANUALLY_SYS_ADMIN",
-        "sysadmin1@warhen.work",
-        "dev"
+        "sysadmin1@warhen.work"
       ], 
       "env": {
         "AWS_PROFILE": "bu",
