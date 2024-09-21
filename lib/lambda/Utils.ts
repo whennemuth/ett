@@ -46,7 +46,6 @@ const getResponse = (message:string, statusCode:number, payload?:any): LambdaPro
   }
   addCorsHeaders(headers);
   const body = { message } as any;
-  console.log(message);
   if(payload) {
     body.payload = payload;
   }
@@ -56,7 +55,13 @@ const getResponse = (message:string, statusCode:number, payload?:any): LambdaPro
     headers,
     body: JSON.stringify(body)
   };
-  debugLog(response);
+  log(message);
+  if(payload && payload instanceof Error) {
+    log(payload);
+  }
+  else {
+    debugLog(response);
+  }
   return response;
 }
 
@@ -105,6 +110,24 @@ export const errorResponse = (message:string, payload?:any): LambdaProxyIntegrat
   return response;
 }
 
+export const debugLog = (o:any) => {
+  if(process.env.DEBUG == 'true') {
+    log(o);
+  }
+}
+
+export const log = (o:any) => {
+  if(o instanceof Error) {
+    console.error(JSON.stringify(o, Object.getOwnPropertyNames(o), 2));
+    return;
+  }
+  if(o instanceof Array) {
+    console.log(JSON.stringify(o, null, 2))
+    return;
+  }
+  console.log(o);
+}
+
 export const mergeResponses = (responses:LambdaProxyIntegrationResponse[]) => {
   // 1) Condense the response bodies into an array of their parsed values.
   const bodies = responses.map(response => {
@@ -132,18 +155,6 @@ export const mergeResponses = (responses:LambdaProxyIntegrationResponse[]) => {
 
 export const isOk = (response:LambdaProxyIntegrationResponse) => {
   return /^2\d+/.test(`${response.statusCode}`);
-}
-
-export const log = (o:any) => {
-  if(o instanceof Error) {
-    console.error(JSON.stringify(o, Object.getOwnPropertyNames(o), 2));
-    return;
-  }
-  if(o instanceof Array) {
-    console.log(JSON.stringify(o, null, 2))
-    return;
-  }
-  console.log(o);
 }
 
 /**
@@ -238,12 +249,6 @@ export const bytesToBase64 = (bytes:Uint8Array) => {
     String.fromCodePoint(byte),
   ).join("");
   return btoa(binString);
-}
-
-export const debugLog = (o:any) => {
-  if(process.env.DEBUG == 'true') {
-    log(o);
-  }
 }
 
 export const viewHtml = async (html:string) => {
