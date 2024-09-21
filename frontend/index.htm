@@ -973,6 +973,7 @@
             <!---------------------------------------------------->
             <div id="app-section-CONSENTING_PERSON" style="display:none">
               <div style="font-weight: bold; position: relative; top: -40px;">Welcome <span id="CONSENTING_PERSON_username">[Insert Username]</span></div>
+              <div id="waitForAI" style="font-weight: bold; position: relative; top: -20px; display:none;">An authorized individual will provide to you a link for exhibit form entry soon.</span></div>
               <div style="overflow:auto">
                 <ul class="nav nav-tabs" id="consenter" role="tablist">
                   <li class="nav-item">
@@ -1498,8 +1499,15 @@
     
     const localTesting = () => /^STATIC_PARAMETERS_.*$/.test(STATIC_PARAMETERS);
     const clientId = () => { return STATIC_PARAMETERS.ROLES[selected_role].CLIENT_ID; }
-    const redirectUri = () => { return STATIC_PARAMETERS.ROLES[selected_role].REDIRECT_URI; }
     const apiUri = () => { return STATIC_PARAMETERS.ROLES[selected_role].API_URI; }
+    const redirectUri = () => {
+      const defaultUri = STATIC_PARAMETERS.ROLES[selected_role].REDIRECT_URI;
+      if(selected_role == 'CONSENTING_PERSON' && document.location.pathname == '/consenter/exhibits/index.htm') {
+        const domain = defaultUri.substring(0, defaultUri.indexOf('/'));
+        return `${domain}/consenter/exhibits/index.htm`;
+      }
+      return defaultUri;
+    }
 
     const roleChange = () => {
       selected_role = document.forms['formRole']['rdoRole'].value;
@@ -1526,6 +1534,9 @@
     let RefreshJwtCookie;
 
     const getSelectedRole = () => {
+      if(document.location.pathname == '/consenter/exhibits/index.htm') {
+        return 'CONSENTING_PERSON';
+      }
       let role = new URL(document.location.href).searchParams.get('selected_role');
       if(role) return role;
       if(AccessJwtCookie && !AccessJwtCookie.jwtExpired()) {
@@ -2259,7 +2270,15 @@
             show('consentRenew');
             show('consentCorrect');
             show('consentSend');
-            show('consenter-exhibit-link');
+            if(document.location.pathname == '/consenter/exhibits/index.htm') {
+              show('consenter-exhibit-link');
+              document.getElementById('waitForAI').style.display = 'none';
+              document.getElementById('consenter-exhibit-link').click();
+            }
+            else {
+              hide('consenter-exhibit-link');
+              document.getElementById('waitForAI').style.display = 'inline';
+            }
             show('consentOptions');
             hide('consentFieldSet');
             fill('consentSendEmail', email);
@@ -3428,7 +3447,7 @@
           return;
         }
         const expires = `; expires=${expirationDate.toUTCString()}`;
-        const cookieValue = encodeURIComponent(jwt) + expires + secureFlag + '; SameSite=Strict';
+        const cookieValue = encodeURIComponent(jwt) + expires + secureFlag + '; path=/; SameSite=Strict';
         document.cookie = `${cookieName}=${cookieValue}`;
         // Now that the cookie is set and we have the JWT, we don't need the state and code verfier values anymore.
         const storage = window.sessionStorage;
@@ -3650,7 +3669,7 @@
         $(this).tab('show')
       });
 
-      // Add show/hide behavior to the RE_ADMIN tabstrip
+      // Add show/hide behavior to the CONSENTER tabstrip
       $('#consenter a').on('click', function (e) {
         e.preventDefault()
         $(this).tab('show')
@@ -3791,6 +3810,10 @@
           setName(AccessJwtCookie.getRole(), IDJwtCookie.getUser())
           await showAppForRole();        
         }
+        else if(document.location.pathname == '/consenter/exhibits/index.htm') {
+          // Not signed in and is consenter coming in on the "private" link emailed to them by AI
+          signIn(); 
+        }
         else if(!RefreshJwtCookie.jwtExpired()) {
           // TODO: Use the refresh token to restore access.
           console.log('Token refresh not implemented yet.');
@@ -3827,8 +3850,12 @@
 
         case 'login':
           await exchangeAuthorizationCode(checkAuth);
-          // Redirect back to the plain root url to shed the action, code, and state parameters
-          document.location.href = document.location.origin;
+          // Redirect back to the root url and path (minus querystring) to shed the action, code, and state parameters
+          let href = document.location.origin;
+          if(document.location.pathname == '/consenter/exhibits/index.htm') {
+            href = `${href}/consenter/exhibits/index.htm`;
+          }
+          document.location.href = href;
           break;
 
         case 'post-signup':
