@@ -1,11 +1,12 @@
-import { DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, PutItemCommandOutput, QueryCommand, QueryCommandInput, TransactWriteItem, TransactWriteItemsCommand, TransactWriteItemsCommandInput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, QueryCommand, QueryCommandInput, TransactWriteItem, TransactWriteItemsCommand, TransactWriteItemsCommandInput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { DynamoDbConstruct, IndexBaseNames, TableBaseNames } from "../../../DynamoDb";
+import { deepClone } from "../../Utils";
 import { DAOConsenter, ReadParms } from "./dao";
 import { convertFromApiObject } from "./db-object-builder";
+import { Builder, MergeParms } from "./db-update-builder-utils";
 import { consenterUpdate } from "./db-update-builder.consenter";
 import { AffiliateTypes, Consenter, ConsenterFields, Roles, YN } from "./entity";
-import { deepClone } from "../../Utils";
 
 export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): DAOConsenter {
 
@@ -44,16 +45,25 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
    * Create a new consenter.
    * @returns 
    */
-  const create = async (): Promise<PutItemCommandOutput> => {
+  const create = async (): Promise<UpdateItemCommandOutput> => {
     console.log(`Creating ${Roles.CONSENTING_PERSON}: ${firstname} ${middlename} ${lastname}`);
 
     // Handle required field validation
     if( ! email) throwMissingError('create', ConsenterFields.email);
 
     // Handle illegal (premature) field validation
-    if(consented_timestamp) throwIllegalParm('create', ConsenterFields.consented_timestamp);
-    if(rescinded_timestamp) throwIllegalParm('create', ConsenterFields.rescinded_timestamp);
-    if(renewed_timestamp) throwIllegalParm('create', ConsenterFields.renewed_timestamp);
+    if(consented_timestamp && consented_timestamp.length > 0) throwIllegalParm('create', ConsenterFields.consented_timestamp);
+    if( ! consented_timestamp) {
+      consented_timestamp = [] as string[];
+    }
+    if(rescinded_timestamp && rescinded_timestamp.length > 0) throwIllegalParm('create', ConsenterFields.rescinded_timestamp);
+    if( ! rescinded_timestamp) {
+      rescinded_timestamp = [] as string[];
+    }
+    if(renewed_timestamp && renewed_timestamp.length > 0) throwIllegalParm('create', ConsenterFields.renewed_timestamp);
+    if( ! renewed_timestamp) {
+      renewed_timestamp = [] as string[];
+    }
     if(exhibit_forms && exhibit_forms.length > 0) throwIllegalParm('create', ConsenterFields.exhibit_forms);
     if( ! exhibit_forms) {
       // Always initialize a consenter item with an empty exhibit forms list. This will avoid an error when
@@ -71,10 +81,8 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
     if( ! consenterInfo.create_timestamp) consenterInfo.create_timestamp = create_timestamp;
     consenterInfo.active = active;
 
-    return await sendCommand(new PutCommand({
-      TableName,
-      Item: consenterInfo
-    }));
+    // An update will perform a put if the item does not already exist.
+    return update({} as Consenter);
   }
 
   const read = async (readParms?:ReadParms):Promise<(Consenter|null)|Consenter[]> => {
@@ -165,8 +173,9 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
 
     // Perform the update
     console.log(`Updating consenter: ${email}`);
-    const input = consenterUpdate(TableName, consenterInfo, oldConsenterInfo)
-      .buildUpdateItemCommandInput({ fieldName: ConsenterFields.exhibit_forms, merge:mergeExhibitForms }) as UpdateItemCommandInput;
+    const builder = consenterUpdate(TableName, consenterInfo, oldConsenterInfo) as Builder;
+    const mergeParms = { fieldName: ConsenterFields.exhibit_forms, merge:mergeExhibitForms } as MergeParms;
+    const input = builder.buildUpdateItemCommandInput(mergeParms) as UpdateItemCommandInput;
     const command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
@@ -286,10 +295,10 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_DAO_CONSENTER') {
       const scenario = (args.length > 5 ? args[5] : '1') as '1'|'2'|'3';
       switch(updateType as UPDATE_TYPE) {
         case UPDATE_TYPE.sub:
-          consenter = { email, sub: 'cognito-user-sub' };
+          consenter = { email, sub: 'cognito-user-sub' } as Consenter;
           break;
         case UPDATE_TYPE.consent:
-          consenter = { email, consented_timestamp: new Date().toISOString() };
+          consenter = { email, consented_timestamp: [ new Date().toISOString() ] } as Consenter;
           break;
         case UPDATE_TYPE.exhibit:
           const affiliate1 = {
@@ -321,7 +330,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_DAO_CONSENTER') {
               { entity_id: 'def-456', affiliates: [ affiliate1, affiliate2 ] },
               { entity_id: 'ijk-789', affiliates: [ affiliate3 ] }
             ]
-          };
+          } as Consenter;
 
           const originalConsenter = deepClone(consenter) as Consenter;
 
@@ -355,7 +364,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_DAO_CONSENTER') {
       execute(dao.read, task);
     break;
     case TASK.Delete:
-      dao = ConsenterCrud({ email });
+      dao = ConsenterCrud({ email } as Consenter);
       execute(dao.Delete, task);
       break;
   }

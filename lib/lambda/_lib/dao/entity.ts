@@ -89,9 +89,9 @@ export type Consenter = {
   phone_number?: string,
   create_timestamp?: string,
   update_timestamp?: string,
-  consented_timestamp?: string,
-  rescinded_timestamp?: string,
-  renewed_timestamp?: string,
+  consented_timestamp: string[],
+  rescinded_timestamp: string[],
+  renewed_timestamp: string[],
   exhibit_forms?: ExhibitForm[],
   active?: Y_or_N
 };

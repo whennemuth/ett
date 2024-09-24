@@ -52,7 +52,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_SEND_CONSENT_FORM') {
   const test_consenter_form_data = {
     entityName: 'Boston University',
     consenter: {
-      email, active: YN.Yes, consented_timestamp: new Date().toISOString(),
+      email, active: YN.Yes, consented_timestamp: [ new Date().toISOString() ],
       firstname: 'Bugs', middlename: 'B', lastname: 'Bunny', title: 'Rabbit',
       phone_number: '+617-222-4444', 
     }

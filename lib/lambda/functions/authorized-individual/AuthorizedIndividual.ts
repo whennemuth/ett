@@ -6,7 +6,7 @@ import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { Configurations } from "../../_lib/config/Config";
 import { DAOFactory, DAOUser } from "../../_lib/dao/dao";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
-import { ConfigNames, Entity, Roles, User } from "../../_lib/dao/entity";
+import { ConfigNames, Consenter, Entity, Roles, User } from "../../_lib/dao/entity";
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
@@ -212,7 +212,7 @@ export const sendDisclosureRequest = async (consenterEmail:string, entity_id:str
     return errorResponse('Cannot determine disclosure request lambda function arn from environment!');
   }
 
-  const metadata = new BucketItemMetadata(new BucketItem({ email:consenterEmail }));
+  const metadata = new BucketItemMetadata(new BucketItem({ email:consenterEmail } as Consenter));
   const { EXHIBIT, DISCLOSURE } = ItemType;
 
   const s3ObjectKeyForExhibitForm = await metadata.getLatestS3ObjectKey({
@@ -269,7 +269,7 @@ export const sendDisclosureRequest = async (consenterEmail:string, entity_id:str
 
   // Tag the pdfs so that they are skipped over by the event bridge stale pdf purging rule:
   const now = new Date().toISOString();
-  const bucketItem = new BucketItem({ email:consenterEmail });
+  const bucketItem = new BucketItem({ email:consenterEmail } as Consenter);
   let tagged = false;
   tagged ||= await bucketItem.tag(s3ObjectKeyForExhibitForm, Tags.DISCLOSED, now);  
   tagged &&= await bucketItem.tag(s3ObjectKeyForDisclosureForm, Tags.DISCLOSED, now);

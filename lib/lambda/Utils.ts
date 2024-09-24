@@ -309,6 +309,22 @@ export function ComparableDate(timestamp:any):any {
 }
 
 
+/** 
+ * Get the most recent date from an array of iso formatted date strings 
+ */
+export const getMostRecent = (timestamps:string[]=[]):string|undefined => {
+  if(timestamps.length == 0) {
+    return undefined;
+  }
+  timestamps.sort((a:string, b:string):number => {
+    const dateA = new Date(a);
+    const dateB = new Date(b);
+    return dateB.getTime() - dateA.getTime();
+  });
+  return timestamps[0];
+}
+
+
 /**
  * Turn an object like 
  *   { fldname1: { L: [{ M: { fldname2: { S: 'fld-value' }}}] }} 

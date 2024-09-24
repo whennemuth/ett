@@ -6,6 +6,7 @@ import { EmbeddedFonts } from "./lib/EmbeddedFonts";
 import { Page } from "./lib/Page";
 import { Align, Margins, VAlign, rgbPercent } from "./lib/Utils";
 import { Consenter, YN } from "../dao/entity";
+import { getMostRecent } from "../../Utils";
 
 const blue = rgbPercent(47, 84, 150) as Color;
 const grey = rgb(.1, .1, .1) as Color;
@@ -185,8 +186,9 @@ export class ConsentFormPage3 extends PdfForm implements IPdfForm {
       },
       textOptions: { size:14, font:boldfont, color:white, lineHeight: 16 }
     });
+    const most_recent_consent = getMostRecent(consented_timestamp);
     await drawRectangle({
-      text: consented_timestamp ? new Date(consented_timestamp).toLocaleDateString() : 'unknown',
+      text: most_recent_consent ? new Date(most_recent_consent).toLocaleDateString() : 'unknown',
       page, margins: { left:6, top:6, bottom:0, right:6 },
       align: Align.left, valign: VAlign.middle,
       options: {
@@ -212,7 +214,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENT_FORM_PAGE_3') {
     entityName: 'Boston University',
     consenter: { 
       email: 'bugsbunny@warnerbros.com', firstname: 'Bugs', middlename: 'B', lastname: 'Bunny',
-      phone_number: '617-333-5555', consented_timestamp: new Date().toISOString(), active: YN.Yes
+      phone_number: '617-333-5555', consented_timestamp: [ new Date().toISOString() ], active: YN.Yes
     } as Consenter
   } as ConsentFormData).writeToDisk('./lib/lambda/_lib/pdf/consentForm3.pdf')
   .then((bytes) => {

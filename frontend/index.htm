@@ -2224,20 +2224,37 @@
           const { consenter, entities } = payload;
           const { active, consented_timestamp, renewed_timestamp, rescinded_timestamp, email } = consenter ?? {};
 
+          /** Get the most recent date from an array of iso formatted date strings */
+          const getMostRecent = (timestamps=[]) => {
+            if(timestamps.length == 0) {
+              return;
+            }
+            timestamps.sort((a, b) => {
+              const dateA = new Date(a);
+              const dateB = new Date(b);
+              return dateB.getTime() - dateA.getTime();
+            });
+            return timestamps[0];
+          }
+
           const lastAction = () => {
-            const consented = new ComparableDate(consented_timestamp);
-            const rescinded = new ComparableDate(rescinded_timestamp);
-            const renewed = new ComparableDate(renewed_timestamp);
+            const consented = getMostRecent(consented_timestamp);
+            const rescinded = getMostRecent(rescinded_timestamp);
+            const renewed = getMostRecent(renewed_timestamp);
+
+            const consentedDate = new ComparableDate(consented);
+            const rescindedDate = new ComparableDate(rescinded);
+            const renewedDate = new ComparableDate(renewed);
             if(active == 'N') {
               return 'deactivated';
             }
-            if(consented.after(rescinded) && consented.after(renewed)) {
+            if(consentedDate.after(rescindedDate) && consentedDate.after(renewedDate)) {
               return 'consented';
             }
-            if(renewed.after(consented) && renewed.after(rescinded)) {
+            if(renewedDate.after(consentedDate) && renewedDate.after(rescindedDate)) {
               return 'renewed';
             }
-            if(rescinded.after(consented) && rescinded.after(renewed)) {
+            if(rescindedDate.after(consentedDate) && rescindedDate.after(renewedDate)) {
               return 'rescinded';
             }
             return task == 'correct-consent' ? 'corrected' : 'none';
@@ -2263,7 +2280,7 @@
 
           // Show the buttons used to renew, rescind, or edit consent
           showPostConsentFields = (lastAction) => {
-            const timestamp = renewed_timestamp ?? consented_timestamp;
+            const timestamp = getMostRecent(renewed_timestamp) ?? getMostRecent(consented_timestamp);
             const consentMsg = `Consent ${lastAction} at: ${timestamp}`;
             const color = lastAction == 'rescinded' ? 'red' : 'green';
             show('consentRescind');
@@ -2591,7 +2608,7 @@
           email: "roger@warnerbros.com",
           phone_number: '+6174448888',
           active: 'Y',
-          consented_timestamp: "2024-07-05T17:16:31.352Z",
+          consented_timestamp: [ "2024-07-05T17:16:31.352Z" ],
           create_timestamp: "2024-07-05T16:24:56.068Z",
           exhibit_forms: [
             { entity_id: entityId1, affiliates: [ affiliate1, affiliate2, affiliate3 ] },

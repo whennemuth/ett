@@ -288,7 +288,7 @@ if(args.length > 4 && args[2] == 'RUN_MANUALLY_CONSENTER_BUCKET_ITEM') {
     firstname: 'Elmer',
     middlename: 'F',
     lastname: 'Fudd',
-    consented_timestamp: dummyDateString,
+    consented_timestamp: [ dummyDateString ],
     phone_number: '617-444-6666', 
     title: 'Wabbit Hunter',
     exhibit_forms: [
