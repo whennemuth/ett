@@ -313,7 +313,7 @@ export const rescindConsent = async (email:string): Promise<LambdaProxyIntegrati
   return appendTimestamp(
     consenterInfo.consenter, 
     ConsenterFields.rescinded_timestamp,
-    YN.Yes
+    YN.No
   );
 
   // TODO: Blank out exhibit forms in db and bucket, and purge the userpool record (client script must also log out).

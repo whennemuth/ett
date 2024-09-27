@@ -38,7 +38,8 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
     log(`Registering ${email}`);
 
     const create_timestamp = new Date().toISOString();
-    const active = YN.Yes
+    // Set as inactive pending submission of consent form.
+    const active = YN.No
 
     // Lookup the consenter in case registration was interrupted and is being retried
     let dao = ConsenterCrud({ email, firstname, middlename, lastname, create_timestamp, active } as Consenter);
