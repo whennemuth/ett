@@ -137,7 +137,12 @@ export class DynamoDbConstruct extends Construct {
           partitionKey: { name: ConsenterFields.active, type: AttributeType.STRING },
           sortKey: { name: ConsenterFields.email, type: AttributeType.STRING },
           projectionType: ProjectionType.INCLUDE,
-          nonKeyAttributes: [ ConsenterFields.email, ConsenterFields.sub ]
+          nonKeyAttributes: [ 
+            ConsenterFields.email, 
+            ConsenterFields.sub, 
+            ConsenterFields.firstname, 
+            ConsenterFields.middlename, 
+            ConsenterFields.lastname ]
         }
       ]
     } as TablePropsV2);

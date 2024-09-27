@@ -21,6 +21,7 @@ export enum Task {
   LOOKUP_USER_CONTEXT = 'lookup-user-context',
   DEMOLISH_ENTITY = 'demolish-entity',
   SEND_DISCLOSURE_REQUEST = 'send-disclosure-request',
+  GET_CONSENTERS = 'get-consenter-list',
   PING = 'ping'
 };
 
@@ -61,6 +62,10 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
         case Task.SEND_DISCLOSURE_REQUEST:
           var { consenterEmail, entity_id, affiliateEmail } = parameters;
           return await sendDisclosureRequest(consenterEmail, entity_id, affiliateEmail);
+      
+        case Task.GET_CONSENTERS:
+          var { fragment } = parameters;
+          return await getConsenterList(fragment);
 
         case Task.PING:
           return okResponse('Ping!', parameters);
@@ -193,7 +198,7 @@ const getSysAdminEmail = async ():Promise<string|null> => {
   const dao:DAOUser = DAOFactory.getInstance({
     DAOType: 'user', Payload: { entity_id:ENTITY_WAITING_ROOM } as User
   }) as DAOUser;
-  const users = await dao.read() as User[] | [] as User[];
+  const users = await dao.read() as User[] ?? [] as User[];
   const sysadmins = users.filter((user:User) => user.role == Roles.SYS_ADMIN);
   if(sysadmins.length > 0) {
     return sysadmins[0].email;
@@ -285,13 +290,14 @@ export const sendDisclosureRequest = async (consenterEmail:string, entity_id:str
   return okResponse('Ok', {});
 }
 
+
 /**
  * RUN MANUALLY: Modify the task, landscape, entity_id, and dryRun settings as needed.
  */
 const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY_AUTH_IND') {
 
-  const task:Task = Task.SEND_DISCLOSURE_REQUEST;
+  const task:Task = Task.GET_CONSENTERS;
 
   (async () => {
     // 1) Get context variables
@@ -364,6 +370,12 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_AUTH_IND') {
         }} as IncomingPayload);
         break;
 
+      case Task.GET_CONSENTERS:
+        _event.headers[AbstractRoleApi.ETTPayloadHeader] = JSON.stringify({ task, parameters: {
+          fragment: undefined
+        }} as IncomingPayload);
+        break;
+
       case Task.PING:
         console.log('NOT IMPLEMENTED');
         break;
@@ -374,7 +386,8 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_AUTH_IND') {
     }
 
     try {
-      await handler(_event);
+      const response = await handler(_event) as LambdaProxyIntegrationResponse;
+      console.log(JSON.stringify(response, null, 2));
     }
     catch(e) {
       console.error(e);
