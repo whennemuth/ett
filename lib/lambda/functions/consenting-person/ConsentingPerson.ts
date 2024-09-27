@@ -11,7 +11,7 @@ import { ConsentFormData } from "../../_lib/pdf/ConsentForm";
 import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
-import { ComparableDate, debugLog, deepClone, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
+import { ComparableDate, debugLog, deepClone, errorResponse, getMostRecent, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
 import { DisclosureFormBucket } from "./BucketDisclosureForms";
 import { ExhibitBucket } from "./BucketExhibitForms";
 import { BucketItem, DisclosureItemsParms } from "./BucketItem";
@@ -109,16 +109,17 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
 
 /**
  * Get a consenters database record.
- * @param email 
+ * @param parm 
  * @returns 
  */
-export const getConsenterResponse = async (email:string, includeEntityList:boolean=true): Promise<LambdaProxyIntegrationResponse> => {
+export const getConsenterResponse = async (parm:string|Consenter, includeEntityList:boolean=true): Promise<LambdaProxyIntegrationResponse> => {
+  const email = (typeof (parm ?? '') == 'string') ? parm as string : (parm as Consenter).email;
   if( ! email) {
     return invalidResponse(INVALID_RESPONSE_MESSAGES.missingEmail)
   }
-  const consenterInfo = await getConsenter(email, includeEntityList);
+  const consenterInfo = await getConsenterInfo(parm, includeEntityList);
   if( ! consenterInfo) {
-    return okResponse(`No such consenter: ${email}`);
+    return okResponse(`No such consenter: ${parm}`);
   }
   return okResponse('Ok', consenterInfo);
 }
@@ -129,21 +130,24 @@ export const getConsenterResponse = async (email:string, includeEntityList:boole
  * @returns 
  */
 export const isActiveConsent = (consenter:Consenter):boolean => {
+
   const { consented_timestamp, rescinded_timestamp, renewed_timestamp, active } = consenter;
+  const consented = getMostRecent(consented_timestamp);
   let activeConsent:boolean = false;
-  if(consented_timestamp && `${active}` == YN.Yes) {
+  if(consented && `${active}` == YN.Yes) {
+    const rescinded = getMostRecent(rescinded_timestamp);
+    const renewed = getMostRecent(renewed_timestamp);
+    const consentedDate = ComparableDate(consented);
+    const rescindedDate = ComparableDate(rescinded);
+    const renewedDate = ComparableDate(renewed);
 
-    const consented = ComparableDate(consented_timestamp);
-    const rescinded = ComparableDate(rescinded_timestamp);
-    const renewed = ComparableDate(renewed_timestamp);
-
-    if(consented.after(rescinded) && consented.after(renewed)) {
+    if(consentedDate.after(rescindedDate) && consentedDate.after(renewedDate)) {
       activeConsent = true; // Consent was given
     }
-    if(renewed.after(consented) && renewed.after(rescinded)) {
+    if(renewedDate.after(consentedDate) && renewedDate.after(rescindedDate)) {
       activeConsent = true; // Consent was rescinded but later restored
     }
-    if(rescinded.after(consented) && rescinded.after(renewed)) {
+    if(rescindedDate.after(consentedDate) && rescindedDate.after(renewedDate)) {
       activeConsent = false; // Consent was rescinded
     }
   }
@@ -151,13 +155,19 @@ export const isActiveConsent = (consenter:Consenter):boolean => {
 }
 
 /**
- * Get a consenters database record.
- * @param email 
+ * Get a consenters database record and wrap it in extra computed data.
+ * @param parm 
  * @returns 
  */
-export const getConsenter = async (email:string, includeEntityList:boolean=true): Promise<ConsenterInfo|null> => {
-  const dao = DAOFactory.getInstance({ DAOType: 'consenter', Payload: { email } as Consenter });
-  const consenter = await dao.read({ convertDates: false }) as Consenter;
+export const getConsenterInfo = async (parm:string|Consenter, includeEntityList:boolean=true): Promise<ConsenterInfo|null> => {
+  let consenter;
+  if(typeof parm == 'string') {
+    const dao = DAOFactory.getInstance({ DAOType: 'consenter', Payload: { email:parm } as Consenter });
+    consenter = await dao.read({ convertDates: false }) as Consenter;
+  }
+  else {
+    consenter = parm as Consenter;
+  }
   if( ! consenter) {
     return null;
   }
@@ -191,23 +201,34 @@ export const getConsenter = async (email:string, includeEntityList:boolean=true)
 }
 
 /**
- * Change one of the timestamp fields of the consenter.
+ * Append to one of the timestamp array fields of the consenter.
  * @param email 
- * @param timestampFld 
+ * @param timestampFldName 
  * @returns 
  */
-export const changeTimestamp = async (email:string, timestampFld:string): Promise<LambdaProxyIntegrationResponse> => {
-  if( ! email) {
-    return invalidResponse(INVALID_RESPONSE_MESSAGES.missingEmail)
+export const appendTimestamp = async (consenter:Consenter, timestampFldName:ConsenterFields, active:YN): Promise<LambdaProxyIntegrationResponse> => {
+  if( ! consenter) {
+    return invalidResponse(INVALID_RESPONSE_MESSAGES.noSuchConsenter)
   }
-  const dao = DAOFactory.getInstance({ DAOType: 'consenter', Payload: { 
-    email, 
-    [ timestampFld ]: new Date().toISOString() 
-  } as Consenter });
 
+  // Append a new item to the specified timestamp array of the consenter object
+  const { email } = consenter;
+  const dte = new Date().toISOString();
+  if( ! consenter[timestampFldName]) {
+    consenter = Object.assign(consenter, { [timestampFldName]: [] as string[]})
+  }
+  (consenter[timestampFldName] as string[]).push(dte);
+  
+  // Apply the same change at the backend on the database record
+  const dao = DAOFactory.getInstance({ DAOType: 'consenter', Payload: {
+    email,
+    [timestampFldName]: consenter[timestampFldName],
+    active
+  } as unknown as Consenter });
   await dao.update();
   
-  return getConsenterResponse(email, false);
+  // Return a response with an updated consenter info payload
+  return getConsenterResponse(consenter, false);
 };
 
 /**
@@ -217,12 +238,23 @@ export const changeTimestamp = async (email:string, timestampFld:string): Promis
  */
 export const registerConsent = async (email:string): Promise<LambdaProxyIntegrationResponse> => {
   console.log(`Registering consent for ${email}`);
-  const response = await changeTimestamp(email, ConsenterFields.consented_timestamp);
-  const consenterInfo = JSON.parse(response.body ?? '{}')['payload'] as ConsenterInfo;
+  
+  // Abort if consenter lookup fails
+  let consenterInfo = await getConsenterInfo(email, false) as ConsenterInfo;
+  if( ! consenterInfo) {
+    return invalidResponse(INVALID_RESPONSE_MESSAGES.noSuchConsenter + ' ' + email );
+  }
+
+  const response = await appendTimestamp(
+    consenterInfo.consenter, 
+    ConsenterFields.consented_timestamp,
+    YN.Yes
+  );
+  consenterInfo = JSON.parse(response.body ?? '{}')['payload'] as ConsenterInfo;
   const { consenter } = consenterInfo ?? {};
   if(consenter) {
     // TODO: Mention of a specific entity in the consent form is in question and needs to be resolved with the client.
-    await sendConsent(consenter, 'unknown entity');
+    await sendConsent(consenter, 'any entity');
   }
   return response;
 }
@@ -234,17 +266,57 @@ export const registerConsent = async (email:string): Promise<LambdaProxyIntegrat
  */
 export const renewConsent = async (email:string): Promise<LambdaProxyIntegrationResponse> => {
   console.log(`Renewing consent for ${email}`);
-  return changeTimestamp(email, ConsenterFields.renewed_timestamp);
+  
+  // Abort if consenter lookup fails
+  let consenterInfo = await getConsenterInfo(email, true) as ConsenterInfo;
+  if( ! consenterInfo) {
+    return invalidResponse(INVALID_RESPONSE_MESSAGES.noSuchConsenter + ' ' + email );
+  }
+
+  // Abort if the consenter has not yet consented
+  // if( ! consenterInfo?.activeConsent) {
+  //   if(consenterInfo?.consenter?.active == YN.No) {
+  //     return invalidResponse(INVALID_RESPONSE_MESSAGES.inactiveConsenter);
+  //   }
+  //   return invalidResponse(INVALID_RESPONSE_MESSAGES.missingConsent);
+  // }
+
+  return appendTimestamp(
+    consenterInfo.consenter, 
+    ConsenterFields.renewed_timestamp,
+    YN.Yes
+  );
 }
 
 /**
- * Rescind consent by applying a rescinded_timestamp value to the consenter database record.
+ * Rescind consent by appending a rescinded_timestamp value to the consenter database record.
  * @param email 
  * @returns 
  */
 export const rescindConsent = async (email:string): Promise<LambdaProxyIntegrationResponse> => {
   console.log(`Rescinding consent for ${email}`);
-  return changeTimestamp(email, ConsenterFields.rescinded_timestamp);
+  
+  // Abort if consenter lookup fails
+  const consenterInfo = await getConsenterInfo(email, false) as ConsenterInfo;
+  if( ! consenterInfo) {
+    return invalidResponse(INVALID_RESPONSE_MESSAGES.noSuchConsenter + ' ' + email );
+  }
+
+  // Abort if the consenter has not yet consented
+  if( ! consenterInfo?.activeConsent) {
+    if(consenterInfo?.consenter?.active == YN.No) {
+      return invalidResponse(INVALID_RESPONSE_MESSAGES.inactiveConsenter);
+    }
+    return invalidResponse(INVALID_RESPONSE_MESSAGES.missingConsent);
+  }
+
+  return appendTimestamp(
+    consenterInfo.consenter, 
+    ConsenterFields.rescinded_timestamp,
+    YN.No
+  );
+
+  // TODO: Blank out exhibit forms in db and bucket, and purge the userpool record (client script must also log out).
 };
 
 /**
@@ -269,7 +341,7 @@ export const sendConsent = async (consenter:Consenter, entityName:string): Promi
   let consenterInfo:ConsenterInfo|null;
   if(email && Object.keys(consenter).length == 1) {
     // email was the only piece of information provided about the consenter, so retrieve the rest from the database.
-    consenterInfo = await getConsenter(email, false) as ConsenterInfo;
+    consenterInfo = await getConsenterInfo(email, false) as ConsenterInfo;
     if(consenterInfo) {
       const { consenter: { firstname, middlename, lastname}} = consenterInfo ?? { consenter: {}};
       consenterInfo = { 
@@ -309,7 +381,7 @@ export const saveExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
   }
 
   // Abort if consenter lookup fails
-  const consenterInfo = await getConsenter(email, false) as ConsenterInfo;
+  const consenterInfo = await getConsenterInfo(email, false) as ConsenterInfo;
   if( ! consenterInfo) {
     return invalidResponse(INVALID_RESPONSE_MESSAGES.noSuchConsenter + ' ' + email );
   }
@@ -470,7 +542,7 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
 
   const loadInfoFromDatabase = async () => {
     // Get the consenter
-    const consenterInfo = await getConsenter(email, false) as ConsenterInfo;
+    const consenterInfo = await getConsenterInfo(email, false) as ConsenterInfo;
     const { consenter: _consenter, activeConsent } = consenterInfo ?? {};
 
     // Abort if the consenter has not yet consented
@@ -633,7 +705,7 @@ export const correctExhibitData = async (email:string, exhibitForm:ExhibitForm):
 const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
 
-  const task = Task.SEND_EXHIBIT_FORM as Task;
+  const task = Task.RESCIND_CONSENT as Task;
   let payload = {
     task,
     parameters: {

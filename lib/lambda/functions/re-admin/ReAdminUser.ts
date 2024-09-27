@@ -369,12 +369,10 @@ export const inviteUser = async (user:User, inviterRole:Role, linkGenerator:Func
     // Send the invitation
     if( await emailInvite.send()) {
       const msg = `Invitation successfully sent: ${emailInvite.code}`
-      log(msg);
       return okResponse(msg, { invitation_code: emailInvite.code, invitation_link: emailInvite.link });
     }
     else {
       const msg = `Invitation failure: ${emailInvite.code}`;
-      log(msg);
       return errorResponse(msg);
     } 
   }

@@ -933,6 +933,14 @@
             <!--                  RE_AUTH_IND                   -->
             <!---------------------------------------------------->
             <div id="app-section-RE_AUTH_IND" style="display:none;">
+              <ul class="nav nav-tabs" id="authInd" role="tablist">
+                <li class="nav-item">
+                  <a class="nav-link active" id="auth-request-exhibits-tab" data-toggle="tab" href="#auth-request-exhibits" role="tab" aria-controls="auth-request-exhibits-link" aria-selected="true">Request Exhibit Forms</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" id="auth-request-disclosures-tab" data-toggle="tab" href="#auth-request-disclosures" role="tab" aria-controls="auth-request-disclosures-link" aria-selected="true">Request Disclosure Forms</a>
+                </li>
+              </ul>
               <h3 class="display-7 fw-bold">Welcome <span id="RE_AUTH_IND_username"></span></h3>
               <h3 class="display-7 fw-bold">Authorized Individual</h3>
 
@@ -943,29 +951,48 @@
                   Please revisit later.
                 </p>
               </div>
-              <div id="disclosureRequest" style="margin-top: 40px;">
-                <table class="disclosureRequest" style="width:fit-content; margin: 0 auto;">
-                  <tr>
-                    <th colspan="3">Make a disclosure request<br><hr></th>
-                  </tr>
-                  <tr>
-                    <td style="text-align: right;">Consenting individual email</td>
-                    <td colspan="2">
-                      <input id="disclosureRequestConsenterEmail" type="text" class="form-control">
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="text-align: right;">Affiliate of the consenting individual email</td>
-                    <td>
-                      <input id="disclosureRequestAffiliateEmail" type="text" class="form-control">
-                    </td>
-                    <td>
-                      <button id="btnSendDisclosureRequest" class="btn btn-primary btn-lg" type="button">Send <i class="bi-send-check"></i></button>
-                    </td>
-                  </tr>
-                </table>
+
+              <div class="tab-content" id="authIndContent">
+                <div class="tab-pane fade show active" id="auth-request-exhibits" role="tabpanel" aria-labelledby="auth-request-exhibits-tab">
+                  <div id="exhibitsRequest" style="margin-top: 40px; overflow: auto;">
+                    <div style="width:400px; margin:10px; display:inline;">
+                      <button id="consentersDropdownButton" style="height:66px;" class="btn btn-dark btn-lg dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Individuals who have registered consent with ETT:
+                      </button>
+                      <div id="consentersDropdownList" class="dropdown-menu" aria-labelledby="consentersDropdownButton">
+                      </div>
+                    </div>
+                    <button id="btnSendExhibitsRequest" style="display:inline;" class="btn btn-primary btn-lg" type="button">Send <i class="bi-send-check"></i></button>
+                  </div>
+                </div>
+                <div class="tab-pane fade" id="auth-request-disclosures" role="tabpanel" aria-labelledby="auth-request-disclosures-tab">
+                  <div id="disclosureRequest" style="margin-top: 40px;">
+                    <table class="disclosureRequest" style="width:fit-content; margin: 0 auto;">
+                      <tr>
+                        <th colspan="3">Make a disclosure request<br><hr></th>
+                      </tr>
+                      <tr>
+                        <td style="text-align: right;">Consenting individual email</td>
+                        <td colspan="2">
+                          <input id="disclosureRequestConsenterEmail" type="text" class="form-control">
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="text-align: right;">Affiliate of the consenting individual email</td>
+                        <td>
+                          <input id="disclosureRequestAffiliateEmail" type="text" class="form-control">
+                        </td>
+                        <td>
+                          <button id="btnSendDisclosureRequest" class="btn btn-primary btn-lg" type="button">Send <i class="bi-send-check"></i></button>
+                        </td>
+                      </tr>
+                    </table>
+                  </div>
+                </div>                
               </div>
             </div>
+
+
 
 
             <!---------------------------------------------------->
@@ -973,6 +1000,7 @@
             <!---------------------------------------------------->
             <div id="app-section-CONSENTING_PERSON" style="display:none">
               <div style="font-weight: bold; position: relative; top: -40px;">Welcome <span id="CONSENTING_PERSON_username">[Insert Username]</span></div>
+              <div id="waitForAI" style="font-weight: bold; position: relative; top: -20px; display:none;">An authorized individual will provide to you a link for exhibit form entry soon.</span></div>
               <div style="overflow:auto">
                 <ul class="nav nav-tabs" id="consenter" role="tablist">
                   <li class="nav-item">
@@ -1498,8 +1526,15 @@
     
     const localTesting = () => /^STATIC_PARAMETERS_.*$/.test(STATIC_PARAMETERS);
     const clientId = () => { return STATIC_PARAMETERS.ROLES[selected_role].CLIENT_ID; }
-    const redirectUri = () => { return STATIC_PARAMETERS.ROLES[selected_role].REDIRECT_URI; }
     const apiUri = () => { return STATIC_PARAMETERS.ROLES[selected_role].API_URI; }
+    const redirectUri = () => {
+      const defaultUri = STATIC_PARAMETERS.ROLES[selected_role].REDIRECT_URI;
+      if(selected_role == 'CONSENTING_PERSON' && document.location.pathname == '/consenter/exhibits/index.htm') {
+        const domain = defaultUri.substring(0, defaultUri.indexOf('/'));
+        return `${domain}/consenter/exhibits/index.htm`;
+      }
+      return defaultUri;
+    }
 
     const roleChange = () => {
       selected_role = document.forms['formRole']['rdoRole'].value;
@@ -1526,6 +1561,9 @@
     let RefreshJwtCookie;
 
     const getSelectedRole = () => {
+      if(document.location.pathname == '/consenter/exhibits/index.htm') {
+        return 'CONSENTING_PERSON';
+      }
       let role = new URL(document.location.href).searchParams.get('selected_role');
       if(role) return role;
       if(AccessJwtCookie && !AccessJwtCookie.jwtExpired()) {
@@ -1546,6 +1584,8 @@
     let consenterInfo;
 
     let selectedEntity;
+
+    let selectedConsenter;
 
     const rdoRoles = document.getElementsByName('rdoRole');
     rdoRoles.forEach(rdoRole => {
@@ -2213,20 +2253,37 @@
           const { consenter, entities } = payload;
           const { active, consented_timestamp, renewed_timestamp, rescinded_timestamp, email } = consenter ?? {};
 
+          /** Get the most recent date from an array of iso formatted date strings */
+          const getMostRecent = (timestamps=[]) => {
+            if(timestamps.length == 0) {
+              return;
+            }
+            timestamps.sort((a, b) => {
+              const dateA = new Date(a);
+              const dateB = new Date(b);
+              return dateB.getTime() - dateA.getTime();
+            });
+            return timestamps[0];
+          }
+
           const lastAction = () => {
-            const consented = new ComparableDate(consented_timestamp);
-            const rescinded = new ComparableDate(rescinded_timestamp);
-            const renewed = new ComparableDate(renewed_timestamp);
+            const consented = getMostRecent(consented_timestamp);
+            const rescinded = getMostRecent(rescinded_timestamp);
+            const renewed = getMostRecent(renewed_timestamp);
+
+            const consentedDate = new ComparableDate(consented);
+            const rescindedDate = new ComparableDate(rescinded);
+            const renewedDate = new ComparableDate(renewed);
             if(active == 'N') {
               return 'deactivated';
             }
-            if(consented.after(rescinded) && consented.after(renewed)) {
+            if(consentedDate.after(rescindedDate) && consentedDate.after(renewedDate)) {
               return 'consented';
             }
-            if(renewed.after(consented) && renewed.after(rescinded)) {
+            if(renewedDate.after(consentedDate) && renewedDate.after(rescindedDate)) {
               return 'renewed';
             }
-            if(rescinded.after(consented) && rescinded.after(renewed)) {
+            if(rescindedDate.after(consentedDate) && rescindedDate.after(renewedDate)) {
               return 'rescinded';
             }
             return task == 'correct-consent' ? 'corrected' : 'none';
@@ -2252,14 +2309,23 @@
 
           // Show the buttons used to renew, rescind, or edit consent
           showPostConsentFields = (lastAction) => {
-            const timestamp = renewed_timestamp ?? consented_timestamp;
+            const timestamp = getMostRecent(renewed_timestamp) ?? getMostRecent(consented_timestamp);
             const consentMsg = `Consent ${lastAction} at: ${timestamp}`;
             const color = lastAction == 'rescinded' ? 'red' : 'green';
             show('consentRescind');
             show('consentRenew');
             show('consentCorrect');
             show('consentSend');
-            show('consenter-exhibit-link');
+            if(document.location.pathname == '/consenter/exhibits/index.htm') {
+              show('consenter-exhibit-link');
+              populateExhibitFormSignoffFields();
+              document.getElementById('waitForAI').style.display = 'none';
+              document.getElementById('consenter-exhibit-link').click();
+            }
+            else {
+              hide('consenter-exhibit-link');
+              document.getElementById('waitForAI').style.display = 'inline';
+            }
             show('consentOptions');
             hide('consentFieldSet');
             fill('consentSendEmail', email);
@@ -2267,11 +2333,11 @@
           };
 
           // Hide all consent options
-          hideConsentFields = () => {
-            document.getElementById('consenter-exhibit-link').style.display = 'none';
-            document.getElementById('consentFieldSet').style.display = 'none';
-            document.getElementById('consentOptions').style.display = 'none';
-            fill('apiResponse', `${email} found to be deactivated`);
+          hidePostConsentFields = () => {
+            hide('consenter-exhibit-link');
+            hide('consentOptions');
+            hide('consentFieldSet');
+            fill('apiResponse', `${email} found to be deactivated (has not yet submitted consent)`);
           }
 
           let _lastAction = lastAction();
@@ -2296,7 +2362,7 @@
               hide('consenter-exhibit-link');
               break;
             case 'deactivated':
-              hideConsentFields();
+              // hidePostConsentFields();
               break;
           }
          }
@@ -2572,7 +2638,7 @@
           email: "roger@warnerbros.com",
           phone_number: '+6174448888',
           active: 'Y',
-          consented_timestamp: "2024-07-05T17:16:31.352Z",
+          consented_timestamp: [ "2024-07-05T17:16:31.352Z" ],
           create_timestamp: "2024-07-05T16:24:56.068Z",
           exhibit_forms: [
             { entity_id: entityId1, affiliates: [ affiliate1, affiliate2, affiliate3 ] },
@@ -2623,6 +2689,14 @@
       document.querySelector('#spanRequestingEntity').innerText = '[INSERT NAME]';
     }
 
+    function populateExhibitFormSignoffFields() {
+      var { fullName, consenter: { email, phone_number }} = consenterInfo;
+      document.querySelector('#txtExhibitFullname').value = fullName;
+      document.querySelector('#txtExhibitEmail').value = email;
+      document.querySelector('#txtExhibitPhone').value = phone_number;
+      document.querySelector('#txtExhibitSignature').value = 'My Signature';      
+    }
+
     /**
      * Fill out the exhibit form with an item from the consenters exhibit_forms collection.
      */
@@ -2639,6 +2713,8 @@
       const exhibit_form = exhibit_forms.find(ef => {
         return ef.entity_id == selectedEntity.entity_id;
       });
+
+      populateExhibitFormSignoffFields();
 
       if( ! exhibit_form) {
         return
@@ -2665,12 +2741,6 @@
           setValue('poc-phone', i, a.phone_number);
         }
       }
-
-      var { fullName, consenter: { email, phone_number }} = consenterInfo;
-      document.querySelector('#txtExhibitFullname').value = fullName;
-      document.querySelector('#txtExhibitEmail').value = email;
-      document.querySelector('#txtExhibitPhone').value = phone_number;
-      document.querySelector('#txtExhibitSignature').value = 'My Signature';
     }
 
     /**
@@ -3394,6 +3464,98 @@
     }
 
     /**
+     * Populate the picklist that is available for authorized individuals to select from when
+     * choosing a consenting individual to whom they want to prompt via email for exhibit forms.
+     */
+    const populateConsenters = async () => {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+        const role = AccessJwtCookie.getRole().name;
+
+        const response = await fetch(apiUri(role), {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({ 
+              task: 'get-consenter-list', 
+              parameters: { fragment: undefined } 
+            })
+          }
+        });
+
+        const package = await response.json();
+        const { message, payload } = package;
+        if(payload.ok) {
+          const lbx = document.getElementById('consentersDropdownList');
+          lbx.innerHTML = '';
+          payload.consenters.forEach(consenter => {
+            const { email, fullname } = consenter;
+            const a = document.createElement("a");
+            a.id = email;
+            a.name = email;
+            a.className = 'dropdown-item';
+            a.href = '#';
+            a.innerHTML = `<b>${fullname}</b>, <span style='font-style:italic;'>(${email})</span>`;
+            lbx.appendChild(a);
+          })
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
+    const sendExhibitFormRequest = async () => {
+      if( ! selectedConsenter) {
+        alert('Please select a consenting individual');
+        return;
+      }
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+        const role = AccessJwtCookie.getRole().name;
+        const { entity } = userContext;
+        const { entity_id, entity_name } = (entity ?? {});
+
+        document.body.style.cursor = 'progress';
+        const response = await fetch(apiUri(role), {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({ 
+              task: 'send-exhibit-form-request', 
+              parameters: { consenterEmail:selectedConsenter, entity_id } 
+            })
+          }
+        });
+
+        const package = await response.json();
+        document.body.style.cursor = 'default';
+
+        const { message, payload } = package;
+        if(payload.ok) {
+          alert('Request sent!');
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
+    /**
      * This function serves as a utility object for processing JWTs received from cognito and the cookies they are stored in.
      */
     const JwtCookie = function(cookieName) {
@@ -3428,7 +3590,7 @@
           return;
         }
         const expires = `; expires=${expirationDate.toUTCString()}`;
-        const cookieValue = encodeURIComponent(jwt) + expires + secureFlag + '; SameSite=Strict';
+        const cookieValue = encodeURIComponent(jwt) + expires + secureFlag + '; path=/; SameSite=Strict';
         document.cookie = `${cookieName}=${cookieValue}`;
         // Now that the cookie is set and we have the JWT, we don't need the state and code verfier values anymore.
         const storage = window.sessionStorage;
@@ -3650,7 +3812,13 @@
         $(this).tab('show')
       });
 
-      // Add show/hide behavior to the RE_ADMIN tabstrip
+      // Add show/hide behavior to the RE_AUTH_IND tabstrip
+      $('#authInd a').on('click', function (e) {
+        e.preventDefault()
+        $(this).tab('show')
+      });
+
+      // Add show/hide behavior to the CONSENTER tabstrip
       $('#consenter a').on('click', function (e) {
         e.preventDefault()
         $(this).tab('show')
@@ -3669,7 +3837,22 @@
           populateExhibitForm();
           toggleHighlight(document.querySelector('#requestingEntityDropdown'));
         }
-      })
+      });
+
+      // Add behavior to selection activity on the consenter picklist for exhibit form requests
+      $('#consentersDropdownButton').on('hide.bs.dropdown', function () {
+        const a = event.srcElement.parentElement;
+        const button = document.getElementById('consentersDropdownButton');
+        if(a.tagName == 'A' && a.name && a.id) {
+          button.innerHTML = a.innerHTML;
+          selectedConsenter = a.name;
+        }
+      });
+
+      // Add an event handler for the button to send exhibit form requests to consenters.
+      $('#btnSendExhibitsRequest').on('click', async () => {
+        await sendExhibitFormRequest();
+      });
 
       if(selected_role == 'SYS_ADMIN') {
         await buildConfigurationsTable();
@@ -3760,10 +3943,25 @@
                 if(entity_name) {
                   document.getElementById('disclosureRequestEntityName').innerText = entity_name;
                 }
-                const divs = document.querySelectorAll(`#disclosureRequest table`).forEach(d => d.style.color = '#cccccc');
-                const inputs = document.querySelectorAll(`#disclosureRequest input`).forEach(i => i.disabled = true);
-                const buttons = document.querySelectorAll(`#disclosureRequest button`).forEach(b => b.disabled = true);
+                document.querySelectorAll(`#disclosureRequest table`).forEach(d => d.style.color = '#cccccc');
+                document.querySelectorAll(`#disclosureRequest input`).forEach(i => i.disabled = true);
+                document.querySelectorAll(`#disclosureRequest button`).forEach(b => b.disabled = true);
+                document.querySelectorAll(`#exhibitsRequest select`).forEach(i => i.disabled = true);
+                document.querySelectorAll(`#exhibitsRequest button`).forEach(b => b.disabled = true);
               }
+              const checkConsenterListing = async () => {
+                const exhibitsTabFocus = document.getElementById('auth-request-exhibits').className.includes('show');
+                if(exhibitsTabFocus) {
+                  const items = document.querySelectorAll('consentersDropdownList a');
+                  if( !items || items.length == 0) {
+                    await populateConsenters();
+                  }
+                }
+              }
+              await checkConsenterListing();
+              document.getElementById('auth-request-exhibits-tab').addEventListener('show.bs.tab', async event => {
+                await checkConsenterListing();
+              });
               break;
             
             case 'CONSENTING_PERSON':
@@ -3790,6 +3988,10 @@
         else if(!AccessJwtCookie.jwtExpired()) {
           setName(AccessJwtCookie.getRole(), IDJwtCookie.getUser())
           await showAppForRole();        
+        }
+        else if(document.location.pathname == '/consenter/exhibits/index.htm') {
+          // Not signed in and is consenter coming in on the "private" link emailed to them by AI
+          signIn(); 
         }
         else if(!RefreshJwtCookie.jwtExpired()) {
           // TODO: Use the refresh token to restore access.
@@ -3827,8 +4029,12 @@
 
         case 'login':
           await exchangeAuthorizationCode(checkAuth);
-          // Redirect back to the plain root url to shed the action, code, and state parameters
-          document.location.href = document.location.origin;
+          // Redirect back to the root url and path (minus querystring) to shed the action, code, and state parameters
+          let href = document.location.origin;
+          if(document.location.pathname == '/consenter/exhibits/index.htm') {
+            href = `${href}/consenter/exhibits/index.htm`;
+          }
+          document.location.href = href;
           break;
 
         case 'post-signup':

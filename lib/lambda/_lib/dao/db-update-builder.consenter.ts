@@ -38,22 +38,39 @@ export const consenterUpdate = (TableName:string, _new:Consenter, old:Consenter=
     const updates = [] as any[];
     for(fld in ConsenterFields) {
       if(key[fld]) continue;
-      if(fld == ConsenterFields.exhibit_forms) {
-        const newForms = _new.exhibit_forms ?? [];
-        const oldForms = old.exhibit_forms ?? [];
-        if( ! deepEquals(newForms, oldForms)) {
+      switch(fld) {
+
+        case ConsenterFields.exhibit_forms:
+          const newForms = _new.exhibit_forms ?? [];
+          const oldForms = old.exhibit_forms ?? [];
+          if( ! deepEquals(newForms, oldForms)) {
+            input.ExpressionAttributeNames![`#${fld}`] = fld;
+            input.ExpressionAttributeValues![`:${fld}`] = convertToApiObject(newForms);
+            updates.push({ [`#${fld}`]: `:${fld}`});
+          }
+          break;
+
+        case ConsenterFields.consented_timestamp:
+        case ConsenterFields.renewed_timestamp:
+        case ConsenterFields.rescinded_timestamp:
+          if( ! _new[fld]) continue;
           input.ExpressionAttributeNames![`#${fld}`] = fld;
-          input.ExpressionAttributeValues![`:${fld}`] = convertToApiObject(newForms);
+          let converted = convertToApiObject(_new[fld]);
+          if( ! converted || Object.keys(converted).length == 0) {
+            converted = { L: [] }; // Prefer an empty array over an empty object
+          }
+          input.ExpressionAttributeValues![`:${fld}`] = converted;
           updates.push({ [`#${fld}`]: `:${fld}`});
-        }
-      }
-      else {
-        if( ! _new[fld]) continue;
-        if(_new[fld] != old[fld]) { // Add to expressions only if the field has changed in value.
-          input.ExpressionAttributeNames![`#${fld}`] = fld;
-          input.ExpressionAttributeValues![`:${fld}`] = wrap(_new[fld]);
-          updates.push({ [`#${fld}`]: `:${fld}`});
-        }
+          break;
+
+        default:
+          if( ! _new[fld]) continue;
+          if(_new[fld] != old[fld]) { // Add to expressions only if the field has changed in value.
+            input.ExpressionAttributeNames![`#${fld}`] = fld;
+            input.ExpressionAttributeValues![`:${fld}`] = wrap(_new[fld]);
+            updates.push({ [`#${fld}`]: `:${fld}`});
+          }
+          break;
       }
     }
 

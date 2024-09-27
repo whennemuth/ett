@@ -10,7 +10,7 @@ export const getConsenter = (dummyDate:string) => {
   return {
     email: 'cp1@warhen.work',
     active: YN.Yes,
-    consented_timestamp: dummyDate,
+    consented_timestamp: [ dummyDate ],
     create_timestamp: dummyDate,
     firstname: 'Mickey',
     lastname: 'Mouse',

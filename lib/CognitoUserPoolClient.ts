@@ -1,6 +1,6 @@
 import { Duration } from "aws-cdk-lib";
 import { OAuthScope, UserPool, UserPoolClient, UserPoolClientIdentityProvider, UserPoolClientProps } from "aws-cdk-lib/aws-cognito";
-import { Role } from './lambda/_lib/dao/entity';
+import { Role, Roles } from './lambda/_lib/dao/entity';
 import { Actions } from "./role/AbstractRole";
 import { IContext } from "../contexts/IContext";
 
@@ -31,24 +31,30 @@ export class EttUserPoolClient extends UserPoolClient {
       scopes = scopes.concat(customScopes);
     }
 
+    const callbackUrls = [
+      `https://${callbackDomainName}/index.htm`,
+      `https://${callbackDomainName}/index.htm?action=${Actions.login}&selected_role=${role}`,
+      `https://${callbackDomainName}/index.htm?action=${Actions.post_signup}&selected_role=${role}`,
+    ] as string[];
+
+    const logoutUrls = [
+      `https://${callbackDomainName}/index.htm?action=${Actions.logout}`,
+    ] as string[];
+
+    if(role == Roles.CONSENTING_PERSON) {
+      callbackUrls.push(`https://${callbackDomainName}/consenter/exhibits/index.htm?action=${Actions.login}&selected_role=${role}`);
+      logoutUrls.push(`https://${callbackDomainName}/consenter/exhibits/index.htm?action=${Actions.logout}`)
+    }
+
     const client = new EttUserPoolClient(userPool, id, {
       userPool,
       userPoolClientName: `${role}-${STACK_ID}-${Landscape}-userpool-client`,
       supportedIdentityProviders: [ UserPoolClientIdentityProvider.COGNITO ],
       oAuth: {
-        flows: {
-          authorizationCodeGrant: true,
-          implicitCodeGrant: false
-        },
+        flows: { authorizationCodeGrant: true, implicitCodeGrant: false },
         scopes,
-        callbackUrls: [
-          `https://${callbackDomainName}/index.htm`,
-          `https://${callbackDomainName}/index.htm?action=${Actions.login}&selected_role=${role}`,
-          `https://${callbackDomainName}/index.htm?action=${Actions.post_signup}&selected_role=${role}`,
-        ],
-        logoutUrls: [
-          `https://${callbackDomainName}/index.htm?action=${Actions.logout}`,
-        ]
+        callbackUrls,
+        logoutUrls
       },
       accessTokenValidity: Duration.days(1),
       idTokenValidity: Duration.days(1),

@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import { App, CfnOutput, RemovalPolicy, StackProps, Tags } from 'aws-cdk-lib';
+import { BlockPublicAccess, Bucket } from 'aws-cdk-lib/aws-s3';
+import { BuildOptions, build } from 'esbuild';
 import 'source-map-support/register';
 import { IContext, SCENARIO } from '../contexts/IContext';
 import * as ctx from '../contexts/context.json';
@@ -7,13 +9,12 @@ import { AbstractStack } from '../lib/AbstractStack';
 import { ApiConstruct, ApiConstructParms } from '../lib/Api';
 import { CloudfrontConstruct, CloudfrontConstructProps } from '../lib/Cloudfront';
 import { CognitoConstruct } from '../lib/Cognito';
+import { DelayedExecutionLambdaParms, DelayedExecutionLambdas } from '../lib/DelayedExecution';
 import { DynamoDbConstruct } from '../lib/DynamoDb';
 import { SignupApiConstruct, SignupApiConstructParms } from '../lib/SignupApi';
 import { StaticSiteConstruct } from '../lib/StaticSite';
 import { StaticSiteCustomInConstruct, StaticSiteCustomInConstructParms } from '../lib/StaticSiteCustomIn';
 import { Roles } from '../lib/lambda/_lib/dao/entity';
-import { BlockPublicAccess, Bucket } from 'aws-cdk-lib/aws-s3';
-import { DelayedExecutionLambdaParms, DelayedExecutionLambdas } from '../lib/DelayedExecution';
 
 const context:IContext = <IContext>ctx;
 
@@ -27,7 +28,28 @@ const stackProps: StackProps = {
   description: 'Ethical transparency tool',
   env: { account, region },
   tags: { Service, Function, Landscape }
-}
+};
+
+/**
+ * Gotta build the lambda code asset manually due to using EdgeLambda instead of NodejsFunction
+ * if the region is not us-east-1
+ * @param context 
+ */
+if( context.REGION != 'us-east-1' ) {
+  const { EDGE_VIEWER_REQUEST_CODE_FILE:outfile } = CloudfrontConstruct;
+
+  (async () => {
+    await build({
+      entryPoints: ['lib/lambda/functions/cloudfront/ViewerRequest.ts'],
+      write: true,
+      outfile,
+      bundle: true,
+      platform: 'node',
+      external: ['@aws-sdk/*']
+    } as BuildOptions);
+  })();
+};
+
 
 const stack:AbstractStack = new AbstractStack(app, stackName, stackProps);
 
@@ -156,4 +178,5 @@ switch(scenario) {
     buildDynamoDb();
     break;
 }
+
 

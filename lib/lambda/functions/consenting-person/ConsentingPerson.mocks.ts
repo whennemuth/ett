@@ -157,7 +157,7 @@ export function DaoMock(originalModule: any) {
                 switch(consentState) {
                   case ConsentState.OK:
                     consenter = Object.assign(consenter, sylvesterTheCat);
-                    consenter.consented_timestamp = new Date().toISOString();
+                    consenter.consented_timestamp = [ new Date().toISOString() ];
                     break;
                   case ConsentState.NONE:
                     consenter = Object.assign(consenter, sylvesterTheCat);
@@ -165,18 +165,18 @@ export function DaoMock(originalModule: any) {
                   case ConsentState.RESCINDED:
                     consented = new Date(retracted.getTime() - day);
                     consenter = Object.assign(consenter, sylvesterTheCat);
-                    consenter.consented_timestamp = consented.toISOString();
-                    consenter.rescinded_timestamp = retracted.toISOString();
+                    consenter.consented_timestamp = [ consented.toISOString() ];
+                    consenter.rescinded_timestamp = [ retracted.toISOString() ];
                     break;
                   case ConsentState.RESTORED:
                     consented = new Date(retracted.getTime() + day);
                     consenter = Object.assign(consenter, sylvesterTheCat);
-                    consenter.consented_timestamp = consented.toISOString();
-                    consenter.rescinded_timestamp = retracted.toISOString();
+                    consenter.consented_timestamp = [ consented.toISOString() ];
+                    consenter.rescinded_timestamp = [ retracted.toISOString() ];
                     break;
                   case ConsentState.INACTIVE:
                     consenter = Object.assign(consenter, sylvesterTheCat);
-                    consenter.consented_timestamp = new Date().toISOString();
+                    consenter.consented_timestamp = [ new Date().toISOString() ];
                     consenter.active = YN.No;
                     break;
                   default:

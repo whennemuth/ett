@@ -107,14 +107,14 @@ const grabFromBucketAndSend = async (parms:DisclosureEmailParms):Promise<boolean
   }
   const singleExhibitForm = new class implements IPdfForm {
     async getBytes(): Promise<Uint8Array> {
-      const bucket = new ExhibitBucket(new BucketItem({ email:consenterEmail }, 'ett-dev-exhibit-forms'));
+      const bucket = new ExhibitBucket(new BucketItem({ email:consenterEmail } as Consenter, 'ett-dev-exhibit-forms'));
       return bucket.get(s3ObjectKeyForExhibitForm);
     }
   }();
 
   const disclosureForm = new class implements IPdfForm {
     async getBytes(): Promise<Uint8Array> {
-      const bucket = new DisclosureFormBucket(new BucketItem({ email:consenterEmail }, 'ett-dev-exhibit-forms'));
+      const bucket = new DisclosureFormBucket(new BucketItem({ email:consenterEmail } as Consenter, 'ett-dev-exhibit-forms'));
       return bucket.get(s3ObjectKeyForDisclosureForm);
     }
   }();
@@ -190,7 +190,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_SEND_DISCLOSURE_FORM') {
   const test_disclosure_data = {
     consenter: { 
       email: 'foghorn@warnerbros.com', phone_number: '617-222-4444', active: YN.Yes,
-      firstname: 'Foghorn', middlename: 'F', lastname: 'Leghorn', consented_timestamp: new Date().toISOString()
+      firstname: 'Foghorn', middlename: 'F', lastname: 'Leghorn', consented_timestamp: [ new Date().toISOString() ]
     },
     disclosingEntity: { name: 'Boston University', representatives: [ daffyduck, yosemitesam ] },
     requestingEntity: { name: 'Northeastern University', authorizedIndividuals: [ bugsbunny ] }
