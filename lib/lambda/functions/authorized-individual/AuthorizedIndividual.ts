@@ -4,9 +4,9 @@ import { DelayedExecutions } from "../../../DelayedExecution";
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { Configurations } from "../../_lib/config/Config";
-import { DAOFactory, DAOUser } from "../../_lib/dao/dao";
+import { DAOConsenter, DAOFactory, DAOUser } from "../../_lib/dao/dao";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
-import { ConfigNames, Consenter, Entity, Roles, User } from "../../_lib/dao/entity";
+import { ConfigNames, Consenter, Entity, Roles, User, YN } from "../../_lib/dao/entity";
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
@@ -16,11 +16,14 @@ import { DisclosureRequestReminderLambdaParms } from "../delayed-execution/SendD
 import { lookupEntity } from "../re-admin/ReAdminUser";
 import { DemolitionRecord, EntityToDemolish } from "./Demolition";
 import { DisclosureEmailParms, DisclosureRequestEmail } from "./DisclosureRequestEmail";
+import { PdfForm } from "../../_lib/pdf/PdfForm";
+import { ExhibitFormRequestEmail } from "./ExhibitFormRequestEmail";
 
 export enum Task {
   LOOKUP_USER_CONTEXT = 'lookup-user-context',
   DEMOLISH_ENTITY = 'demolish-entity',
   SEND_DISCLOSURE_REQUEST = 'send-disclosure-request',
+  SEND_EXHIBIT_FORM_REQUEST = 'send-exhibit-form-request',
   GET_CONSENTERS = 'get-consenter-list',
   PING = 'ping'
 };
@@ -58,6 +61,10 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
         case Task.DEMOLISH_ENTITY:
           var { entity_id, dryRun=false, notify=true } = parameters;
           return await demolishEntity(entity_id, notify, dryRun);
+
+        case Task.SEND_EXHIBIT_FORM_REQUEST:
+          var { consenterEmail, entity_id } = parameters;
+          return await sendExhibitFormRequest(consenterEmail, entity_id);
 
         case Task.SEND_DISCLOSURE_REQUEST:
           var { consenterEmail, entity_id, affiliateEmail } = parameters;
@@ -206,6 +213,58 @@ const getSysAdminEmail = async ():Promise<string|null> => {
   return null;
 }
 
+/**
+ * Get a list of active consenting individuals whose name begins with the 
+ * specified fragment of text.
+ * @param fragment 
+ * @returns 
+ */
+export const getConsenterList = async (fragment?:string):Promise<LambdaProxyIntegrationResponse> => {
+  const dao:DAOConsenter = DAOFactory.getInstance({
+    DAOType: "consenter", Payload: { active: YN.Yes } as Consenter
+  }) as DAOConsenter;
+  const consenters = await dao.read() as Consenter[] ?? [] as Consenter[];
+  const mapped = consenters.map(consenter => {
+    const { email, firstname, middlename, lastname } = consenter;
+    const fullname = PdfForm.fullName(firstname, middlename, lastname);
+    if( ! fragment) {
+      return { email, fullname };
+    }
+    const match = fullname.toLocaleUpperCase().includes(fragment.toLocaleLowerCase());
+    return match ? { email, fullname } : undefined;
+  }).filter(s => { return s != undefined });
+  return okResponse('Ok', { consenters:mapped });
+}
+
+/**
+ * Send an email to a consenting individual to prompt them to submit their exhibit form through ETT.
+ * @param consenterEmail 
+ * @param entity_id 
+ * @returns 
+ */
+export const sendExhibitFormRequest = async (consenterEmail:string, entity_id:string):Promise<LambdaProxyIntegrationResponse> => {
+
+  const cloudfrontDomain = process.env.CLOUDFRONT_DOMAIN;
+  if( ! cloudfrontDomain) {
+    return errorResponse('Email failure for exhibit form request: CLOUDFRONT_DOMAIN environment variable not set!');
+  }
+  const sent = await new ExhibitFormRequestEmail(consenterEmail, entity_id, cloudfrontDomain).send();
+
+  // Bail out if the email failed
+  if( ! sent) {
+    return errorResponse(`Email failure for exhibit form request: ${JSON.stringify({ consenterEmail, entity_id }, null, 2)}`);
+  }
+  
+  return okResponse('Ok', {});
+}
+
+/**
+ * Send a disclosure request email to affiliates with the required attachments.
+ * @param consenterEmail 
+ * @param entity_id 
+ * @param affiliateEmail 
+ * @returns 
+ */
 export const sendDisclosureRequest = async (consenterEmail:string, entity_id:string, affiliateEmail:string):Promise<LambdaProxyIntegrationResponse> => {
 
   const envVarName = DelayedExecutions.DisclosureRequestReminder.targetArnEnvVarName;

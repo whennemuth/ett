@@ -2318,6 +2318,7 @@
             show('consentSend');
             if(document.location.pathname == '/consenter/exhibits/index.htm') {
               show('consenter-exhibit-link');
+              populateExhibitFormSignoffFields();
               document.getElementById('waitForAI').style.display = 'none';
               document.getElementById('consenter-exhibit-link').click();
             }
@@ -2332,11 +2333,11 @@
           };
 
           // Hide all consent options
-          hideConsentFields = () => {
-            document.getElementById('consenter-exhibit-link').style.display = 'none';
-            document.getElementById('consentFieldSet').style.display = 'none';
-            document.getElementById('consentOptions').style.display = 'none';
-            fill('apiResponse', `${email} found to be deactivated`);
+          hidePostConsentFields = () => {
+            hide('consenter-exhibit-link');
+            hide('consentOptions');
+            hide('consentFieldSet');
+            fill('apiResponse', `${email} found to be deactivated (has not yet submitted consent)`);
           }
 
           let _lastAction = lastAction();
@@ -2361,7 +2362,7 @@
               hide('consenter-exhibit-link');
               break;
             case 'deactivated':
-              hideConsentFields();
+              // hidePostConsentFields();
               break;
           }
          }
@@ -2688,6 +2689,14 @@
       document.querySelector('#spanRequestingEntity').innerText = '[INSERT NAME]';
     }
 
+    function populateExhibitFormSignoffFields() {
+      var { fullName, consenter: { email, phone_number }} = consenterInfo;
+      document.querySelector('#txtExhibitFullname').value = fullName;
+      document.querySelector('#txtExhibitEmail').value = email;
+      document.querySelector('#txtExhibitPhone').value = phone_number;
+      document.querySelector('#txtExhibitSignature').value = 'My Signature';      
+    }
+
     /**
      * Fill out the exhibit form with an item from the consenters exhibit_forms collection.
      */
@@ -2704,6 +2713,8 @@
       const exhibit_form = exhibit_forms.find(ef => {
         return ef.entity_id == selectedEntity.entity_id;
       });
+
+      populateExhibitFormSignoffFields();
 
       if( ! exhibit_form) {
         return
@@ -2730,12 +2741,6 @@
           setValue('poc-phone', i, a.phone_number);
         }
       }
-
-      var { fullName, consenter: { email, phone_number }} = consenterInfo;
-      document.querySelector('#txtExhibitFullname').value = fullName;
-      document.querySelector('#txtExhibitEmail').value = email;
-      document.querySelector('#txtExhibitPhone').value = phone_number;
-      document.querySelector('#txtExhibitSignature').value = 'My Signature';
     }
 
     /**
@@ -3507,6 +3512,48 @@
       }
     }
 
+    const sendExhibitFormRequest = async () => {
+      if( ! selectedConsenter) {
+        alert('Please select a consenting individual');
+        return;
+      }
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+        const role = AccessJwtCookie.getRole().name;
+        const { entity } = userContext;
+        const { entity_id, entity_name } = (entity ?? {});
+
+        document.body.style.cursor = 'progress';
+        const response = await fetch(apiUri(role), {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({ 
+              task: 'send-exhibit-form-request', 
+              parameters: { consenterEmail:selectedConsenter, entity_id } 
+            })
+          }
+        });
+
+        const package = await response.json();
+        document.body.style.cursor = 'default';
+
+        const { message, payload } = package;
+        if(payload.ok) {
+          alert('Request sent!');
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
 
     /**
      * This function serves as a utility object for processing JWTs received from cognito and the cookies they are stored in.
@@ -3802,6 +3849,10 @@
         }
       });
 
+      // Add an event handler for the button to send exhibit form requests to consenters.
+      $('#btnSendExhibitsRequest').on('click', async () => {
+        await sendExhibitFormRequest();
+      });
 
       if(selected_role == 'SYS_ADMIN') {
         await buildConfigurationsTable();

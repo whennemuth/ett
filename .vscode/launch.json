@@ -88,6 +88,20 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "SendExhibitFormRequest",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/authorized-individual/ExhibitFormRequestEmail.ts",
+        "RUN_MANUALLY_SEND_EXHIBIT_FORM_REQUEST"
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "BucketExhibitForms",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
