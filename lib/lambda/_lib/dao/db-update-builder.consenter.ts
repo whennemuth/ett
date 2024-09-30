@@ -48,6 +48,11 @@ export const consenterUpdate = (TableName:string, _new:Consenter, old:Consenter=
             input.ExpressionAttributeValues![`:${fld}`] = convertToApiObject(newForms);
             updates.push({ [`#${fld}`]: `:${fld}`});
           }
+          else if(newForms.length == 0) {
+            input.ExpressionAttributeNames![`#${fld}`] = fld;
+            input.ExpressionAttributeValues![`:${fld}`] = { L: [] }; // Prefer an empty array over an empty object
+            updates.push({ [`#${fld}`]: `:${fld}`});
+          }
           break;
 
         case ConsenterFields.consented_timestamp:

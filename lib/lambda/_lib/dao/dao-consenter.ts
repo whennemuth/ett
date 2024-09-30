@@ -54,15 +54,15 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
     // Handle illegal (premature) field validation
     if(consented_timestamp && consented_timestamp.length > 0) throwIllegalParm('create', ConsenterFields.consented_timestamp);
     if( ! consented_timestamp) {
-      consented_timestamp = [] as string[];
+      consenterInfo.consented_timestamp = [] as string[];
     }
     if(rescinded_timestamp && rescinded_timestamp.length > 0) throwIllegalParm('create', ConsenterFields.rescinded_timestamp);
     if( ! rescinded_timestamp) {
-      rescinded_timestamp = [] as string[];
+      consenterInfo.rescinded_timestamp = [] as string[];
     }
     if(renewed_timestamp && renewed_timestamp.length > 0) throwIllegalParm('create', ConsenterFields.renewed_timestamp);
     if( ! renewed_timestamp) {
-      renewed_timestamp = [] as string[];
+      consenterInfo.renewed_timestamp = [] as string[];
     }
     if(exhibit_forms && exhibit_forms.length > 0) throwIllegalParm('create', ConsenterFields.exhibit_forms);
     if( ! exhibit_forms) {
