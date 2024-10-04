@@ -170,6 +170,7 @@ export class CognitoConstruct extends Construct {
             statements: [new PolicyStatement({
               actions: [
                 'cognito-idp:ListUserPoolClients',
+                'cognito-idp:AdminUpdateUserAttributes',
               ],
               resources: ['*'],
               effect: Effect.ALLOW
