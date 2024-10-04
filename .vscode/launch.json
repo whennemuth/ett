@@ -88,6 +88,22 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "CognitoUserUpdate",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/cognito/UserAccount.ts",
+        "RUN_MANUALLY_COGNITO_USER_UPDATE",
+        "replace"
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "SendExhibitFormRequest",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
