@@ -13,7 +13,7 @@
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --silent",
     "cdk": "cdk",
     "deploy": "cdk deploy --all --no-rollback --require-approval never",
-    "redeploy": "cdk destroy -f && npm run deploy",
+    "redeploy": "cdk destroy --all -f && npm run deploy",
     "synth": "cdk synth 2>&1 | tee cdk.out/ett.template.yaml",
     "clearcache": "sh bin/clearcache.sh",
     "publish": "sh bin/publish.sh"
