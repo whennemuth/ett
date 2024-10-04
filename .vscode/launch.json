@@ -88,6 +88,21 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "ConsentingPersonCorrection",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/Correction.ts",
+        "RUN_MANUALLY_CONSENTER_CORRECTION",
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "CognitoUserUpdate",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],

@@ -433,6 +433,17 @@ export const saveExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
   await dao.update(oldConsenter, true); // NOTE: merge is set to true - means that other exhibit forms are retained.
 
   // Create a delayed execution to remove the exhibit form 2 days from now
+  await scheduleExhibitFormPurgeFromDatabase(newConsenter, exhibitForm);
+
+  return getConsenterResponse(email, true);
+};
+
+/**
+ * Create a delayed execution to remove an exhibit form at a point in the future determined by app configuration
+ * @param newConsenter 
+ * @param exhibitForm 
+ */
+export const scheduleExhibitFormPurgeFromDatabase = async (newConsenter:Consenter, exhibitForm:ExhibitForm) => {
   const envVarName = DelayedExecutions.ExhibitFormDbPurge.targetArnEnvVarName;
   const functionArn = process.env[envVarName];
   if(functionArn) {
@@ -447,9 +458,7 @@ export const saveExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
   else {
     console.error(`Cannot schedule exhibit form purge from database: ${envVarName} variable is missing from the environment!`);
   }
-
-  return getConsenterResponse(email, true);
-};
+}
 
 /**
  * Send full exhibit form to each authorized individual of the entity, remove it from the database, and save
