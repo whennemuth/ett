@@ -2562,21 +2562,16 @@
       }
     }
 
-    function setDummyConsenter() {
-      consenterInfo = getDummyConsenter();
-      // Remove the 2nd exhibit form so dummy entries will not be autopopulated when selecting the corresponding
-      // entity. However, the "Use Mock Data" button will still put dummy entries in for that entity.  
-      consenterInfo.consenter.exhibit_forms.pop();
-    }
-
     function getDummyConsenter() {
 
       // Favor any entity info that might be already be in consenterInfo (not running locally)
       const { entities } = consenterInfo ?? {};
       let entityId1 = 'entity_id_1';
       let entityId2 = 'entity_id_2';
+      let entityId3 = 'entity_id_3';
       let entityName1 = 'Anytown University';
       let entityName2 = 'Somewhere State University';
+      let entityName3 = 'Diddley-Doo College';
       if(entities && entities.length > 0) {
         entityId1 = entities[0].entity_id;
         entityName1 = entities[0].entity_name;
@@ -2634,6 +2629,7 @@
         entities: [
           { active: 'Y', entity_id: entityId1, entity_name: entityName1},
           { active: 'Y', entity_id: entityId2, entity_name: entityName2},
+          { active: 'Y', entity_id: entityId3, entity_name: entityName3},
         ],
         consenter: {
           email: "roger@warnerbros.com",
@@ -2652,17 +2648,34 @@
     function addDummyExhibitData() {
       const dropdownButton = document.getElementById('requestingEntityDropdownButton');
       const dropdownList = document.getElementById('requestingEntityDropdownList');
+
+      // Require that an entity be selected before applying dummy data.
       if(/Requesting Organizations\/Entities/.test(dropdownButton.innerText)) {
-        const a = dropdownList.children[0];
-        const { entities } = consenterInfo;
-        selectedEntity = entities.find(e => {
-          return e.entity_id == a.id;
-        });
-        dropdownButton.innerText = a.name;
+        alert('Select an entity');
+        return;
       }
 
-      populateExhibitForm(getDummyConsenter());
+      // Don't allow applying the dummy exhibit form data if a real one has already been submitted to the selected entity.
+      const { entity_id } = selectedEntity;
+      const { exhibit_forms=[] } = consenterInfo.consenter;
+      const idx = exhibit_forms.findIndex(ef => ef.entity_id == entity_id);
+      if(idx >=0 ) {
+        alert('Cannot pave over existing exhibit form with dummy data.\nPick an entity with no saved entity data');
+        return;
+      }
+
+      // Inject the dummy exhibit form into consenterInfo.
+      const dummy = getDummyConsenter();
+      const { affiliates } = dummy.consenter.exhibit_forms[0];
+      const dummyExhibitForm = { entity_id, affiliates };
+      consenterInfo.consenter.exhibit_forms.push(dummyExhibitForm);     
+
+      // Populate the display with the dummy data
+      populateExhibitForm();
       validExhibitForm();
+
+      // Withdraw the dummy exhibit form from consenterInfo
+      consenterInfo.consenter.exhibit_forms.pop();
     }
 
     /**
@@ -2703,8 +2716,9 @@
      */
     function populateExhibitForm(substituteConsenterInfo) {
       const button = document.querySelector('#btnAddPoc');
-      const _consenterInfo = substituteConsenterInfo ?? consenterInfo;
-      var { fullName, consenter: { email, phone_number, exhibit_forms }} = _consenterInfo;
+      // const _consenterInfo = substituteConsenterInfo ?? consenterInfo;
+      // var { fullName, consenter: { email, phone_number, exhibit_forms }} = _consenterInfo;
+      var { fullName, consenter: { email, phone_number, exhibit_forms }} = consenterInfo;
       exhibit_forms = exhibit_forms ?? [];
 
       clearExhibitForm();
@@ -3969,8 +3983,9 @@
               document.getElementById('app-section-CONSENTING_PERSON').style.display = 'inline';
               
               if(localTesting()) {
-                setDummyConsenter();
+                consenterInfo = getDummyConsenter();
                 setConsenter();
+                document.getElementById('btnDummyData').style.display = 'none';
               }
               else {
                 await getConsenter();
