@@ -1,13 +1,14 @@
 import { lookupRole, lookupUserPoolClientId, lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { DAOFactory, DAOInvitation } from "../../_lib/dao/dao";
 import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
-import { Consenter, Invitation, Role, Roles } from "../../_lib/dao/entity";
+import { Consenter, Invitation, Role, Roles, Validator } from "../../_lib/dao/entity";
 import { PreSignupEventType } from "./PreSignupEventType";
 
 export enum Messages {
   UNINVITED = 'You are not on the invite list for signup as ',
   SERVER_ERROR = 'Server error during initial pre-screening process at ',
   ROLE_LOOKUP_FAILURE = 'Cannot determine role',
+  ROLE_MISSING = 'PreSignUp_AdminCreateUser did not send role information in event.request.clientMetadata',
   RETRACTED = 'Your invitation was retracted signup as '
 }
 
@@ -38,19 +39,34 @@ export const handler = async (_event:any) => {
   try {
     debugLog(JSON.stringify(_event, null, 2)); 
 
-    const event = _event as PreSignupEventType;
+    const event = _event;
     const { userPoolId, region } = event;
     const { clientId } = event?.callerContext;
+    let role:Role|undefined;
 
-    // Determine what role applies to the "doorway" (userpool client) the user is entering through for signup
-    const role:Role|undefined = await lookupRole(userPoolId, clientId, region);
-
-    if( ! role){
-      throw new Error(Messages.ROLE_LOOKUP_FAILURE);
+    // Get the role for the user who is signing up.
+    let { role:sRole } = event?.request?.clientMetadata ?? {};
+    let adminCreateUser:boolean = false;
+    if(Validator().isRole(sRole)) {
+      // clientId is 'CLIENT_ID_NOT_APPLICABLE' and event.triggerSource = 'PreSignUp_AdminCreateUser'
+      role = `${sRole.toUpperCase()}` as Role;
+      if( ! role) throw new Error(Messages.ROLE_MISSING);
+      adminCreateUser = true;
+    }
+    else {
+      // Determine what role applies to the "doorway" (userpool client) the user is entering through for signup
+      role = await lookupRole(userPoolId, clientId, region);
+      if( ! role) throw new Error(Messages.ROLE_LOOKUP_FAILURE);
     }
     
     const { email } = event?.request?.userAttributes;
 
+    if(role == Roles.CONSENTING_PERSON && adminCreateUser) {
+      // Consenting persons do not need to be invited to signup and do not need to exist in the
+      // database yet if adminCreateUser is indicated, so exit here.
+      return event;
+    }
+    
     if(role == Roles.CONSENTING_PERSON) {
       // Lookup the consenter in the database to ensure they already exist.
       let dao = ConsenterCrud({ email } as Consenter);
