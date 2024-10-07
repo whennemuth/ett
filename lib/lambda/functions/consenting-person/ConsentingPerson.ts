@@ -17,6 +17,7 @@ import { ExhibitBucket } from "./BucketExhibitForms";
 import { BucketItem, DisclosureItemsParms } from "./BucketItem";
 import { BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "./BucketItemMetadata";
 import { ConsentFormEmail } from "./ConsentEmail";
+import { ConsentingPersonToCorrect } from "./Correction";
 import { ExhibitEmail, FormTypes } from "./ExhibitEmail";
 
 export enum Task {
@@ -28,7 +29,7 @@ export enum Task {
   RENEW_CONSENT = 'renew-consent',
   RESCIND_CONSENT = 'rescind-consent',
   SEND_CONSENT = 'send-consent',
-  CORRECT_CONSENT = 'correct-consent',
+  CORRECT_CONSENTER = 'correct-consenter',
   PING = 'ping'
 }
 
@@ -87,8 +88,8 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           return await rescindConsent(email);
         case Task.SEND_CONSENT:
           return await sendConsent( { email } as Consenter, entityName);
-        case Task.CORRECT_CONSENT:
-          return await correctConsent(parameters);
+        case Task.CORRECT_CONSENTER:
+          return await correctConsenter(parameters);
         case Task.SAVE_EXHIBIT_FORM:
           return await saveExhibitData(email, exhibitForm);
         case Task.SEND_EXHIBIT_FORM:
@@ -303,12 +304,12 @@ export const rescindConsent = async (email:string): Promise<LambdaProxyIntegrati
   }
 
   // Abort if the consenter has not yet consented
-  if( ! consenterInfo?.activeConsent) {
-    if(consenterInfo?.consenter?.active == YN.No) {
-      return invalidResponse(INVALID_RESPONSE_MESSAGES.inactiveConsenter);
-    }
-    return invalidResponse(INVALID_RESPONSE_MESSAGES.missingConsent);
-  }
+  // if( ! consenterInfo?.activeConsent) {
+  //   if(consenterInfo?.consenter?.active == YN.No) {
+  //     return invalidResponse(INVALID_RESPONSE_MESSAGES.inactiveConsenter);
+  //   }
+  //   return invalidResponse(INVALID_RESPONSE_MESSAGES.missingConsent);
+  // }
 
   return appendTimestamp(
     consenterInfo.consenter, 
@@ -320,13 +321,24 @@ export const rescindConsent = async (email:string): Promise<LambdaProxyIntegrati
 };
 
 /**
- * Correct consent. NOT IMPLEMENTED - pending dialog with client 
+ * Correct consent.
  * @param parameters 
  * @returns 
  */
-export const correctConsent = async (parameters:any): Promise<LambdaProxyIntegrationResponse> => {
-  const { email, alt_email, full_name, phone_number, signature } = parameters;
-  console.log(`NOT IMPLEMENTED: Correct consent for: ${JSON.stringify(parameters, null, 2)}`);
+export const correctConsenter = async (parameters:any): Promise<LambdaProxyIntegrationResponse> => {
+  const { email:existing_email, new_email:email, firstname, middlename, lastname, phone_number } = parameters;
+  console.log(`Correcting consenter details: ${JSON.stringify(parameters, null, 2)}`);
+  
+  const consenter = new ConsentingPersonToCorrect({ email:existing_email } as Consenter);
+  const updated:boolean = await consenter.correct({
+    email, phone_number, firstname, middlename, lastname
+  } as Consenter);
+  
+  if( ! updated) {
+    console.error(`Failed to correct consenter: ${consenter.getMessage()}`);
+    return errorResponse(consenter.getMessage())
+  }
+  
   return getConsenterResponse(email, false);
 };
 
