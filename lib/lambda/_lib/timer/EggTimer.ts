@@ -12,8 +12,17 @@ export class EggTimer {
   private expirationDate:Date;
   private milliseconds:number;
 
-  public static getInstanceSetFor = (periods:number, periodType:PeriodType):EggTimer => {
-    const millisecondsNow = Date.now();
+  /**
+   * Factory method for getting an egg timer instance.
+   * @param periods 
+   * @param periodType 
+   * @param offsetDate Prior date that specifies a point in the past to indicate as the starting point of the 
+   * egg timer "countdown". This way the timer starts its "countdown" already partially elapsed. Useful if
+   * you want one egg timer instance to "take over" for another one.  
+   * @returns 
+   */
+  public static getInstanceSetFor = (periods:number, periodType:PeriodType, offsetDate?:Date):EggTimer => {
+    const millisecondsNow = offsetDate ? offsetDate.getTime() : Date.now();
     const millisecondsDelay = periods * periodType;
     const timer = new EggTimer(new Date(millisecondsNow + millisecondsDelay));
     timer.milliseconds = periods * periodType;

@@ -455,7 +455,7 @@ export const saveExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
  * @param newConsenter 
  * @param exhibitForm 
  */
-export const scheduleExhibitFormPurgeFromDatabase = async (newConsenter:Consenter, exhibitForm:ExhibitForm) => {
+export const scheduleExhibitFormPurgeFromDatabase = async (newConsenter:Consenter, exhibitForm:ExhibitForm, offsetDate?:Date) => {
   const envVarName = DelayedExecutions.ExhibitFormDbPurge.targetArnEnvVarName;
   const functionArn = process.env[envVarName];
   if(functionArn) {

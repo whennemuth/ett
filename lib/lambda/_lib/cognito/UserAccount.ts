@@ -5,8 +5,13 @@ import { debugLog, log } from "../../Utils";
 import { IContext } from "../../../../contexts/IContext";
 import { Role, Roles } from "../dao/entity";
 
-export type CognitoAttributes = {
-  -readonly [K in keyof StandardAttributes]: Record<'propname'|'value', string|undefined>;
+export type AttributeValue = {
+  propname:string, 
+  value: string|undefined,
+  verified?:boolean
+}
+export type CognitoStandardAttributes = {
+  -readonly [K in keyof StandardAttributes]: AttributeValue;
 }
 
 /**
@@ -27,7 +32,7 @@ export class UserAccount {
    * @param role 
    * @returns 
    */
-  public static getInstance = async (cognitoAttributes:CognitoAttributes, role:Role):Promise<UserAccount> => {
+  public static getInstance = async (cognitoAttributes:CognitoStandardAttributes, role:Role):Promise<UserAccount> => {
     const user = new UserAccount();
 
     user.role = role;
@@ -53,14 +58,21 @@ export class UserAccount {
    * @param cognitoAttributes 
    * @returns 
    */
-  private static getUserAttributes = (cognitoAttributes:CognitoAttributes):AttributeType[] => {
+  private static getUserAttributes = (cognitoAttributes:CognitoStandardAttributes):AttributeType[] => {
     const { email:emailAttr, phoneNumber:phoneAttr } = cognitoAttributes;
     const userAttributes = [] as AttributeType[];
     if(emailAttr) {
       userAttributes.push({ Name:emailAttr.propname, Value:emailAttr.value });
+      if(emailAttr.verified) {
+        userAttributes.push({ Name:`${emailAttr.propname}_verified`, Value:'true' });
+      }
     }
     if(phoneAttr) {
       userAttributes.push({Name:phoneAttr.propname, Value:phoneAttr.value });
+      if(phoneAttr.verified) {
+        userAttributes.push({ Name:`${phoneAttr.propname}_verified`, Value:'true' });
+      }
+
     }
     return userAttributes;    
   }
@@ -75,7 +87,7 @@ export class UserAccount {
    * redirects at the app dashboard screen would be necessary to make it work)
    * @param cognitoAttributes 
    */
-  public update = async (cognitoAttributes:CognitoAttributes):Promise<boolean> => {
+  public update = async (cognitoAttributes:CognitoStandardAttributes):Promise<boolean> => {
     const { UserPoolId, region, getEmail, logError } = this;
     const { getUserAttributes } = UserAccount;
 
@@ -108,7 +120,7 @@ export class UserAccount {
    * and verifies the new email in one shot.
    * @param cognitoAttributes 
    */
-  public replaceWith = async (cognitoAttributes:CognitoAttributes):Promise<UserType|undefined> => {
+  public replaceWith = async (cognitoAttributes:CognitoStandardAttributes):Promise<UserType|undefined> => {
     const { role, Delete, ok } = this;
     const newUser = await UserAccount.getInstance(cognitoAttributes, role);
     const user = await newUser.create(this) as UserType;
@@ -236,11 +248,11 @@ if(args.length > 3 && args[2] == 'RUN_MANUALLY_COGNITO_USER_UPDATE') {
     process.env.DEBUG = 'true';
 
     // 3) Configure the original and updated user parameters
-    const original = { email: { propname:'email', value:'cp1@warhen.work' } } as CognitoAttributes;
+    const original = { email: { propname:'email', value:'cp1@warhen.work' } } as CognitoStandardAttributes;
     const updated = {
       email: { propname:'email', value:'cp2@warhen.work' }, 
       phoneNumber: { propname: 'phone_number', value: '+1234567890' }
-    } as CognitoAttributes
+    } as CognitoStandardAttributes
 
     // 4) Execute the update or replacement
     const user = await UserAccount.getInstance(original, Roles.CONSENTING_PERSON);

@@ -1,6 +1,6 @@
 import { UserType } from "@aws-sdk/client-cognito-identity-provider";
 import { IContext } from "../../../../contexts/IContext";
-import { CognitoAttributes, UserAccount } from "../../_lib/cognito/UserAccount";
+import { CognitoStandardAttributes, UserAccount } from "../../_lib/cognito/UserAccount";
 import { ReadParms } from "../../_lib/dao/dao";
 import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
 import { Consenter, ConsenterFields, Roles, YN } from "../../_lib/dao/entity";
@@ -60,8 +60,8 @@ export class ConsentingPersonToCorrect {
        * appear during a log in attempt, and unconventional workarounds with the preauthentication lambda 
        * trigger, flags, and redirects at the app dashboard screen would be necessary to make it work)
        */
-      const original = { email: { propname:'email', value:email } } as CognitoAttributes;
-      const updated = { email: { propname:'email', value:new_email } } as CognitoAttributes;
+      const original = { email: { propname:'email', value:email } } as CognitoStandardAttributes;
+      const updated = { email: { propname:'email', value:new_email } } as CognitoStandardAttributes;
       if(newPhone()) {
         original.phoneNumber = { propname:'phone_number', value:phone_number};
         updated.phoneNumber = { propname:'phone_number', value:new_phone_number};
@@ -103,7 +103,11 @@ export class ConsentingPersonToCorrect {
         const { exhibit_forms=[] } = correction;
         if(exhibit_forms.length > 0) {
           for(let i=0; i<exhibit_forms.length; i++) {
-            await scheduleExhibitFormPurgeFromDatabase(correction, exhibit_forms[i]);
+            const { create_timestamp:dateStr } = exhibit_forms[i];
+            // Use the exhibit form creation date as an offeset so the new egg timer starts into its countdown
+            // where the old one left off instead of being "reset" for the full interval. 
+            const create_timestamp = dateStr ? new Date(dateStr) : undefined;
+            await scheduleExhibitFormPurgeFromDatabase(correction, exhibit_forms[i], create_timestamp);
           }
         }
       }
