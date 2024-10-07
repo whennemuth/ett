@@ -96,10 +96,15 @@ export class LambdaFunction extends AbstractFunction {
           'EttConsentingPersonCognitoPolicy': new PolicyDocument({
             statements: [
               new PolicyStatement({
-                actions: [  'cognito-idp:List*'  ],
-                resources: [ '*' ],
+                actions: [ 'cognito-idp:*' ],
+                resources: [ userPoolArn ],
                 effect: Effect.ALLOW
-              })
+              }),
+              new PolicyStatement({
+                actions: [ 'cognito-idp:List*' ],
+                resources: ['*'],
+                effect: Effect.ALLOW
+              }),
             ]
           }),
           'EttConsentingPersonEventBridgePolicy': new PolicyDocument({

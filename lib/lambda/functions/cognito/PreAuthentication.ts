@@ -3,6 +3,8 @@ import { DAOUser, DAOFactory, DAOConsenter } from '../../_lib/dao/dao';
 import { PreAuthenticationEventType } from "./PreAuthenticationEventType";
 import { lookupRole } from '../../_lib/cognito/Lookup';
 import { DynamoDbConstruct, TableBaseNames } from "../../../DynamoDb";
+import { AdminUpdateUserAttributesCommand, AdminUpdateUserAttributesCommandOutput, AdminUpdateUserAttributesRequest, AttributeType, CognitoIdentityProviderClient } from "@aws-sdk/client-cognito-identity-provider";
+import { isOkStatusCode } from "../../Utils";
 
 export enum Messages {
   ACCOUNT_UNCONFIRMED = 'Your account has not attained confirmation status',
@@ -31,7 +33,7 @@ export const handler = async (_event:any) => {
     debugLog(JSON.stringify(_event, null, 2));
 
     const event = _event as PreAuthenticationEventType;
-    const { userPoolId, region } = event;
+    const { userPoolId, userName, region } = event;
     let role:Role|undefined;
     if( event?.callerContext) {
       const { clientId } = event?.callerContext;
@@ -44,6 +46,28 @@ export const handler = async (_event:any) => {
       }
 
       const { email, email_verified, 'cognito:user_status':status } = event?.request?.userAttributes;
+
+      if(status == 'FORCE_CHANGE_PASSWORD' && role == Roles.CONSENTING_PERSON) {
+        /**
+         * In this circumstance, an existing consenter is changing their email address, which means that the
+         * corresponding database entry is pending and happens AFTER cognito account creation. Also:
+         *   1) The cognito account will NOT be in a confirmed status. Thus we do not proceed further and run
+         *      into any confirmation validation checks which are non-applicable in this scenario
+         *   2) The cognito account will NOT be verified with respect to the email address. The password reset
+         *      itself does not seem to be regarded by cognito as a form of email verification, and the 
+         *      "email_verified" attribute remains false. This means that future login attempts will run into
+         *      the email EMAIL_UNVERIFIED check below with no clear way to redirect the user to the verification
+         *      code input screen of the hosted UI. This would be extraneous anyway because a successful
+         *      password reset should be enough to act as email verification (a temp password was sent to the)
+         *      new email address, which must be entered - this is tantamount to verification). So, the 
+         *      "email_verified" attribute must be set to "true" here, and we exit out to avoid the premature
+         *      validation checks of the normal pre-authentication scenario.
+         */
+        console.log(`FORCE_CHANGE_PASSWORD is in progress, restoring email_verified to true.`);
+        const cognitoUserAccount = getUpdateableUserAccount(userPoolId, userName, region);
+        await cognitoUserAccount.updateAttribute('email_verified', 'true');
+        return event;
+      }
 
       if(status != 'CONFIRMED') {
         throw new Error(Messages.ACCOUNT_UNCONFIRMED);
@@ -97,6 +121,36 @@ export const handler = async (_event:any) => {
   }
 }
 
+function getUpdateableUserAccount(UserPoolId:string, Username:string, region:string) {
+
+  const updateAttribute = async (name:string, value:string) => {
+    return updateAttributes({ [name]: value });
+  }
+
+  const updateAttributes = async (updates:Record<string, string>) => {
+    const client = new CognitoIdentityProviderClient({ region });
+    const UserAttributes = [] as AttributeType[];
+    
+    for (const Name in updates) {
+      const Value = updates[Name];
+      UserAttributes.push({ Name, Value });
+    }
+
+    const input = { UserPoolId, Username, UserAttributes } as AdminUpdateUserAttributesRequest;
+    const command = new AdminUpdateUserAttributesCommand(input);
+    const response = await client.send(command) as AdminUpdateUserAttributesCommandOutput;
+    if( ! isOkStatusCode(response.$metadata.httpStatusCode)) {
+      console.log(`Error updating cognito user account attribute(s): ${JSON.stringify({
+        commandInput: input,
+        commandOutput: response
+      }, null, 2)}`)
+    }
+  }
+
+  return {
+    updateAttribute, updateAttributes
+  }
+} 
 
 
 /**

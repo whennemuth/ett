@@ -268,8 +268,8 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_DAO_CONSENTER') {
   const email = 'daffy@warnerbros.com';
   let consenter = { } as Consenter;
   let dao:DAOConsenter;
-  const execute = (task:any, taskname:string) => {
-    task()
+  const execute = (task:any, taskname:string, parms?:any) => {
+    task(parms)
       .then((retval:any) => {
         console.log(`${taskname} successful: ${JSON.stringify(retval, null, 2)}`);
       })
@@ -285,9 +285,11 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_DAO_CONSENTER') {
         middlename: 'D',
         lastname: 'Duck',
         title: 'Aquatic fowl',
+        consented_timestamp: [ '2024-10-03T20:26:53.762Z' ],
         phone_number: '617-333-5555',        
       } as Consenter);
-      execute(dao.create, task);
+      // execute(dao.create, task);
+      execute(dao.update, task, {} as Consenter);
       break;
     case TASK.update:
       enum UPDATE_TYPE { consent='consent', sub='sub', exhibit='exhibit' };

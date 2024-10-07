@@ -153,8 +153,12 @@ export const mergeResponses = (responses:LambdaProxyIntegrationResponse[]) => {
   return response;
 }
 
+export const isOkStatusCode = (code:any) => {
+  return /^2\d+/.test(`${code}`);
+}
+
 export const isOk = (response:LambdaProxyIntegrationResponse) => {
-  return /^2\d+/.test(`${response.statusCode}`);
+  return isOkStatusCode(response.statusCode);
 }
 
 /**
@@ -418,3 +422,13 @@ export const deepEqual = (obj1:any, obj2:any, parm?:'log.console'|'log.temp'|'al
 }
 
 export const deepClone = (obj:any) => JSON.parse(JSON.stringify(obj));
+
+/**
+ * Get the name of a property in a way that ensures string literals are refactored when changing the property name.
+ * Use like this: getPropertyName<MyType>("myPropertyName");
+ * @param property 
+ * @returns 
+ */
+export const getPropertyName = <T>(property: keyof T): string => {
+  return String(property);
+}

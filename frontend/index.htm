@@ -254,6 +254,28 @@
         padding-top:10px;
       }
 
+      #divConsenterCorrect > div {
+        float:left;
+        margin-top: 10px;
+        margin-left: 10px;
+        text-align: left;
+        font-size: 22px;
+        max-width:60%;
+      }
+      #divConsenterCorrect > div[label="true"] {
+        font-weight:bold;
+        clear:both;
+        width: 150px;
+        text-align: right;
+        font-size: 18px;
+        padding-top: 4px;
+      }
+      #divConsenterCorrect > div > p {
+        margin-top: 10px;
+        font-style: italic;
+        font-size: 16px;
+      }
+
       span[data-toggle="tooltip"] {
         text-decoration: underline;
       }
@@ -1004,14 +1026,79 @@
               <div style="overflow:auto">
                 <ul class="nav nav-tabs" id="consenter" role="tablist">
                   <li class="nav-item">
-                    <a class="nav-link active" id="consenter-consent-link" data-toggle="tab" href="#consenter-consent" role="tab" aria-controls="consenter-consent" aria-selected="true">Your Consent</a>
+                    <a class="nav-link active" id="consenter-correct-link" data-toggle="tab" href="#consenter-correct" role="tab" aria-controls="consenter-correct" aria-selected="true">Your Details</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" id="consenter-consent-link" data-toggle="tab" href="#consenter-consent" role="tab" aria-controls="consenter-consent" aria-selected="true">Your Consent</a>
                   </li>
                   <li class="nav-item">
                     <a class="nav-link" id="consenter-exhibit-link" data-toggle="tab" href="#consenter-exhibit" role="tab" aria-controls="consenter-exhibit" aria-selected="false">Your Exhibit Forms</a>
                   </li>
                 </ul>
+
+                <div class="tab-content" id="consenterCorrect">
+                  <div class="tab-pane fade show active" id="consenter-correct" role="tabpanel" aria-labelledby="consenter-correct-link" style="overflow:auto;">
+                    <h3 class="display-7 fw-bold">Your Details</h3>
+                    <div id="divConsenterCorrect" class="divSysAdminOption" style="width:100%">
+                      <div label="true">Full Name:</div>
+                      <div>
+                        <span id="consenter-correct-fullname">[Insert Username]</span>
+                      </div>
+                      <div label="true">Email Address:</div>
+                      <div>
+                        <span id="consenter-correct-email">[Insert Email]</span>
+                        <p>
+                          PLEASE NOTE: Corrections to your email address will trigger a signout from your account and an email sent to 
+                          your new email address with a temporary password. Login again with this password and you will be 
+                          prompted with a password reset screen. You may use your original password if you like.
+                        </p>
+                      </div>
+                      <div label="true">Cell Phone:</div>
+                      <div>
+                        <span id="consenter-correct-phone">[Insert Phone]</span>
+                      </div>
+                      <div label="true">&nbsp;</div>
+                      <div style="margin-top:30px;">
+                        <!-- Button trigger modal -->
+                        <button class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#correctBackdrop">EDIT</button>
+                        <!-- Modal -->
+                        <div class="modal fade" id="correctBackdrop" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="correctBackdropLabel" aria-hidden="true">
+                          <div class="modal-dialog  modal-dialog-scrollable">
+                            <div class="modal-content">
+                              <div class="modal-header">
+                                <h5 class="modal-title" id="correctBackdropLabel">Edit your account details</h5>
+                              </div>
+                              <div class="modal-body" style="text-align:left; overflow:auto;">
+                                <div style="clear:both; margin-top:10px;">First Name</div>
+                                <div><input type="text" class="form-control" id="txtConsentEditFirstName"></div>
+                                <div style="clear:both; margin-top:10px;">Middle Name</div>
+                                <div><input type="text" class="form-control" id="txtConsentEditMiddleName"></div>
+                                <div style="clear:both; margin-top:10px;">Last Name</div>
+                                <div><input type="text" class="form-control" id="txtConsentEditLastName"></div>
+                                <div style="clear:both; margin-top:10px;">Email Address</div>
+                                <div><input type="text" class="form-control" id="txtConsentEditEmail"></div>
+                                <div style="clear:both; margin-top:10px;">Cell Phone</div>
+                                <div><input type="text" class="form-control" id="txtConsentEditPhone"></div>
+                                <!--
+                                <div style="clear:both; margin-top:10px;">Please type your full name <span style="font-size: 10px;">(first, middle, last)</span> to digitally sign this Consent Form:</div>
+                                <div><input type="text" class="form-control" id="txtConsentEditSignature"></div>
+                                -->
+                              </div>
+                              <div class="modal-footer">
+                                <button id="btnConsenterCorrect" class="btn btn-primary" data-bs-dismiss="modal">SUBMIT CHANGES</button>
+                                &nbsp;
+                                <button class="btn btn-primary" data-bs-dismiss="modal">Cancel</button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div class="tab-content" id="consenterContent">
-                  <div class="tab-pane fade show active" id="consenter-consent" role="tabpanel" aria-labelledby="consenter-consent-link">
+                  <div class="tab-pane fade" id="consenter-consent" role="tabpanel" aria-labelledby="consenter-consent-link">
                     <h3 class="display-7 fw-bold">ETT Consent Form</h3>
                     <div id="divConsenterConsent" class="divSysAdminOption" style="overflow: auto; width:100%">
                       <p style="text-align: left;">
@@ -1139,38 +1226,6 @@
                           <div style="margin-right: 5px; float:left; text-align: center;">
                             To renew this Consent Form for another 10 years click<br>
                             <button id="btnRenewConsent" class="btn btn-primary" style="margin-top:6px;">RENEW</button>
-                          </div>                                                 
-                        </div>
-                        <div id="consentCorrect" style="width:215px; float:left; overflow: auto; vertical-align: middle; margin-right:4px; padding:10px; background-color: #e6e6ff;">
-                          <div style="margin-right: 5px; text-align: center;">
-                            To correct this Consent Form, click<br><br>
-                            <!-- Button trigger modal -->
-                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#correctBackdrop" style="margin-top:6px;">CORRECT</button>
-                            <!-- Modal -->
-                            <div class="modal fade" id="correctBackdrop" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="correctBackdropLabel" aria-hidden="true">
-                              <div class="modal-dialog  modal-dialog-scrollable">
-                                <div class="modal-content">
-                                  <div class="modal-header">
-                                    <h5 class="modal-title" id="correctBackdropLabel">Edit your Consent</h5>
-                                  </div>
-                                  <div class="modal-body" style="text-align:left; overflow:auto;">
-                                    <div style="clear:both; margin-top:10px;">Full Name <span style="font-size: 10px;">(first, middle, last)</span></div>
-                                    <div><input type="text" class="form-control" id="txtConsentEditFullname"></div>
-                                    <div style="clear:both; margin-top:10px;">Email Address</div>
-                                    <div><input type="text" class="form-control" id="txtConsentEditEmail"></div>
-                                    <div style="clear:both; margin-top:10px;">Cell Phone</div>
-                                    <div><input type="text" class="form-control" id="txtConsentEditPhone"></div>
-                                    <div style="clear:both; margin-top:10px;">Please type your full name <span style="font-size: 10px;">(first, middle, last)</span> to digitally sign this Consent Form:</div>
-                                    <div><input type="text" class="form-control" id="txtConsentEditSignature"></div>
-                                  </div>
-                                  <div class="modal-footer">
-                                    <button id="btnCorrectConsent" class="btn btn-primary" data-bs-dismiss="modal">CORRECT</button>
-                                    &nbsp;
-                                    <button class="btn btn-primary" data-bs-dismiss="modal">Cancel</button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
                           </div>                                                 
                         </div>
                         <div id="consentSend"  style="width:215px; float:left; overflow: auto; vertical-align: middle; padding:10px; background-color: #e6e6ff;">
@@ -2229,7 +2284,7 @@
     /**
      * Perform a consent related api task
      */
-    const doConsentTask = async (task, parameters) => {
+    const doConsentTask = async (task, parameters, successCallback) => {
       const msg = document.getElementById('apiResponse');
       msg.innerHTML = '';
       try {
@@ -2286,7 +2341,7 @@
             if(rescindedDate.after(consentedDate) && rescindedDate.after(renewedDate)) {
               return 'rescinded';
             }
-            return task == 'correct-consent' ? 'corrected' : 'none';
+            return task == 'correct-consenter' ? 'corrected' : 'none';
           }
 
           const hide = id => document.getElementById(id).style.display = 'none';
@@ -2314,7 +2369,6 @@
             const color = lastAction == 'rescinded' ? 'red' : 'green';
             show('consentRescind');
             show('consentRenew');
-            show('consentCorrect');
             show('consentSend');
             if(document.location.pathname == '/consenter/exhibits/index.htm') {
               show('consenter-exhibit-link');
@@ -2357,7 +2411,6 @@
             case 'rescinded':
               showPostConsentFields(_lastAction);
               hide('consentRescind');
-              hide('consentCorrect');
               hide('consentSend');
               hide('consenter-exhibit-link');
               break;
@@ -2366,7 +2419,11 @@
               showPreConsentFields();
               break;
           }
-         }
+
+          if(successCallback) {
+            successCallback();
+          }
+        }
         else {
           msg.innerHTML = `<pre>${message}</pre>`;
         }
@@ -2417,16 +2474,21 @@
     }
 
     const setConsenter = () => {
-      const { consenter: { email, phone_number }, fullName } = consenterInfo ?? {};
+      const { consenter: { email, phone_number, firstname, lastname, middlename }, fullName } = consenterInfo ?? {};
       const role = AccessJwtCookie.getRole();
       const rolename = role.name ?? 'CONSENTING_PERSON';
       document.getElementById(`${rolename}_username`).innerHTML = fullName;
       document.getElementById('txtConsentFullname').value = fullName;
       document.getElementById('txtConsentEmail').value = email;
       document.getElementById('txtConsentPhone').value = phone_number;
-      document.getElementById('txtConsentEditFullname').value = fullName;
+      document.getElementById('txtConsentEditFirstName').value = firstname;
+      document.getElementById('txtConsentEditMiddleName').value = middlename;
+      document.getElementById('txtConsentEditLastName').value = lastname;
       document.getElementById('txtConsentEditEmail').value = email;
       document.getElementById('txtConsentEditPhone').value = phone_number;
+      document.getElementById('consenter-correct-fullname').innerHTML = fullName;
+      document.getElementById('consenter-correct-email').innerHTML = email;
+      document.getElementById('consenter-correct-phone').innerHTML = phone_number;
       populateEntityList();
       return consenterInfo;
     }
@@ -2489,13 +2551,27 @@
     /**
      * Submit corrections to the consenter consent form information. NOTE: Not implemented on the backend (pending client discussion)
      */
-    const correctConsent = async () => {
+    const correctConsenter = async () => {
       const { email } = IDJwtCookie.getUser() ?? {};
-      const alt_email = document.getElementById('txtConsentEditEmail').value;
-      const full_name = document.getElementById('txtConsentEditFullname').value;
+      const new_email = document.getElementById('txtConsentEditEmail').value;
+      const firstname = document.getElementById('txtConsentEditFirstName').value;
+      const middlename = document.getElementById('txtConsentEditMiddleName').value;
+      const lastname = document.getElementById('txtConsentEditLastName').value;
       const phone_number = document.getElementById('txtConsentEditPhone').value;
-      const signature = document.getElementById('txtConsentEditSignature').value;
-      await doConsentTask('correct-consent', { email, alt_email, full_name, phone_number, signature });
+      await doConsentTask(
+        'correct-consenter', 
+        { email, new_email, firstname, middlename, lastname, phone_number },
+        () => {
+          if(new_email != email) {
+            alert('Your account has been recreated.\n\nPlease check the inbox of your new email address for a temporary password.');
+            signOut();
+          }
+          else {
+            alert('Update complete');
+            location.reload();
+          }
+        }
+      );
     }
 
     /**
@@ -2633,6 +2709,9 @@
         ],
         consenter: {
           email: "roger@warnerbros.com",
+          firstname: 'Roger',
+          middlename: 'R',
+          lastname: 'Rabbit',
           phone_number: '+6174448888',
           active: 'Y',
           consented_timestamp: [ "2024-07-05T17:16:31.352Z" ],
@@ -3798,8 +3877,8 @@
       document.getElementById('btnSendConsent').addEventListener('click', () => {
         sendConsent();
       });
-      document.getElementById('btnCorrectConsent').addEventListener('click', () => {
-        correctConsent();
+      document.getElementById('btnConsenterCorrect').addEventListener('click', () => {
+        correctConsenter();
       });
       document.getElementById('txtExhibitSignature').addEventListener('keyup', () => {
         toggleHighlight(event.srcElement);
