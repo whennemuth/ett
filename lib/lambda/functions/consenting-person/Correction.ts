@@ -66,10 +66,10 @@ export class ConsentingPersonToCorrect {
         original.phoneNumber = { propname:'phone_number', value:phone_number};
         updated.phoneNumber = { propname:'phone_number', value:new_phone_number};
       }
-      else if( ! new_phone_number) {
+      else {
         // Have the new account inherit the old phone number 
-        updated.phoneNumber = { propname:'phone_number', value:phone_number}
-      }
+        updated.phoneNumber = { propname:'phone_number', value:phone_number, verified:true}
+       }
 
       const userAccount = await UserAccount.getInstance(original, Roles.CONSENTING_PERSON);
       if(newEmail()) {
