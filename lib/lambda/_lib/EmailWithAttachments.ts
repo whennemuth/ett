@@ -4,12 +4,13 @@ import { bytesToBase64 } from "../Utils";
 import { v4 as uuidv4 } from 'uuid';
 
 export type Attachment = { pdf:IPdfForm, name:string, description:string }
-export type EmailParms = { emailAddress:string, subject:string, message:string, attachments:Attachment|Attachment[] 
+export type EmailParms = { 
+  from:string, to:string[], cc?:string[], bcc?:string[], subject:string, message:string, attachments:Attachment|Attachment[] 
 };
 
 export const sendEmail = async (parms:EmailParms):Promise<boolean> => {
   
-  const { subject, message, emailAddress, attachments } = parms;
+  const { subject, to, cc=[], bcc=[], message, from, attachments } = parms;
 
   const mainBoundary = uuidv4();
   const mainBoundaryStart=`--${mainBoundary}`;
@@ -26,9 +27,15 @@ export const sendEmail = async (parms:EmailParms):Promise<boolean> => {
     attachmentDataStrings += await getAttachmentDataString(_attachments[i], mainBoundaryStart, mainBoundaryEnd);
   }
 
+  const toLine = `To: ${to.join(', ')}`
+  const ccLine = cc.length == 0 ? '' : `\nCc: ${cc?.join(', ')}`;
+  // NOTE: If using a proxy to reroute emails to one email address, the bcc email will NOT arrive.
+  const bccLine = bcc.length == 0 ? '' : `\nBcc: ${bcc?.join(', ')}`;
+  const destinations = `${toLine}${ccLine}${bccLine}`
+
   const rawDataString = 
-`From: "Ethical Transparency Tool (ETT)" <${emailAddress}>
-To: ${emailAddress}
+`From: "Ethical Transparency Tool (ETT)" <${from}>
+${destinations}
 Subject: ${subject}
 Content-Type: multipart/mixed; boundary="${mainBoundary}"
 
@@ -66,9 +73,11 @@ ${mainBoundaryEnd}
 
   const command = new SendEmailCommand({
     Destination: {
-      ToAddresses: [ emailAddress ]
+      ToAddresses: to,
+      CcAddresses: cc,
+      BccAddresses: bcc
     },
-    FromEmailAddress: emailAddress,
+    FromEmailAddress: from,
     Content: {
       Raw: {
         Data: Buffer.from(rawDataString, 'utf8')

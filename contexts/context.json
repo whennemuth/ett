@@ -3,6 +3,7 @@
   "STACK_ID": "ett",
   "ACCOUNT": "037860335094",
   "REGION": "us-east-2",
+  "ETT_DOMAIN": "warhen.work",
   "CONFIG": {
     "useDatabase": true,
     "configs": [

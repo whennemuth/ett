@@ -5,6 +5,7 @@ export interface IContext {
   STACK_ID: string;
   ACCOUNT:  string;
   REGION:   string;
+  ETT_DOMAIN?: string;
   CLOUDFRONT_DOMAIN?: string;
   CLOUDFRONT_CERTIFICATE?: string;
   CONFIG: CONFIG;
