@@ -12,6 +12,9 @@ import { BucketItem, DisclosureItemsParms } from "../consenting-person/BucketIte
 import { BucketItemMetadata } from "../consenting-person/BucketItemMetadata";
 import { test_data as test_exhibit_data } from '../consenting-person/ExhibitEmail';
 import { bugsbunny, daffyduck, yosemitesam } from "./MockObjects";
+import * as ctx from '../../../../contexts/context.json';
+import { IContext } from "../../../../contexts/IContext";
+
 
 export type DisclosureEmailParms = DisclosureItemsParms & {
   emailType?: 'request' | 'reminder'
@@ -146,13 +149,15 @@ const send = async (parms:EmailParameters):Promise<boolean> => {
   const { firstname, middlename, lastname } = consenter;
   const { fullName } = PdfForm;
   const consenterFullName = fullName(firstname, middlename, lastname);
+  const context:IContext = <IContext>ctx;
 
   return sendEmail({
     subject: `ETT Disclosure ${emailType}`,
+    from: `noreply@${context.ETT_DOMAIN}`,
     message: `Please find enclosed a disclosure form from ${entity_name}, including a consent form from ` +
       `${consenterFullName} who is the subject of the disclosure and their original exhibit form ` +
       `naming you to disclose.`,
-    emailAddress:affiliateEmail,
+    to: [ affiliateEmail ],
     attachments: [
       {
         pdf: disclosureForm,

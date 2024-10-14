@@ -4,6 +4,8 @@ import { ExhibitFormFull } from "../../_lib/pdf/ExhibitFormFull";
 import { ExhibitFormSingle } from "../../_lib/pdf/ExhibitFormSingle";
 import { IPdfForm, PdfForm } from "../../_lib/pdf/PdfForm";
 import { sendEmail } from "../../_lib/EmailWithAttachments";
+import * as ctx from '../../../../contexts/context.json';
+import { IContext } from "../../../../contexts/IContext";
 
 
 export const enum FormTypes { FULL = 'full', SINGLE = 'single' };
@@ -39,14 +41,16 @@ export class ExhibitEmail {
     const { fullName } = PdfForm;
     const consenterFullname = fullName(firstname, middlename, lastname);
     const { entity_name } = entity;
+    const context:IContext = <IContext>ctx;
     
     switch(formType) {
       case FormTypes.FULL:
         this.pdf = new ExhibitFormFull(new ExhibitForm(data), consenter);
         return await sendEmail({
           subject: 'ETT Exhibit Form Submission',
+          from: `noreply@${context.ETT_DOMAIN}`,
           message: `Consenting individual ${consenterFullname} is forwarding you their full affliate list via ETT`,
-          emailAddress,
+          to: [ emailAddress ],
           attachments: {
             pdf: this.pdf,
             name: 'exhibit-form-full.pdf',
@@ -57,8 +61,9 @@ export class ExhibitEmail {
         this.pdf = new ExhibitFormSingle(new ExhibitForm(data), consenter, emailAddress);
         return await sendEmail({
           subject: 'ETT Notice of Consent',
+          from: `noreply@${context.ETT_DOMAIN}`,
           message: `Consenting individual ${consenterFullname} has named you as an affilate for disclosure to ${entity_name}`,
-          emailAddress,
+          to: [ emailAddress ],
           attachments: {
             pdf: this.pdf,
             name: 'exhibit-form-single.pdf',

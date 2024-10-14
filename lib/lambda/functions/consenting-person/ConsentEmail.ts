@@ -2,6 +2,8 @@ import { YN } from "../../_lib/dao/entity";
 import { ConsentForm, ConsentFormData } from "../../_lib/pdf/ConsentForm";
 import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { sendEmail } from "../../_lib/EmailWithAttachments";
+import * as ctx from '../../../../contexts/context.json';
+import { IContext } from "../../../../contexts/IContext";
 
 /**
  * This class represents an email that is issued to a recipient who has requested a copy of a consenters
@@ -19,11 +21,13 @@ export class ConsentFormEmail {
     const { fullName } = PdfForm;
     const consenterFullName = fullName(firstname, middlename, lastname);
     emailAddress = emailAddress ?? email;
+    const context:IContext = <IContext>ctx;
 
     return await sendEmail({
       subject: 'ETT Consent Form',
+      from: `noreply@${context.ETT_DOMAIN}`, 
       message: `Please find enclosed a pdf copy of the ETT consent form, for ${consenterFullName}`,
-      emailAddress,
+      to: [ emailAddress ],
       attachments: [
         {
           pdf: new ConsentForm({ consenter, entityName }),
