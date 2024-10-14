@@ -140,7 +140,21 @@
         "${workspaceFolder}/lib/lambda/functions/consenting-person/BucketExhibitForms.ts",
         "RUN_MANUALLY_CONSENTER_BUCKET_ITEM",
         "us-east-2",
-        "add"
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "BucketInventory",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/BucketInventory.ts",
+        "RUN_MANUALLY_BUCKET_INVENTORY",
       ], 
       "env": {
         "AWS_PROFILE": "bu",

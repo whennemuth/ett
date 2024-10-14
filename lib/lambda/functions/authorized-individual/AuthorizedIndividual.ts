@@ -331,7 +331,7 @@ export const sendDisclosureRequest = async (consenterEmail:string, entity_id:str
     return errorResponse(`Email failure for disclosure request: ${JSON.stringify(parms, null, 2)}`);
   }
 
-  // Tag the pdfs so that they are skipped over by the event bridge stale pdf purging rule:
+  // Tag the pdfs so that they are skipped over by the event bridge stale pdf database purging rule:
   const now = new Date().toISOString();
   const bucketItem = new BucketItem({ email:consenterEmail } as Consenter);
   let tagged = false;
