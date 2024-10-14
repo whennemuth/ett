@@ -12,9 +12,13 @@ export type ListObjectsOutput = {
   Prefix:string, listedObjects:ListObjectsV2CommandOutput
 }
 export enum Tags {
-  DISCLOSED = 'DisclosureSentTimestamp'
+  DISCLOSED = 'DisclosureRequestSentTimestamp'
 } 
 
+/**
+ * This class represents the exhibit forms s3 bucket as a set of utilities that can be applied to it for 
+ * querying, deleting, and tagging those particular types of items that already exist in it.
+ */
 export class BucketItem {
   bucketName:string|undefined;
   consenter: Consenter;
@@ -51,7 +55,25 @@ export class BucketItem {
     
     // List all objects in the specified folder, and return if there are none.
     const s3 = new S3({ region });
-    const listedObjects = await s3.listObjectsV2({ Bucket, Prefix });
+    let isTruncated = true;
+    let ContinuationToken: string | undefined = undefined;
+    let totalContents = [] as Object[];
+
+    const getChunk = async () => {
+      const list = await s3.listObjectsV2({ Bucket, Prefix, ContinuationToken });
+      isTruncated = list.IsTruncated || false;
+      ContinuationToken = list.NextContinuationToken;
+      totalContents.push(...(list.Contents ?? []));
+      return list;
+    }
+
+    let listedObjects:ListObjectsV2CommandOutput = await getChunk();
+
+    while(isTruncated) {
+      listedObjects = await getChunk();
+    }
+
+    listedObjects.Contents = totalContents;
     return { Prefix, listedObjects };
   }
 
