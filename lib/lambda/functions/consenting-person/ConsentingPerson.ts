@@ -1,3 +1,4 @@
+import { DeleteObjectsCommandOutput } from "@aws-sdk/client-s3";
 import { CONFIG, IContext } from "../../../../contexts/IContext";
 import { DelayedExecutions } from "../../../DelayedExecution";
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
@@ -12,12 +13,17 @@ import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { ComparableDate, debugLog, deepClone, errorResponse, getMostRecent, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
-import { DisclosureFormBucket } from "./BucketDisclosureForms";
-import { ExhibitBucket } from "./BucketExhibitForms";
-import { BucketItem, DisclosureItemsParms } from "./BucketItem";
-import { BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "./BucketItemMetadata";
+import { sendDisclosureRequest } from "../authorized-individual/AuthorizedIndividual";
+import { BucketInventory } from "./BucketInventory";
+import { BucketItem, DisclosureItemsParms, Tags } from "./BucketItem";
+import { BucketDisclosureForm } from "./BucketItemDisclosureForm";
+import { BucketExhibitForm } from "./BucketItemExhibitForm";
+import { ExhibitBucket } from "./BucketItemExhibitForms";
+import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "./BucketItemMetadata";
+import { TagInspector } from "./BucketItemTag";
 import { ConsentFormEmail } from "./ConsentEmail";
 import { ConsentingPersonToCorrect } from "./Correction";
+import { ExhibitCorrectionEmail } from "./ExhibitCorrectionEmail";
 import { ExhibitEmail, FormTypes } from "./ExhibitEmail";
 
 export enum Task {
@@ -30,6 +36,7 @@ export enum Task {
   RESCIND_CONSENT = 'rescind-consent',
   SEND_CONSENT = 'send-consent',
   CORRECT_CONSENTER = 'correct-consenter',
+  GET_CORRECTABLE_AFFILIATES = 'get-correctable-affiliates',
   PING = 'ping'
 }
 
@@ -51,6 +58,10 @@ export const INVALID_RESPONSE_MESSAGES = {
 
 export type ConsenterInfo = {
   consenter:Consenter, fullName:string, activeConsent:boolean, entities?:Entity[]
+}
+
+export type ExhibitFormCorrection = {
+  entity_id:string, updates:Affiliate[], appends:Affiliate[], deletes:string[]
 }
 
 /**
@@ -76,7 +87,7 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
       log(`Performing task: ${task}`);
       const callerUsername = event?.requestContext?.authorizer?.claims?.username;
       const callerSub = callerUsername || event?.requestContext?.authorizer?.claims?.sub;
-      const { email, exhibit_data:exhibitForm, entityName } = parameters;
+      const { email, exhibit_data:exhibitForm, entityName, entity_id, corrections } = parameters;
       switch(task as Task) {
         case Task.GET_CONSENTER:
           return await getConsenterResponse(email);
@@ -95,7 +106,9 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
         case Task.SEND_EXHIBIT_FORM:
           return await sendExhibitData(email, exhibitForm);
         case Task.CORRECT_EXHIBIT_FORM:
-          return await correctExhibitData(email, exhibitForm);
+          return await correctExhibitData(email, corrections);
+        case Task.GET_CORRECTABLE_AFFILIATES:
+          return await getCorrectableAffiliates(email, entity_id);
         case Task.PING:
           return okResponse('Ping!', parameters); 
       }
@@ -597,22 +610,28 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
     const { DELETE_EXHIBIT_FORMS_AFTER: deleteAfter} = ConfigNames;   
 
     for(let i=0; i<affiliates.length; i++) {
-      const parms = { 
+      const metadata = { 
         entityId:entity.entity_id, 
         affiliateEmail:affiliates[i].email,
         savedDate: now
       } as BucketItemMetadataParms;
 
       // 1) Save a copy of the single exhibit form pdf to the s3 bucket
-      parms.itemType = EXHIBIT;
-      const exhibitsBucket = new ExhibitBucket(new BucketItem(consenter));
-      const s3ObjectKeyForExhibitForm = await exhibitsBucket.add(parms);
+      metadata.itemType = EXHIBIT;
+      const s3ObjectKeyForExhibitForm = await new BucketExhibitForm(
+        new BucketItem(consenter),
+        metadata        
+      ).add();
 
       // 2) Save a copy of the disclosure form to the s3 bucket
-      parms.itemType = DISCLOSURE;
+      metadata.itemType = DISCLOSURE;
       const authorizedIndividuals = entityReps.filter(user => user.active == YN.Yes && (user.role == Roles.RE_AUTH_IND));
-      const disclosuresBucket = new DisclosureFormBucket(new BucketItem(consenter), entity, authorizedIndividuals);
-      const s3ObjectKeyForDisclosureForm = await disclosuresBucket.add(parms);
+      const s3ObjectKeyForDisclosureForm = await new BucketDisclosureForm({
+        bucket: new BucketItem(consenter),
+        requestingEntity: entity,
+        requestingEntityAuthorizedIndividuals: authorizedIndividuals,
+        metadata
+      }).add();
 
       // 3) Schedule actions against the pdfs that limit how long they survive in the bucket the were just saved to.
       const envVarName = DelayedExecutions.ExhibitFormBucketPurge.targetArnEnvVarName;
@@ -709,14 +728,196 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
 }
 
 /**
- * Send corrected single exhibit form to each authorized individual of the entity.
+ * Get an inventory of what exists in the s3 bucket in terms of affiliates for the specified consenter and entity.
+ * Corrections can only apply to these. 
+ * @param email 
+ * @param entity_id 
+ */
+const getCorrectableAffiliates = async (email:string, entityId:string):Promise<LambdaProxyIntegrationResponse> => {
+  const inventory = await BucketInventory.getInstance(email, entityId); 
+  inventory.getAffiliateEmails();
+  return okResponse('Ok', { affiliateEmails: inventory.getAffiliateEmails() });
+}
+
+/**
+ * Take in corrected exhibit form data for a full exhibit form previously submitted to a specified entity.
+ * Perform bucket appends and removals where indicated and send corrected single exhibit form to each 
+ * authorized individual of the entity (and affiliate(s) if disclosure requests have already been sent to them).
  * @param email 
  * @param exhibitForm 
  * @returns 
  */
-export const correctExhibitData = async (email:string, exhibitForm:ExhibitForm): Promise<LambdaProxyIntegrationResponse> => {
+export const correctExhibitData = async (consenterEmail:string, corrections:ExhibitFormCorrection): Promise<LambdaProxyIntegrationResponse> => {
+  const { entity_id, appends=[], deletes=[], updates=[] } = corrections;
+  const { toBucketFolderKey } = BucketItemMetadata
+  const inventory = await BucketInventory.getInstance(consenterEmail, entity_id);
+  const emails = inventory.getAffiliateEmails();  
+  const disclosuresRequestCache = [] as string[]; // Cache the output of any s3 object tag lookups
+  let bucket = new BucketItem({ email:consenterEmail } as Consenter);
 
-  return okResponse('Ok');
+  // Validate that no existing affiliate from the bucket matches any affiliate being submitted as new.
+  const invalidAppend = appends.find(affiliate => emails.includes(affiliate.email));
+  if(invalidAppend) {
+    return invalidResponse(`The affiliate "${invalidAppend.email} can only be replaced, not submitted as a new entry.`);
+  }
+
+  /**
+   * Check s3 tagging on s3 objects for evidence of a specific disclosure request having been sent. 
+   * @param affiliateEmail 
+   * @returns 
+   */
+  const affiliateWasSentDisclosureRequest = async (metadata:BucketItemMetadataParms):Promise<boolean> => {
+    const s3ObjectPath = toBucketFolderKey(metadata);
+    if(disclosuresRequestCache.includes(s3ObjectPath)) {
+      return true;
+    }
+    const tagFound = await new TagInspector(Tags.DISCLOSED).tagExistsAmong(s3ObjectPath, ItemType.EXHIBIT);
+    if(tagFound) {
+      disclosuresRequestCache.push(s3ObjectPath);
+      return true;
+    }
+    return false;
+  }
+
+  type SendDisclosureRequestParms = {
+    EF_S3ObjectKey:string,
+    DR_S3ObjectKey:string,
+    affiliateEmail:string,
+    reSend?:boolean
+  }
+  /**
+   * If disclosure requests have already been sent to the updated affiliates, reissue them and schedule
+   * 2 new reminders. Any existing schedules will defer to these new ones - a corresponding check in the
+   * event bridge rule lambda function ensures this).
+   * @param EF_S3ObjectKey 
+   * @param DR_S3ObjectKey 
+   * @param affiliateEmail 
+   */
+  const sendDisclosureRequestEmails = async (parms:SendDisclosureRequestParms) => {
+    const { DR_S3ObjectKey, EF_S3ObjectKey, affiliateEmail, reSend=false } = parms;
+    const metadata = { consenterEmail, entityId:entity_id, affiliateEmail, itemType:ItemType.EXHIBIT } as BucketItemMetadataParms;
+    let sendable = true;
+
+    if(reSend) {
+      // A disclosure request is resendable if one was already sent
+      sendable = await affiliateWasSentDisclosureRequest(metadata);
+    }
+
+    if(sendable) {
+
+      // Send the disclosure request
+      await sendDisclosureRequest(consenterEmail, entity_id, affiliateEmail);
+
+      // Tag the items in s3 bucket accordingly.
+      const now = new Date().toISOString();        
+      await bucket.tag(EF_S3ObjectKey, Tags.DISCLOSED, now);
+      await bucket.tag(DR_S3ObjectKey, Tags.DISCLOSED, now);
+      return;
+    }
+    console.log(`No initial disclosure request to reissue for: ${JSON.stringify({ consenterEmail, entity_id, affiliateEmail }, null, 2)}`);
+  }
+
+  // Handle deleted affiliates
+  const successfulDeletes = [] as string[];
+  if(deletes.length > 0) {
+    for(let i=0; i<deletes.length; i++) {
+
+      // Bail if for some weird reason the target of the correction cannot be found.
+      if( ! inventory.hasAffiliate(deletes[i], entity_id)) {
+        console.warn(`Attempt to delete an affiliate for which nothing deletable can be found: ${JSON.stringify({
+          consenterEmail, entity_id, affiliateEmail:deletes[i]
+        }, null, 2)}`)
+        continue;
+      }
+
+      // Delete the affiliate "directory" for the specified consenter/exhibit path in the bucket.
+      // NOTE: Any event bridge rules that schedule disclosure requests/reminders for the deleted items 
+      // will search for them by key(s), fail to find them, error silently, and eventually themselves 
+      // be deleted (if final reminder). This is easier than trying to find those rules and delete them here.
+      const result:DeleteObjectsCommandOutput|void = await new ExhibitBucket(bucket).deleteAll({
+        consenterEmail,
+        entityId:entity_id,
+        affiliateEmail:deletes[i]
+      } as BucketItemMetadataParms);
+      if(result) {
+        successfulDeletes.push(deletes[i]);
+      }
+    }
+  }
+
+  // Handle updated affiliates
+  const successfulUpdates = [] as Affiliate[];
+  if(updates.length > 0) {
+    bucket.consenter.exhibit_forms = [ { entity_id, affiliates:updates } as ExhibitForm ];
+    for(let i=0; i<updates.length; i++) {
+      const { email:affiliateEmail } = updates[i];
+
+      // Bail if for some weird reason the target of the correction cannot be found.
+      if( ! inventory.hasAffiliate(affiliateEmail, entity_id)) {
+        console.warn(`Attempt to correct an affiliate for which nothing correctable can be found: ${JSON.stringify({
+          consenterEmail, entity_id, affiliateEmail
+        }, null, 2)}`);
+        continue;
+      }
+
+      // Add the corrected single exhibit form to the bucket for the updated affiliate.
+      const EF_S3ObjectKey = await new BucketExhibitForm(
+        bucket,
+        { entityId:entity_id, itemType:ItemType.EXHIBIT, affiliateEmail, consenterEmail }
+      ).correct();
+
+      // Add the corrected disclosure form to the bucket for the updated affiliate.
+      const DR_S3ObjectKey = await new BucketDisclosureForm({
+        bucket,
+        metadata: { entityId:entity_id, itemType:ItemType.DISCLOSURE, affiliateEmail, consenterEmail }     
+      }).correct();
+
+      successfulUpdates.push(updates[i]);
+
+      // Reissue disclosure requests if already sent 
+      await sendDisclosureRequestEmails({ EF_S3ObjectKey, DR_S3ObjectKey, affiliateEmail, reSend:true });
+    }
+  }
+
+  // Handle new affiliates
+  if(appends.length > 0) {
+    bucket.consenter.exhibit_forms = [ { entity_id, affiliates:appends } as ExhibitForm ];
+    for(let i=0; i<appends.length; i++) {
+      // Send out an automatic disclosure request to the new affiliates (even though the AI did not get a 
+      // chance to review them) and create the customary reminder event bridge rules.
+      const { email:affiliateEmail } = appends[i];
+      
+      // Add a new single exhibit form to the bucket for the new affiliate.
+      const EF_S3ObjectKey = await new BucketExhibitForm(
+        bucket,
+        { entityId:entity_id, itemType:ItemType.EXHIBIT, affiliateEmail, consenterEmail }
+      ).add();
+
+      // Add a new disclosure form to the bucket for the new affiliate.
+      const DR_S3ObjectKey = await new BucketDisclosureForm({
+        bucket,
+        metadata: { entityId:entity_id, itemType:ItemType.DISCLOSURE, affiliateEmail, consenterEmail }      
+      }).add();
+
+      // Reissue disclosure requests if already sent 
+      await sendDisclosureRequestEmails( { EF_S3ObjectKey, DR_S3ObjectKey, affiliateEmail, reSend:false });
+    }
+  }
+
+  // Handle all correction notification emails
+  {
+    corrections.deletes = successfulDeletes;
+    corrections.updates = successfulUpdates;
+    const correctionEmail = new ExhibitCorrectionEmail(consenterEmail, corrections);
+
+    // Send an email to the entity reps about the affiliate updates, additions, and removals.
+    await correctionEmail.sendToEntity();
+
+    // Send an email to each affiliate that was updated notifiying them of the update.
+    await correctionEmail.sendToAffiliates();
+  }
+
+  return getCorrectableAffiliates(consenterEmail, entity_id);
 }
 
 
@@ -726,40 +927,34 @@ export const correctExhibitData = async (email:string, exhibitForm:ExhibitForm):
 const { argv:args } = process;
 if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
 
-  const task = Task.RESCIND_CONSENT as Task;
-  let payload = {
-    task,
-    parameters: {
-      email:"cp1@warhen.work",
-      exhibit_data: {
-        entity_id:"8ea27b83-1e13-40b0-9192-8f2ce6a5817d",
-        affiliates: [
-          {
-            affiliateType:"employer",
-            email:"affiliate1@warhen.work",
-            org:"Warner Bros.",
-            fullname:"Bugs Bunny",
-            title:"Rabbit",
-            phone_number:"6172224444"
-          },{
-            affiliateType:"academic",
-            email:"affiliate2@warhen.work",
-            org:"Cartoon Town University",
-            fullname:"Daffy Duck",
-            title:"Fowl",
-            phone_number:"7813334444"
-          },{
-            affiliateType:"other",
-            email:"affiliate3@warhen.work",
-            org:"Anywhere Inc.",
-            fullname:"Yosemite Sam",
-            title:"Cowboy",
-            phone_number:"5084448888"
-          }
-        ]
-      }
-    } 
-  } as any;
+  const task = Task.CORRECT_EXHIBIT_FORM as Task;
+  
+  const bugs = {
+    affiliateType:"employer",
+    email:"affiliate1@warhen.work",
+    org:"Warner Bros.",
+    fullname:"Bugs Bunny",
+    title:"Rabbit",
+    phone_number:"6172224444"
+  };
+  const daffy = {
+    affiliateType:"academic",
+    email:"affiliate2@warhen.work",
+    org:"Cartoon Town University",
+    fullname:"Daffy Duck",
+    title:"Fowl",
+    phone_number:"7813334444"
+  };
+  const sam = {
+    affiliateType:"other",
+    email:"affiliate3@warhen.work",
+    org:"Anywhere Inc.",
+    fullname:"Yosemite Sam",
+    title:"Cowboy",
+    phone_number:"5084448888"
+  };
+
+  let payload = { task } as any;
 
   (async () => {
     try {
@@ -780,13 +975,15 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
 
       // 4) Get bucket name & lambda function arns
       const bucketName = `${prefix}-exhibit-forms`;
-      const { ExhibitFormBucketPurge: s3DE, ExhibitFormDbPurge: dbDE} = DelayedExecutions
+      const { ExhibitFormBucketPurge: s3DE, ExhibitFormDbPurge: dbDE, DisclosureRequestReminder:drDE} = DelayedExecutions
       const dbFunctionName = `${prefix}-${dbDE.coreName}`;
       const s3FunctionName = `${prefix}-${s3DE.coreName}`;
+      const drFunctionName = `${prefix}-${drDE.coreName}`;
 
       // 5) Set environment variables
       process.env[dbDE.targetArnEnvVarName] = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${dbFunctionName}`;
       process.env[s3DE.targetArnEnvVarName] = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${s3FunctionName}`;
+      process.env[drDE.targetArnEnvVarName] = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${drFunctionName}`
       process.env[ExhibitFormsBucketEnvironmentVariableName] = bucketName;
       process.env.USERPOOL_ID = userpoolId;
       process.env.PREFIX = prefix
@@ -795,7 +992,8 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
 
       // 6) Define task-specific input
       switch(task) {
-        case Task.SAVE_EXHIBIT_FORM:          
+        case Task.SAVE_EXHIBIT_FORM:
+          payload.parameters = { email: 'cp1@warhen.work', exhibit_data: { affiliates: [ bugs, daffy, sam ]} };      
           // Make some edits
           payload.parameters.exhibit_data.affiliates[0].email = 'bugsbunny@gmail.com';
           payload.parameters.exhibit_data.affiliates[1].org = 'New York School of Animation';
@@ -813,50 +1011,78 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
           process.env[Configurations.ENV_VAR_NAME] = JSON.stringify(configs);
 
           // Set the payload
-          payload = {
-            "task": "send-exhibit-form",
-            "parameters": {
-              "email": "cp1@warhen.work",
-              "exhibit_data": {
-                "entity_id": "3ef70b3e-456b-42e8-86b0-d8fbd0066628",
-                "affiliates": [
-                  {
-                    "affiliateType": "ACADEMIC",
-                    "email": "affiliate2@warhen.work",
-                    "org": "My Neighborhood University",
-                    "fullname": "Mister Rogers",
-                    "title": "Daytime child television host",
-                    "phone_number": "781-333-5555"
-                  },
-                  {
-                    "affiliateType": "OTHER",
-                    "email": "affiliate3@warhen.work",
-                    "org": "Thingamagig University",
-                    "fullname": "Elvis Presley",
-                    "title": "Entertainer",
-                    "phone_number": "508-333-9999"
-                  }
-                ]
-              }
+          payload.parameters = {
+            email: "cp1@warhen.work",
+            exhibit_data: {
+              entity_id: "3ef70b3e-456b-42e8-86b0-d8fbd0066628",
+              affiliates: [
+                {
+                  affiliateType: "ACADEMIC",
+                  email: "affiliate2@warhen.work",
+                  org: "My Neighborhood University",
+                  fullname: "Mister Rogers",
+                  title: "Daytime child television host",
+                  phone_number: "781-333-5555"
+                },
+                {
+                  affiliateType: "OTHER",
+                  email: "affiliate3@warhen.work",
+                  org: "Thingamagig University",
+                  fullname: "Elvis Presley",
+                  title: "Entertainer",
+                  phone_number: "508-333-9999"
+                }
+              ]
             }
           }
           break;
+
+        case Task.CORRECT_EXHIBIT_FORM:
+          const { ACADEMIC, OTHER } = AffiliateTypes;
+          payload.parameters = {
+            email: 'cp2@warhen.work',
+            corrections: {
+              entity_id: '13376a3d-12d8-40e1-8dee-8c3d099da1b2',
+              appends: [
+                {
+                  affiliateType: OTHER,
+                  email: 'affiliate6@warhen.work',
+                  phone_number: '1237776666',
+                  fullname: 'Sherlock Holmes',
+                  org: 'Scotland Yard',
+                  title: 'Detective'
+                }
+              ],
+              updates: [
+                {
+                  affiliateType: ACADEMIC,
+                  email: 'affiliate2@warhen.work',
+                  fullname: 'Daffy Duck (correction 1)',
+                  title: 'Duck (correction 1)',
+                  org: 'Warner Bros. (correction 1)',
+                  phone_number: '6172223456'
+                }
+              ],
+              deletes: [
+                "affiliate1@warhen.work"
+              ]
+            } as ExhibitFormCorrection
+          }
+          break;
+
         case Task.GET_CONSENTER:
         case Task.SEND_CONSENT:
         case Task.RENEW_CONSENT:
         case Task.RESCIND_CONSENT:
-          payload = { task, parameters: { email: 'cp1@warhen.work' } };
+          payload.parameters = { email: 'cp1@warhen.work' };
           break;
 
         case Task.REGISTER_CONSENT:
-          payload = {
-            task,
-            parameters: {
-              signature: "Yosemite Sam",
-              fullname: "Yosemite S Sam",
-              email: "cp1@warhen.work",
-              phone: "+7812224444"
-            }
+          payload.parameters = {
+            signature: "Yosemite Sam",
+            fullname: "Yosemite S Sam",
+            email: "cp1@warhen.work",
+            phone: "+7812224444"
           };
           break;
       }

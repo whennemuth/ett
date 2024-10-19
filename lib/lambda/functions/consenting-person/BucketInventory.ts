@@ -1,42 +1,41 @@
 import { IContext } from "../../../../contexts/IContext";
 import { Consenter } from "../../_lib/dao/entity";
-import { BucketItem, ListObjectsOutput } from "./BucketItem";
+import { BucketItem } from "./BucketItem";
 import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "./BucketItemMetadata";
 
 /**
- * This class represents all items in the exhibit forms bucket for a particular consenting individual and entity.
- * Querying and filtering logic is provided.
+ * This class represents all items in the exhibit forms bucket for a particular consenting individual, 
+ * A lookup to list ALL items for that consenter is performed against the bucket, but querying and 
+ * filtering logic is provided to optionally reduce scope to a particular entity or entity & affiliate.
  */
 export class BucketInventory {
-  private email:string;
+  private consenterEmail:string;
   private entityId?:string;
   private prefix:string;
   private keys:string[] = [];
   private contents:BucketItemMetadataParms[] = [];
 
-  public static getInstance = async (email:string, entityId?:string):Promise<BucketInventory> => {
-    const inventory = new BucketInventory(email, entityId);
-
-    const bucketItem = new BucketItem({ email } as Consenter);
-    const output:ListObjectsOutput = await bucketItem.listObjects({
+  public static getInstance = async (consenterEmail:string, entityId?:string):Promise<BucketInventory> => {
+    const inventory = new BucketInventory(consenterEmail, entityId);
+    const { fromBucketObjectKey } = BucketItemMetadata
+    const bucketItem = new BucketItem({ email: consenterEmail } as Consenter);
+    const output = await bucketItem.listKeys({
       entityId
     } as BucketItemMetadataParms);
 
-    const { Prefix, listedObjects: { Contents=[] } } = output;
+    const { Prefix, keys } = output;
     inventory.prefix = Prefix;
-    Contents.forEach(o => {
-      const { Key } = o;
-      if(Key) {
-        inventory.keys.push(Key);
-        inventory.contents.push(BucketItemMetadata.fromBucketObjectKey(Key));
-      }      
+
+    keys.forEach(key => {
+      inventory.keys.push(key);
+      inventory.contents.push(fromBucketObjectKey(key));      
     })
   
     return inventory;
   }
 
-  private constructor(email:string, entityId?:string) {
-    this.email = email;
+  private constructor(consenterEmail:string, entityId?:string) {
+    this.consenterEmail = consenterEmail;
     this.entityId = entityId;
   }
 
@@ -57,8 +56,15 @@ export class BucketInventory {
    * @param affiliateEmail 
    * @returns 
    */
-  public getAffiliateForms = (affiliateEmail:string) => {
-    return this.contents.filter(metadata => metadata.affiliateEmail == affiliateEmail)
+  public getAffiliateForms = (affiliateEmail:string, itemType?:ItemType):BucketItemMetadataParms[] => {
+    const { contents } = this;
+    let filtered = contents.filter(metadata => {
+      return affiliateEmail == undefined || metadata.affiliateEmail == affiliateEmail
+    });
+    if(itemType) {
+      filtered = filtered.filter(metadata => metadata.itemType = itemType);
+    }
+    return filtered;
   }
 
   /**
@@ -77,6 +83,15 @@ export class BucketInventory {
     return emails;
   }
 
+  public hasAffiliate = (affiliateEmail:string, entityId?:string):boolean => {
+    const { contents } = this;
+    let filtered = contents.filter(metadata => metadata.affiliateEmail == affiliateEmail);
+    if(entityId) {
+      filtered = filtered.filter(metadata => metadata.entityId == entityId);
+    }
+    return filtered.length > 0;
+  }
+
   /**
    * Get the form of a specified type that was most recently submitted by a consenter for a specified affiliate.
    * @param affiliateEmail 
@@ -84,7 +99,7 @@ export class BucketInventory {
    * @returns 
    */
   public getLatestAffiliateItem = (affiliateEmail:string, itemType:ItemType):BucketItemMetadataParms|undefined => {
-    const { contents, getAffiliateForms } = this;
+    const { getAffiliateForms } = this;
     const candidates = getAffiliateForms(affiliateEmail);
     return BucketItemMetadata.getLatestFrom(candidates, itemType);
   }
@@ -113,6 +128,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_BUCKET_INVENTORY') {
 
     // console.log(JSON.stringify(inventory.getKeys(), null, 2));
     // console.log(JSON.stringify(inventory.getAffiliateEmails(), null, 2));
-    console.log(JSON.stringify(inventory.getLatestAffiliateItem('affiliate1@warhen.work', ItemType.EXHIBIT), null, 2));
+    console.log(JSON.stringify(inventory.getAffiliateForms('affiliate1@warhen.work', ItemType.EXHIBIT), null, 2))
+    // console.log(JSON.stringify(inventory.getLatestAffiliateItem('affiliate1@warhen.work', ItemType.EXHIBIT), null, 2));
   })();
 }

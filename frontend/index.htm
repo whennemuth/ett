@@ -291,7 +291,7 @@
       /* background-color: rgb(217, 225, 242); */
       /* background-color:rgb(84, 123, 196); */
       /* background-color:rgb(33, 54, 95); */
-      table[name="tblPoc"] > thead > tr > td {
+      table.tblPoc > thead > tr > td {
         font-weight:bold;
         color: white;
         text-align:center;
@@ -302,7 +302,7 @@
         padding: 10px;
       }
 
-      table[name="tblPoc"] > tbody > tr > td {
+      table.tblPoc > tbody > tr > td {
         background-color: rgb(217, 225, 242);
         border-style: none;
         padding: 10px;
@@ -1032,7 +1032,10 @@
                     <a class="nav-link" id="consenter-consent-link" data-toggle="tab" href="#consenter-consent" role="tab" aria-controls="consenter-consent" aria-selected="true">Your Consent</a>
                   </li>
                   <li class="nav-item">
-                    <a class="nav-link" id="consenter-exhibit-link" data-toggle="tab" href="#consenter-exhibit" role="tab" aria-controls="consenter-exhibit" aria-selected="false">Your Exhibit Forms</a>
+                    <a class="nav-link" id="consenter-exhibit-compose-link" data-toggle="tab" href="#consenter-exhibit-compose" role="tab" aria-controls="consenter-exhibit-compose" aria-selected="false">Compose an exhibit form</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" id="consenter-exhibit-amend-link" data-toggle="tab" href="#consenter-exhibit-amend" role="tab" aria-controls="consenter-exhibit-amend" aria-selected="false">Amend a previously submitted exhibit form</a>
                   </li>
                 </ul>
 
@@ -1097,7 +1100,7 @@
                   </div>
                 </div>
 
-                <div class="tab-content" id="consenterContent">
+                <div class="tab-content" id="consenterConsent">
                   <div class="tab-pane fade" id="consenter-consent" role="tabpanel" aria-labelledby="consenter-consent-link">
                     <h3 class="display-7 fw-bold">ETT Consent Form</h3>
                     <div id="divConsenterConsent" class="divSysAdminOption" style="overflow: auto; width:100%">
@@ -1238,8 +1241,10 @@
                       </div>                  
                     </div>
                   </div>
+                </div>
 
-                  <div class="tab-pane fade" id="consenter-exhibit" role="tabpanel" aria-labelledby="consenter-exhibit-link" style="overflow:auto;">
+                <div class="tab-content" id="consenterExhibitCompose">
+                  <div class="tab-pane fade" id="consenter-exhibit-compose" role="tabpanel" aria-labelledby="consenter-exhibit-compose-link" style="overflow:auto;">
                     <h3 class="display-7 fw-bold">Full Exhibit Form - Consent Recipients/Affiliates</h3>
 
                     <p style="margin-top:40px; margin-bottom:40px;">
@@ -1267,7 +1272,7 @@
                     </div>
 
                     <div style="float:left; clear:both; margin-top: 20px; overflow: auto;">
-                      <table id="tblPoc" name="tblPoc">
+                      <table id="tblPoc" name="tblPoc" class="tblPoc">
                         <thead>
                           <tr>
                             <td colspan="2">Organization</td>
@@ -1300,7 +1305,7 @@
                             <td><input name="poc-title" type="text" class="form-control"></td>
                             <td><input name="poc-email" type="text" class="form-control"></td>
                             <td><input name="poc-phone" type="text" class="form-control"></td>
-                            <td style="width:fit-content;">
+                            <td style="width:fit-content;" name="tdAddRemove">
                               <span id='exhibit-tooltip-2' data-toggle="tooltip">
                                 <button id="btnAddPoc" class="btn btn-primary btn-sm" type="button" style="width:68px;" onclick="changePoc('add')">Add</button>                                
                               </span>
@@ -1445,7 +1450,7 @@
                     </p>
 
                     <div style="float:left; clear:both; overflow: auto;;">
-                      <table name="tblPoc">
+                      <table name="tblPoc" class="tblPoc">
                         <thead>
                           <tr>
                             <td colspan="2">Organization</td>
@@ -1545,20 +1550,57 @@
                       </div>
                     </div>
                   </div>
+                </div>
 
+                <div class="tab-content" id="consenterExhibitAmend">
+                  <div class="tab-pane fade" id="consenter-exhibit-amend" role="tabpanel" aria-labelledby="consenter-exhibit-amend-link" style="overflow:auto;">
+                    <h3 class="display-7 fw-bold">Amend an exhibit form and resend</h3>
+
+                    <p style="margin-top:40px; font-size: larger;">
+                      If you have already submitted an exhibit form to an organization/entity but wish to make any of the following corrections, 
+                      select that same organization/entity from the list, re-enter the information and submit again:
+                    </p>
+
+                    <ul style="font-size: larger;">
+                      <li><b>Add</b> another affiliate to those already submitted.<br>
+                        <span style="font-style: italic; font-size: large;">(NOTE: Modification to the email address of an affiliate sent in earler is treated as a new affiliate)</span></li>
+                      <li><b>Change</b> the name, title, organization, or phone number of an affiliate sent in earlier</li>
+                      <li><b>Remove</b> an affiliate you had sent in earlier</li>
+                    </ul>
+
+                    <div id="divRequestingEntity2" style="margin-top:40px; float:left;">
+                      <div style="float:left;">
+                        <div id="requestingEntityDropdown2" class="dropdown">
+                          <b>Select One:</b>&nbsp;                          
+                          <button id="requestingEntityDropdownButton2" class="btn btn-primary btn-lg dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            Requesting Organizations/Entities
+                          </button>
+                          <div id="requestingEntityDropdownList2" class="dropdown-menu" aria-labelledby="requestingEntityDropdownButton2">
+                          </div>                          
+                        </div>
+                      </div>
+                    </div>
+
+                    <div id="divAffiliates" style="margin-top:20px; overflow:auto; float:left; clear:both;">
+
+                    </div>
+
+                    <button id="btnSubmitExhibitCorrections" class="btn btn-primary btn-lg" style="float:left; clear:both; margin-top:20px;" type="button">
+                      Submit
+                    </button>
                 </div>
               </div>
           </div>
+        </div>
 
 
-          <!-- Signout button -->
-          <p>&nbsp;</p>              
-          <p>&nbsp;</p>              
-          <p>&nbsp;</p>              
-          <p>&nbsp;</p>              
-          <div>
-            <button id="btnSignout" type="button" class="btn btn-danger">Sign out</button>  
-          </div>
+        <!-- Signout button -->
+        <p>&nbsp;</p>              
+        <p>&nbsp;</p>              
+        <p>&nbsp;</p>              
+        <p>&nbsp;</p>              
+        <div>
+          <button id="btnSignout" type="button" class="btn btn-danger">Sign out</button>  
         </div>
 
         <!-- Footer -->
@@ -1639,6 +1681,8 @@
     let consenterInfo;
 
     let selectedEntity;
+
+    let selectedEntityForExhibitUpdate;
 
     let selectedConsenter;
 
@@ -2356,7 +2400,7 @@
               id: task == 'register-consent' ? 'apiResponse' : 'consentTimestamp',
               html: task == 'register-consent' ? failureMsg: pendingMsg
             };
-            hide('consenter-exhibit-link');
+            hide('consenter-exhibit-compose-link');
             hide('consentOptions');
             show('consentFieldSet');
             fill(msg.id, msg.html);
@@ -2371,13 +2415,13 @@
             show('consentRenew');
             show('consentSend');
             if(document.location.pathname == '/consenter/exhibits/index.htm') {
-              show('consenter-exhibit-link');
+              show('consenter-exhibit-compose-link');
               populateExhibitFormSignoffFields();
               document.getElementById('waitForAI').style.display = 'none';
-              document.getElementById('consenter-exhibit-link').click();
+              document.getElementById('consenter-exhibit-compose-link').click();
             }
             else {
-              hide('consenter-exhibit-link');
+              hide('consenter-exhibit-compose-link');
               document.getElementById('waitForAI').style.display = 'inline';
             }
             show('consentOptions');
@@ -2388,7 +2432,7 @@
 
           // Hide all consent options
           hidePostConsentFields = () => {
-            hide('consenter-exhibit-link');
+            hide('consenter-exhibit-compose-link');
             hide('consentOptions');
             hide('consentFieldSet');
             fill('apiResponse', `${email} found to be deactivated (has not yet submitted consent)`);
@@ -2412,7 +2456,7 @@
               showPostConsentFields(_lastAction);
               hide('consentRescind');
               hide('consentSend');
-              hide('consenter-exhibit-link');
+              hide('consenter-exhibit-compose-link');
               break;
             case 'deactivated':
               hidePostConsentFields();
@@ -2433,12 +2477,17 @@
       }
     }
 
-    const populateEntityList = () => {
+    const populateEntityLists = () => {
+      populateEntityList('requestingEntityDropdownList');
+      populateEntityList('requestingEntityDropdownList2');
+    }
+
+    const populateEntityList = (listId) => {
       const { consenter: { exhibit_forms=[] }, entities } = consenterInfo;
       if( entities.length == 0) {
         return;
       }
-      const lbx = document.querySelector(`#requestingEntityDropdownList`);
+      const lbx = document.querySelector(`#${listId}`);
       lbx.innerHTML = '';
       entities.forEach(entity => {
         const { entity_id, entity_name } = entity;
@@ -2489,7 +2538,7 @@
       document.getElementById('consenter-correct-fullname').innerHTML = fullName;
       document.getElementById('consenter-correct-email').innerHTML = email;
       document.getElementById('consenter-correct-phone').innerHTML = phone_number;
-      populateEntityList();
+      populateEntityLists();
       return consenterInfo;
     }
 
@@ -2612,7 +2661,7 @@
     function changePoc(task) {
       const { srcElement:button } = event;
       if(task == 'add') {
-        const tbl = button.closest('#tblPoc');
+        const tbl = button.closest('.tblPoc');
         const tr = button.closest('#trPoc');
         const newrow = tbl.insertRow();
         newrow.setAttribute('name', 'trPoc');
@@ -3053,7 +3102,7 @@
       const payload = getExhibitFormPayload();
       await sendExhibitFormPayload('save-exhibit-form', payload, () => {
         alert('Exhibit form saved.');
-        populateEntityList();
+        populateEntityLists();
       });
     }
 
@@ -3065,8 +3114,69 @@
       const payload = getExhibitFormPayload();
       await sendExhibitFormPayload('send-exhibit-form', payload, () => {
         alert('Exhibit form submitted.');
-        populateEntityList();
+        populateEntityLists();
       });
+    }
+
+    const getSubmittedAffiliateData = async (entity_id) => {
+      const msg = document.getElementById('apiResponse');
+      const affiliateEmails = [];
+      msg.innerHTML = '';
+      try {
+        const dropdownButton = document.getElementById('requestingEntityDropdownButton2');
+        const dropdownList = document.getElementById('requestingEntityDropdownList2');
+        if(/Requesting Organizations\/Entities/.test(dropdownButton.innerText)) {
+          return;
+        }
+        const { consenter: { email } } = consenterInfo;
+        const role = AccessJwtCookie.getRole().name;
+        document.body.style.cursor = 'progress';
+
+        let package;
+        if(localTesting()) {
+          package = {
+            message: 'Ok', payload: {
+              ok: true,
+              affiliateEmails: [
+                'affiliate1@warhen.work', 'affiliate2@warhen.work', 'affiliate3@warhen.work'
+              ]
+            }
+          }
+        }
+        else {
+          const response = await fetch(apiUri(role), {
+            method: 'GET',
+            mode: 'cors',
+            credentials: 'include',
+            headers: {
+              'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+              'Content-Type': 'application/json',
+              [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({
+                task: 'get-correctable-affiliates',
+                parameters: { email, entity_id }
+              })
+            }
+          });
+
+          package = await response.json();
+        }
+
+        document.body.style.cursor = 'default';
+        const { message, payload } = package;
+        if(payload.ok) {
+          const { affiliateEmails:emails } = payload;
+          return affiliateEmails.push(...(emails ?? []));
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+      finally {
+        return affiliateEmails;
+      }
     }
 
     const refreshDbTable = async (tableName) => {
@@ -3650,6 +3760,209 @@
     }
 
     /**
+     * Add behavior to selection activity on the entity picklist for exhibit correction
+     */
+    const toggleExhibitCorrectionByEntity = async (_event, _emails) => {
+      const { srcElement:a } = _event;
+      if(a.tagName == 'A' && a.name && a.id) {
+        selectedEntityForExhibitUpdate = a.id;
+        const button = document.getElementById('requestingEntityDropdownButton2');
+        button.innerText = a.name;
+        let emails = _emails;
+        if( ! emails) {
+          emails = await getSubmittedAffiliateData(a.id);
+        }
+        const container = document.getElementById('divAffiliates');
+        container.innerHTML = '';
+        emails.forEach(email => {
+          const affiliate = document.createElement("div");
+          affiliate.setAttribute('style', 'float:left; clear:both; overflow:auto; margin-top:10px;');
+          container.appendChild(affiliate);
+
+          const label = document.createElement('div');
+          label.setAttribute('style', 'float:left; font-size:large; font-weight:bold; margin-right:10px; height:36px; display:flex; align-items:center;');
+          label.innerHTML = email;
+          affiliate.appendChild(label);
+
+          const createRadioButton = (index, description, clickHandler) => {
+            const radio = document.createElement('input');
+            radio.className = 'form-check-input';
+            radio.name = email;
+            radio.type = 'radio';
+            radio.id = `${email}-${index}`;
+            radio.setAttribute('style', 'float:left; border:solid black; height:20px; width:20px; margin-right:10px; margin-left:20px; margin-top:8px; margin-bottom:8px;');
+            radio.addEventListener('click', clickHandler);
+            affiliate.appendChild(radio);
+            const rdoLabel = document.createElement('div');
+            rdoLabel.innerText = description;
+            rdoLabel.className = 'form-check-label';
+            rdoLabel.setAttribute('style', 'float:left; height:36px; display:flex; align-items:center;');
+            affiliate.appendChild(rdoLabel);
+            return radio;
+          };
+
+          const rdoKeep = createRadioButton(1, 'Keep', () => {
+            const removeMe = document.getElementById(email);
+            if(removeMe) {
+              affiliate.removeChild(removeMe);
+            }              
+          });
+          rdoKeep.setAttribute('checked', true);
+
+          createRadioButton(2, 'Replace', () => {
+            if(event.srcElement.checked) {
+              if(event.srcElement.parentElement.querySelectorAll('.tblPoc').length > 0) {
+                return;
+              }
+              const fieldset = document.createElement('table');
+              fieldset.id = email;
+              fieldset.className = 'tblPoc';
+              fieldset.setAttribute('style', 'float:left; clear:both;');
+              fieldset.setAttribute('operation', 'replace');
+              fieldset.innerHTML = document.getElementById('tblPoc').innerHTML;
+              affiliate.appendChild(fieldset);
+              fieldset.rows[0].cells[1].colSpan = 3;
+              fieldset.rows[1].deleteCell(6);
+              fieldset.rows[2].deleteCell(6);
+              fieldset.rows[1].deleteCell(4);
+              fieldset.rows[2].deleteCell(4);
+            }
+          });
+
+          createRadioButton(3, 'Remove', () => {
+            const removeMe = document.getElementById(email);
+            if(removeMe) {
+              affiliate.removeChild(removeMe);
+            }              
+          });
+        });
+
+        const chkAdd = document.createElement('input');
+        chkAdd.className = 'form-check-input';
+        chkAdd.type = 'checkbox';
+        chkAdd.setAttribute('style', 'float:left; clear:both; margin-top:20px; border:solid black; height:20px; width:20px; margin-right:10px; ');
+        container.appendChild(chkAdd);
+        chkAdd.addEventListener('click', () => {
+          if(event.srcElement.checked) {
+            const fieldsetContainer = document.createElement('div');
+            fieldsetContainer.id = 'divNewAffiliates';
+            fieldsetContainer.setAttribute('style', 'float:left; clear:both;');
+            const fieldset = document.createElement('table');
+            fieldset.className = 'tblPoc';
+            fieldset.setAttribute('operation', 'remove');
+            fieldset.innerHTML = document.getElementById('tblPoc').innerHTML;
+            fieldsetContainer.appendChild(fieldset);
+            container.appendChild(fieldsetContainer);
+          }
+          else {
+            const fieldsetContainer = document.getElementById('divNewAffiliates');
+            container.removeChild(fieldsetContainer);
+          }
+        });
+
+        const chkAddLabel = document.createElement('div');
+        chkAddLabel.innerText = 'Add New';
+        chkAddLabel.className = 'form-check-label';
+        chkAddLabel.setAttribute('style', 'float:left; height:36px; display:flex; align-items:center; font-weight:bold; font-size:large; margin-top:12px;');
+        container.appendChild(chkAddLabel);
+      }
+    }
+
+    /**
+     * Submit exhibit form corrections made by a consenting person.
+     */
+    const submitExhibitFormCorrections = async (callback) => {
+      if( ! selectedEntityForExhibitUpdate) {
+        alert('Please select an organization/entity');
+        return;
+      }
+      const corrections = {
+        entity_id: selectedEntityForExhibitUpdate,
+        updates: [],
+        appends: [],
+        deletes: []
+      }
+
+      // Add all the updated affiliates to the payload
+      const updatedAffiliates = document.getElementById('divAffiliates').querySelectorAll('table[operation="replace"]') ?? [];
+      updatedAffiliates.forEach(a => {
+        const updated = {
+          email: a.id,
+          affilliateType: a.querySelector('select[name="org-type"]').value,
+          org: a.querySelector('input[name="org-name"]').value,
+          fullname: a.querySelector('input[name="poc-name"]').value,
+          title: a.querySelector('input[name="poc-title"]').value,
+          phone_number: a.querySelector('input[name="poc-phone"]').value
+        }
+        corrections.updates.push(updated);
+      });
+      
+      // Add all the removed affiliates to the payload
+      const removedAffiliates = document.getElementById('divAffiliates').querySelectorAll('input[type="radio"]') ?? [];
+      removedAffiliates.forEach(a => {
+        if(a.checked && a.id.endsWith('-3')) {
+          corrections.deletes.push(a.name);
+        }
+      });
+
+      // Add all the new affiliates to the payload
+      const fieldsetContainer = document.getElementById('divNewAffiliates');
+      if(fieldsetContainer) {
+        newAffiliates = fieldsetContainer.querySelectorAll('#trPoc') ?? [];
+        newAffiliates.forEach(tr => {
+          const addition = {
+            affilliateType: tr.querySelector('select[name="org-type"]').value,
+            org: tr.querySelector('input[name="org-name"]').value,
+            email: tr.querySelector('input[name="poc-email"]').value,
+            fullname: tr.querySelector('input[name="poc-name"]').value,
+            title: tr.querySelector('input[name="poc-title"]').value,
+            phone_number: tr.querySelector('input[name="poc-phone"]').value
+          }
+          corrections.appends.push(addition);
+        });
+      }
+
+      // Send the payload
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+        const role = AccessJwtCookie.getRole().name;
+        const { consenter: { email }} = consenterInfo;
+
+        document.body.style.cursor = 'progress';
+        const response = await fetch(apiUri(role), {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({ 
+              task:'correct-exhibit-form', 
+              parameters: { email, corrections } 
+            })
+          }
+        });
+
+        const package = await response.json();
+        document.body.style.cursor = 'default';
+        const { message, payload } = package;
+        if(payload.ok) {
+          const { affiliateEmails } = payload;
+          callback(affiliateEmails);
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+
+      console.log(JSON.stringify(corrections, null, 2));
+    }
+
+    /**
      * This function serves as a utility object for processing JWTs received from cognito and the cookies they are stored in.
      */
     const JwtCookie = function(cookieName) {
@@ -3918,7 +4231,7 @@
         $(this).tab('show')
       });
 
-      // Add behavior to selection activity on the entity picklist
+      // Add behavior to selection activity on the entity picklist for exhibit composition
       $('#requestingEntityDropdownButton').on('hide.bs.dropdown', function () {
         const { srcElement:a } = event;
         if(a.tagName == 'A' && a.name && a.id) {
@@ -3931,6 +4244,24 @@
           populateExhibitForm();
           toggleHighlight(document.querySelector('#requestingEntityDropdown'));
         }
+      });
+
+      // Add behavior to selection activity on the entity picklist for exhibit correction
+      $('#requestingEntityDropdownButton2').on('hide.bs.dropdown', async () => {
+        await toggleExhibitCorrectionByEntity(event);
+      });
+
+      // Add behavior to submit exhibit form corrections.
+      $('#btnSubmitExhibitCorrections').on('click', async () => {
+        await submitExhibitFormCorrections((affiliateEmails) => {
+          // Make a fake event
+          id = selectedEntityForExhibitUpdate;
+          name = document.getElementById('requestingEntityDropdownButton2').innerText;
+          const _event = {
+            srcElement: { tagName: 'A', id, name }
+          }
+          toggleExhibitCorrectionByEntity(_event)
+        });
       });
 
       // Add behavior to selection activity on the consenter picklist for exhibit form requests

@@ -4,7 +4,8 @@ import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, log } from "../../Utils";
 import { DisclosureEmailParms, DisclosureRequestReminderEmail } from "../authorized-individual/DisclosureRequestEmail";
-import { ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
+import { BucketInventory } from "../consenting-person/BucketInventory";
+import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
 import { purgeFormFromBucket } from "./PurgeExhibitFormFromBucket";
 import { getTestItem } from "./TestBucketItem";
 
@@ -32,19 +33,23 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
     validateLambdaInput(lambdaInput);
 
     const { disclosureEmailParms, purgeForms=false } = lambdaInput as DisclosureRequestReminderLambdaParms;
+    const { s3ObjectKeyForExhibitForm, s3ObjectKeyForDisclosureForm } = disclosureEmailParms;
 
-    const sent = await new DisclosureRequestReminderEmail(disclosureEmailParms).send();
-
-    if(sent) {
-      console.log(`Disclosure request reminder sent!`);
+    if(await fresherCopiesFound(s3ObjectKeyForExhibitForm)) {
+      console.log('Cancelling disclosure request reminder.');
     }
     else {
-      console.error('Disclosure request reminder NOT sent!');
+      const sent = await new DisclosureRequestReminderEmail(disclosureEmailParms).send();
+
+      if(sent) {
+        console.log(`Disclosure request reminder sent!`);
+      }
+      else {
+        console.error('Disclosure request reminder NOT sent!');
+      }
     }
 
     if(purgeForms) {
-      const { s3ObjectKeyForExhibitForm, s3ObjectKeyForDisclosureForm } = disclosureEmailParms;
-
       await purgeFormFromBucket(EXHIBIT, s3ObjectKeyForExhibitForm);
 
       await purgeFormFromBucket(DISCLOSURE, s3ObjectKeyForDisclosureForm);      
@@ -56,6 +61,30 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
   finally { 
     await PostExecution().cleanup(eventBridgeRuleName, targetId);
   }
+}
+
+/**
+ * There is the possibility that a consenting individual has made corrections to the single exhibit form that
+ * matches the s3ObjectKey provided. This function determines if that is the case. If so, then s3ObjectKey is 
+ * an older "version" and should not be sent in the disclosure request reminder. 
+ * 
+ * NOTE: The older copy could be deleted here, but an event bridge rule will do that anyway per the standard schedule.
+ * @param Key 
+ * @returns 
+ */
+const fresherCopiesFound = async (s3ObjectKey:string):Promise<boolean> => {
+  const { entityId, itemType, affiliateEmail, consenterEmail } = BucketItemMetadata.fromBucketObjectKey(s3ObjectKey);
+  if( ! consenterEmail) return false;
+  if( ! affiliateEmail) return false;
+  const inventory = await BucketInventory.getInstance(consenterEmail, entityId);
+  const fresherS3ObjectKey = inventory.getLatestAffiliateItem(affiliateEmail, itemType);
+  console.log(`A fresher (corrected) copy for the ${itemType} form was found ${
+    JSON.stringify({
+      olderForm: s3ObjectKey,
+      newerForm: fresherS3ObjectKey
+    })
+  }`);
+  return fresherS3ObjectKey ? true : false;
 }
 
 const validateEnvironment = ():void => {

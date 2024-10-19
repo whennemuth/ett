@@ -7,16 +7,18 @@ import { Configurations } from "../../_lib/config/Config";
 import { DAOConsenter, DAOFactory, DAOUser } from "../../_lib/dao/dao";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
 import { ConfigNames, Consenter, Entity, Roles, User, YN } from "../../_lib/dao/entity";
+import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
-import { BucketItem, Tags } from "../consenting-person/BucketItem";
+import { BucketItem } from "../consenting-person/BucketItem";
+import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureForm";
+import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
 import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
 import { DisclosureRequestReminderLambdaParms } from "../delayed-execution/SendDisclosureRequestReminder";
 import { lookupEntity } from "../re-admin/ReAdminUser";
 import { DemolitionRecord, EntityToDemolish } from "./Demolition";
 import { DisclosureEmailParms, DisclosureRequestEmail } from "./DisclosureRequestEmail";
-import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { ExhibitFormRequestEmail } from "./ExhibitFormRequestEmail";
 
 export enum Task {
@@ -333,10 +335,12 @@ export const sendDisclosureRequest = async (consenterEmail:string, entity_id:str
 
   // Tag the pdfs so that they are skipped over by the event bridge stale pdf database purging rule:
   const now = new Date().toISOString();
-  const bucketItem = new BucketItem({ email:consenterEmail } as Consenter);
+  const bucket = new BucketItem({ email:consenterEmail } as Consenter);
+  const exhibitForm = new BucketExhibitForm(bucket, s3ObjectKeyForExhibitForm);
+  const disclosureForm = new BucketDisclosureForm({ bucket, metadata: s3ObjectKeyForDisclosureForm });
   let tagged = false;
-  tagged ||= await bucketItem.tag(s3ObjectKeyForExhibitForm, Tags.DISCLOSED, now);  
-  tagged &&= await bucketItem.tag(s3ObjectKeyForDisclosureForm, Tags.DISCLOSED, now);
+  tagged ||= await exhibitForm.tagWithDiclosureRequestSentDate();
+  tagged &&= await disclosureForm.tagWithDiclosureRequestSentDate();
   if( ! tagged) {
     console.warn(`Tagging failed for pdf forms and so they may be purged from s3 BEFORE disclosure request reminders are triggered and will look for them.`);
   }

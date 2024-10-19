@@ -1,4 +1,4 @@
-import { DeleteObjectCommandOutput, GetObjectTaggingCommand, S3, Tag } from "@aws-sdk/client-s3";
+import { DeleteObjectCommandOutput, S3 } from "@aws-sdk/client-s3";
 import { IContext } from "../../../../contexts/IContext";
 import { DelayedExecutions } from "../../../DelayedExecution";
 import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../_lib/timer/DelayedExecution";
@@ -6,6 +6,7 @@ import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, log } from "../../Utils";
 import { DisclosureItemsParms, Tags } from "../consenting-person/BucketItem";
 import { ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
+import { TagInspector } from "../consenting-person/BucketItemTag";
 import { getTestItem } from "./TestBucketItem";
 
 
@@ -42,38 +43,15 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
 }
 
 /**
- * The deletion of pdf files from s3 will be aborted if they are tagged to indicate they have been used
- * as attachments in a disclosure request email. If so, they will be needed in the followup disclosure
- * reminder emails that are yet to be sent, and deletion should be aborted so the are available when 
- * that time comes.
- * @param Key 
+ * If any pdf file stored in s3 under a specific /consenter/exhibit/affiliate subdirectory is tagged to
+ * indicate it has been used as an attachment in a disclosure request email, deletion of the current 
+ * s3ObjectKey should be aborted because it may be needed in the followup disclosure reminder emails
+ * that are yet to be sent, and deletion should be aborted so they are available when that time comes.
+ * @param s3ObjectKey 
  * @returns 
  */
-export const checkAbort = async (Key:string):Promise<boolean> => {
-  log(`Checking tags for: ${Key}`);
-  try {
-    const { REGION } = process.env;
-    const Bucket = process.env[ExhibitFormsBucketEnvironmentVariableName];
-    const { DISCLOSED } = Tags;
-    const s3 = new S3({ region:REGION });
-    const command = new GetObjectTaggingCommand({ Bucket, Key });
-    const response = await s3.send(command);
-    const disclosed = (response.TagSet ?? [] as Tag[]).find(tag => {
-      const { Key, Value } = tag;
-      if(Key == DISCLOSED) {
-        console.log(`Aborting pdf purge: Pending disclosure requests will need it: ${JSON.stringify({ Key, disclosureRequestSent: Value })}`);
-        return true;
-      }
-      return false;
-    });
-
-    // Abort if s3 object was found to have been tagged.
-    return disclosed != undefined;
-  } 
-  catch(e) {
-    log(e);
-    return false;
-  }
+export const checkAbort = async (s3ObjectKey:string):Promise<boolean> => {
+  return new TagInspector(Tags.DISCLOSED).tagExistsAmong(s3ObjectKey, ItemType.EXHIBIT);
 }
 
 /**
@@ -81,7 +59,7 @@ export const checkAbort = async (Key:string):Promise<boolean> => {
  * @param exhibitFormS3ObjectKey 
  */
 export const purgeFormFromBucket = async (itemType:ItemType, Key:string, checkAbort?:Function):Promise<void> => {
-  if(checkAbort) {
+  if(checkAbort) {    
     const abort = await checkAbort(Key) as boolean;
     if(abort) {
       console.log(`Aborting purge of pdf from s3: ${Key}`);
@@ -120,6 +98,7 @@ const validateLambdaInput = (lambdaInput:DisclosureItemsParms):void => {
     throw new Error('Lambda input is missing s3ObjectKeyForDisclosureForm parameter!');
   }
 }
+
 
 
 /**

@@ -1,3 +1,5 @@
+import * as ctx from '../../../../contexts/context.json';
+import { IContext } from "../../../../contexts/IContext";
 import { DAOFactory } from "../../_lib/dao/dao";
 import { Consenter, Entity, ExhibitForm as ExhibitFormData, YN } from "../../_lib/dao/entity";
 import { EmailParms, sendEmail } from "../../_lib/EmailWithAttachments";
@@ -6,14 +8,12 @@ import { DisclosureForm, DisclosureFormData } from "../../_lib/pdf/DisclosureFor
 import { ExhibitForm } from "../../_lib/pdf/ExhibitForm";
 import { ExhibitFormSingle } from '../../_lib/pdf/ExhibitFormSingle';
 import { IPdfForm, PdfForm } from "../../_lib/pdf/PdfForm";
-import { DisclosureFormBucket } from "../consenting-person/BucketDisclosureForms";
-import { ExhibitBucket } from "../consenting-person/BucketExhibitForms";
 import { BucketItem, DisclosureItemsParms } from "../consenting-person/BucketItem";
-import { BucketItemMetadata } from "../consenting-person/BucketItemMetadata";
+import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureForm";
+import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
+import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName } from "../consenting-person/BucketItemMetadata";
 import { test_data as test_exhibit_data } from '../consenting-person/ExhibitEmail';
 import { bugsbunny, daffyduck, yosemitesam } from "./MockObjects";
-import * as ctx from '../../../../contexts/context.json';
-import { IContext } from "../../../../contexts/IContext";
 
 
 export type DisclosureEmailParms = DisclosureItemsParms & {
@@ -97,6 +97,7 @@ export class BasicDisclosureRequest {
  */
 const grabFromBucketAndSend = async (parms:DisclosureEmailParms):Promise<boolean> => {
   const { consenterEmail, s3ObjectKeyForExhibitForm, s3ObjectKeyForDisclosureForm, emailType } = parms;
+  const bucketName = process.env[ExhibitFormsBucketEnvironmentVariableName];
   console.log(`Sending disclosure ${emailType}: ${JSON.stringify({ 
     consenterEmail, 
     s3ObjectKeyForExhibitForm,
@@ -110,15 +111,19 @@ const grabFromBucketAndSend = async (parms:DisclosureEmailParms):Promise<boolean
   }
   const singleExhibitForm = new class implements IPdfForm {
     async getBytes(): Promise<Uint8Array> {
-      const bucket = new ExhibitBucket(new BucketItem({ email:consenterEmail } as Consenter, 'ett-dev-exhibit-forms'));
-      return bucket.get(s3ObjectKeyForExhibitForm);
+      return new BucketExhibitForm(
+        new BucketItem({ email:consenterEmail } as Consenter, bucketName),
+        s3ObjectKeyForExhibitForm
+      ).get();
     }
   }();
 
   const disclosureForm = new class implements IPdfForm {
     async getBytes(): Promise<Uint8Array> {
-      const bucket = new DisclosureFormBucket(new BucketItem({ email:consenterEmail } as Consenter, 'ett-dev-exhibit-forms'));
-      return bucket.get(s3ObjectKeyForDisclosureForm);
+      return new BucketDisclosureForm({
+        bucket: new BucketItem({ email:consenterEmail } as Consenter, bucketName),
+        metadata: s3ObjectKeyForDisclosureForm
+      }).get();
     }
   }();
 

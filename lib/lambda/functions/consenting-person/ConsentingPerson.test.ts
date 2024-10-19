@@ -5,7 +5,7 @@ const exhibitEmailMock = jest.mock('../../functions/consenting-person/ExhibitEma
   return ExhibitEmailMock();
 });
 
-const consenterBucketItemsMock = jest.mock('../../functions/consenting-person/BucketExhibitForms.ts', () => {
+const consenterBucketItemsMock = jest.mock('../../functions/consenting-person/BucketItemExhibitForms.ts', () => {
   return ExhibitFormBucketItemsMock();
 });
 
