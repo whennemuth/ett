@@ -427,6 +427,21 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "PDF send consenter correction form",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/CorrectionFormEmail.ts",
+        "RUN_MANUALLY_SEND_CONSENTER_CORRECTION_FORM"
+      ],
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      },
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "PDF consent form page 1",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
