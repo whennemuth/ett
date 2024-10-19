@@ -61,9 +61,12 @@ export class LambdaFunction extends AbstractFunction {
   constructor(scope: Construct, constructId: string, parms:ApiConstructParms) {
     const context:IContext = scope.node.getContext('stack-parms');
     const { ACCOUNT, REGION, CONFIG, STACK_ID } = context;
-    const { userPool, cloudfrontDomain, landscape, exhibitFormsBucket, databaseExhibitFormPurgeLambdaArn, bucketExhibitFormPurgeLambdaArn } = parms;
+    const { userPool, cloudfrontDomain, landscape, exhibitFormsBucket, 
+      databaseExhibitFormPurgeLambdaArn, disclosureRequestReminderLambdaArn, bucketExhibitFormPurgeLambdaArn 
+    } = parms;
     const { userPoolArn, userPoolId } = userPool;
-    const prefix = `${STACK_ID}-${landscape}`
+    const prefix = `${STACK_ID}-${landscape}`;
+    const { bucketArn } = exhibitFormsBucket;
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
       memorySize: 1024,
@@ -124,6 +127,15 @@ export class LambdaFunction extends AbstractFunction {
                 effect: Effect.ALLOW
               })
             ]
+          }),
+          'EttConsentingPersonS3Policy': new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 's3:*' ],
+                resources: [ bucketArn, `${bucketArn}/*` ],
+                effect: Effect.ALLOW
+              })
+            ]
           })
         }
       }),
@@ -135,6 +147,7 @@ export class LambdaFunction extends AbstractFunction {
         [ExhibitFormsBucketEnvironmentVariableName]: exhibitFormsBucket.bucketName,
         [DelayedExecutions.ExhibitFormDbPurge.targetArnEnvVarName]: databaseExhibitFormPurgeLambdaArn,
         [DelayedExecutions.ExhibitFormBucketPurge.targetArnEnvVarName]: bucketExhibitFormPurgeLambdaArn,
+        [DelayedExecutions.DisclosureRequestReminder.targetArnEnvVarName]: disclosureRequestReminderLambdaArn,
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });

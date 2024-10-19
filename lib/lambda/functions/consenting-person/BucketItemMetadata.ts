@@ -1,4 +1,5 @@
-import { BucketItem, ListObjectsOutput } from "./BucketItem";
+import { Consenter } from "../../_lib/dao/entity";
+import { BucketItem } from "./BucketItem";
 
 export const ExhibitFormsBucketEnvironmentVariableName = 'EXHIBIT_FORMS_BUCKET_NAME';
 
@@ -11,7 +12,9 @@ export type BucketItemMetadataParms = {
   consenterEmail?: string,
   affiliateEmail?: string,
   correction?: boolean,
-  savedDate?: Date
+  // If any of the remaining are specified, metadata should be specific to a single object
+  savedDate?: Date,
+  getTag?: Function
 };
 
 /**
@@ -28,36 +31,6 @@ export class BucketItemMetadata {
   }
 
   /**
-   * Get a list of exhibit forms from a query against the s3 bucket. Matches are those s3 objects
-   * whose keys reflect the parms. Parameters that are specific to the saved date will always 
-   * return just one item, while parms specific only to the consenter email may return many items. 
-   * @param parms 
-   * @returns 
-   */
-  public listEach = async (parms:BucketItemMetadataParms): Promise<BucketItemMetadataParms[]> => {
-    const { entityId, affiliateEmail, savedDate } = parms;
-    const { bucket } = this;
-
-    if( ! entityId) return [];
-
-    if(affiliateEmail && savedDate) {
-      return [parms];
-    }
-
-    const output:ListObjectsOutput = await bucket.listObjects(parms);
-    const { Prefix, listedObjects: { Contents } } = output;
-    if( ! Contents || Contents.length === 0) {
-      return [];
-    }
-    const exhibitForms = Contents.map(s3Object => {
-      const { Key } = s3Object;
-      return Key ? BucketItemMetadata.fromBucketObjectKey(Key) : undefined;
-    }).filter(metadata => { return metadata != undefined; }) as BucketItemMetadataParms[];
-
-    return exhibitForms;
-  }
-
-  /**
    * Get the metadata parameters for a specific single exhibit/disclosure form in s3.
    * @param parms Will usually be specific enough to identify a specific object in s3, but may indicate
    * the original single exhibit/disclosure form AND all of its corrections. If the latter is the case, the metadata for
@@ -65,6 +38,7 @@ export class BucketItemMetadata {
    * @returns The s3 object key of the found item recomposed into a javascript object
    */
   public getLatest = async (parms:BucketItemMetadataParms|string): Promise<BucketItemMetadataParms|undefined> => {
+    const { bucket } = this;
     if(typeof parms == 'string') {
       // metadata is in the form of an s3 object key, so convert it to a metadata object.
       parms = BucketItemMetadata.fromBucketObjectKey(parms);
@@ -83,8 +57,12 @@ export class BucketItemMetadata {
     }
 
     // Get all bucket items for the consenter of the specified type (exhibit or disclosure)
-    const forms = await this.listEach(parms);
+    const output = await bucket.listMetadata(parms);
+    const { items } = output;
+    return BucketItemMetadata.getLatestFrom(items, itemType);
+  }
 
+  public static getLatestFrom = (forms:BucketItemMetadataParms[], itemType:ItemType):BucketItemMetadataParms|undefined => {
     // Reduce the items down to the one that was created most recently.
     const reducer = (survingForm:BucketItemMetadataParms, currentForm:BucketItemMetadataParms):BucketItemMetadataParms => {
       if( ! survingForm) {
@@ -109,7 +87,7 @@ export class BucketItemMetadata {
       }
       return survingForm
     };
-    // Use an initial value that can be identified as something to discarded if it is what the reducer returns
+    // Use an initial value that can be identified as something to be discarded if it is what the reducer returns
     const initialValue = {
       entityId: 'NO-RESULT',
       itemType: ItemType.EXHIBIT,
@@ -136,7 +114,7 @@ export class BucketItemMetadata {
       return undefined;
     }
     const { itemType, entityId, affiliateEmail, correction, savedDate } = output;
-    const s3ObjectKey = BucketItemMetadata.toBucketObjectKey({
+    const s3ObjectKey = BucketItemMetadata.toBucketFileKey({
       itemType, consenterEmail, entityId, affiliateEmail, correction, savedDate
     });
     if( ! (s3ObjectKey ?? '').toLowerCase().endsWith('.pdf')) {
@@ -145,15 +123,15 @@ export class BucketItemMetadata {
     return s3ObjectKey;
   }  
 
-
   
   /**
    * Convert a consenters single set of exhibit form metadata parms into an s3 object key.
-   * @param parms 
+   * @param metadata 
+   * @param directoryOnly If the metadata resolves to a specific file, return the parent directory instead.
    * @returns 
    */
-  public static toBucketObjectKey = (parms:BucketItemMetadataParms):string => {
-    const { itemType, consenterEmail, affiliateEmail, entityId, correction, savedDate=(new Date()) } = parms;
+  private static toBucketPath = (metadata:BucketItemMetadataParms):string => {
+    const { itemType, consenterEmail, affiliateEmail, entityId='all', correction, savedDate=(new Date(Date.now())) } = metadata;
 
     if( ! consenterEmail) {
       throw new Error(`consenterEmail parameter missing!`);
@@ -190,12 +168,48 @@ export class BucketItemMetadata {
     if( ! affiliateEmail) {
       return `${getEncodedEmail(consenterEmail)}/${encode(entityId)}`;
     }
-
-    // Return the full object key for a new single exhibit form or a corrected one. 
+    
     let key = `${getEncodedEmail(consenterEmail)}/${encode(entityId)}/${getEncodedEmail(affiliateEmail)}`;
-    return correction ? 
+    
+    key = correction ? 
       `${key}/CORRECTED/${itemType}-${getSafeIsoDate()}.pdf` : 
       `${key}/${itemType}-${getSafeIsoDate()}.pdf`;
+      
+    return key;
+  }
+
+  /**
+   * Convert metadata parameters into an s3 object key that indicates a single file
+   * @param metadata 
+   * @returns 
+   */
+  public static toBucketFileKey = (metadata:BucketItemMetadataParms):string => {
+    const { itemType, entityId, affiliateEmail } = metadata;
+    if( ! entityId ) {
+      throw new Error(`Provided metadata cannot specify a file without entityId: ${JSON.stringify(metadata, null, 2)}`);
+    }
+    if( ! affiliateEmail ) {
+      throw new Error(`Provided metadata cannot specify a file without affiliateEmail: ${JSON.stringify(metadata, null, 2)}`);
+    }
+    if( ! itemType ) {
+      throw new Error(`Provided metadata cannot specify a file without itemType: ${JSON.stringify(metadata, null, 2)}`);
+    }
+    const s3ObjectKey = BucketItemMetadata.toBucketPath(metadata);
+    return s3ObjectKey
+  }
+
+  /**
+   * Convert metadata parameters into an s3 object key that indicates a directory
+   * @param metadata 
+   * @returns 
+   */
+  public static toBucketFolderKey = (metadata:BucketItemMetadataParms):string => {
+    const s3ObjectKey = BucketItemMetadata.toBucketPath(metadata);
+    if(s3ObjectKey.endsWith('.pdf')) {
+      // Override the default behavior of generating a new file name if enough metadata fields are present.
+      return s3ObjectKey.substring(0, s3ObjectKey.lastIndexOf('/'));
+    }
+    return s3ObjectKey
   }
 
   /**
@@ -204,6 +218,10 @@ export class BucketItemMetadata {
    * @returns 
    */
   public static fromBucketObjectKey = (key:string):BucketItemMetadataParms => {
+    // Trim off any trailing "/" characters
+    if(key.trim().endsWith('/')) {
+      return BucketItemMetadata.fromBucketObjectKey(key.substring(0, key.lastIndexOf('/')));
+    }
 
     // Define a function that first restores URI encoding, and then decodes from URI format to original value. 
     const decode = (s:string) => { return decodeURIComponent(s.replace(/\(pct\)/g, '%')); }
@@ -214,6 +232,9 @@ export class BucketItemMetadata {
     // 1) Restore the consenter email portion from the object key:
     let emailParts = parts[0].split('(at)');
     const consenterEmail = `${decode(emailParts[0])}@${decode(emailParts[1])}`;
+    if(parts.length < 2) {
+      return { consenterEmail } as BucketItemMetadataParms;
+    }
 
     // 2) Restore the entity_id portion from the object key:
     const entityId = decode(parts[1]);
@@ -228,17 +249,27 @@ export class BucketItemMetadata {
       return { consenterEmail, entityId, affiliateEmail } as BucketItemMetadataParms;
     }
 
-    // 4) Restore the 'CORRECTED' portion from the object key if indicated:
+    // 4) If the object key only specifies a directory, return the corresponding metadata now
+    if(parts[parts.length-1] == 'CORRECTED' || parts.length < 4) {
+      return { consenterEmail, affiliateEmail, entityId } as BucketItemMetadataParms
+    }
+
+    // 5) Restore the 'CORRECTED' portion from the object key if indicated:
     const correction = parts[3] == 'CORRECTED';
     const name = (correction ? parts[4] : parts[3]).replace(/\.pdf$/, '').replace(/\!/g, ':');
     const itemType = name.substring(0, name.indexOf('-')) as ItemType;
-    const isoStr = name.substring(name.indexOf('-')+1, name.length)
+    const isoStr = name.substring(name.indexOf('-')+1, name.length);
 
-    // 5) Restore the file name itself from the object key:
+    // 6) Restore the file name itself from the object key:
     const savedDate = new Date(isoStr);
 
-    // 6) Return the restored metadata object:
-    return { itemType, consenterEmail, affiliateEmail, entityId, correction, savedDate };
+    // 7) Return the restored metadata object:
+    const metadata = { itemType, consenterEmail, affiliateEmail, entityId, correction, savedDate } as BucketItemMetadataParms;
+    const bucket = new BucketItem({ email: consenterEmail } as Consenter);
+    metadata.getTag = async (tagname:string):Promise<string|undefined> => {      
+      return bucket.getTag(metadata, tagname);
+    }
+    return metadata;
   }
 
 }

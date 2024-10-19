@@ -1,4 +1,5 @@
 import { IContext } from "../../../../contexts/IContext";
+import * as ctx from '../../../../contexts/context.json';
 import { DAOFactory } from "../../_lib/dao/dao";
 import { Consenter, Entity, YN } from "../../_lib/dao/entity";
 import { EmailParms, sendEmail } from "../../_lib/EmailWithAttachments";
@@ -39,13 +40,15 @@ export class ExhibitFormRequestEmail {
       return false;
     }
   
+    const context:IContext = <IContext>ctx;
     return sendEmail({
       subject: `ETT Exhibit Form Request`,
+      to: [ consenterEmail ],
       message: `Thankyou ${consenterFullName} for registering with the Ethical Tranparency Tool.<br>` +
         `${entity_name} is requesting you take the next step and fill out a prior contacts or "exhibit" form.<br>` +
         `Follow the link provided below to log in to your ETT account and to access the form:` + 
         `<p>https://${domain}/consenter/exhibits/index.htm</p>`,
-      emailAddress:consenterEmail,
+      from: `noreply@${context.ETT_DOMAIN}`,
       attachments: []
     } as EmailParms);
   

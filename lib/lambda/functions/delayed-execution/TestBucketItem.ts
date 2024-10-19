@@ -1,10 +1,10 @@
-import { IContext } from "../../../../contexts/IContext";
-import { AffiliateTypes, Consenter, YN } from "../../_lib/dao/entity"
-import { DisclosureFormBucket } from "../consenting-person/BucketDisclosureForms";
-import { ExhibitBucket } from "../consenting-person/BucketExhibitForms";
-import { BucketItem } from "../consenting-person/BucketItem";
-import { ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
 import { v4 as uuidv4 } from 'uuid';
+import { IContext } from "../../../../contexts/IContext";
+import { AffiliateTypes, Consenter, YN } from "../../_lib/dao/entity";
+import { BucketItem } from "../consenting-person/BucketItem";
+import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureForm";
+import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
+import { ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
 
 export const getConsenter = (dummyDate:string) => {
   return {
@@ -55,14 +55,17 @@ export const getTestItem = async () => {
   const loadFormIntoBucket = async (itemType:ItemType):Promise<string> => {
     const { entity_id:entityId, affiliates=[] } = consenter.exhibit_forms![0];
     const affiliateEmail = affiliates[0].email;
-    let bucket:ExhibitBucket|DisclosureFormBucket;
     switch(itemType) {
       case EXHIBIT:
-        bucket = new ExhibitBucket(new BucketItem(consenter));
-        return bucket.add({ itemType:EXHIBIT, entityId, affiliateEmail, savedDate:now });      
+        return await new BucketExhibitForm(
+          new BucketItem(consenter),
+          { itemType:EXHIBIT, entityId, affiliateEmail, savedDate:now }
+        ).add();
       case DISCLOSURE:
-        bucket = new DisclosureFormBucket(new BucketItem(consenter));
-        return bucket.add({ itemType:DISCLOSURE, entityId, affiliateEmail, savedDate:now });
+        return await new BucketDisclosureForm({
+          bucket: new BucketItem(consenter),
+          metadata: { itemType:DISCLOSURE, entityId, affiliateEmail, savedDate:now }
+        }).add();
       }      
   }
 

@@ -133,14 +133,60 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "BucketExhibitForms",
+      "name": "BucketItemExhibitForms",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
-        "${workspaceFolder}/lib/lambda/functions/consenting-person/BucketExhibitForms.ts",
-        "RUN_MANUALLY_CONSENTER_BUCKET_ITEM",
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/BucketItemExhibitForms.ts",
+        "RUN_MANUALLY_CONSENTER_EXHIBIT_FORMS",
         "us-east-2",
-        "add"
+        "correct"
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "BucketItem",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/BucketItem.ts",
+        "RUN_MANUALLY_BUCKET_ITEM",
+        "tags"
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "BucketItemTagInspector",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/BucketItemTag.ts",
+        "RUN_MANUALLY_BUCKET_ITEM_TAG_INSPECTOR"
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "BucketInventory",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/BucketInventory.ts",
+        "RUN_MANUALLY_BUCKET_INVENTORY",
       ], 
       "env": {
         "AWS_PROFILE": "bu",
@@ -453,6 +499,22 @@
       "args": [
         "${workspaceFolder}/lib/lambda/functions/consenting-person/ExhibitEmail.ts",
         "RUN_MANUALLY_SEND_EXHIBIT_FORM"
+      ],
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      },
+      "envFile": "${workspaceFolder}/.env",
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF send exhibit form correction",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/ExhibitCorrectionEmail.ts",
+        "RUN_MANUALLY_SEND_EXHIBIT_FORM_CORRECTION"
       ],
       "env": {
         "AWS_PROFILE": "bu",
@@ -938,13 +1000,13 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest Consenter-Bucket-Items",
+      "name": "Jest Consenter-Bucket-Item-Metadata",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "killBehavior": "forceful",
       "args": [ 
         "--runTestsByPath", 
         "-i", 
-        "${workspaceFolder}/lib/lambda/functions/consenting-person/BucketExhibitForms.test.ts" 
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/BucketItemMetadata.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
