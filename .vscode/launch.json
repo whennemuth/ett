@@ -607,6 +607,17 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "PDF Correction Form",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/pdf/CorrectionForm.ts",
+        "RUN_MANUALLY_CORRECTION_FORM"
+      ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "PDF TextLine",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
