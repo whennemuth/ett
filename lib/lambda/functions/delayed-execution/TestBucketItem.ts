@@ -1,7 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { IContext } from "../../../../contexts/IContext";
 import { AffiliateTypes, Consenter, YN } from "../../_lib/dao/entity";
-import { BucketItem } from "../consenting-person/BucketItem";
 import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureForm";
 import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
 import { ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
@@ -57,15 +56,13 @@ export const getTestItem = async () => {
     const affiliateEmail = affiliates[0].email;
     switch(itemType) {
       case EXHIBIT:
-        return await new BucketExhibitForm(
-          new BucketItem(consenter),
-          { itemType:EXHIBIT, entityId, affiliateEmail, savedDate:now }
-        ).add();
+        return await new BucketExhibitForm({ 
+          consenterEmail:consenter.email, itemType:EXHIBIT, entityId, affiliateEmail, savedDate:now 
+        }).add(consenter);
       case DISCLOSURE:
         return await new BucketDisclosureForm({
-          bucket: new BucketItem(consenter),
-          metadata: { itemType:DISCLOSURE, entityId, affiliateEmail, savedDate:now }
-        }).add();
+          metadata: { consenterEmail:consenter.email, itemType:DISCLOSURE, entityId, affiliateEmail, savedDate:now }
+        }).add(consenter);
       }      
   }
 

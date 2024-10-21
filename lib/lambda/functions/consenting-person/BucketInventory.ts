@@ -1,5 +1,4 @@
 import { IContext } from "../../../../contexts/IContext";
-import { Consenter } from "../../_lib/dao/entity";
 import { BucketItem } from "./BucketItem";
 import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "./BucketItemMetadata";
 
@@ -18,9 +17,9 @@ export class BucketInventory {
   public static getInstance = async (consenterEmail:string, entityId?:string):Promise<BucketInventory> => {
     const inventory = new BucketInventory(consenterEmail, entityId);
     const { fromBucketObjectKey } = BucketItemMetadata
-    const bucketItem = new BucketItem({ email: consenterEmail } as Consenter);
+    const bucketItem = new BucketItem();
     const output = await bucketItem.listKeys({
-      entityId
+      consenterEmail, entityId
     } as BucketItemMetadataParms);
 
     const { Prefix, keys } = output;

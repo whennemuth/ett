@@ -8,7 +8,7 @@ import { DisclosureForm, DisclosureFormData } from "../../_lib/pdf/DisclosureFor
 import { ExhibitForm } from "../../_lib/pdf/ExhibitForm";
 import { ExhibitFormSingle } from '../../_lib/pdf/ExhibitFormSingle';
 import { IPdfForm, PdfForm } from "../../_lib/pdf/PdfForm";
-import { BucketItem, DisclosureItemsParms } from "../consenting-person/BucketItem";
+import { DisclosureItemsParms } from "../consenting-person/BucketItem";
 import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureForm";
 import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
 import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName } from "../consenting-person/BucketItemMetadata";
@@ -111,19 +111,13 @@ const grabFromBucketAndSend = async (parms:DisclosureEmailParms):Promise<boolean
   }
   const singleExhibitForm = new class implements IPdfForm {
     async getBytes(): Promise<Uint8Array> {
-      return new BucketExhibitForm(
-        new BucketItem({ email:consenterEmail } as Consenter, bucketName),
-        s3ObjectKeyForExhibitForm
-      ).get();
+      return new BucketExhibitForm(s3ObjectKeyForExhibitForm).get();
     }
   }();
 
   const disclosureForm = new class implements IPdfForm {
     async getBytes(): Promise<Uint8Array> {
-      return new BucketDisclosureForm({
-        bucket: new BucketItem({ email:consenterEmail } as Consenter, bucketName),
-        metadata: s3ObjectKeyForDisclosureForm
-      }).get();
+      return new BucketDisclosureForm({ metadata: s3ObjectKeyForDisclosureForm }).get();
     }
   }();
 

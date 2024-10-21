@@ -1,13 +1,12 @@
 import { S3 } from "@aws-sdk/client-s3";
 import { DAOFactory } from "../../_lib/dao/dao";
-import { Entity, Roles, User, YN } from "../../_lib/dao/entity";
+import { Consenter, Entity, Roles, User, YN } from "../../_lib/dao/entity";
 import { DisclosureForm, DisclosureFormData } from "../../_lib/pdf/DisclosureForm";
 import { BucketItem, Tags } from "./BucketItem";
 import { BucketItemMetadata, BucketItemMetadataParms, ItemType } from "./BucketItemMetadata";
 
 export type BucketDisclosureFormParms = {
   metadata:BucketItemMetadataParms|string,
-  bucket:BucketItem,
   requestingEntity?:Entity,
   requestingEntityAuthorizedIndividuals?:User[]
 };
@@ -22,10 +21,10 @@ export class BucketDisclosureForm {
   private requestingEntityAuthorizedIndividuals?:User[];
 
   constructor(parms:BucketDisclosureFormParms) {
-    const { bucket, metadata, requestingEntity, requestingEntityAuthorizedIndividuals } = parms;
+    const { metadata, requestingEntity, requestingEntityAuthorizedIndividuals } = parms;
     const { fromBucketObjectKey } = BucketItemMetadata;
 
-    this.bucket = bucket;
+    this.bucket = new BucketItem();
     this.requestingEntity = requestingEntity;
     this.requestingEntityAuthorizedIndividuals = requestingEntityAuthorizedIndividuals;
     if(typeof metadata == 'string') {
@@ -40,12 +39,13 @@ export class BucketDisclosureForm {
    * Add the disclosure form to the bucket.
    * @returns 
    */
-  public add = async (_correction:boolean=false):Promise<string> => {
+  public add = async (consenter:Consenter, _correction:boolean=false):Promise<string> => {
     const { DISCLOSURE } = ItemType;
+    const { email:consenterEmail, exhibit_forms=[] } = consenter;
     let { metadata, metadata: { 
       entityId, affiliateEmail, correction=_correction, savedDate=new Date() }, 
       requestingEntity, requestingEntityAuthorizedIndividuals,
-      bucket: { consenter, consenter: { email:consenterEmail, exhibit_forms=[] }, bucketName:Bucket, region }
+      bucket: { bucketName:Bucket, region }
     } = this;
 
     try {
@@ -121,8 +121,8 @@ export class BucketDisclosureForm {
   /**
    * Add a corrected disclosure form to the bucket
    */
-  public correct = async ():Promise<string> => {
-    return this.add(true);
+  public correct = async (consenter:Consenter):Promise<string> => {
+    return this.add(consenter, true);
   }
 
   /**

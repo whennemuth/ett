@@ -278,7 +278,7 @@ export const sendDisclosureRequest = async (consenterEmail:string, entity_id:str
     return errorResponse('Cannot determine disclosure request lambda function arn from environment!');
   }
 
-  const metadata = new BucketItemMetadata(new BucketItem({ email:consenterEmail } as Consenter));
+  const metadata = new BucketItemMetadata();
   const { EXHIBIT, DISCLOSURE } = ItemType;
 
   const s3ObjectKeyForExhibitForm = await metadata.getLatestS3ObjectKey({
@@ -334,10 +334,8 @@ export const sendDisclosureRequest = async (consenterEmail:string, entity_id:str
   }
 
   // Tag the pdfs so that they are skipped over by the event bridge stale pdf database purging rule:
-  const now = new Date().toISOString();
-  const bucket = new BucketItem({ email:consenterEmail } as Consenter);
-  const exhibitForm = new BucketExhibitForm(bucket, s3ObjectKeyForExhibitForm);
-  const disclosureForm = new BucketDisclosureForm({ bucket, metadata: s3ObjectKeyForDisclosureForm });
+  const exhibitForm = new BucketExhibitForm(s3ObjectKeyForExhibitForm);
+  const disclosureForm = new BucketDisclosureForm({ metadata: s3ObjectKeyForDisclosureForm });
   let tagged = false;
   tagged ||= await exhibitForm.tagWithDiclosureRequestSentDate();
   tagged &&= await disclosureForm.tagWithDiclosureRequestSentDate();

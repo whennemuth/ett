@@ -1,9 +1,8 @@
-import { DeleteObjectsCommandOutput, ListObjectsV2CommandOutput, ObjectIdentifier, PutObjectTaggingCommand, PutObjectTaggingCommandOutput, GetObjectTaggingCommand, GetObjectTaggingCommandOutput, S3, DeleteObjectCommandOutput } from "@aws-sdk/client-s3";
-import { Consenter } from "../../_lib/dao/entity";
-import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "./BucketItemMetadata";
-import { log } from "../../Utils";
-import { IContext } from "../../../../contexts/IContext";
+import { DeleteObjectCommandOutput, DeleteObjectsCommandOutput, GetObjectTaggingCommand, GetObjectTaggingCommandOutput, ListObjectsV2CommandOutput, ObjectIdentifier, PutObjectTaggingCommand, PutObjectTaggingCommandOutput, S3 } from "@aws-sdk/client-s3";
 import { debuglog } from "util";
+import { IContext } from "../../../../contexts/IContext";
+import { log } from "../../Utils";
+import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "./BucketItemMetadata";
 
 export type DisclosureItemsParms = {
   consenterEmail:string;
@@ -30,11 +29,9 @@ export enum Tags {
  */
 export class BucketItem {
   bucketName:string|undefined;
-  consenter: Consenter;
   region:string
 
-  constructor(consenter:Consenter, bucketName?:string) {
-    this.consenter = consenter;
+  constructor(bucketName?:string) {
     this.bucketName = bucketName ?? process.env[ExhibitFormsBucketEnvironmentVariableName];
     this.region = process.env.REGION ?? 'us-east-2';
   }
@@ -74,11 +71,7 @@ export class BucketItem {
   }
 
   private getPrefix = (parms:BucketItemMetadataParms):string => {
-    const { consenter: { email:consenterEmail } } = this;
-    const { itemType, entityId, affiliateEmail, correction=false, savedDate } = parms;
-
-    // Avoid an automatically generated file name (default behavior of toBucketObjectKey if no savedDate)
-    const parentDirectory = savedDate == undefined; 
+    const { consenterEmail, itemType, entityId, affiliateEmail, correction=false, savedDate } = parms;
 
     // Get the prefix that identifies the directory for the entity.
     let Prefix = BucketItemMetadata.toBucketFolderKey({
@@ -89,7 +82,7 @@ export class BucketItem {
   }
 
   /**
-   * Get a list of exhibit forms from a query against the s3 bucket. Matches are those s3 objects
+   * Get a list of pdf forms from a query against the s3 bucket. Matches are those s3 objects
    * whose keys reflect the parms. Parameters that are specific to the saved date will always 
    * return just one item, while parms specific only to the consenter email may return many items. 
    * @param parms 
@@ -148,10 +141,6 @@ export class BucketItem {
     const output:ListObjectsOutput = await listObjects(parms);
 
     const { Prefix, listedObjects } = output;
-    // if(Prefix && ! listedObjects) {
-    //   // The metadata parameter must have been specific to a single object
-    //   return { Prefix, keys: [ toBucketFileKey(parms) ] }
-    // }
     const { Contents } = listedObjects ?? {};
     if( ! Contents || Contents.length === 0) {
       return { Prefix:getPrefix(parms), keys:[] };
@@ -190,9 +179,7 @@ export class BucketItem {
       metadata = fromBucketObjectKey(metadata);
     }
 
-    const { consenter: { email } } = this;
     let { consenterEmail, entityId, affiliateEmail, savedDate } = metadata;    
-    consenterEmail = email ?? consenterEmail;
     if( ! consenterEmail) {
       console.log(`Consenter email missing from ${JSON.stringify(metadata, null, 2)}`);
       return;
@@ -211,7 +198,7 @@ export class BucketItem {
     }
 
     // 1) Get the metadata to be used to identity a specific pdf file
-    const bimd = new BucketItemMetadata(this);
+    const bimd = new BucketItemMetadata();
     const singleMetadata = await bimd.getLatest(metadata);
     if( ! singleMetadata) {
       return undefined;
@@ -230,10 +217,11 @@ export class BucketItem {
    */
   public getObjectBytes = async (metadata:BucketItemMetadataParms): Promise<Uint8Array> => {
     const { toBucketFileKey } = BucketItemMetadata;
+    const { consenterEmail } = metadata;
 
     // 1) Get the metadata to be used to identity a specific pdf file
-    const { bucketName:Bucket, region, consenter: { email:consenterEmail } } = this;
-    const bimd = new BucketItemMetadata(this);
+    const { bucketName:Bucket, region } = this;
+    const bimd = new BucketItemMetadata();
     const singleParms = await bimd.getLatest(metadata);
     if( ! singleParms) {
       return new Uint8Array(); // Return an empty array
@@ -355,16 +343,18 @@ if(args.length > 3 && args[2] == 'RUN_MANUALLY_BUCKET_ITEM') {
 
     switch(task) {
       case "list":
-        bucketItem = new BucketItem({ email:'cp3@warhen.work' } as Consenter);
+        bucketItem = new BucketItem();
         output = await bucketItem.listMetadata({
+          consenterEmail: 'cp3@warhen.work',
           entityId: 'eea2d463-2eab-4304-b2cf-cf03cf57dfaa',
           itemType: ItemType.EXHIBIT,
         } as BucketItemMetadataParms);
         console.log(JSON.stringify(output, null, 2));
         break;
       case "tags":
-        bucketItem = new BucketItem({ email:'cp2@warhen.work' } as Consenter);
+        bucketItem = new BucketItem();
         output = await bucketItem.listKeys({
+          consenterEmail: 'cp2@warhen.work',
           entityId: '13376a3d-12d8-40e1-8dee-8c3d099da1b2',
           itemType: ItemType.EXHIBIT,
           affiliateEmail: 'affiliate1@warhen.work'

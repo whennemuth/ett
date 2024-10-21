@@ -3,7 +3,7 @@ import { IContext } from "../../../../contexts/IContext";
 import { AffiliateTypes, Consenter, ExhibitForm as ExhibitFormData, YN } from "../../_lib/dao/entity";
 import { BucketItem } from "./BucketItem";
 import { BucketExhibitForm } from "./BucketItemExhibitForm";
-import { BucketItemMetadata, BucketItemMetadataParms, ItemType } from "./BucketItemMetadata";
+import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "./BucketItemMetadata";
 
 
 /**
@@ -11,14 +11,16 @@ import { BucketItemMetadata, BucketItemMetadataParms, ItemType } from "./BucketI
  */
 export class ExhibitBucket {
   private bucket:BucketItem;
+  private consenter:Consenter;
 
-  constructor(bucket:BucketItem) {
-    this.bucket = bucket;
+  constructor(consenter:Consenter) {
+    this.bucket = new BucketItem();
+    this.consenter = consenter;
   }
 
   private putAll = async (entityId:string, task:'add'|'correct', savedDate?:Date):Promise<string[]> => {
     console.log(`Adding each ${task=='add' ? 'new' : 'corrected'} single exhibit form to bucket: ${JSON.stringify({entityId, savedDate }, null, 2)}`);
-    const { bucket, bucket: { consenter: { exhibit_forms }}} = this;
+    const { consenter, bucket, consenter: { email:consenterEmail, exhibit_forms }} = this;
     const exhibitForm:ExhibitFormData|undefined = exhibit_forms?.find(ef => {
       return ef.entity_id = entityId;
     });
@@ -31,15 +33,15 @@ export class ExhibitBucket {
     }
     const keys = [] as string[];
     for(let i=0; i<affiliates.length; i++) {
-      const metadata =  { entityId, affiliateEmail: affiliates[i].email, savedDate } as BucketItemMetadataParms;
+      const metadata =  { consenterEmail, entityId, affiliateEmail: affiliates[i].email, savedDate } as BucketItemMetadataParms;
       let key:string;
-      const exhibitForm = new BucketExhibitForm(bucket, metadata);
+      const exhibitForm = new BucketExhibitForm(metadata);
       switch(task) {
         case "add":
-          key = await exhibitForm.add();
+          key = await exhibitForm.add(consenter);
           break;
         case "correct":
-          key = await exhibitForm.correct();
+          key = await exhibitForm.correct(consenter);
           break;
       }
       keys.push(key);
@@ -241,8 +243,9 @@ if(args.length > 4 && args[2] == 'RUN_MANUALLY_CONSENTER_EXHIBIT_FORMS') {
   (async () => {
     const context:IContext = await require('../../../../contexts/context.json');
     const { STACK_ID, TAGS: { Landscape }} = context;
-    const bucketItem = new BucketItem(consenter, `${STACK_ID}-${Landscape}-exhibit-forms`);
-    const bucket = new ExhibitBucket(bucketItem) as ExhibitBucket;
+    const { email:consenterEmail } = consenter;
+    process.env[ExhibitFormsBucketEnvironmentVariableName] = `${STACK_ID}-${Landscape}-exhibit-forms`;
+    const bucket = new ExhibitBucket(consenter) as ExhibitBucket;
 
     switch(task) {
       case "add-all":
@@ -257,23 +260,23 @@ if(args.length > 4 && args[2] == 'RUN_MANUALLY_CONSENTER_EXHIBIT_FORMS') {
         break;
       case "query":
         entityId = consenter.exhibit_forms![0].entity_id;
-        bucket.query({ itemType:EXHIBIT, entityId }, true);
+        bucket.query({ consenterEmail, itemType:EXHIBIT, entityId }, true);
         break;
       default:
         // Deletions
         entityId = consenter.exhibit_forms![0].entity_id;
         affiliateEmail = consenter.exhibit_forms![0].affiliates![2].email;
-        let metadata = {} as BucketItemMetadataParms;
+        let metadata = { consenterEmail } as BucketItemMetadataParms;
         const deleteDepth = task.split('-')[1];
         switch(deleteDepth) {
           case "consenter":
-            metadata = { itemType:EXHIBIT, entityId:'all' }; break;
+            metadata = { consenterEmail, itemType:EXHIBIT, entityId:'all' }; break;
           case "entity":
-            metadata = { itemType:EXHIBIT, entityId }; break;
+            metadata = { consenterEmail, itemType:EXHIBIT, entityId }; break;
           case "affiliate":
-            metadata = { itemType:EXHIBIT, entityId, affiliateEmail }; break;
+            metadata = { consenterEmail, itemType:EXHIBIT, entityId, affiliateEmail }; break;
           case "atomic":
-            metadata = { itemType:EXHIBIT, entityId, affiliateEmail, correction:true, savedDate:dummyDate}; break;
+            metadata = { consenterEmail, itemType:EXHIBIT, entityId, affiliateEmail, correction:true, savedDate:dummyDate}; break;
         }
         bucket.deleteAll(metadata)
           .then(() => {

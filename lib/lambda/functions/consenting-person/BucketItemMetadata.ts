@@ -1,4 +1,3 @@
-import { Consenter } from "../../_lib/dao/entity";
 import { BucketItem } from "./BucketItem";
 
 export const ExhibitFormsBucketEnvironmentVariableName = 'EXHIBIT_FORMS_BUCKET_NAME';
@@ -7,10 +6,10 @@ export enum ItemType {
   EXHIBIT = 'exhibit', DISCLOSURE = 'disclosure'
 }
 export type BucketItemMetadataParms = {
-  itemType: ItemType,
+  consenterEmail: string,
   entityId: string,
-  consenterEmail?: string,
   affiliateEmail?: string,
+  itemType: ItemType,
   correction?: boolean,
   // If any of the remaining are specified, metadata should be specific to a single object
   savedDate?: Date,
@@ -26,8 +25,8 @@ export type BucketItemMetadataParms = {
 export class BucketItemMetadata {
   private bucket:BucketItem;
 
-  constructor(bucket:BucketItem) {
-    this.bucket = bucket;
+  constructor() {
+    this.bucket = new BucketItem();
   }
 
   /**
@@ -44,7 +43,12 @@ export class BucketItemMetadata {
       parms = BucketItemMetadata.fromBucketObjectKey(parms);
     }
 
-    const { itemType, entityId, affiliateEmail } = parms;
+    const { consenterEmail, itemType, entityId, affiliateEmail } = parms;
+    
+    if( ! consenterEmail) {
+      console.log(`Invalid parameters for ${itemType} form lookup in s3, consenterEmail missing: ${JSON.stringify(parms, null, 2)}`);
+      return undefined;
+    }
     
     if( ! entityId) {
       console.log(`Invalid parameters for ${itemType} form lookup in s3, entity_id missing: ${JSON.stringify(parms, null, 2)}`);
@@ -89,6 +93,7 @@ export class BucketItemMetadata {
     };
     // Use an initial value that can be identified as something to be discarded if it is what the reducer returns
     const initialValue = {
+      consenterEmail: 'NO-RESULT',
       entityId: 'NO-RESULT',
       itemType: ItemType.EXHIBIT,
     } as BucketItemMetadataParms;
@@ -108,12 +113,12 @@ export class BucketItemMetadata {
    * @returns The s3 object key of the found item
    */
   public getLatestS3ObjectKey = async (parms:BucketItemMetadataParms): Promise<string|undefined> => {
-    const { bucket: { consenter: { email:consenterEmail } }, getLatest } = this;
+    const { getLatest } = this;
     const output = await getLatest(parms);
     if( ! output) {
       return undefined;
     }
-    const { itemType, entityId, affiliateEmail, correction, savedDate } = output;
+    const { consenterEmail, itemType, entityId, affiliateEmail, correction, savedDate } = output;
     const s3ObjectKey = BucketItemMetadata.toBucketFileKey({
       itemType, consenterEmail, entityId, affiliateEmail, correction, savedDate
     });
@@ -265,7 +270,7 @@ export class BucketItemMetadata {
 
     // 7) Return the restored metadata object:
     const metadata = { itemType, consenterEmail, affiliateEmail, entityId, correction, savedDate } as BucketItemMetadataParms;
-    const bucket = new BucketItem({ email: consenterEmail } as Consenter);
+    const bucket = new BucketItem();
     metadata.getTag = async (tagname:string):Promise<string|undefined> => {      
       return bucket.getTag(metadata, tagname);
     }

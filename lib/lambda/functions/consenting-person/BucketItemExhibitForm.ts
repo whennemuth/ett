@@ -1,5 +1,4 @@
 import { S3 } from "@aws-sdk/client-s3";
-import { IContext } from "../../../../contexts/IContext";
 import { Affiliate, AffiliateTypes, Consenter, YN } from "../../_lib/dao/entity";
 import { ExhibitForm } from "../../_lib/pdf/ExhibitForm";
 import { ExhibitFormSingle } from "../../_lib/pdf/ExhibitFormSingle";
@@ -13,10 +12,10 @@ export class BucketExhibitForm {
   private metadata:BucketItemMetadataParms;
   private bucket:BucketItem;
 
-  constructor(bucket:BucketItem, metadata:BucketItemMetadataParms|string) {
+  constructor(metadata:BucketItemMetadataParms|string) {
     const { fromBucketObjectKey } = BucketItemMetadata;
 
-    this.bucket = bucket;
+    this.bucket = new BucketItem();
     if(typeof metadata == 'string') {
       // parms is in the form of an s3 object key, so convert it to a metadata object.
       this.metadata = fromBucketObjectKey(metadata);
@@ -29,11 +28,12 @@ export class BucketExhibitForm {
    * Add the disclosure form to the bucket.
    * @returns 
    */
-  public add = async (_correction:boolean=false):Promise<string> => {
+  public add = async (consenter:Consenter, _correction:boolean=false):Promise<string> => {
     const { EXHIBIT } = ItemType;
+    const { exhibit_forms=[] } = consenter;
     let { metadata, metadata: { 
-      entityId, affiliateEmail, correction=_correction, savedDate=new Date() }, 
-      bucket, bucket: { consenter, consenter: { email:consenterEmail, exhibit_forms=[] }, bucketName:Bucket, region }
+      consenterEmail, entityId, affiliateEmail, correction=_correction, savedDate=new Date() }, 
+      bucket, bucket: { bucketName:Bucket, region }
     } = this;
 
     try {
@@ -105,8 +105,8 @@ export class BucketExhibitForm {
   /**
    * Add a corrected single exhibit form to the bucket
    */
-  public correct = async ():Promise<string> => {
-    return this.add(true);
+  public correct = async (consenter:Consenter):Promise<string> => {
+    return this.add(consenter, true);
   }
 
   /**
@@ -200,32 +200,28 @@ if(args.length > 4 && args[2] == 'RUN_MANUALLY_CONSENTER_EXHIBIT_FORMS') {
   let affiliateEmail:string;
 
   (async () => {
-    const context:IContext = await require('../../../../contexts/context.json');
-    const { STACK_ID, TAGS: { Landscape }} = context;
-    const bucketItem = new BucketItem(consenter, `${STACK_ID}-${Landscape}-exhibit-forms`);
-    
     switch(task) {
       case "add":
         entityId = consenter.exhibit_forms![0].entity_id;
         affiliateEmail = consenter.exhibit_forms![0].affiliates![0].email;
-        exhibitForm = new BucketExhibitForm(bucketItem, {
-           entityId, affiliateEmail, savedDate:dummyDate 
+        exhibitForm = new BucketExhibitForm({
+           consenterEmail:consenter.email, entityId, affiliateEmail, savedDate:dummyDate 
         } as BucketItemMetadataParms);
-        await exhibitForm.add();
+        await exhibitForm.add(consenter);
         break;
       case "correct":
         entityId = 'eea2d463-2eab-4304-b2cf-cf03cf57dfaa';
         affiliateEmail = 'affiliate1@warhen.work';
-        exhibitForm = new BucketExhibitForm(bucketItem, {
-          entityId, affiliateEmail, savedDate:dummyDate 
+        exhibitForm = new BucketExhibitForm({
+          consenterEmail:consenter.email, entityId, affiliateEmail, savedDate:dummyDate 
         } as BucketItemMetadataParms);
-        await exhibitForm.correct();
+        await exhibitForm.correct(consenter);
         break;
       case "delete":
         entityId = consenter.exhibit_forms![0].entity_id;
         affiliateEmail = consenter.exhibit_forms![0].affiliates![2].email;
-        const metadata = { itemType:EXHIBIT, entityId, affiliateEmail, correction:true, savedDate:dummyDate}
-        exhibitForm = new BucketExhibitForm(bucketItem, metadata);
+        const metadata = { itemType:EXHIBIT, consenterEmail:consenter.email, entityId, affiliateEmail, correction:true, savedDate:dummyDate}
+        exhibitForm = new BucketExhibitForm(metadata);
         await exhibitForm.delete();
         break;
       case "get":
