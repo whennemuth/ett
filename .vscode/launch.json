@@ -157,7 +157,24 @@
         "${workspaceFolder}/lib/lambda/functions/consenting-person/BucketItemExhibitForms.ts",
         "RUN_MANUALLY_CONSENTER_EXHIBIT_FORMS",
         "us-east-2",
-        "correct"
+        "query"
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "BucketItemExhibitForms",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/BucketItemCorrectionForm.ts",
+        "RUN_MANUALLY_CONSENTER_CORRECTION_FORM",
+        "us-east-2",
+        "add"
       ], 
       "env": {
         "AWS_PROFILE": "bu",
@@ -1065,6 +1082,21 @@
         "--runTestsByPath", 
         "-i", 
         "${workspaceFolder}/lib/lambda/functions/consenting-person/BucketInventory.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Consenter-Correction-Form",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "killBehavior": "forceful",
+      "args": [ 
+        "--runTestsByPath", 
+        "-i", 
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/BucketCorrectionForm.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",

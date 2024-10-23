@@ -4,7 +4,11 @@ import { CognitoStandardAttributes, UserAccount } from "../../_lib/cognito/UserA
 import { ReadParms } from "../../_lib/dao/dao";
 import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
 import { Consenter, ConsenterFields, Roles, YN } from "../../_lib/dao/entity";
+import { CorrectionForm } from "../../_lib/pdf/CorrectionForm";
+import { BucketCorrectionForm } from "./BucketItemCorrectionForm";
+import { BucketInventory } from "./BucketInventory";
 import { scheduleExhibitFormPurgeFromDatabase } from "./ConsentingPerson";
+import { ConsenterCorrectionEmail } from "./CorrectionFormEmail";
 
 /**
  * This class performs modifications to a consenting person that affect email and/or phone. In the case 
@@ -24,10 +28,13 @@ export class ConsentingPersonToCorrect {
     this.lookup = lookup;
   }
 
-  public correct = async (correction:Consenter):Promise<boolean> => {
+  public correct = async (corrected:Consenter):Promise<boolean> => {
     if(this.lookup) {
-      // The provided correctable consenter probably just has the key(s), so go to the database to get the rest.
-      // NOTE: Make sure the default timestamp conversion to date objects is avoided - The upcoming update needs them to be ISO strings.
+      /**
+       * The provided correctable consenter probably just has the key(s), so go to the database to get the rest.
+       * NOTE: Make sure the default timestamp conversion to date objects is avoided - The upcoming update needs 
+       * them to be ISO strings.
+       */
       const consenter = await ConsenterCrud(this.correctable).read({ convertDates:false } as ReadParms) as Consenter|null;
       if( ! consenter) {
         console.error(`Error: Lookup for consenter failed: ${JSON.stringify(this.correctable, null, 2)}`);
@@ -36,12 +43,19 @@ export class ConsentingPersonToCorrect {
       this.correctable = consenter;
     }
     
-    const { correctable, mergeConsenters } = this;
-    const { email, phone_number } = correctable;
-    const { email:new_email, phone_number:new_phone_number } = correction;
+    const { correctable, mergeConsenters, notifyEntityOfCorrection: sendNotifications } = this;
+    const { email, phone_number, exhibit_forms=[] } = correctable;
+    const { email:new_email, phone_number:new_phone_number } = corrected;
 
-    const newEmail = () => (new_email && new_email != email);
-    const newPhone = () => (new_phone_number && new_phone_number != phone_number);
+    const changed = (fldname:ConsenterFields):boolean => {
+      const old = correctable[fldname];
+      const _new = corrected[fldname];
+      return (_new && _new != old) as boolean;
+    };
+    const { firstname, middlename, lastname, title } = ConsenterFields;
+    const newEmail = () => changed(ConsenterFields.email);
+    const newPhone = () => changed(ConsenterFields.phone_number);
+    const newNameOrTitle = () => changed(firstname) || changed(middlename) || changed(lastname) || changed(title)    
 
     // Possible cognito changes first:
     if(newEmail() || newPhone()) {
@@ -54,7 +68,7 @@ export class ConsentingPersonToCorrect {
       else {
         // Have the new account inherit the old phone number 
         updated.phoneNumber = { propname:'phone_number', value:phone_number, verified:true}
-       }
+      }
 
       const userAccount = await UserAccount.getInstance(original, Roles.CONSENTING_PERSON);
       if(newEmail()) {
@@ -81,13 +95,13 @@ export class ConsentingPersonToCorrect {
         }
 
         // Carry over any fields from the old consenter that do not exist in the new consenter.
-        correction = mergeConsenters(correctable, correction);
+        corrected = mergeConsenters(correctable, corrected);
 
         // Give the new consenter the sub from the corresponding new cognito user account
-        correction.sub = sub;
+        corrected.sub = sub;
 
         // Add the new consenter to the database. NOTE: using update to create user to avoid validation checks.
-        await ConsenterCrud(correction).update({} as Consenter);
+        await ConsenterCrud(corrected).update({} as Consenter);
 
         // Mark the old user as inactive in the database and blank out the sub and exhibit forms
         correctable.active = YN.No;
@@ -95,20 +109,19 @@ export class ConsentingPersonToCorrect {
         correctable.sub = 'DEFUNCT';
         await ConsenterCrud(correctable).update();
 
-        // Duplicate any exhibit form expiration event bridge rules, but so as to apply against the new consenter db record.
-        const { exhibit_forms=[] } = correction;
+        // Duplicate any exhibit form expiration event bridge rules, but applied against the new consenter db record.
         if(exhibit_forms.length > 0) {
           for(let i=0; i<exhibit_forms.length; i++) {
             const { create_timestamp:dateStr } = exhibit_forms[i];
             // Use the exhibit form creation date as an offeset so the new egg timer starts into its countdown
             // where the old one left off instead of being "reset" for the full interval. 
             const create_timestamp = dateStr ? new Date(dateStr) : undefined;
-            await scheduleExhibitFormPurgeFromDatabase(correction, exhibit_forms[i], create_timestamp);
+            await scheduleExhibitFormPurgeFromDatabase(corrected, exhibit_forms[i], create_timestamp);
           }
         }
       }
-      else {        
-        // Update the existing cognito user account in place.
+      else {   
+        // Update phone_number in place inside the existing cognito user account. This requires it to be configured as mutable.
         await userAccount.update(updated);
         if( ! userAccount.ok()) {
           this.message = userAccount.getMessage();
@@ -116,15 +129,31 @@ export class ConsentingPersonToCorrect {
         }
 
         // Pass on any updates to the consenter to the corresponding database record.
-        await ConsenterCrud(correction).update(correctable);
+        await ConsenterCrud(corrected).update(correctable);
       }
     }
     else {
+      if( ! newNameOrTitle()) {
+        // Huh? If neither the email, phone, name or title has changed, then there ARE NO changes.
+        console.log(`INVALID STATE: Correction triggered for ${email}, but no changes detected.`);
+        return false;
+      }
       // Pass on any updates to the consenter to the corresponding database record.
-      await ConsenterCrud(correction).update(correctable);
+      await ConsenterCrud(corrected).update(correctable);
     }
+
+    // Create a correction pdf form and email it to the reps of any entities that are indicated.
+    const inventory = await BucketInventory.getInstance(email);
+    const pdf = await sendNotifications(corrected, inventory);
+
+    // Save the correction form to the bucket if it contains exhibit forms.
+    const correctionForm = BucketCorrectionForm.getInstanceForCreation(corrected, correctable);
+    await correctionForm.add(pdf);
     
-    // TODO: What to do if the user has sent exhibit forms?
+    // NOTE: At this point, if there exist any exhibit forms in the bucket that predate this correction,
+    // then the disclosure request email and the reminder emails that use include them will also automatically 
+    // append this correction form to those emails. But the associated affiliates need not be informed 
+    // just now as were the entity reps.
     return true;
   }
 
@@ -152,6 +181,47 @@ export class ConsentingPersonToCorrect {
     return target;
   }
   
+  /**
+   * Create a correction pdf form and send it to the reps of any entity the consenter still has unfinished
+   * disclosure business for. That is, if there are any exhibit forms in the database or the s3 bucket for
+   * this consenter, then send a notification to each entity listed in those forms.
+   * @param corrected 
+   */
+  public notifyEntityOfCorrection = async (corrected:Consenter, inventory?:BucketInventory):Promise<CorrectionForm> => {
+    const { correctable, correctable:{ email } } = this;
+    const { exhibit_forms=[]} = corrected;
+    const emailToEntity = new ConsenterCorrectionEmail(correctable, corrected);
+    const entitiesNotified = [] as string[];
+
+    // First check the database.
+    for(let i=0; i<exhibit_forms.length; i++) {
+      const { entity_id } = exhibit_forms[i];
+      if(entitiesNotified.includes(entity_id)) {
+        const sent = await emailToEntity.sendToEntity(entity_id);
+        if(sent) {
+          entitiesNotified.push(entity_id);
+        }
+      }
+    }
+
+    // Now check the bucket.
+    if( ! inventory) {
+      inventory = await BucketInventory.getInstance(email);
+    } 
+    const entityIds = inventory.getEntityIds();
+    for(let i=0; i<entityIds.length; i++) {
+      if(entitiesNotified.includes(entityIds[i])) continue;
+
+      const sent = await emailToEntity.sendToEntity(entityIds[i]);
+
+      if(sent) {
+        entitiesNotified.push(entityIds[i]);
+      }
+    }
+
+    return emailToEntity.getCorrectionForm();
+  }
+
   public getMessage = () => {
     return this.message;
   }

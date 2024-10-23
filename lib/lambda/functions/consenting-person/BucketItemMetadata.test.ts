@@ -4,23 +4,29 @@ const defaultISOString = '2024-09-09T20:48:32.162Z';
 const safeDefaultISOString = defaultISOString.replace(/\:/g, '!');
 const testISOString = '2024-08-08T20:48:32.162Z';
 const safeTestISOString = testISOString.replace(/\:/g, '!');
-const { EXHIBIT } = ItemType;
+const { EXHIBIT, CORRECTION_FORM } = ItemType;
 const testdate = new Date(testISOString);
 const { fromBucketObjectKey, toBucketFileKey, toBucketFolderKey } = BucketItemMetadata;
 Date.now = () => { return new Date(defaultISOString).getTime(); }
 
 const performStardardAssert = (parsed:BucketItemMetadataParms, unparsedFile:string, unparsedFolder:string) => {
   it(`Should produce the expected s3 object key from specified metadata`, () => {
+    const expected = {
+      consenterEmail: parsed.consenterEmail,
+    } as BucketItemMetadataParms;
+    if(parsed.entityId && parsed.entityId != 'all') {
+      expected.entityId = parsed.entityId;
+    }
+    if(parsed.affiliateEmail) {
+      expected.affiliateEmail = parsed.affiliateEmail;
+    }
+
     let _parsed = fromBucketObjectKey(unparsedFile);
-    expect(_parsed).toMatchObject(parsed);
+    expect(_parsed).toMatchObject(expected);
 
     // Expect the parsed result to match the expected parsed object with the file-specific properties removed.
     _parsed = fromBucketObjectKey(unparsedFolder);
-    expect(_parsed).toMatchObject({
-      consenterEmail: parsed.consenterEmail,
-      entityId: parsed.entityId,
-      affiliateEmail: parsed.affiliateEmail
-    } as BucketItemMetadataParms);
+    expect(_parsed).toMatchObject(expected);
   });
 
   it(`Should produce the expected metadata from the provided s3 object key:`, () => {
@@ -133,4 +139,19 @@ describe('ConsenterBucketItems test case 6', () => {
     _unparsed = toBucketFileKey(reparsed);
     expect(_unparsed).toEqual(unparsedFile);
   });
+});
+
+describe('ConsenterBucketItems test case 7', () => {
+  const unparsedFolder = 'bugs(at)warnerbros.com';
+  const unparsedFile = `${unparsedFolder}/${CORRECTION_FORM}-${safeDefaultISOString}.pdf`;
+  const parsed = {
+    itemType: CORRECTION_FORM,
+    consenterEmail: 'bugs@warnerbros.com',
+  } as BucketItemMetadataParms;
+
+  performStardardAssert(parsed, unparsedFile, unparsedFolder);
+
+  parsed.entityId = 'all';
+
+  performStardardAssert(parsed, unparsedFile, unparsedFolder);
 });

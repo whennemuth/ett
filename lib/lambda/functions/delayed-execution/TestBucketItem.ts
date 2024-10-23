@@ -1,11 +1,12 @@
 import { v4 as uuidv4 } from 'uuid';
 import { IContext } from "../../../../contexts/IContext";
 import { AffiliateTypes, Consenter, YN } from "../../_lib/dao/entity";
+import { BucketCorrectionForm } from '../consenting-person/BucketItemCorrectionForm';
 import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureForm";
 import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
 import { ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
 
-export const getConsenter = (dummyDate:string) => {
+export const getConsenter = (dummyDate:string=new Date().toISOString()) => {
   return {
     email: 'cp1@warhen.work',
     active: YN.Yes,
@@ -37,7 +38,7 @@ export const getTestItem = async () => {
   const now = new Date();
   const dummyDate = new Date().toISOString();
   const consenter = getConsenter(dummyDate);
-  const { EXHIBIT, DISCLOSURE } = ItemType;
+  const { EXHIBIT, DISCLOSURE, CORRECTION_FORM } = ItemType;
   const context:IContext = await require('../../../../contexts/context.json');
   const { STACK_ID, REGION, TAGS: { Landscape } } = context;
   const prefix = `${STACK_ID}-${Landscape}`;
@@ -63,6 +64,17 @@ export const getTestItem = async () => {
         return await new BucketDisclosureForm({
           metadata: { consenterEmail:consenter.email, itemType:DISCLOSURE, entityId, affiliateEmail, savedDate:now }
         }).add(consenter);
+      case CORRECTION_FORM:
+        const oldConsenter = getConsenter(dummyDate);
+        const newConsenter = getConsenter();
+        const { firstname, middlename, lastname, phone_number, title } = oldConsenter;
+        newConsenter.firstname = `${firstname} (corrected)`;
+        newConsenter.middlename = `${middlename} (corrected)`;
+        newConsenter.lastname = `${lastname} (corrected)`;
+        newConsenter.phone_number = `${phone_number} (corrected)`;
+        newConsenter.title = `${title} (corrected)`;
+        const form = BucketCorrectionForm.getInstanceForCreation(newConsenter, oldConsenter);
+        return await form.add();
       }      
   }
 

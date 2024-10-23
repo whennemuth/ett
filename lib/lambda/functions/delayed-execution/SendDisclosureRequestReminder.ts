@@ -6,7 +6,7 @@ import { debugLog, log } from "../../Utils";
 import { DisclosureEmailParms, DisclosureRequestReminderEmail } from "../authorized-individual/DisclosureRequestEmail";
 import { BucketInventory } from "../consenting-person/BucketInventory";
 import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
-import { purgeFormFromBucket } from "./PurgeExhibitFormFromBucket";
+import { purgeFormFromBucket, purgeCorrectionForms } from "./PurgeExhibitFormFromBucket";
 import { getTestItem } from "./TestBucketItem";
 
 export type DisclosureRequestReminderLambdaParms = {
@@ -52,7 +52,9 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
     if(purgeForms) {
       await purgeFormFromBucket(EXHIBIT, s3ObjectKeyForExhibitForm);
 
-      await purgeFormFromBucket(DISCLOSURE, s3ObjectKeyForDisclosureForm);      
+      await purgeFormFromBucket(DISCLOSURE, s3ObjectKeyForDisclosureForm);
+           
+      await purgeCorrectionForms(s3ObjectKeyForExhibitForm);
     }
   }
   catch(e:any) {    
