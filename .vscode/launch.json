@@ -1058,6 +1058,21 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Jest Consenter-Bucket-Inventory",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "killBehavior": "forceful",
+      "args": [ 
+        "--runTestsByPath", 
+        "-i", 
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/BucketInventory.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Jest PDF TextLine",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "killBehavior": "forceful",
