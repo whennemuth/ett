@@ -45,21 +45,6 @@ export class ConsentingPersonToCorrect {
 
     // Possible cognito changes first:
     if(newEmail() || newPhone()) {
-      /**
-       * Update the phone_number attributes of a user in the userpool. This requires that it is
-       * configured to be mutable.
-       * 
-       * and/or..
-       * 
-       * Create a new user account with the new email and delete the old user account.
-       * 
-       * NOTE: Modification of the email address attributes is not appropriate here (even if it was mutable)
-       * because this will trigger an automatic email to the new email address with a verification code and 
-       * the email of the user will be switched to unverified. Since the user is already confirmed, and there 
-       * is no way to demote a user as unconfirmed using the SDK, the hosted UI verification prompt will not 
-       * appear during a log in attempt, and unconventional workarounds with the preauthentication lambda 
-       * trigger, flags, and redirects at the app dashboard screen would be necessary to make it work)
-       */
       const original = { email: { propname:'email', value:email } } as CognitoStandardAttributes;
       const updated = { email: { propname:'email', value:new_email } } as CognitoStandardAttributes;
       if(newPhone()) {
@@ -73,6 +58,17 @@ export class ConsentingPersonToCorrect {
 
       const userAccount = await UserAccount.getInstance(original, Roles.CONSENTING_PERSON);
       if(newEmail()) {
+        /**
+          * Create a new user account with the new email and delete the old user account.
+          * 
+          * NOTE: Modification of the email address attributes is not appropriate here (even if it was mutable)
+          * because this will trigger an automatic email to the new email address with a verification code and 
+          * the email of the user will be switched to unverified. Since the user is already confirmed, and there 
+          * is no way to demote a user as unconfirmed using the SDK, the hosted UI verification prompt will not 
+          * appear during a log in attempt, and unconventional workarounds with the preauthentication lambda 
+          * trigger, flags, and redirects at the app dashboard screen would be necessary to make it work)
+         */
+
         // Create a new user account in cognito and delete the old one.
         const userType:UserType|undefined = await userAccount.replaceWith(updated);
 

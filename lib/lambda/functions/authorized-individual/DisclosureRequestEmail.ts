@@ -63,7 +63,7 @@ export class BasicDisclosureRequest {
   private data:DisclosureFormData;
   private exhibitData:ExhibitFormData;
 
-  constructor(data:DisclosureFormData, exhibitData:ExhibitFormData ) {
+  constructor(data:DisclosureFormData, exhibitData:ExhibitFormData) {
     this.data = data;
     this.exhibitData = exhibitData;
   }
@@ -90,7 +90,7 @@ export class BasicDisclosureRequest {
 }
 
 /**
- * Retrieve the exhibit & disclosure forms from the s3 bucket and sent them as attachments in a disclosure
+ * Retrieve the exhibit & disclosure forms from the s3 bucket and send them as attachments in a disclosure
  * request email.
  * @param parms 
  * @returns 
@@ -109,12 +109,15 @@ const grabFromBucketAndSend = async (parms:DisclosureEmailParms):Promise<boolean
     console.error(`Cannot send disclosure ${emailType} email: Affiliate email unknown`);
     return false;
   }
+
+  // Get the exhibit form
   const singleExhibitForm = new class implements IPdfForm {
     async getBytes(): Promise<Uint8Array> {
       return new BucketExhibitForm(s3ObjectKeyForExhibitForm).get();
     }
   }();
 
+  // Get the disclosure form
   const disclosureForm = new class implements IPdfForm {
     async getBytes(): Promise<Uint8Array> {
       return new BucketDisclosureForm({ metadata: s3ObjectKeyForDisclosureForm }).get();

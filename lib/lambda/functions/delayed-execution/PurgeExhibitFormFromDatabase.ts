@@ -47,6 +47,14 @@ export const deleteExhibitForm = async (consenterEmail:string, entity_id:string)
       return ef.entity_id != entity_id;
     });
     newConsenterInfo.exhibit_forms = filtered;
+    /**
+     * TODO: If the user saves the exhibit form, the corresponding database content is removed immediately,
+     * in which case, this operation will purge nothing from the database and end as a non-action result.
+     * However, if after saving, the user submits another exhibit form for the same enitity, this new
+     * database entry should get a new timer, but this existing timer execution will purge it BEFORE its time.
+     * So, to account for this, extend the filter above so that removes any exhibit form whose created_date
+     * value indicates it was saved LATER than what would have been this executions egg timer starting point.
+     */
   }
   const remainingForms = newConsenterInfo.exhibit_forms ?? [];
 

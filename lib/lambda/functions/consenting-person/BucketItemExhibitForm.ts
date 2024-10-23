@@ -17,7 +17,7 @@ export class BucketExhibitForm {
 
     this.bucket = new BucketItem();
     if(typeof metadata == 'string') {
-      // parms is in the form of an s3 object key, so convert it to a metadata object.
+      // metadata is in the form of an s3 object key, so convert it to a metadata object.
       this.metadata = fromBucketObjectKey(metadata);
       return;
     }
@@ -136,7 +136,7 @@ export class BucketExhibitForm {
  * RUN MANUALLY: Modify the region, task, and deleteDepth as needed.
  */
 const { argv:args } = process;
-if(args.length > 4 && args[2] == 'RUN_MANUALLY_CONSENTER_EXHIBIT_FORMS') {
+if(args.length > 4 && args[2] == 'RUN_MANUALLY_CONSENTER_EXHIBIT_FORM') {
 
   // Process args:
   const region = args[3];

@@ -334,7 +334,7 @@ export const rescindConsent = async (email:string): Promise<LambdaProxyIntegrati
 };
 
 /**
- * Correct consent.
+ * Correct consenter details.
  * @param parameters 
  * @returns 
  */

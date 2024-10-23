@@ -31,37 +31,37 @@ export class BucketItemMetadata {
 
   /**
    * Get the metadata parameters for a specific single exhibit/disclosure form in s3.
-   * @param parms Will usually be specific enough to identify a specific object in s3, but may indicate
+   * @param metadata Will usually be specific enough to identify a specific object in s3, but may indicate
    * the original single exhibit/disclosure form AND all of its corrections. If the latter is the case, the metadata for
    * the most recent correction is returned.
    * @returns The s3 object key of the found item recomposed into a javascript object
    */
-  public getLatest = async (parms:BucketItemMetadataParms|string): Promise<BucketItemMetadataParms|undefined> => {
+  public getLatest = async (metadata:BucketItemMetadataParms|string): Promise<BucketItemMetadataParms|undefined> => {
     const { bucket } = this;
-    if(typeof parms == 'string') {
+    if(typeof metadata == 'string') {
       // metadata is in the form of an s3 object key, so convert it to a metadata object.
-      parms = BucketItemMetadata.fromBucketObjectKey(parms);
+      metadata = BucketItemMetadata.fromBucketObjectKey(metadata);
     }
 
-    const { consenterEmail, itemType, entityId, affiliateEmail } = parms;
+    const { consenterEmail, itemType, entityId, affiliateEmail } = metadata;
     
     if( ! consenterEmail) {
-      console.log(`Invalid parameters for ${itemType} form lookup in s3, consenterEmail missing: ${JSON.stringify(parms, null, 2)}`);
+      console.log(`Invalid parameters for ${itemType} form lookup in s3, consenterEmail missing: ${JSON.stringify(metadata, null, 2)}`);
       return undefined;
     }
     
     if( ! entityId) {
-      console.log(`Invalid parameters for ${itemType} form lookup in s3, entity_id missing: ${JSON.stringify(parms, null, 2)}`);
+      console.log(`Invalid parameters for ${itemType} form lookup in s3, entity_id missing: ${JSON.stringify(metadata, null, 2)}`);
       return undefined;
     }
 
     if( ! affiliateEmail) {
-      console.log(`Invalid parameters for ${itemType} form lookup in s3, affiliateEmail missing: ${JSON.stringify(parms, null, 2)}`);
+      console.log(`Invalid parameters for ${itemType} form lookup in s3, affiliateEmail missing: ${JSON.stringify(metadata, null, 2)}`);
       return undefined;
     }
 
     // Get all bucket items for the consenter of the specified type (exhibit or disclosure)
-    const output = await bucket.listMetadata(parms);
+    const output = await bucket.listMetadata(metadata);
     const { items } = output;
     return BucketItemMetadata.getLatestFrom(items, itemType);
   }

@@ -12,6 +12,10 @@ export const sendEmail = async (parms:EmailParms):Promise<boolean> => {
   
   const { subject, to, cc=[], bcc=[], message, from, attachments } = parms;
 
+  console.log(`Sending email: ${JSON.stringify({
+    subject, to, cc, bcc, from
+  }, null, 2)}`);
+
   const mainBoundary = uuidv4();
   const mainBoundaryStart=`--${mainBoundary}`;
   const mainBoundaryEnd=`${mainBoundaryStart}--`;

@@ -112,12 +112,8 @@ export class ExhibitCorrectionEmail {
       return (user.role == Roles.RE_AUTH_IND && user.active == YN.Yes) ? user.email : undefined
     }).filter(email => email != undefined && email != firstAI.email) as string[];
 
-    // Log what's about to happen
-    console.log(`Sending exhibit form correction email to entity reps: ${JSON.stringify({
-      to: firstAI.email, cc: cc.join(', '), bcc: bcc.join(', ')
-    }, null, 2)}`);
-
     // Send the email
+    console.log(`Sending exhibit form correction email to entity reps`);
     const from = `noreply@${context.ETT_DOMAIN}`;
     return sendEmail({ subject, from, message, to: [ firstAI.email ], cc, bcc, attachments } as EmailParms);
   }

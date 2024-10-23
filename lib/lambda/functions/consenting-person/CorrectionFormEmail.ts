@@ -5,7 +5,6 @@ import { Consenter, Roles, User, YN } from "../../_lib/dao/entity";
 import { EmailParms, sendEmail } from "../../_lib/EmailWithAttachments";
 import { CorrectionForm } from "../../_lib/pdf/CorrectionForm";
 import { PdfForm } from "../../_lib/pdf/PdfForm";
-import { log } from '../../Utils';
 
 /**
  * This class represents an email that is sent to the representatives of an entity to inform them of a
@@ -43,12 +42,8 @@ export class ConsenterCorrectionEmail {
       return (user.role == Roles.RE_AUTH_IND && user.active == YN.Yes) ? user.email : undefined
     }).filter(email => email != undefined && email != firstAI.email) as string[];
 
-    // Log what's about to happen
-    console.log(`Sending consenter correction email: ${JSON.stringify({
-      to: firstAI.email, cc: cc.join(', '), bcc: bcc.join(', ')
-    }, null, 2)}`);
-
     // Send the email
+    console.log(`Sending consenter correction email to entity: ${entity_id}`);
     return sendEmail({
       subject: `ETT Consenter Correction Notification`,
       from: `noreply@${context.ETT_DOMAIN}`,
