@@ -9,6 +9,7 @@ import { BucketCorrectionForm } from "./BucketItemCorrectionForm";
 import { BucketInventory } from "./BucketInventory";
 import { scheduleExhibitFormPurgeFromDatabase } from "./ConsentingPerson";
 import { ConsenterCorrectionEmail } from "./CorrectionFormEmail";
+import { ExhibitFormsBucketEnvironmentVariableName } from "./BucketItemMetadata";
 
 /**
  * This class performs modifications to a consenting person that affect email and/or phone. In the case 
@@ -128,6 +129,9 @@ export class ConsentingPersonToCorrect {
           return false;
         }
 
+        // Carry over any fields from the old consenter that do not exist in the new consenter.
+        corrected = mergeConsenters(correctable, corrected);
+
         // Pass on any updates to the consenter to the corresponding database record.
         await ConsenterCrud(corrected).update(correctable, true);
       }
@@ -138,6 +142,10 @@ export class ConsentingPersonToCorrect {
         console.log(`INVALID STATE: Correction triggered for ${email}, but no changes detected.`);
         return false;
       }
+
+      // Carry over any fields from the old consenter that do not exist in the new consenter.
+      corrected = mergeConsenters(correctable, corrected);
+
       // Pass on any updates to the consenter to the corresponding database record.
       await ConsenterCrud(corrected).update(correctable, true);
     }
@@ -242,20 +250,41 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTER_CORRECTION') {
     // 1) Get context variables
     const context:IContext = await require('../../../../contexts/context.json');
     const { STACK_ID, REGION, TAGS: { Landscape }} = context;
+    const prefix = `${STACK_ID}-${Landscape}`;
+    const bucketName = `${prefix}-exhibit-forms`;
 
     // 2) Set the environment variables
+    process.env[ExhibitFormsBucketEnvironmentVariableName] = bucketName;
     process.env.REGION = REGION;
     process.env.PREFIX = `${STACK_ID}-${Landscape}`;
     process.env.DEBUG = 'true';
 
+    const email = 'cp2@warhen.work';
+    const correctable = await ConsenterCrud({ email } as Consenter).read() as Consenter;
+    const _corrected = Object.assign({}, correctable);
+
+    // Append an incrementing counter to the lastname field (makes multiple consecutive corrections easy). 
+    let { lastname='mylastname' } = correctable;
+    const regex = /\x20+\(Corrected\x20+\d+\)$/i;
+    const parts = lastname.split(regex);
+    let idx = 1;
+    if(parts.length > 1) {
+      const suffix = regex.exec(lastname)![0];
+      idx = parseInt(/\d+/.exec(suffix)![0]) + 1;      
+    }
+    _corrected.lastname = `${parts[0]} (Corrected ${idx})`;   
+
+    // Correct the phone number to some randomly generated value that will pass validation checks.
+    const randomPhone = `+1617${/\d{7}$/.exec(`${new Date().getTime()}`)![0]}`;
+    _corrected.phone_number = randomPhone;
+
+    // Remove the firstname field from the corrections (should make no difference to the output form)
+    delete _corrected.firstname;
+
     // 2) Execute the update
     await new ConsentingPersonToCorrect({
-      email: 'cp1@warhen.work'
-    } as Consenter).correct({
-      email: 'cp2@warhen.work',
-      phone_number: '+0987654321',
-      middlename: 'Bartholomew'
-    } as Consenter);
+      email: 'cp2@warhen.work'
+    } as Consenter).correct(_corrected);
 
     console.log('Update complete.');
   })();
