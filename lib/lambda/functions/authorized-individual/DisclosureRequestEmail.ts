@@ -104,7 +104,7 @@ const grabFromBucketAndSend = async (parms:DisclosureEmailParms):Promise<boolean
     s3ObjectKeyForDisclosureForm
   }, null, 2)}`);
 
-  const { entityId, affiliateEmail } = BucketItemMetadata.fromBucketObjectKey(s3ObjectKeyForExhibitForm) ?? {};
+  const { entityId, affiliateEmail, savedDate } = BucketItemMetadata.fromBucketObjectKey(s3ObjectKeyForExhibitForm) ?? {};
   if( ! affiliateEmail) {
     console.error(`Cannot send disclosure ${emailType} email: Affiliate email unknown`);
     return false;
@@ -125,7 +125,7 @@ const grabFromBucketAndSend = async (parms:DisclosureEmailParms):Promise<boolean
   }();
 
   // Get the consenter correction forms
-  const correctionFormsBytes = await BucketCorrectionForm.getAll(consenterEmail);
+  const correctionFormsBytes = await BucketCorrectionForm.getAll(consenterEmail, savedDate);
   const correctionForms = correctionFormsBytes.map(bytes => {
     return new class implements IPdfForm {
       async getBytes(): Promise<Uint8Array> {
@@ -190,8 +190,8 @@ const send = async (parms:EmailParameters):Promise<boolean> => {
   for(let i=0; i<correctionForms.length; i++) {
     attachments.push({
       pdf: correctionForms[i],
-      name: `correction-form-${i}`,
-      description: `correction-form-${i}`
+      name: `correction-form-${i+1}`,
+      description: `correction-form-${i+1}`
     })
   };
 

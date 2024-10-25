@@ -5,7 +5,7 @@ import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, log } from "../../Utils";
 import { DisclosureEmailParms, DisclosureRequestReminderEmail } from "../authorized-individual/DisclosureRequestEmail";
 import { BucketInventory } from "../consenting-person/BucketInventory";
-import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
+import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
 import { purgeFormFromBucket, purgeCorrectionForms } from "./PurgeExhibitFormFromBucket";
 import { getTestItem } from "./TestBucketItem";
 
@@ -75,18 +75,27 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
  * @returns 
  */
 const fresherCopiesFound = async (s3ObjectKey:string):Promise<boolean> => {
-  const { entityId, itemType, affiliateEmail, consenterEmail } = BucketItemMetadata.fromBucketObjectKey(s3ObjectKey);
+  const { entityId, itemType, affiliateEmail, consenterEmail, savedDate } = BucketItemMetadata.fromBucketObjectKey(s3ObjectKey);
   if( ! consenterEmail) return false;
   if( ! affiliateEmail) return false;
   const inventory = await BucketInventory.getInstance(consenterEmail, entityId);
-  const fresherS3ObjectKey = inventory.getLatestAffiliateItem(affiliateEmail, itemType);
-  console.log(`A fresher (corrected) copy for the ${itemType} form was found ${
-    JSON.stringify({
-      olderForm: s3ObjectKey,
-      newerForm: fresherS3ObjectKey
-    })
-  }`);
-  return fresherS3ObjectKey ? true : false;
+  const fresherItemMetadata = inventory.getLatestAffiliateItem(affiliateEmail, itemType);
+  if( ! fresherItemMetadata) {
+    // Huh?
+    return false;
+  }
+  const { savedDate:fresherSavedDate } = fresherItemMetadata;
+  if(fresherSavedDate!.getTime() > savedDate!.getTime()) {
+    console.log(`A fresher (corrected) copy for the ${itemType} form was found ${
+      JSON.stringify({
+        olderForm: s3ObjectKey,
+        newerForm: BucketItemMetadata.toBucketFileKey(fresherItemMetadata)
+      })
+    }`);
+    return true;
+  }
+  
+  return false;
 }
 
 const validateEnvironment = ():void => {
@@ -122,7 +131,8 @@ const validateLambdaInput = (lambdaInput:DisclosureRequestReminderLambdaParms):v
 const { argv:args } = process;
 if(args.length > 3 && args[2] == 'RUN_MANUALLY_SEND_DISCLOSURE_REQUEST_REMINDER') {
 
-  const task = args[3] as 'immediate'|'scheduled';
+  const forms = args[3] as 'generate'|'existing';
+  const task = args[4] as 'immediate'|'scheduled';
   const { MINUTES } = PeriodType;
   const { EXHIBIT, DISCLOSURE } = ItemType;
 
@@ -140,32 +150,77 @@ if(args.length > 3 && args[2] == 'RUN_MANUALLY_SEND_DISCLOSURE_REQUEST_REMINDER'
      * bucket in a disclosure request reminder email as an attachment, delete it when done.
      * @param s3ObjectKey 
      */
-    const scheduleDisclosureRequestReminder = async (disclosureEmailParms:DisclosureEmailParms, callback:Function) => {
+    const scheduleDisclosureRequestReminder = async (disclosureEmailParms:DisclosureEmailParms, callback:Function, purgeForms:boolean=true) => {
       const functionName = `${prefix}-${DelayedExecutions.DisclosureRequestReminder.coreName}`;
       const lambdaArn = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${functionName}`;
-      const lambdaInput = { disclosureEmailParms, purgeForms:true } as DisclosureRequestReminderLambdaParms;
+      const lambdaInput = { disclosureEmailParms, purgeForms } as DisclosureRequestReminderLambdaParms;
       await callback(lambdaArn, lambdaInput);
     }
 
-    const { loadFormIntoBucket, consenter } = (await getTestItem());
+    let s3ObjectKeyForExhibitForm:string;
+    let s3ObjectKeyForDisclosureForm:string;
+    let lambdaInput:DisclosureEmailParms;
+    let purgeForms:boolean;
 
-    const s3ObjectKeyForExhibitForm = await loadFormIntoBucket(EXHIBIT);
+    // Put together the parameters to feed to the lambda function handler
+    switch(forms) {
+      case "generate":
+        purgeForms = true;
+        const { loadFormIntoBucket, consenter } = (await getTestItem());
 
-    const s3ObjectKeyForDisclosureForm = await loadFormIntoBucket(DISCLOSURE);
+        s3ObjectKeyForExhibitForm = await loadFormIntoBucket(EXHIBIT);
 
-    const lambdaInput = {
-      consenterEmail:consenter.email,
-      s3ObjectKeyForDisclosureForm,
-      s3ObjectKeyForExhibitForm
-    } as DisclosureEmailParms;
+        s3ObjectKeyForDisclosureForm = await loadFormIntoBucket(DISCLOSURE);
 
+        lambdaInput = {
+          consenterEmail:consenter.email,
+          s3ObjectKeyForDisclosureForm,
+          s3ObjectKeyForExhibitForm
+        };
+
+        break;
+      case "existing":
+        purgeForms = false;
+
+        // This metadata must reflect an item that currently exists in the bucket.
+        const consenterEmail = 'cp2@warhen.work';
+        const entityId = '13376a3d-12d8-40e1-8dee-8c3d099da1b2';
+        const affiliateEmail = 'affiliate3@warhen.work';
+
+        const inventory = await BucketInventory.getInstance(consenterEmail, entityId);
+
+        // Get the latest exhibit form
+        let metadata = inventory.getLatestAffiliateItem(affiliateEmail, ItemType.EXHIBIT);
+        if( ! metadata) {
+          console.error(`Cannot find exhibit form for ${JSON.stringify({ consenterEmail, entityId, affiliateEmail }, null, 2)}`);
+          break;
+        }
+        s3ObjectKeyForExhibitForm = BucketItemMetadata.toBucketFileKey(metadata);
+
+        // Get the latest disclosure form
+        metadata = inventory.getLatestAffiliateItem(affiliateEmail, ItemType.DISCLOSURE);
+        if( ! metadata) {
+          console.error(`Cannot find disclosure form for ${JSON.stringify({ consenterEmail, entityId, affiliateEmail }, null, 2)}`);
+          break;
+        }
+        s3ObjectKeyForDisclosureForm = BucketItemMetadata.toBucketFileKey(metadata);
+
+        lambdaInput = {
+          consenterEmail,
+          s3ObjectKeyForDisclosureForm,
+          s3ObjectKeyForExhibitForm
+        };
+        break;
+    }
+
+    // Execute the function handler with the parameters, scheduled to occur immediately or after a delay.
     let callback;
     switch(task) {
       case "immediate":
         callback = async (lambdaArn:string, lambdaInput:DisclosureRequestReminderLambdaParms) => {
           await handler({ lambdaInput } as ScheduledLambdaInput, null);
         };
-        await scheduleDisclosureRequestReminder(lambdaInput, callback);
+        await scheduleDisclosureRequestReminder(lambdaInput!, callback, purgeForms);
         break;
       case "scheduled":
         callback = async (lambdaArn:string, lambdaInput:DisclosureRequestReminderLambdaParms) => {
@@ -173,8 +228,9 @@ if(args.length > 3 && args[2] == 'RUN_MANUALLY_SEND_DISCLOSURE_REQUEST_REMINDER'
           const timer = EggTimer.getInstanceSetFor(2, MINUTES); 
           await delayedTestExecution.startCountdown(timer, `Disclosure request reminder with s3 cleanup (TESTING)`);
         };
-        await scheduleDisclosureRequestReminder(lambdaInput, callback);
+        await scheduleDisclosureRequestReminder(lambdaInput!, callback, purgeForms);
         break;
     }
+
   })();
 }

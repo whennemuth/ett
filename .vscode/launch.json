@@ -365,7 +365,8 @@
       "args": [
         "${workspaceFolder}/lib/lambda/functions/delayed-execution/SendDisclosureRequestReminder.ts",
         "RUN_MANUALLY_SEND_DISCLOSURE_REQUEST_REMINDER",
-        "scheduled"
+        "existing",
+        "immediate"
       ], 
       "env": {
         "AWS_PROFILE": "bu",

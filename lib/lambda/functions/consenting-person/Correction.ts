@@ -129,7 +129,7 @@ export class ConsentingPersonToCorrect {
         }
 
         // Pass on any updates to the consenter to the corresponding database record.
-        await ConsenterCrud(corrected).update(correctable);
+        await ConsenterCrud(corrected).update(correctable, true);
       }
     }
     else {
@@ -139,7 +139,7 @@ export class ConsentingPersonToCorrect {
         return false;
       }
       // Pass on any updates to the consenter to the corresponding database record.
-      await ConsenterCrud(corrected).update(correctable);
+      await ConsenterCrud(corrected).update(correctable, true);
     }
 
     // Create a correction pdf form and email it to the reps of any entities that are indicated.

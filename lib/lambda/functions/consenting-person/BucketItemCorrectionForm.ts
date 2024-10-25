@@ -183,7 +183,7 @@ export class BucketCorrectionForm {
    * @param pruneRedundantForms 
    * @returns 
    */
-  public static getAll = async (consenterEmail:string, pruneRedundantForms:boolean=true): Promise<Uint8Array[]> => {
+  public static getAll = async (consenterEmail:string, createdAfter:Date=new Date(), pruneRedundantForms:boolean=true): Promise<Uint8Array[]> => {
     const { getInstanceForReading } = BucketCorrectionForm;
     const pdfs = [] as Uint8Array[];
     try {
@@ -203,8 +203,11 @@ export class BucketCorrectionForm {
           }
           continue;
         }
-        const pdf = await form.get();
-        pdfs.push(pdf);
+        const { savedDate } = metadata;
+        if( savedDate!.getTime() > createdAfter.getTime()) {
+          const pdf = await form.get();
+          pdfs.push(pdf);
+        }
       }
 
       return pdfs;
