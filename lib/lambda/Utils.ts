@@ -421,6 +421,12 @@ export const deepEqual = (obj1:any, obj2:any, parm?:'log.console'|'log.temp'|'al
   return method1();
 }
 
+export const fieldsAreEqual = (fld1:any, fld2:any) => {
+  const compare1 = fld1 instanceof Date ? fld1.toISOString() : fld1;
+  const compare2 = fld2 instanceof Date ? fld2.toISOString() : fld2;
+  return compare1 == compare2;
+}
+
 export const deepClone = (obj:any) => JSON.parse(JSON.stringify(obj));
 
 /**
