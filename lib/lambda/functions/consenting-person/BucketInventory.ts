@@ -1,4 +1,5 @@
 import { IContext } from "../../../../contexts/IContext";
+import { log } from "../../Utils";
 import { BucketItem } from "./BucketItem";
 import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "./BucketItemMetadata";
 
@@ -190,9 +191,9 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_BUCKET_INVENTORY') {
     entityId = 'eea2d463-2eab-4304-b2cf-cf03cf57dfaa'
     const inventory = await BucketInventory.getInstance('cp3@warhen.work', entityId);
 
-    // console.log(JSON.stringify(inventory.getKeys(), null, 2));
-    // console.log(JSON.stringify(inventory.getAffiliateEmails(), null, 2));
-    console.log(JSON.stringify(inventory.getAffiliateForms('affiliate1@warhen.work', ItemType.EXHIBIT), null, 2))
-    // console.log(JSON.stringify(inventory.getLatestAffiliateItem('affiliate1@warhen.work', ItemType.EXHIBIT), null, 2));
+    // log(inventory.getKeys());
+    // log(inventory.getAffiliateEmails());
+    log(inventory.getAffiliateForms('affiliate1@warhen.work', ItemType.EXHIBIT));
+    // log(inventory.getLatestAffiliateItem('affiliate1@warhen.work', ItemType.EXHIBIT));
   })();
 }

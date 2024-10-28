@@ -1,3 +1,4 @@
+import { log } from "../../Utils";
 import { BucketItem } from "./BucketItem";
 
 export const ExhibitFormsBucketEnvironmentVariableName = 'EXHIBIT_FORMS_BUCKET_NAME';
@@ -47,17 +48,17 @@ export class BucketItemMetadata {
     const { consenterEmail, itemType, entityId, affiliateEmail } = metadata;
     
     if( ! consenterEmail) {
-      console.log(`Invalid parameters for ${itemType} form lookup in s3, consenterEmail missing: ${JSON.stringify(metadata, null, 2)}`);
+      log(metadata, `Invalid parameters for ${itemType} form lookup in s3, consenterEmail missing`);
       return undefined;
     }
     
     if( ! entityId && itemType != CORRECTION_FORM) {
-      console.log(`Invalid parameters for ${itemType} form lookup in s3, entity_id missing: ${JSON.stringify(metadata, null, 2)}`);
+      log(metadata, `Invalid parameters for ${itemType} form lookup in s3, entity_id missing`);
       return undefined;
     }
 
     if( ! affiliateEmail && itemType != CORRECTION_FORM) {
-      console.log(`Invalid parameters for ${itemType} form lookup in s3, affiliateEmail missing: ${JSON.stringify(metadata, null, 2)}`);
+      log(metadata, `Invalid parameters for ${itemType} form lookup in s3, affiliateEmail missing`);
       return undefined;
     }
 

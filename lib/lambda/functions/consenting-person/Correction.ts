@@ -10,6 +10,7 @@ import { BucketInventory } from "./BucketInventory";
 import { scheduleExhibitFormPurgeFromDatabase } from "./ConsentingPerson";
 import { ConsenterCorrectionEmail } from "./CorrectionFormEmail";
 import { ExhibitFormsBucketEnvironmentVariableName } from "./BucketItemMetadata";
+import { error, log } from "../../Utils";
 
 /**
  * This class performs modifications to a consenting person that affect email and/or phone. In the case 
@@ -38,7 +39,7 @@ export class ConsentingPersonToCorrect {
        */
       const consenter = await ConsenterCrud(this.correctable).read({ convertDates:false } as ReadParms) as Consenter|null;
       if( ! consenter) {
-        console.error(`Error: Lookup for consenter failed: ${JSON.stringify(this.correctable, null, 2)}`);
+        error(this.correctable, 'Lookup for consenter failed');
         return false;
       }
       this.correctable = consenter;
@@ -139,7 +140,7 @@ export class ConsentingPersonToCorrect {
     else {
       if( ! newNameOrTitle()) {
         // Huh? If neither the email, phone, name or title has changed, then there ARE NO changes.
-        console.log(`INVALID STATE: Correction triggered for ${email}, but no changes detected.`);
+        log(`INVALID STATE: Correction triggered for ${email}, but no changes detected.`);
         return false;
       }
 
@@ -286,7 +287,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTER_CORRECTION') {
       email: 'cp2@warhen.work'
     } as Consenter).correct(_corrected);
 
-    console.log('Update complete.');
+    log('Update complete.');
   })();
 
 }

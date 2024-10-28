@@ -1,4 +1,5 @@
 import { Actions } from '../../../role/AbstractRole';
+import { error } from '../../Utils';
 import { lookupUserPoolClientId, lookupUserPoolId } from '../cognito/Lookup';
 import { Role } from "../dao/entity";
 
@@ -74,7 +75,7 @@ export class SignupLink {
       return signUpUrl;  
     } 
     catch (e) {
-      console.log(e);
+      error(e);
       return undefined;
     }  
   }

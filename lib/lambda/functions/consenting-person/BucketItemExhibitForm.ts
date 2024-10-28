@@ -4,6 +4,7 @@ import { ExhibitForm } from "../../_lib/pdf/ExhibitForm";
 import { ExhibitFormSingle } from "../../_lib/pdf/ExhibitFormSingle";
 import { BucketItem, Tags } from "./BucketItem";
 import { BucketItemMetadata, BucketItemMetadataParms, ItemType } from "./BucketItemMetadata";
+import { log } from "../../Utils";
 
 /**
  * This class deals with "CRUD" operations against a single exhibit form in the s3 bucket.
@@ -66,14 +67,14 @@ export class BucketExhibitForm {
       // Save the new single exhibit form pdf file to the s3 bucket
       const s3 = new S3({ region });
       const Body = await pdf.getBytes();
-      console.log(`Adding ${Key}`);
+      log(`Adding ${Key}`);
       await s3.putObject({ Bucket, Key, Body, ContentType: 'application/pdf' });
 
       // Return the object key of the exhibit form.
       return Key;
     }
     catch(e) {
-      console.log(`ExhibitBucket.add: ${JSON.stringify({ bucket, metadata }, null, 2)}`);
+      log(metadata, `ExhibitBucket.add`);
       throw(e);
     }
   }
@@ -88,7 +89,7 @@ export class BucketExhibitForm {
       return bucket.getObjectBytes(metadata);
     }
     catch(e) {
-      console.log(`ExhibitBucket.get: ${JSON.stringify({ bucket, metadata }, null, 2)}`);
+      log({ bucket, metadata }, `ExhibitBucket.get`);
       throw(e);
     }
   }
@@ -225,7 +226,7 @@ if(args.length > 4 && args[2] == 'RUN_MANUALLY_CONSENTER_EXHIBIT_FORM') {
         await exhibitForm.delete();
         break;
       case "get":
-        console.log('Not implemented');
+        log('Not implemented');
         break;
     }
   })();

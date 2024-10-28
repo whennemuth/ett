@@ -1,7 +1,6 @@
 import { DeleteObjectCommandOutput, DeleteObjectsCommandOutput, GetObjectTaggingCommand, GetObjectTaggingCommandOutput, ListObjectsV2CommandOutput, ObjectIdentifier, PutObjectTaggingCommand, PutObjectTaggingCommandOutput, S3 } from "@aws-sdk/client-s3";
-import { debuglog } from "util";
 import { IContext } from "../../../../contexts/IContext";
-import { log } from "../../Utils";
+import { debugLog, log } from "../../Utils";
 import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "./BucketItemMetadata";
 
 export type DisclosureItemsParms = {
@@ -53,7 +52,7 @@ export class BucketItem {
     }
 
     if( ! Key || Key.toLowerCase().endsWith('.pdf') == false) {
-      console.log(`Cannot delete ${Key} as it does not refer to a single file.`);
+      log(`Cannot delete ${Key} as it does not refer to a single file.`);
       return false;
     }
     const region = process.env.REGION ?? 'us-east-2';
@@ -65,8 +64,7 @@ export class BucketItem {
   public deleteMultipleItems = async (Objects:ObjectIdentifier[]):Promise<DeleteObjectsCommandOutput> => {
     const { bucketName:Bucket, region } = this;
     const s3 = new S3({ region });
-    console.log(`Deleting the following objects from ${this.bucketName}: 
-      ${JSON.stringify(Objects, null, 2)}`);
+    log(Objects, `Deleting the following objects from ${this.bucketName}`);
     return await s3.deleteObjects({ Bucket, Delete: { Objects }});
   }
 
@@ -93,7 +91,7 @@ export class BucketItem {
     const { affiliateEmail, savedDate } = parms;
 
     const Prefix = getPrefix(parms);
-    console.log(`Listing bucket content under prefix: ${Prefix}`);
+    log(`Listing bucket content under prefix: ${Prefix}`);
 
     if(affiliateEmail && savedDate) {
       return { Prefix };
@@ -181,15 +179,15 @@ export class BucketItem {
 
     let { consenterEmail, entityId, affiliateEmail, savedDate } = metadata;    
     if( ! consenterEmail) {
-      console.log(`Consenter email missing from ${JSON.stringify(metadata, null, 2)}`);
+      log(metadata, `Consenter email missing from`);
       return;
     }
     if( ! entityId) {
-      console.log(`Entity ID missing from ${JSON.stringify(metadata, null, 2)}`);
+      log(metadata, `Entity ID missing from`);
       return;
     }
     if( ! affiliateEmail) {
-      console.log(`Affiliate email missing from ${JSON.stringify(metadata, null, 2)}`);
+      log(metadata, `Affiliate email missing from`);
       return;
     }
     if(savedDate) {
@@ -242,20 +240,20 @@ export class BucketItem {
 
   /**
    * Apply a tag with the specified name and value to the specified bucket object identified by key.
-   * @param parms 
+   * @param metadata 
    * @param Key The tag key
    * @param Value 
    * @returns 
    */
-  public tag = async (parms:BucketItemMetadataParms|string, Key:string, Value:string): Promise<boolean> => {
-    console.log(`Tagging item: ${JSON.stringify({ parms, Key, Value }, null, 2)}`);
+  public tag = async (metadata:BucketItemMetadataParms|string, Key:string, Value:string): Promise<boolean> => {
+    log({ parms: metadata, Key, Value },`Tagging item`);
     try {
       const { bucketName:Bucket, region, getObjectKey } = this;
 
       // 1) Convert the metadata into an s3ObjectKey that points to a specific pdf file.
-      const s3ObjectKey = await getObjectKey(parms);
+      const s3ObjectKey = await getObjectKey(metadata);
       if( ! s3ObjectKey) {
-        console.error(`Cannot find a pdf file stored in s3 that reflects the specified parameters: ${JSON.stringify(parms, null, 2)}`);
+        log(metadata, `ERROR: Cannot find a pdf file stored in s3 that reflects the specified parameters`);
         return false;
       }
 
@@ -267,7 +265,7 @@ export class BucketItem {
 
       // 3) Tag the object in the bucket and log the response
       const response = await s3.send(putTaggingCommand) as PutObjectTaggingCommandOutput;
-      console.log(`Tagging complete, response: ${JSON.stringify(response, null, 2)}`);
+      log(response, `Tagging complete, response`);
       return true;
     }
     catch(e) {
@@ -278,19 +276,19 @@ export class BucketItem {
 
   /**
    * Retrieve the value of a specified tag of an object, specified by key, in the specified bucket.
-   * @param parms 
+   * @param metadata 
    * @param Key The tag key
    * @returns 
    */
-  public getTag = async (parms:BucketItemMetadataParms|string, Key:string): Promise<string|undefined> => {
-    console.log(`Getting tag for item: ${JSON.stringify({ parms, Key }, null, 2)}`);
+  public getTag = async (metadata:BucketItemMetadataParms|string, Key:string): Promise<string|undefined> => {
+    log({ parms: metadata, Key }, `Getting tag for item`);
     try {
       const { bucketName:Bucket, region, getObjectKey } = this;
 
       // 1) Convert the metadata into an s3ObjectKey that points to a specific pdf file.
-      const s3ObjectKey = await getObjectKey(parms);
+      const s3ObjectKey = await getObjectKey(metadata);
       if( ! s3ObjectKey) {
-        console.error(`Cannot find a pdf file stored in s3 that reflects the specified parameters: ${JSON.stringify(parms, null, 2)}`);
+        log(metadata, 'ERROR: Cannot find a pdf file stored in s3 that reflects the specified parameters');
         return;
       }
 
@@ -300,16 +298,16 @@ export class BucketItem {
       });
       const s3 = new S3({ region });
       const response = await s3.send(getTaggingCommand) as GetObjectTaggingCommandOutput;
-      debuglog(`Tagging lookup response: ${JSON.stringify(response, null, 2)}`);
+      debugLog(response, `Tagging lookup response`);
       const tag = (response.TagSet ?? []).find(tag => {
         return tag.Key == Key;
       })
       if(tag) {
-        console.log(`Tag found, value: ${tag.Value}`);
+        log(`Tag found, value: ${tag.Value}`);
         return tag.Value;
       }
       else {
-        console.log('Tag not found');
+        log('Tag not found');
       }
       return;
     }
@@ -349,7 +347,7 @@ if(args.length > 3 && args[2] == 'RUN_MANUALLY_BUCKET_ITEM') {
           entityId: 'eea2d463-2eab-4304-b2cf-cf03cf57dfaa',
           itemType: ItemType.EXHIBIT,
         } as BucketItemMetadataParms);
-        console.log(JSON.stringify(output, null, 2));
+        log(output);
         break;
       case "tags":
         bucketItem = new BucketItem();
@@ -366,16 +364,16 @@ if(args.length > 3 && args[2] == 'RUN_MANUALLY_BUCKET_ITEM') {
             const Key = keys[i]
             const tagValue = await bucketItem.getTag(Key, Tags.DISCLOSED);
             if(tagValue) {
-              console.log(`${Key}, ${Tags.DISCLOSED}: ${tagValue}`);
+              log(`${Key}, ${Tags.DISCLOSED}: ${tagValue}`);
               tagFound = true;
               break; // Only report the first key found
             }
           }
         }
         if( ! tagFound) {
-          console.log(`Cannot find any tagged objects to match provided metadata!`);
+          log(`Cannot find any tagged objects to match provided metadata!`);
         }
-        console.log('Done.');
+        log('Done.');
         break;
     }
   })();

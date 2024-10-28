@@ -6,6 +6,7 @@ import { IPdfForm, PdfForm } from './PdfForm';
 import { Page } from './lib/Page';
 import { Rectangle } from './lib/Rectangle';
 import { Align, Margins, VAlign } from './lib/Utils';
+import { log } from '../../Utils';
 
 /**
  * This class represents an exhibit pdf form that can be dynamically generated around the provided exhibit data.
@@ -141,7 +142,7 @@ export class ExhibitFormFull extends PdfForm implements IPdfForm {
   public async readFromDisk(path:string) {
     const buf:Buffer = await readFile(path);
     const pdf = await PDFDocument.load(buf) as PDFDocument;
-    console.log(JSON.stringify(pdf.catalog, Object.getOwnPropertyNames(pdf.catalog), 2));
+    log(pdf.catalog);
   }
 }
 

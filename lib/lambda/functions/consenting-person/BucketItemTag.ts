@@ -31,8 +31,8 @@ export class TagInspector {
       const { fromBucketObjectKey } = BucketItemMetadata;
       const metadata = fromBucketObjectKey(s3Path);
       let { entityId, consenterEmail, affiliateEmail, correction, savedDate, itemType } = metadata;
-      const prefix = JSON.stringify({ consenterEmail, entityId, affiliateEmail });
-      console.log(`Checking tags for items under prefix: ${prefix}`);
+      const prefix = { consenterEmail, entityId, affiliateEmail };
+      log(prefix, `Checking tags for items under prefix`);
 
       // Query the bucket for every item under the specific /consenter/entityId/affiliate "subdirectory"
       const inventory = await BucketInventory.getInstance(consenterEmail!, entityId);
@@ -40,13 +40,13 @@ export class TagInspector {
 
       // The results should NEVER be empty, but accomodate anyway. 
       if(allMetadata.length == 0) {
-        console.log(`Query against bucket returned no object keys under prefix: ${prefix}`);
+        log(prefix, `Query against bucket returned no object keys under prefix`);
         return;
       }
 
       // Refine the results if possible
       if(savedDate) {
-        allMetadata = allMetadata.filter(m => (m.savedDate ?? new Date()).toISOString() == savedDate.toISOString() )
+        allMetadata = allMetadata.filter(m => (m.savedDate ?? new Date()).toISOString() == savedDate!.toISOString() )
       }
       itemType = _itemType ?? itemType;
       if(itemType) {
@@ -64,13 +64,13 @@ export class TagInspector {
         const getTag = metadata.getTag ?? (async () => undefined );
         const tagValue = await getTag(tagName);
         if(tagValue) {
-          console.log(`Tag found ${tagName} = ${tagValue} under prefix: ${prefix}`);
+          log(prefix, `Tag found ${tagName} = ${tagValue} under prefix`);
           return tagValue;
         }
       }
 
       // Tag being sought was found for none of the items - hence no disclosure request was sent.
-      console.log(`No bucket item tagging found for items under prefix: ${prefix}`);
+      log(prefix, `No bucket item tagging found for items under prefix`);
       return;
     }
     catch(e) {
@@ -121,6 +121,6 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_BUCKET_ITEM_TAG_INSPECTOR') {
 
     const tagInspector = new TagInspector(Tags.DISCLOSED);
     const tagValue = await tagInspector.findTagAmongAffiliateItems(s3Path);
-    console.log(`${Tags.DISCLOSED} = ${tagValue}`);
+    log(`${Tags.DISCLOSED} = ${tagValue}`);
   })();
 }

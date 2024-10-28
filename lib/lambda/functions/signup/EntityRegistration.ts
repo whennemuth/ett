@@ -3,7 +3,7 @@ import { DAOFactory } from "../../_lib/dao/dao";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
 import { Entity, Invitation, Roles, User, YN } from "../../_lib/dao/entity";
 import { Registration } from "../../_lib/invitation/Registration";
-import { debugLog, errorResponse, invalidResponse, lookupCloudfrontDomain, lookupSingleActiveEntity, okResponse, unauthorizedResponse } from "../../Utils";
+import { debugLog, error, errorResponse, invalidResponse, lookupCloudfrontDomain, lookupSingleActiveEntity, okResponse, unauthorizedResponse } from "../../Utils";
 import { demolishEntity } from "../authorized-individual/AuthorizedIndividual";
 
 export enum Task {
@@ -127,7 +127,7 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
     throw new Error('Error: Unreachable code');
   }
   catch(e:any) {
-    console.log(e);
+    error(e);
     return errorResponse(e.message);
   }
 }

@@ -4,6 +4,7 @@ import { AffiliateTypes, Consenter, ExhibitForm as ExhibitFormData, YN } from ".
 import { BucketItem } from "./BucketItem";
 import { BucketExhibitForm } from "./BucketItemExhibitForm";
 import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "./BucketItemMetadata";
+import { log } from "../../Utils";
 
 
 /**
@@ -19,7 +20,7 @@ export class ExhibitBucket {
   }
 
   private putAll = async (entityId:string, task:'add'|'correct', savedDate?:Date):Promise<string[]> => {
-    console.log(`Adding each ${task=='add' ? 'new' : 'corrected'} single exhibit form to bucket: ${JSON.stringify({entityId, savedDate }, null, 2)}`);
+    log({entityId, savedDate }, `Adding each ${task=='add' ? 'new' : 'corrected'} single exhibit form to bucket`);
     const { consenter, bucket, consenter: { email:consenterEmail, exhibit_forms }} = this;
     const exhibitForm:ExhibitFormData|undefined = exhibit_forms?.find(ef => {
       return ef.entity_id = entityId;
@@ -84,7 +85,7 @@ export class ExhibitBucket {
       const output = await listKeys(metadata);
       const { keys } = output;
       if( keys.length === 0) {
-        console.log(`No single exhibit forms found in ${Prefix}`);
+        log(`No single exhibit forms found in ${Prefix}`);
         return;
       }
 
@@ -114,7 +115,7 @@ export class ExhibitBucket {
       return deleteResult;
     }
     catch(e) {
-      console.log(`ExhibitBucket.delete: ${JSON.stringify({ bucket:this.bucket, parms: metadata }, null, 2)}`);
+      log({ bucket:this.bucket, parms: metadata }, `ExhibitBucket.delete`);
       throw(e);
     }
   }
@@ -141,14 +142,13 @@ export class ExhibitBucket {
       const output = await listKeys(metadata);
       const { keys } = output;
       if( keys.length === 0) {
-        console.log(`No single exhibit forms found in ${Prefix}`);
+        log(`No single exhibit forms found in ${Prefix}`);
         return emptyArray;
       }
 
       // Print out objects that would be fetched if dryrun and return
       if(dryrun) {
-        console.log(`Get results for s3 prefix: ${Prefix}
-        ${JSON.stringify(keys, null, 2)}`);
+        log(keys, `Get results for s3 prefix: ${Prefix}`);
         return emptyArray;
       }
 
@@ -167,7 +167,7 @@ export class ExhibitBucket {
       return pdfs
     }
     catch(e) {
-      console.log(`ExhibitBucket.query: ${JSON.stringify({ bucket:this.bucket, parms: metadata }, null, 2)}`);
+      log({ bucket:this.bucket, parms: metadata }, `ExhibitBucket.query`);
       throw(e);
     }
   }
@@ -252,7 +252,7 @@ if(args.length > 4 && args[2] == 'RUN_MANUALLY_CONSENTER_EXHIBIT_FORMS') {
         entityId = consenter.exhibit_forms![0].entity_id;
         bucket.addAll(entityId, dummyDate)
           .then(() => {
-            console.log('done');
+            log('done');
           })
           .catch(e => {
             console.error(e);
@@ -280,7 +280,7 @@ if(args.length > 4 && args[2] == 'RUN_MANUALLY_CONSENTER_EXHIBIT_FORMS') {
         }
         bucket.deleteAll(metadata)
           .then(() => {
-            console.log('done');
+            log('done');
           })
           .catch(e => {
             console.error(e);

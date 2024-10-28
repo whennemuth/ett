@@ -110,22 +110,39 @@ export const errorResponse = (message:string, payload?:any): LambdaProxyIntegrat
   return response;
 }
 
-export const debugLog = (o:any) => {
+export const debugLog = (o:any, msg?:string) => {
   if(process.env.DEBUG == 'true') {
-    log(o);
+    log(o, msg);
   }
 }
 
-export const log = (o:any) => {
+const toConsole = (o:any, out:Function, msg?:string) => {
+  const output = (suffix:string) => {
+    if(msg) msg = msg.endsWith(': ') ? msg : `${msg}: `;
+    out(msg ? `${msg}${suffix}` : suffix);
+  }
   if(o instanceof Error) {
-    console.error(JSON.stringify(o, Object.getOwnPropertyNames(o), 2));
+    console.error(msg);
+    console.error(o);
     return;
   }
-  if(o instanceof Array) {
-    console.log(JSON.stringify(o, null, 2))
+  if(o instanceof Object) {
+    output(JSON.stringify(o, Object.getOwnPropertyNames(o), 2));
     return;
   }
-  console.log(o);
+  output(`${o}`);
+}
+
+export const log = (o:any, msg?:string) => {
+  toConsole(o, (s:string) => console.log(s), msg);
+}
+
+export const warn = (o:any, msg?:string) => {
+  toConsole(o, (s:string) => console.warn(s), msg);
+}
+
+export const error = (o:any, msg?:string) => {
+  toConsole(o, (s:string) => console.error(s), msg);
 }
 
 export const mergeResponses = (responses:LambdaProxyIntegrationResponse[]) => {

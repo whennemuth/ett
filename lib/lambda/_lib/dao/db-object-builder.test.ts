@@ -1,3 +1,4 @@
+import { log } from '../../Utils';
 import { ConvertObjectFilter, convertToApiObject, convertFromApiObject } from './db-object-builder';
 
 const bigInput = {
@@ -174,7 +175,7 @@ if(jestTest) {
 
     it('Should output expected result for array root object', () => {
       let output = convertToApiObject([ bigInput, bigInput ]);
-      console.log(JSON.stringify(output, null, 2));
+      log(output);
       expect(output).toEqual({
         L: [ { M: expectedBigOutput }, { M: expectedBigOutput } ]
       })
@@ -254,13 +255,13 @@ else {
 
   switch(task) {
     case 'convert':
-      console.log(JSON.stringify(convertToApiObject(bigInput), null, 2));
+      log(convertToApiObject(bigInput));
       break;
     case 'restore':
-      console.log(JSON.stringify(convertFromApiObject(expectedBigOutput), null, 2));
+      log(convertFromApiObject(expectedBigOutput));
       break;
     default:
-      console.log('Insufficient parameters: failed to specify "convert" or "restore"');
+      log('Insufficient parameters: failed to specify "convert" or "restore"');
       break;
   }
   

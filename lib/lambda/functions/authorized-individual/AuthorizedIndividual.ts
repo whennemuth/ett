@@ -120,16 +120,15 @@ export const demolishEntity = async (entity_id:string, notify:boolean, dryRun?:b
     for(var i=0; i<emailAddresses.length; i++) {
       var email = emailAddresses[i];
       try {
-        console.log(`Sending email to ${email}`);
+        log(`Sending email to ${email}`);
         if(dryRun) {
           continue;
         }
         await notifyUserOfDemolition(email, entityToDemolish.entity);
-        console.log('Email sent');
+        log('Email sent');
       }
       catch(reason) {
-        console.error(`Error sending email to ${email}`);
-        console.log(JSON.stringify(reason, Object.getOwnPropertyNames(reason), 2));
+        log(reason, `Error sending email to ${email}`);
       }
     }
   }
@@ -143,7 +142,7 @@ export const demolishEntity = async (entity_id:string, notify:boolean, dryRun?:b
  * @returns LambdaProxyIntegrationResponse
  */
 export const notifyUserOfDemolition = async (emailAddress:string, entity:Entity):Promise<void> => {
-  console.log(`Notifying ${emailAddress} that entity ${entity.entity_id}: ${entity.entity_name} was demolished`);
+  log(`Notifying ${emailAddress} that entity ${entity.entity_id}: ${entity.entity_name} was demolished`);
 
   const FromEmailAddress = await getSysAdminEmail();
 
@@ -195,7 +194,7 @@ export const notifyUserOfDemolition = async (emailAddress:string, entity:Entity)
     console.error(`No message ID in SendEmailResponse for ${emailAddress}`);
   }
   if(response) {
-    console.log(JSON.stringify(response, null, 2));
+    log(response);
   }
 }
 
@@ -401,7 +400,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_AUTH_IND') {
 
     switch(task as Task) {
       case Task.LOOKUP_USER_CONTEXT:
-        console.log('NOT IMPLEMENTED');
+        log('NOT IMPLEMENTED');
         break;
 
       case Task.DEMOLISH_ENTITY:
@@ -438,20 +437,20 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_AUTH_IND') {
         break;
 
       case Task.PING:
-        console.log('NOT IMPLEMENTED');
+        log('NOT IMPLEMENTED');
         break;
 
       default:
-        console.log('MISSING/INVALID TASK');
+        log('MISSING/INVALID TASK');
         break;
     }
 
     try {
       const response = await handler(_event) as LambdaProxyIntegrationResponse;
-      console.log(JSON.stringify(response, null, 2));
+      log(response);
     }
     catch(e) {
-      console.error(e);
+      log(e);
     }  
   })();
 }

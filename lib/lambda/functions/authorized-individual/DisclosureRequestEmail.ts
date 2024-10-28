@@ -15,6 +15,7 @@ import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
 import { BucketItemMetadata } from "../consenting-person/BucketItemMetadata";
 import { test_data as test_exhibit_data } from '../consenting-person/ExhibitEmail';
 import { bugsbunny, daffyduck, yosemitesam } from "./MockObjects";
+import { log } from '../../Utils';
 
 
 export type DisclosureEmailParms = DisclosureItemsParms & {
@@ -98,11 +99,11 @@ export class BasicDisclosureRequest {
  */
 const grabFromBucketAndSend = async (parms:DisclosureEmailParms):Promise<boolean> => {
   const { consenterEmail, s3ObjectKeyForExhibitForm, s3ObjectKeyForDisclosureForm, emailType } = parms;
-  console.log(`Sending disclosure ${emailType}: ${JSON.stringify({ 
+  log({ 
     consenterEmail, 
     s3ObjectKeyForExhibitForm,
     s3ObjectKeyForDisclosureForm
-  }, null, 2)}`);
+  }, `Sending disclosure ${emailType}`);
 
   const { entityId, affiliateEmail, savedDate } = BucketItemMetadata.fromBucketObjectKey(s3ObjectKeyForExhibitForm) ?? {};
   if( ! affiliateEmail) {
@@ -216,7 +217,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_SEND_DISCLOSURE_FORM') {
   const email = process.env.PDF_RECIPIENT_EMAIL;
   
   if( ! email) {
-    console.log('Email environment variable is missing. Put PDF_RECIPIENT_EMAIL=[email] in .env in ${workspaceFolder}');
+    log('Email environment variable is missing. Put PDF_RECIPIENT_EMAIL=[email] in .env in ${workspaceFolder}');
     process.exit(1);
   }
 
@@ -231,7 +232,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_SEND_DISCLOSURE_FORM') {
 
   new BasicDisclosureRequest(test_disclosure_data, test_exhibit_data).send(email)
     .then(success => {
-      console.log(success ? 'Succeeded' : 'Failed');
+      log(success ? 'Succeeded' : 'Failed');
     })
     .catch(e => {
       console.error(e);

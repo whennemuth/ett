@@ -1,4 +1,5 @@
 import { CONFIG } from "../../../../contexts/IContext";
+import { log } from "../../Utils";
 import { DAOConfig, DAOFactory } from "../dao/dao";
 import { ConfigBatch } from "../dao/dao-config";
 import { Config, ConfigName, ConfigNames, ConfigType, ConfigTypes } from "../dao/entity";
@@ -76,7 +77,7 @@ export class Configurations {
       let dbOutput = await getDbConfig() as Config[];
       dbOutput = dbOutput ?? [];
       if(dbOutput.length == 0) {
-        console.log('Pre-populating database configurations...');
+        log('Pre-populating database configurations...');
         // Pre-populate the table - this must be the first time it is being accessed after having been cloudformed.
         await this.setDbConfigs();
       }
@@ -106,7 +107,7 @@ export class Configurations {
         let dbOutput = await getDbConfig() as Config[];
         dbOutput = dbOutput ?? [];
         if(dbOutput.length == 0) {
-          console.log('Pre-populating database configurations...');
+          log('Pre-populating database configurations...');
           // Pre-populate the table - this must be the first time it is being accessed after having been cloudformed.
           await this.setDbConfigs();
         }
@@ -159,31 +160,31 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONFIG') {
     const ctx = await import('../../../../contexts/context.json');
     ctx.CONFIG.useDatabase = false;
 
-    console.log("Test configurations from an object:")
+    log("Test configurations from an object:")
     let configs = new Configurations(ctx.CONFIG as CONFIG);
     let appConfigs = await configs.getAppConfigs();
-    console.log(JSON.stringify(appConfigs));
+    log(appConfigs);
     let appConfig = await configs.getAppConfig(ConfigNames.CONSENT_EXPIRATION);
-    console.log(JSON.stringify(appConfig));
+    log(appConfig);
 
-    console.log("\nTest configurations from an environment variable:")
+    log("\nTest configurations from an environment variable:")
     process.env[Configurations.ENV_VAR_NAME] = JSON.stringify(ctx.CONFIG);
     configs = new Configurations();
     appConfigs = await configs.getAppConfigs();
-    console.log(JSON.stringify(appConfigs));
+    log(appConfigs);
     appConfig = await configs.getAppConfig(ConfigNames.CONSENT_EXPIRATION);
-    console.log(JSON.stringify(appConfig));
+    log(appConfig);
 
-    console.log("\nSaving config to database...");
+    log("\nSaving config to database...");
     await configs.setDbConfigs();
 
-    console.log("\nTest configurations from database lookup:")
+    log("\nTest configurations from database lookup:")
     ctx.CONFIG.useDatabase = true;
     configs = new Configurations(ctx.CONFIG as CONFIG);
     appConfigs = await configs.getAppConfigs();
-    console.log(JSON.stringify(appConfigs));
+    log(appConfigs);
     appConfig = await configs.getAppConfig(ConfigNames.CONSENT_EXPIRATION);
-    console.log(JSON.stringify(appConfig));
+    log(appConfig);
 
   })();
 }

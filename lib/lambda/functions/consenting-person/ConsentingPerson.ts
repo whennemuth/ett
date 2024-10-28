@@ -12,7 +12,7 @@ import { ConsentFormData } from "../../_lib/pdf/ConsentForm";
 import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
-import { ComparableDate, debugLog, deepClone, errorResponse, getMostRecent, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
+import { ComparableDate, debugLog, deepClone, errorResponse, getMostRecent, invalidResponse, log, lookupCloudfrontDomain, okResponse, warn } from "../../Utils";
 import { sendDisclosureRequest } from "../authorized-individual/AuthorizedIndividual";
 import { BucketInventory } from "./BucketInventory";
 import { BucketItem, DisclosureItemsParms, Tags } from "./BucketItem";
@@ -209,7 +209,7 @@ export const getConsenterInfo = async (parm:string|Consenter, includeEntityList:
     activeConsent, 
     entities 
   } as ConsenterInfo;
-  debugLog(`Returning: ${JSON.stringify(retval, null, 2)}`);
+  debugLog(retval, `Returning`);
 
   return retval;
 }
@@ -251,7 +251,7 @@ export const appendTimestamp = async (consenter:Consenter, timestampFldName:Cons
  * @returns 
  */
 export const registerConsent = async (email:string): Promise<LambdaProxyIntegrationResponse> => {
-  console.log(`Registering consent for ${email}`);
+  log(`Registering consent for ${email}`);
   
   // Abort if consenter lookup fails
   let consenterInfo = await getConsenterInfo(email, false) as ConsenterInfo;
@@ -279,7 +279,7 @@ export const registerConsent = async (email:string): Promise<LambdaProxyIntegrat
  * @returns 
  */
 export const renewConsent = async (email:string): Promise<LambdaProxyIntegrationResponse> => {
-  console.log(`Renewing consent for ${email}`);
+  log(`Renewing consent for ${email}`);
   
   // Abort if consenter lookup fails
   let consenterInfo = await getConsenterInfo(email, true) as ConsenterInfo;
@@ -308,7 +308,7 @@ export const renewConsent = async (email:string): Promise<LambdaProxyIntegration
  * @returns 
  */
 export const rescindConsent = async (email:string): Promise<LambdaProxyIntegrationResponse> => {
-  console.log(`Rescinding consent for ${email}`);
+  log(`Rescinding consent for ${email}`);
   
   // Abort if consenter lookup fails
   const consenterInfo = await getConsenterInfo(email, false) as ConsenterInfo;
@@ -340,7 +340,7 @@ export const rescindConsent = async (email:string): Promise<LambdaProxyIntegrati
  */
 export const correctConsenter = async (parameters:any): Promise<LambdaProxyIntegrationResponse> => {
   const { email:existing_email, new_email:email, firstname, middlename, lastname, phone_number } = parameters;
-  console.log(`Correcting consenter details: ${JSON.stringify(parameters, null, 2)}`);
+  log(parameters, `Correcting consenter details`);
   
   const consenter = new ConsentingPersonToCorrect({ email:existing_email } as Consenter);
   const updated:boolean = await consenter.correct({
@@ -362,7 +362,7 @@ export const correctConsenter = async (parameters:any): Promise<LambdaProxyInteg
  */
 export const sendConsent = async (consenter:Consenter, entityName:string): Promise<LambdaProxyIntegrationResponse> => {
   const { email } = consenter;
-  console.log(`Sending consent form to ${email}`);
+  log(`Sending consent form to ${email}`);
   let consenterInfo:ConsenterInfo|null;
   if(email && Object.keys(consenter).length == 1) {
     // email was the only piece of information provided about the consenter, so retrieve the rest from the database.
@@ -441,11 +441,11 @@ export const saveExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
     const newTimestamp = new Date().toISOString();
     const info = `consenter:${email}, exhibit_form:${exhibitForm.entity_id}`;
     if( ! existingTimestamp) {
-      console.log(`Warning: Illegal state - existing exhibit form found without create_timestamp! ${info}`);
+      log(`Warning: Illegal state - existing exhibit form found without create_timestamp! ${info}`);
     }
     if(exhibitForm.create_timestamp) {
       if(exhibitForm.create_timestamp != (existingTimestamp || exhibitForm.create_timestamp)) {
-        console.log(`Warning: Updates to exhibit form create_timestamp are disallowed:  ${info}`);
+        log(`Warning: Updates to exhibit form create_timestamp are disallowed: ${info}`);
       }
     }
     exhibitForm.create_timestamp = existingTimestamp || newTimestamp;
@@ -663,6 +663,7 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
         emailFailuresForEntityStaff.push(entityReps[i].email);
       }
     }
+
   }
 
   /**
@@ -670,7 +671,7 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
    */
   const pruneExhibitFormFromDatabaseRecord = async () => {
     if(emailFailures()) {
-      console.log(`There were email failures related to exhibit form activty for ${consenter.email}. 
+      log(`There were email failures related to exhibit form activty for ${consenter.email}. 
         Therefore removal of the corresponding data from the consenters database record is deferred until its natural expiration`);
       return;
     }
@@ -812,7 +813,7 @@ export const correctExhibitData = async (consenterEmail:string, corrections:Exhi
       await bucket.tag(DR_S3ObjectKey, Tags.DISCLOSED, now);
       return;
     }
-    console.log(`No initial disclosure request to reissue for: ${JSON.stringify({ consenterEmail, entity_id, affiliateEmail }, null, 2)}`);
+    log({ consenterEmail, entity_id, affiliateEmail }, `No initial disclosure request to reissue for`);
   }
 
   // Handle deleted affiliates
@@ -822,9 +823,10 @@ export const correctExhibitData = async (consenterEmail:string, corrections:Exhi
 
       // Bail if for some weird reason the target of the correction cannot be found.
       if( ! inventory.hasAffiliate(deletes[i], entity_id)) {
-        console.warn(`Attempt to delete an affiliate for which nothing deletable can be found: ${JSON.stringify({
-          consenterEmail, entity_id, affiliateEmail:deletes[i]
-        }, null, 2)}`)
+        warn(
+          { consenterEmail, entity_id, affiliateEmail:deletes[i] }, 
+          'Attempt to delete an affiliate for which nothing deletable can be found'
+        );
         continue;
       }
 
@@ -1090,7 +1092,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
 
       // 8) Execute the lambda event handler to perform the task
       await handler(_event);
-      console.log(`${task} complete.`);
+      log(`${task} complete.`);
     }
     catch(reason) {
       console.error(reason);

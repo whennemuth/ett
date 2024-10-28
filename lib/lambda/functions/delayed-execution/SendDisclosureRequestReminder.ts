@@ -2,7 +2,7 @@ import { IContext } from "../../../../contexts/IContext";
 import { DelayedExecutions } from "../../../DelayedExecution";
 import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
-import { debugLog, log } from "../../Utils";
+import { debugLog, error, log } from "../../Utils";
 import { DisclosureEmailParms, DisclosureRequestReminderEmail } from "../authorized-individual/DisclosureRequestEmail";
 import { BucketInventory } from "../consenting-person/BucketInventory";
 import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
@@ -36,16 +36,16 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
     const { s3ObjectKeyForExhibitForm, s3ObjectKeyForDisclosureForm } = disclosureEmailParms;
 
     if(await fresherCopiesFound(s3ObjectKeyForExhibitForm)) {
-      console.log('Cancelling disclosure request reminder.');
+      log('Cancelling disclosure request reminder.');
     }
     else {
       const sent = await new DisclosureRequestReminderEmail(disclosureEmailParms).send();
 
       if(sent) {
-        console.log(`Disclosure request reminder sent!`);
+        log(`Disclosure request reminder sent!`);
       }
       else {
-        console.error('Disclosure request reminder NOT sent!');
+        error('Disclosure request reminder NOT sent!');
       }
     }
 
@@ -86,12 +86,10 @@ const fresherCopiesFound = async (s3ObjectKey:string):Promise<boolean> => {
   }
   const { savedDate:fresherSavedDate } = fresherItemMetadata;
   if(fresherSavedDate!.getTime() > savedDate!.getTime()) {
-    console.log(`A fresher (corrected) copy for the ${itemType} form was found ${
-      JSON.stringify({
-        olderForm: s3ObjectKey,
-        newerForm: BucketItemMetadata.toBucketFileKey(fresherItemMetadata)
-      })
-    }`);
+    log({
+      olderForm: s3ObjectKey,
+      newerForm: BucketItemMetadata.toBucketFileKey(fresherItemMetadata)
+    }, `A fresher (corrected) copy for the ${itemType} form was found `);
     return true;
   }
   
@@ -192,7 +190,7 @@ if(args.length > 3 && args[2] == 'RUN_MANUALLY_SEND_DISCLOSURE_REQUEST_REMINDER'
         // Get the latest exhibit form
         let metadata = inventory.getLatestAffiliateItem(affiliateEmail, ItemType.EXHIBIT);
         if( ! metadata) {
-          console.error(`Cannot find exhibit form for ${JSON.stringify({ consenterEmail, entityId, affiliateEmail }, null, 2)}`);
+          error({ consenterEmail, entityId, affiliateEmail }, `Cannot find exhibit form for`);
           break;
         }
         s3ObjectKeyForExhibitForm = BucketItemMetadata.toBucketFileKey(metadata);
@@ -200,7 +198,7 @@ if(args.length > 3 && args[2] == 'RUN_MANUALLY_SEND_DISCLOSURE_REQUEST_REMINDER'
         // Get the latest disclosure form
         metadata = inventory.getLatestAffiliateItem(affiliateEmail, ItemType.DISCLOSURE);
         if( ! metadata) {
-          console.error(`Cannot find disclosure form for ${JSON.stringify({ consenterEmail, entityId, affiliateEmail }, null, 2)}`);
+          error({ consenterEmail, entityId, affiliateEmail }, `Cannot find disclosure form for`);
           break;
         }
         s3ObjectKeyForDisclosureForm = BucketItemMetadata.toBucketFileKey(metadata);

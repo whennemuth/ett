@@ -205,7 +205,7 @@ export const createEntity = async (entity:Entity, reAdmin?:User):Promise<LambdaP
 export const updateReAdminInvitationWithNewEntity = async (reAdminEmail:string, new_entity_id:string) => {
   // Get the "homeless" invitation for the RE_ADMIN. This will be found by email hanging out in the waiting room.
   // There may be more than one if a SYS_ADMIN invited the RE_ADMIN again before the original invitation is accepted.
-  console.log(`updateReAdminInvitationWithNewEntity: reAdminEmail:${reAdminEmail}, new_entity_id:${new_entity_id}`);
+  log(`updateReAdminInvitationWithNewEntity: reAdminEmail:${reAdminEmail}, new_entity_id:${new_entity_id}`);
   let daoInvitation = DAOFactory.getInstance({ 
     DAOType: 'invitation', 
     Payload: { email:reAdminEmail, entity_id:ENTITY_WAITING_ROOM } as Invitation
@@ -231,7 +231,7 @@ export const updateReAdminInvitationWithNewEntity = async (reAdminEmail:string, 
  * @param new_entity_id 
  */
 const migrateReAdminUserFromWaitingRoomToNewEntity = async (reAdminEmail:string, new_entity_id:string) => {
-  console.log(`updateReAdminUserRecordWithNewEntity: reAdminEmail:${reAdminEmail}, new_entity_id:${new_entity_id}`);
+  log(`updateReAdminUserRecordWithNewEntity: reAdminEmail:${reAdminEmail}, new_entity_id:${new_entity_id}`);
   const daoUser = DAOFactory.getInstance({
     DAOType: 'user',
     Payload: { email:reAdminEmail, entity_id:new_entity_id } as User
@@ -567,7 +567,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_RE_ADMIN') {
 
     return handler(_event);
   }).then(() => {
-    console.log(`${task} complete.`)
+    log(`${task} complete.`)
   })
   .catch((reason) => {
     console.error(reason);

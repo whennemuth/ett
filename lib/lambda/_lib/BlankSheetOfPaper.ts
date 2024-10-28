@@ -8,6 +8,7 @@ import { lookupUserPoolId } from "./cognito/Lookup";
 import { ENTITY_WAITING_ROOM, EntityCrud } from "./dao/dao-entity";
 import { ConsenterFields, Entity, YN } from "./dao/entity";
 import { BucketToEmpty, DynamoDbTableToEmpty } from "./Emptier";
+import { log } from "../Utils";
 
 /**
  * --------------------------------------------------------
@@ -53,15 +54,15 @@ export const wipeClean = async (dryRun=true) => {
         const { sub: { S:Username }, email: { S:email }} = deletions[i];
         const input = { UserPoolId, Username } as AdminDeleteUserRequest;
         const command = new AdminDeleteUserCommand(input);
-        console.log(`${dryRun ? 'DRYRUN: ' : '' }Removing consenter from userpool: ${JSON.stringify(input, null, 2)}`);
+        log(input, `${dryRun ? 'DRYRUN: ' : '' }Removing consenter from userpool`);
         if(dryRun) {
           return new Promise((resolve) => resolve('dryrun'));
         }
         const output = await cognitoClient.send(command) as AdminDeleteUserCommandOutput;
-        console.log(`User ${email} deleted: ${JSON.stringify(output, null, 2)}`);
+        log(output, `User ${email} deleted`);
       }
       catch(reason) {
-        console.log(JSON.stringify(reason, Object.getOwnPropertyNames(reason), 2));
+        log(reason);
       }
     }
   }

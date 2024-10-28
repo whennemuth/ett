@@ -4,6 +4,7 @@ import { Consenter, Entity, Roles, User, YN } from "../../_lib/dao/entity";
 import { DisclosureForm, DisclosureFormData } from "../../_lib/pdf/DisclosureForm";
 import { BucketItem, Tags } from "./BucketItem";
 import { BucketItemMetadata, BucketItemMetadataParms, ItemType } from "./BucketItemMetadata";
+import { log } from "../../Utils";
 
 export type BucketDisclosureFormParms = {
   metadata:BucketItemMetadataParms|string,
@@ -106,14 +107,14 @@ export class BucketDisclosureForm {
       // Save the new single exhibit form pdf file to the s3 bucket
       const s3 = new S3({ region });
       const Body = await pdf.getBytes();
-      console.log(`Adding ${Key}`);
+      log(`Adding ${Key}`);
       await s3.putObject({ Bucket, Key, Body, ContentType: 'application/pdf' });
 
       // Return the object key of the exhibit form.
       return Key;
     }
     catch(e) {
-      console.log(`DisclosureFormBucket.add: ${JSON.stringify(metadata, null, 2)}`);
+      log(metadata, `DisclosureFormBucket.add`);
       throw(e);
     }
   }
@@ -135,7 +136,7 @@ export class BucketDisclosureForm {
       return bucket.getObjectBytes(metadata);
     }
     catch(e) {
-      console.log(`DisclosureFormBucket.get: ${JSON.stringify({ bucket, metadata }, null, 2)}`);
+      log({ bucket, metadata }, `DisclosureFormBucket.get`);
       throw(e);
     }
   }

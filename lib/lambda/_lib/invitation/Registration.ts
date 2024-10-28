@@ -1,3 +1,4 @@
+import { error } from "../../Utils";
 import { DAOFactory, DAOInvitation } from "../dao/dao";
 import { Entity, Invitation, InvitationFields } from "../dao/entity";
 
@@ -48,7 +49,7 @@ export class Registration {
       return true;
     }
     catch (e:any) {
-      console.log(e);
+      error(e);
       return false;      
     }
   }
@@ -77,7 +78,7 @@ export class Registration {
       return true;
     }
     catch (e:any) {
-      console.log(e);
+      error(e);
       return false;      
     }
   }  

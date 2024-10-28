@@ -6,6 +6,7 @@ import { CorrectionForm } from "../../_lib/pdf/CorrectionForm";
 import { BucketInventory } from "./BucketInventory";
 import { BucketItem } from "./BucketItem";
 import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "./BucketItemMetadata";
+import { log } from "../../Utils";
 
 /**
  * This class deals with "CRUD" operations against an s3 bucket with respect to consenter correction forms.
@@ -86,17 +87,17 @@ export class BucketCorrectionForm {
       }
 
       // Save the new consenter correction form pdf file to the s3 bucket
-      console.log(`Saving consenter correction form to the s3 bucket: ${Key}`);
+      log(`Saving consenter correction form to the s3 bucket: ${Key}`);
       const s3 = new S3({ region });
       const Body = await pdf.getBytes();
-      console.log(`Adding ${Key}`);
+      log(`Adding ${Key}`);
       await s3.putObject({ Bucket, Key, Body, ContentType: 'application/pdf' });
 
       // Return the object key of the consenter correction form.
       return Key;
     }
     catch(e) {
-      console.log(`ConsenterCorrectionFormBucket.add: ${JSON.stringify({ oldConsenter, newConsenter }, null, 2)}`);
+      log({ oldConsenter, newConsenter }, `ConsenterCorrectionFormBucket.add`);
       throw(e);
     }
   }
@@ -162,7 +163,7 @@ export class BucketCorrectionForm {
       return new Uint8Array(); // Return an empty array
     }
     catch(e) {
-      console.log(`ConsenterCorrectionFormBucket.get: ${consenterEmail}`);
+      log(`ConsenterCorrectionFormBucket.get: ${consenterEmail}`);
       throw(e);
     }
   }
@@ -198,7 +199,7 @@ export class BucketCorrectionForm {
         const form = await getInstanceForReading(metadata);
         if(await form.isRedundant(inventory)) {
           if(pruneRedundantForms) {
-            console.log(`Deleting redundant consenter correction form: ${metadata}`);
+            log(`Deleting redundant consenter correction form: ${metadata}`);
             await form.Delete();
           }
           continue;
@@ -213,7 +214,7 @@ export class BucketCorrectionForm {
       return pdfs;
     }
     catch(e) {
-      console.log(`ConsenterCorrectionFormBucket.get: ${consenterEmail}`);
+      log(`ConsenterCorrectionFormBucket.get: ${consenterEmail}`);
       throw(e);
     }    
   }
@@ -253,10 +254,10 @@ if(args.length > 4 && args[2] == 'RUN_MANUALLY_CONSENTER_CORRECTION_FORM') {
         const form = BucketCorrectionForm.getInstanceForCreation(newConsenter, oldConsenter);
         break;
       case "get":
-        console.log('NOT IMPLEMENTED');
+        log('NOT IMPLEMENTED');
         break;
       case "get-all":
-        console.log('NOT IMPLEMENTED');
+        log('NOT IMPLEMENTED');
         break;
     }
   })();
