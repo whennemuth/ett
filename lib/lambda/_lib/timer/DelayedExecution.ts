@@ -2,6 +2,7 @@ import { DeleteRuleCommand, DeleteRuleRequest, EventBridgeClient, PutRuleCommand
 import { AddPermissionCommand, LambdaClient } from "@aws-sdk/client-lambda";
 import { EggTimer, PeriodType } from "./EggTimer";
 import { v4 as uuidv4 } from 'uuid';
+import { log } from "../../Utils";
 
 export interface DelayedExecution {
   startCountdown(timer:EggTimer, Description?:string):Promise<void>
@@ -115,12 +116,12 @@ export const PostExecution = () => {
       const client = new EventBridgeClient({ region });
 
       if( ! targetId ) {
-        console.error(`Cannot delete rule, missing targetId: ${JSON.stringify({ eventBridgeRuleName, targetId }, null, 2)}`);
+        log({ eventBridgeRuleName, targetId }, `ERROR: Cannot delete rule, missing targetId`);
         return;
       }
 
       if( ! eventBridgeRuleName) {
-        console.error(`Cannot delete rule, missing eventBridgeRuleName: ${JSON.stringify({ eventBridgeRuleName, targetId }, null, 2)}`);
+        log({ eventBridgeRuleName, targetId }, 'Cannot delete rule, missing eventBridgeRuleName');
         return;
       }
 
@@ -129,10 +130,10 @@ export const PostExecution = () => {
         Rule: eventBridgeRuleName,
         Ids: [ targetId ],        
       } as RemoveTargetsCommandInput;
-      console.log(`Removing lambda target from event bridge rule: ${JSON.stringify(removeRequest, null, 2)}`);
+      log(removeRequest, 'Removing lambda target from event bridge rule');
       const removeResponse:RemoveTargetsResponse = await client.send(new RemoveTargetsCommand(removeRequest));
       if((removeResponse.FailedEntries ?? []).length > 0) {
-        console.error(`Failed to remove lambda target from event bridge rule: ${JSON.stringify(removeResponse, null, 2)}`)
+        log(removeResponse, `ERROR: Failed to remove lambda target from event bridge rule`)
       }
 
       // 2) Delete the rule
@@ -140,11 +141,11 @@ export const PostExecution = () => {
         Name:eventBridgeRuleName,
         Force:true
       } as DeleteRuleRequest;
-      console.log(`Deleting event bridge rule: ${JSON.stringify(deleteRequest, null, 2)}`);
+      log(deleteRequest, `Deleting event bridge rule`);
       await client.send(new DeleteRuleCommand(deleteRequest));
     }
     catch(e) {
-      console.error(`Failed to delete ${eventBridgeRuleName}: ${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}`);
+      log(e, `ERROR: Failed to delete ${eventBridgeRuleName}`);
     }
   }
   return { cleanup };

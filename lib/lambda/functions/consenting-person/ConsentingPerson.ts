@@ -12,7 +12,7 @@ import { ConsentFormData } from "../../_lib/pdf/ConsentForm";
 import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
-import { ComparableDate, debugLog, deepClone, errorResponse, getMostRecent, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
+import { ComparableDate, debugLog, deepClone, error, errorResponse, getMostRecent, invalidResponse, log, lookupCloudfrontDomain, okResponse, warn } from "../../Utils";
 import { sendDisclosureRequest } from "../authorized-individual/AuthorizedIndividual";
 import { BucketInventory } from "./BucketInventory";
 import { BucketItem, DisclosureItemsParms, Tags } from "./BucketItem";
@@ -209,7 +209,7 @@ export const getConsenterInfo = async (parm:string|Consenter, includeEntityList:
     activeConsent, 
     entities 
   } as ConsenterInfo;
-  debugLog(`Returning: ${JSON.stringify(retval, null, 2)}`);
+  debugLog(retval, `Returning`);
 
   return retval;
 }
@@ -251,7 +251,7 @@ export const appendTimestamp = async (consenter:Consenter, timestampFldName:Cons
  * @returns 
  */
 export const registerConsent = async (email:string): Promise<LambdaProxyIntegrationResponse> => {
-  console.log(`Registering consent for ${email}`);
+  log(`Registering consent for ${email}`);
   
   // Abort if consenter lookup fails
   let consenterInfo = await getConsenterInfo(email, false) as ConsenterInfo;
@@ -279,7 +279,7 @@ export const registerConsent = async (email:string): Promise<LambdaProxyIntegrat
  * @returns 
  */
 export const renewConsent = async (email:string): Promise<LambdaProxyIntegrationResponse> => {
-  console.log(`Renewing consent for ${email}`);
+  log(`Renewing consent for ${email}`);
   
   // Abort if consenter lookup fails
   let consenterInfo = await getConsenterInfo(email, true) as ConsenterInfo;
@@ -308,7 +308,7 @@ export const renewConsent = async (email:string): Promise<LambdaProxyIntegration
  * @returns 
  */
 export const rescindConsent = async (email:string): Promise<LambdaProxyIntegrationResponse> => {
-  console.log(`Rescinding consent for ${email}`);
+  log(`Rescinding consent for ${email}`);
   
   // Abort if consenter lookup fails
   const consenterInfo = await getConsenterInfo(email, false) as ConsenterInfo;
@@ -334,13 +334,13 @@ export const rescindConsent = async (email:string): Promise<LambdaProxyIntegrati
 };
 
 /**
- * Correct consent.
+ * Correct consenter details.
  * @param parameters 
  * @returns 
  */
 export const correctConsenter = async (parameters:any): Promise<LambdaProxyIntegrationResponse> => {
   const { email:existing_email, new_email:email, firstname, middlename, lastname, phone_number } = parameters;
-  console.log(`Correcting consenter details: ${JSON.stringify(parameters, null, 2)}`);
+  log(parameters, `Correcting consenter details`);
   
   const consenter = new ConsentingPersonToCorrect({ email:existing_email } as Consenter);
   const updated:boolean = await consenter.correct({
@@ -362,7 +362,7 @@ export const correctConsenter = async (parameters:any): Promise<LambdaProxyInteg
  */
 export const sendConsent = async (consenter:Consenter, entityName:string): Promise<LambdaProxyIntegrationResponse> => {
   const { email } = consenter;
-  console.log(`Sending consent form to ${email}`);
+  log(`Sending consent form to ${email}`);
   let consenterInfo:ConsenterInfo|null;
   if(email && Object.keys(consenter).length == 1) {
     // email was the only piece of information provided about the consenter, so retrieve the rest from the database.
@@ -441,11 +441,11 @@ export const saveExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
     const newTimestamp = new Date().toISOString();
     const info = `consenter:${email}, exhibit_form:${exhibitForm.entity_id}`;
     if( ! existingTimestamp) {
-      console.log(`Warning: Illegal state - existing exhibit form found without create_timestamp! ${info}`);
+      log(`Warning: Illegal state - existing exhibit form found without create_timestamp! ${info}`);
     }
     if(exhibitForm.create_timestamp) {
       if(exhibitForm.create_timestamp != (existingTimestamp || exhibitForm.create_timestamp)) {
-        console.log(`Warning: Updates to exhibit form create_timestamp are disallowed:  ${info}`);
+        log(`Warning: Updates to exhibit form create_timestamp are disallowed: ${info}`);
       }
     }
     exhibitForm.create_timestamp = existingTimestamp || newTimestamp;
@@ -488,14 +488,19 @@ export const scheduleExhibitFormPurgeFromDatabase = async (newConsenter:Consente
 /**
  * Send full exhibit form to each authorized individual of the entity, remove it from the database, and save
  * each constituent single exhibit form to s3 for temporary storage.
+ * @param consenterEmail 
  * @param exhibitForm 
  * @returns 
  */
-export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Promise<LambdaProxyIntegrationResponse> => {
+export const sendExhibitData = async (consenterEmail:string, exhibitForm:ExhibitForm): Promise<LambdaProxyIntegrationResponse> => {
   
-  const affiliates = [] as Affiliate[];
   const emailFailuresForEntityStaff = [] as string[];
   const emailFailures = () => { return emailFailuresForEntityStaff.length > 0; }
+
+  const bucketItemAddFailures = [] as string[];
+  const bucketAddFailures = () => { return bucketItemAddFailures.length > 0; }
+  
+  const affiliates = [] as Affiliate[];
   let badResponse:LambdaProxyIntegrationResponse|undefined;
   let entity_id:string|undefined;
   let consenter = {} as Consenter;
@@ -518,7 +523,7 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
       throwError(INVALID_RESPONSE_MESSAGES.missingEntityId);
     }
     entity_id = _entity_id;
-    if( ! email) {
+    if( ! consenterEmail) {
       throwError(INVALID_RESPONSE_MESSAGES.missingExhibitFormIssuerEmail);
     }
 
@@ -576,8 +581,13 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
 
   const loadInfoFromDatabase = async () => {
     // Get the consenter
-    const consenterInfo = await getConsenterInfo(email, false) as ConsenterInfo;
+    const consenterInfo = await getConsenterInfo(consenterEmail, false) as ConsenterInfo;
     const { consenter: _consenter, activeConsent } = consenterInfo ?? {};
+
+    // Abort if there is no matching consenter found
+    if( ! consenter) {
+      throwError(INVALID_RESPONSE_MESSAGES.noSuchConsenter);
+    }
 
     // Abort if the consenter has not yet consented
     if( ! activeConsent) {
@@ -597,6 +607,7 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
     let _users = await daoUser.read() as User[];
     _users = _users.filter(user => user.active == YN.Yes && (user.role == Roles.RE_AUTH_IND || user.role == Roles.RE_ADMIN));
     entityReps.push(..._users);
+
   }
 
   /**
@@ -607,48 +618,51 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
     const { EXHIBIT, DISCLOSURE } = ItemType;
     const { SECONDS } = PeriodType;
     const configs = new Configurations();
-    const { DELETE_EXHIBIT_FORMS_AFTER: deleteAfter} = ConfigNames;   
+    const { DELETE_EXHIBIT_FORMS_AFTER: deleteAfter} = ConfigNames;
 
     for(let i=0; i<affiliates.length; i++) {
-      const metadata = { 
+      let metadata = { 
+        consenterEmail,
         entityId:entity.entity_id, 
         affiliateEmail:affiliates[i].email,
         savedDate: now
       } as BucketItemMetadataParms;
 
-      // 1) Save a copy of the single exhibit form pdf to the s3 bucket
-      metadata.itemType = EXHIBIT;
-      const s3ObjectKeyForExhibitForm = await new BucketExhibitForm(
-        new BucketItem(consenter),
-        metadata        
-      ).add();
+      try {
+        // 1) Save a copy of the single exhibit form pdf to the s3 bucket
+        metadata.itemType = EXHIBIT;
+        const s3ObjectKeyForExhibitForm = await new BucketExhibitForm(metadata).add(consenter);
 
-      // 2) Save a copy of the disclosure form to the s3 bucket
-      metadata.itemType = DISCLOSURE;
-      const authorizedIndividuals = entityReps.filter(user => user.active == YN.Yes && (user.role == Roles.RE_AUTH_IND));
-      const s3ObjectKeyForDisclosureForm = await new BucketDisclosureForm({
-        bucket: new BucketItem(consenter),
-        requestingEntity: entity,
-        requestingEntityAuthorizedIndividuals: authorizedIndividuals,
-        metadata
-      }).add();
+        // 2) Save a copy of the disclosure form to the s3 bucket
+        metadata.itemType = DISCLOSURE;
+        const authorizedIndividuals = entityReps.filter(user => user.active == YN.Yes && (user.role == Roles.RE_AUTH_IND));
+        const s3ObjectKeyForDisclosureForm = await new BucketDisclosureForm({
+          requestingEntity: entity,
+          requestingEntityAuthorizedIndividuals: authorizedIndividuals,
+          metadata
+        }).add(consenter);
 
-      // 3) Schedule actions against the pdfs that limit how long they survive in the bucket the were just saved to.
-      const envVarName = DelayedExecutions.ExhibitFormBucketPurge.targetArnEnvVarName;
-      const functionArn = process.env[envVarName];
-      if(functionArn) {        
-        const lambdaInput = {
-          consenterEmail:consenter.email,
-          s3ObjectKeyForDisclosureForm,
-          s3ObjectKeyForExhibitForm
-        } as DisclosureItemsParms;        
-        const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
-        const waitTime = (await configs.getAppConfig(deleteAfter)).getDuration();
-        const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
-        await delayedTestExecution.startCountdown(timer, `S3 exhibit form purge`);
+        // 3) Schedule actions against the pdfs that limit how long they survive in the bucket the were just saved to.
+        const envVarName = DelayedExecutions.ExhibitFormBucketPurge.targetArnEnvVarName;
+        const functionArn = process.env[envVarName];
+        if(functionArn) {        
+          const lambdaInput = {
+            consenterEmail:consenter.email,
+            s3ObjectKeyForDisclosureForm,
+            s3ObjectKeyForExhibitForm
+          } as DisclosureItemsParms;        
+          const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
+          const waitTime = (await configs.getAppConfig(deleteAfter)).getDuration();
+          const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
+          await delayedTestExecution.startCountdown(timer, `S3 exhibit form purge`);
+        }
+        else {
+          console.error(`Cannot schedule ${deleteAfter} bucket item purge: ${envVarName} variable is missing from the environment!`);
+        }
       }
-      else {
-        console.error(`Cannot schedule ${deleteAfter} bucket item purge: ${envVarName} variable is missing from the environment!`);
+      catch(e) {
+        error(e);
+        bucketItemAddFailures.push(BucketItemMetadata.toBucketFileKey(metadata));
       }
     }
   }
@@ -671,8 +685,13 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
    * Prune a full exhibit form from the consenters database record
    */
   const pruneExhibitFormFromDatabaseRecord = async () => {
+    if(bucketAddFailures()) {
+      log(`There were failures related to file storage for exhibit forms for ${consenter.email}. 
+        Therefore removal of the corresponding data from the consenters database record is deferred until its natural expiration`);
+      return;
+    }
     if(emailFailures()) {
-      console.log(`There were email failures related to exhibit form activty for ${consenter.email}. 
+      log(`There were email failures related to exhibit form activty for ${consenter.email}. 
         Therefore removal of the corresponding data from the consenters database record is deferred until its natural expiration`);
       return;
     }
@@ -710,13 +729,13 @@ export const sendExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
 
     await loadInfoFromDatabase();
     
-    await sendFullExhibitFormToEntityStaff();
-    
     await transferSingleExhibitFormsToBucket();
+    
+    await sendFullExhibitFormToEntityStaff();
 
     await pruneExhibitFormFromDatabaseRecord();
 
-    return getResponse(email, true);
+    return getResponse(consenterEmail, true);
   }
   catch(e:any) {
     console.error(e);
@@ -753,7 +772,6 @@ export const correctExhibitData = async (consenterEmail:string, corrections:Exhi
   const inventory = await BucketInventory.getInstance(consenterEmail, entity_id);
   const emails = inventory.getAffiliateEmails();  
   const disclosuresRequestCache = [] as string[]; // Cache the output of any s3 object tag lookups
-  let bucket = new BucketItem({ email:consenterEmail } as Consenter);
 
   // Validate that no existing affiliate from the bucket matches any affiliate being submitted as new.
   const invalidAppend = appends.find(affiliate => emails.includes(affiliate.email));
@@ -809,12 +827,13 @@ export const correctExhibitData = async (consenterEmail:string, corrections:Exhi
       await sendDisclosureRequest(consenterEmail, entity_id, affiliateEmail);
 
       // Tag the items in s3 bucket accordingly.
-      const now = new Date().toISOString();        
+      const now = new Date().toISOString();
+      const bucket = new BucketItem();       
       await bucket.tag(EF_S3ObjectKey, Tags.DISCLOSED, now);
       await bucket.tag(DR_S3ObjectKey, Tags.DISCLOSED, now);
       return;
     }
-    console.log(`No initial disclosure request to reissue for: ${JSON.stringify({ consenterEmail, entity_id, affiliateEmail }, null, 2)}`);
+    log({ consenterEmail, entity_id, affiliateEmail }, `No initial disclosure request to reissue for`);
   }
 
   // Handle deleted affiliates
@@ -824,9 +843,10 @@ export const correctExhibitData = async (consenterEmail:string, corrections:Exhi
 
       // Bail if for some weird reason the target of the correction cannot be found.
       if( ! inventory.hasAffiliate(deletes[i], entity_id)) {
-        console.warn(`Attempt to delete an affiliate for which nothing deletable can be found: ${JSON.stringify({
-          consenterEmail, entity_id, affiliateEmail:deletes[i]
-        }, null, 2)}`)
+        warn(
+          { consenterEmail, entity_id, affiliateEmail:deletes[i] }, 
+          'Attempt to delete an affiliate for which nothing deletable can be found'
+        );
         continue;
       }
 
@@ -834,7 +854,7 @@ export const correctExhibitData = async (consenterEmail:string, corrections:Exhi
       // NOTE: Any event bridge rules that schedule disclosure requests/reminders for the deleted items 
       // will search for them by key(s), fail to find them, error silently, and eventually themselves 
       // be deleted (if final reminder). This is easier than trying to find those rules and delete them here.
-      const result:DeleteObjectsCommandOutput|void = await new ExhibitBucket(bucket).deleteAll({
+      const result:DeleteObjectsCommandOutput|void = await new ExhibitBucket({ email:consenterEmail } as Consenter).deleteAll({
         consenterEmail,
         entityId:entity_id,
         affiliateEmail:deletes[i]
@@ -848,7 +868,7 @@ export const correctExhibitData = async (consenterEmail:string, corrections:Exhi
   // Handle updated affiliates
   const successfulUpdates = [] as Affiliate[];
   if(updates.length > 0) {
-    bucket.consenter.exhibit_forms = [ { entity_id, affiliates:updates } as ExhibitForm ];
+    const consenter = { email:consenterEmail, exhibit_forms: [ { entity_id, affiliates:updates } ]} as Consenter;
     for(let i=0; i<updates.length; i++) {
       const { email:affiliateEmail } = updates[i];
 
@@ -861,16 +881,14 @@ export const correctExhibitData = async (consenterEmail:string, corrections:Exhi
       }
 
       // Add the corrected single exhibit form to the bucket for the updated affiliate.
-      const EF_S3ObjectKey = await new BucketExhibitForm(
-        bucket,
-        { entityId:entity_id, itemType:ItemType.EXHIBIT, affiliateEmail, consenterEmail }
-      ).correct();
+      const EF_S3ObjectKey = await new BucketExhibitForm({ 
+        entityId:entity_id, itemType:ItemType.EXHIBIT, affiliateEmail, consenterEmail 
+      }).correct(consenter);
 
       // Add the corrected disclosure form to the bucket for the updated affiliate.
       const DR_S3ObjectKey = await new BucketDisclosureForm({
-        bucket,
-        metadata: { entityId:entity_id, itemType:ItemType.DISCLOSURE, affiliateEmail, consenterEmail }     
-      }).correct();
+         metadata: { entityId:entity_id, itemType:ItemType.DISCLOSURE, affiliateEmail, consenterEmail }     
+      }).correct(consenter);
 
       successfulUpdates.push(updates[i]);
 
@@ -881,23 +899,21 @@ export const correctExhibitData = async (consenterEmail:string, corrections:Exhi
 
   // Handle new affiliates
   if(appends.length > 0) {
-    bucket.consenter.exhibit_forms = [ { entity_id, affiliates:appends } as ExhibitForm ];
+    const consenter = { email:consenterEmail, exhibit_forms:[ { entity_id, affiliates:appends } ] } as Consenter;
     for(let i=0; i<appends.length; i++) {
       // Send out an automatic disclosure request to the new affiliates (even though the AI did not get a 
       // chance to review them) and create the customary reminder event bridge rules.
       const { email:affiliateEmail } = appends[i];
       
       // Add a new single exhibit form to the bucket for the new affiliate.
-      const EF_S3ObjectKey = await new BucketExhibitForm(
-        bucket,
-        { entityId:entity_id, itemType:ItemType.EXHIBIT, affiliateEmail, consenterEmail }
-      ).add();
+      const EF_S3ObjectKey = await new BucketExhibitForm({ 
+        entityId:entity_id, itemType:ItemType.EXHIBIT, affiliateEmail, consenterEmail 
+      }).add(consenter);
 
       // Add a new disclosure form to the bucket for the new affiliate.
       const DR_S3ObjectKey = await new BucketDisclosureForm({
-        bucket,
         metadata: { entityId:entity_id, itemType:ItemType.DISCLOSURE, affiliateEmail, consenterEmail }      
-      }).add();
+      }).add(consenter);
 
       // Reissue disclosure requests if already sent 
       await sendDisclosureRequestEmails( { EF_S3ObjectKey, DR_S3ObjectKey, affiliateEmail, reSend:false });
@@ -1096,7 +1112,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
 
       // 8) Execute the lambda event handler to perform the task
       await handler(_event);
-      console.log(`${task} complete.`);
+      log(`${task} complete.`);
     }
     catch(reason) {
       console.error(reason);

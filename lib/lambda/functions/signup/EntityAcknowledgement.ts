@@ -1,6 +1,6 @@
 import { Invitation } from "../../_lib/dao/entity";
 import { Registration } from "../../_lib/invitation/Registration";
-import { debugLog, errorResponse, invalidResponse, lookupCloudfrontDomain, okResponse, unauthorizedResponse } from "../../Utils";
+import { debugLog, error, errorResponse, invalidResponse, lookupCloudfrontDomain, okResponse, unauthorizedResponse } from "../../Utils";
 
 export enum Task {
   LOOKUP_INVITATION = 'lookup-invitation',
@@ -51,7 +51,7 @@ export const handler = async(event:any) => {
     return errorResponse('Error: Acknowledgement failed!');    
   }
   catch(e:any) {
-    console.log(e);
+    error(e);
     return errorResponse(e.message);
   }
 }

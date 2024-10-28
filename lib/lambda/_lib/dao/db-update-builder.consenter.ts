@@ -1,5 +1,5 @@
 import { AttributeValue, UpdateItemCommandInput } from "@aws-sdk/client-dynamodb";
-import { deepClone, deepEqual } from '../../Utils';
+import { deepClone, deepEqual, fieldsAreEqual } from '../../Utils';
 import { convertToApiObject, wrap } from './db-object-builder';
 import { Builder, getBlankCommandInput, getFldSetStatement, MergeParms } from "./db-update-builder-utils";
 import { Consenter, ConsenterFields, ExhibitForm } from "./entity";
@@ -70,7 +70,7 @@ export const consenterUpdate = (TableName:string, _new:Consenter, old:Consenter=
 
         default:
           if( ! _new[fld]) continue;
-          if(_new[fld] != old[fld]) { // Add to expressions only if the field has changed in value.
+          if( ! fieldsAreEqual(_new[fld], old[fld])) { // Add to expressions only if the field has changed in value.
             input.ExpressionAttributeNames![`#${fld}`] = fld;
             input.ExpressionAttributeValues![`:${fld}`] = wrap(_new[fld]);
             updates.push({ [`#${fld}`]: `:${fld}`});

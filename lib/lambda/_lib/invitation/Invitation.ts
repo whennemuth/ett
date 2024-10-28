@@ -3,6 +3,7 @@ import { DAOInvitation, DAOFactory } from '../dao/dao';
 import { SESv2Client, SendEmailCommand, SendEmailCommandInput, SendEmailResponse } from '@aws-sdk/client-sesv2';
 import { v4 as uuidv4 } from 'uuid';
 import { ENTITY_WAITING_ROOM } from '../dao/dao-entity';
+import { error } from '../../Utils';
 
 /**
  * An invitation email is one sent with a link in it to the ETT privacy policy acknowledgement webpage as the
@@ -141,7 +142,7 @@ export class UserInvitation {
       }
     } 
     catch (e:any) {
-      console.log(e);
+      error(e);
       return false;
     }
     return this.messageId ? true : false;
@@ -185,7 +186,7 @@ export class UserInvitation {
       return await dao.create();
     }
     catch (e:any) {
-      console.log(e);
+      error(e);
       return null;      
     }
   }

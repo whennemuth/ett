@@ -1,6 +1,6 @@
 import { SESv2Client, SendEmailCommand, SendEmailCommandInput, SendEmailResponse } from "@aws-sdk/client-sesv2";
 import { IPdfForm } from "../_lib/pdf/PdfForm";
-import { bytesToBase64 } from "../Utils";
+import { bytesToBase64, error, log } from "../Utils";
 import { v4 as uuidv4 } from 'uuid';
 
 export type Attachment = { pdf:IPdfForm, name:string, description:string }
@@ -11,6 +11,8 @@ export type EmailParms = {
 export const sendEmail = async (parms:EmailParms):Promise<boolean> => {
   
   const { subject, to, cc=[], bcc=[], message, from, attachments } = parms;
+
+  log({ subject, to, cc, bcc, from }, 'Sending email');
 
   const mainBoundary = uuidv4();
   const mainBoundaryStart=`--${mainBoundary}`;
@@ -91,7 +93,7 @@ ${mainBoundaryEnd}
     messageId = response?.MessageId;
   } 
   catch (e:any) {
-    console.log(e);
+    error(e);
     return false;
   }
   return messageId ? true : false;

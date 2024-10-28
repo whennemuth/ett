@@ -1,5 +1,5 @@
 import { IContext } from "../../../../contexts/IContext";
-import { Consenter } from "../../_lib/dao/entity";
+import { log } from "../../Utils";
 import { BucketItem } from "./BucketItem";
 import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "./BucketItemMetadata";
 
@@ -18,9 +18,9 @@ export class BucketInventory {
   public static getInstance = async (consenterEmail:string, entityId?:string):Promise<BucketInventory> => {
     const inventory = new BucketInventory(consenterEmail, entityId);
     const { fromBucketObjectKey } = BucketItemMetadata
-    const bucketItem = new BucketItem({ email: consenterEmail } as Consenter);
+    const bucketItem = new BucketItem();
     const output = await bucketItem.listKeys({
-      entityId
+      consenterEmail, entityId
     } as BucketItemMetadataParms);
 
     const { Prefix, keys } = output;
@@ -34,7 +34,7 @@ export class BucketInventory {
     return inventory;
   }
 
-  private constructor(consenterEmail:string, entityId?:string) {
+  constructor(consenterEmail:string, entityId?:string) {
     this.consenterEmail = consenterEmail;
     this.entityId = entityId;
   }
@@ -52,12 +52,28 @@ export class BucketInventory {
   }
 
   /**
+   * Equivalent of sql "SELECT DISTINCT entity_id" across the inventory.
+   * @returns 
+   */
+  public getEntityIds = ():string[] => {
+    const contents = this.getContents();
+    const entityIds = [] as string[];
+    contents.forEach((metadata) => {
+      const { entityId } = metadata;
+      if(entityId && ! entityIds.includes(entityId)) {
+        entityIds.push(entityId);
+      }
+    });
+    return entityIds;
+  }
+
+  /**
    * Get every form a consenter has in inventory (original and corrected) for a specified affiliate
    * @param affiliateEmail 
    * @returns 
    */
   public getAffiliateForms = (affiliateEmail:string, itemType?:ItemType):BucketItemMetadataParms[] => {
-    const { contents } = this;
+    const contents = this.getContents();
     let filtered = contents.filter(metadata => {
       return affiliateEmail == undefined || metadata.affiliateEmail == affiliateEmail
     });
@@ -72,7 +88,7 @@ export class BucketInventory {
    * @returns 
    */
   public getAffiliateEmails = ():string[] => {
-    const { contents } = this;
+    const contents = this.getContents();
     const emails = [] as string[];
     contents.forEach((metadata) => {
       const { affiliateEmail:email } = metadata;
@@ -84,7 +100,7 @@ export class BucketInventory {
   }
 
   public hasAffiliate = (affiliateEmail:string, entityId?:string):boolean => {
-    const { contents } = this;
+    const contents = this.getContents();
     let filtered = contents.filter(metadata => metadata.affiliateEmail == affiliateEmail);
     if(entityId) {
       filtered = filtered.filter(metadata => metadata.entityId == entityId);
@@ -102,6 +118,55 @@ export class BucketInventory {
     const { getAffiliateForms } = this;
     const candidates = getAffiliateForms(affiliateEmail);
     return BucketItemMetadata.getLatestFrom(candidates, itemType);
+  }
+
+  /**
+   * Get all forms that are eligible for being emailed - that is, they have either not been corrected, or
+   * they are the latest correction.
+   */
+  public getAllLatestForms = ():BucketItemMetadataParms[] => {
+    const { contents } = this;
+    const { areRelated, areEqual } = BucketItemMetadata;
+    const results = [] as BucketItemMetadataParms[];
+
+    /**
+     * An accumulator function that "chooses" between two forms the younger of the two if they are "related"
+     * @param prior 
+     * @param current 
+     * @returns 
+     */
+    const accumulator = (prior:BucketItemMetadataParms, current:BucketItemMetadataParms) => {
+      if( ! areRelated(prior, current)) {
+        return prior;
+      }
+      if( ! prior.savedDate) return current // Huh? This should not happen
+      if( ! current.savedDate) return prior // Huh? This should not happen
+      // "Choose" the younger of the two forms
+      return prior.savedDate.getTime() < current.savedDate.getTime() ? current : prior;
+    }
+
+    // Iterate over the contents and pick out the "youngest" of related forms.
+    contents.forEach(form => {
+      const latest = contents.reduce(accumulator, form);
+      const duplicateResult = results.find(f => areEqual(f, latest));
+      if( ! duplicateResult) {
+        results.push(latest);
+      }
+    });
+
+    return results;
+  }
+
+  /**
+   * Get all forms in the inventory for the consenter that are of a specified type
+   * @param itemType 
+   * @returns 
+   */
+  public getAllFormsOfType = (itemType:ItemType) => {
+    const contents = this.getContents();
+    return contents.filter(metadata => {
+      return metadata.itemType == itemType;
+    })
   }
 }
 
@@ -126,9 +191,9 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_BUCKET_INVENTORY') {
     entityId = 'eea2d463-2eab-4304-b2cf-cf03cf57dfaa'
     const inventory = await BucketInventory.getInstance('cp3@warhen.work', entityId);
 
-    // console.log(JSON.stringify(inventory.getKeys(), null, 2));
-    // console.log(JSON.stringify(inventory.getAffiliateEmails(), null, 2));
-    console.log(JSON.stringify(inventory.getAffiliateForms('affiliate1@warhen.work', ItemType.EXHIBIT), null, 2))
-    // console.log(JSON.stringify(inventory.getLatestAffiliateItem('affiliate1@warhen.work', ItemType.EXHIBIT), null, 2));
+    // log(inventory.getKeys());
+    // log(inventory.getAffiliateEmails());
+    log(inventory.getAffiliateForms('affiliate1@warhen.work', ItemType.EXHIBIT));
+    // log(inventory.getLatestAffiliateItem('affiliate1@warhen.work', ItemType.EXHIBIT));
   })();
 }

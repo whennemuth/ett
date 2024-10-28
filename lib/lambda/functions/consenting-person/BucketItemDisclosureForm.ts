@@ -1,13 +1,13 @@
 import { S3 } from "@aws-sdk/client-s3";
 import { DAOFactory } from "../../_lib/dao/dao";
-import { Entity, Roles, User, YN } from "../../_lib/dao/entity";
+import { Consenter, Entity, Roles, User, YN } from "../../_lib/dao/entity";
 import { DisclosureForm, DisclosureFormData } from "../../_lib/pdf/DisclosureForm";
 import { BucketItem, Tags } from "./BucketItem";
 import { BucketItemMetadata, BucketItemMetadataParms, ItemType } from "./BucketItemMetadata";
+import { log } from "../../Utils";
 
 export type BucketDisclosureFormParms = {
   metadata:BucketItemMetadataParms|string,
-  bucket:BucketItem,
   requestingEntity?:Entity,
   requestingEntityAuthorizedIndividuals?:User[]
 };
@@ -22,10 +22,10 @@ export class BucketDisclosureForm {
   private requestingEntityAuthorizedIndividuals?:User[];
 
   constructor(parms:BucketDisclosureFormParms) {
-    const { bucket, metadata, requestingEntity, requestingEntityAuthorizedIndividuals } = parms;
+    const { metadata, requestingEntity, requestingEntityAuthorizedIndividuals } = parms;
     const { fromBucketObjectKey } = BucketItemMetadata;
 
-    this.bucket = bucket;
+    this.bucket = new BucketItem();
     this.requestingEntity = requestingEntity;
     this.requestingEntityAuthorizedIndividuals = requestingEntityAuthorizedIndividuals;
     if(typeof metadata == 'string') {
@@ -40,12 +40,13 @@ export class BucketDisclosureForm {
    * Add the disclosure form to the bucket.
    * @returns 
    */
-  public add = async (_correction:boolean=false):Promise<string> => {
+  public add = async (consenter:Consenter, _correction:boolean=false):Promise<string> => {
     const { DISCLOSURE } = ItemType;
+    const { email:consenterEmail, exhibit_forms=[] } = consenter;
     let { metadata, metadata: { 
       entityId, affiliateEmail, correction=_correction, savedDate=new Date() }, 
       requestingEntity, requestingEntityAuthorizedIndividuals,
-      bucket: { consenter, consenter: { email:consenterEmail, exhibit_forms=[] }, bucketName:Bucket, region }
+      bucket: { bucketName:Bucket, region }
     } = this;
 
     try {
@@ -106,14 +107,14 @@ export class BucketDisclosureForm {
       // Save the new single exhibit form pdf file to the s3 bucket
       const s3 = new S3({ region });
       const Body = await pdf.getBytes();
-      console.log(`Adding ${Key}`);
+      log(`Adding ${Key}`);
       await s3.putObject({ Bucket, Key, Body, ContentType: 'application/pdf' });
 
       // Return the object key of the exhibit form.
       return Key;
     }
     catch(e) {
-      console.log(`DisclosureFormBucket.add: ${JSON.stringify(metadata, null, 2)}`);
+      log(metadata, `DisclosureFormBucket.add`);
       throw(e);
     }
   }
@@ -121,8 +122,8 @@ export class BucketDisclosureForm {
   /**
    * Add a corrected disclosure form to the bucket
    */
-  public correct = async ():Promise<string> => {
-    return this.add(true);
+  public correct = async (consenter:Consenter):Promise<string> => {
+    return this.add(consenter, true);
   }
 
   /**
@@ -135,7 +136,7 @@ export class BucketDisclosureForm {
       return bucket.getObjectBytes(metadata);
     }
     catch(e) {
-      console.log(`DisclosureFormBucket.get: ${JSON.stringify({ bucket, metadata }, null, 2)}`);
+      log({ bucket, metadata }, `DisclosureFormBucket.get`);
       throw(e);
     }
   }

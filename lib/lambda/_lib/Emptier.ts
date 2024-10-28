@@ -1,6 +1,7 @@
 import { AttributeValue, BatchWriteItemCommand, BatchWriteItemCommandInput, DynamoDBClient, ScanCommand, ScanCommandInput, ScanCommandOutput, WriteRequest } from "@aws-sdk/client-dynamodb";
 import { DeleteObjectsCommand, ListObjectsV2Command, ListObjectsV2CommandOutput, S3Client } from "@aws-sdk/client-s3";
 import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
+import { log } from "../Utils";
 
 /**
  * Simple s3 bucket emptier. Run against any bucket with non-versioned content.
@@ -40,14 +41,14 @@ export class BucketToEmpty {
 
       if (objectsToDelete && objectsToDelete.length > 0) {
         if(dryRun) {
-          console.log(`DRYRUN: Deleting ${JSON.stringify(objectsToDelete, null, 2)} from ${Bucket}`);
+          log(objectsToDelete, `DRYRUN - Deleting the following objects from ${Bucket}`)
         }
         else {
           // Delete the objects in batches
           await s3Client.send(new DeleteObjectsCommand({
             Bucket, Delete: { Objects: objectsToDelete },
           }));
-          console.log(`Deleted ${JSON.stringify(objectsToDelete, null, 2)} from ${Bucket}`);
+          log(objectsToDelete, `Deleted the following from ${Bucket}`)
         }
         total += objectsToDelete.length;
       }
@@ -122,12 +123,11 @@ export class DynamoDbTableToEmpty {
           }
         } as BatchWriteItemCommandInput;
 
-        const msg = `Deleting: ${JSON.stringify(batchWriteParams, null, 2)}`;
         if(dryRun) {
-          console.log(`DRYRUN: ${msg}`);
+          console.log(batchWriteParams, `DRYRUN: Deleting`);
           continue;
         }
-        console.log(msg);
+        console.log(batchWriteParams, 'Deleting');
         await docClient.send(new BatchWriteItemCommand(batchWriteParams));
       }
 

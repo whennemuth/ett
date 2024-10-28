@@ -1,7 +1,7 @@
 import { DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, QueryCommand, QueryCommandInput, TransactWriteItem, TransactWriteItemsCommand, TransactWriteItemsCommandInput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { DynamoDbConstruct, IndexBaseNames, TableBaseNames } from "../../../DynamoDb";
-import { deepClone } from "../../Utils";
+import { deepClone, log } from "../../Utils";
 import { DAOConsenter, ReadParms } from "./dao";
 import { convertFromApiObject } from "./db-object-builder";
 import { Builder, MergeParms } from "./db-update-builder-utils";
@@ -188,7 +188,7 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
    */
   const transUpdate = async (inputs:UpdateItemCommandInput[]) => {
     if(inputs.length == 0) {
-      console.log(`Consenter update cancelled: No changes detected in: ${JSON.stringify(consenterInfo, null, 2)}`);
+      log(consenterInfo, `Consenter update cancelled: No changes detected in`);
       return;
     }
     const TransactItems = [] as TransactWriteItem[];
@@ -271,7 +271,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_DAO_CONSENTER') {
   const execute = (task:any, taskname:string, parms?:any) => {
     task(parms)
       .then((retval:any) => {
-        console.log(`${taskname} successful: ${JSON.stringify(retval, null, 2)}`);
+        log(retval, `${taskname} successful`);
       })
       .catch((e:any) => {
         JSON.stringify(e, Object.getOwnPropertyNames(e), 2);

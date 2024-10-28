@@ -8,12 +8,14 @@ import { DisclosureForm, DisclosureFormData } from "../../_lib/pdf/DisclosureFor
 import { ExhibitForm } from "../../_lib/pdf/ExhibitForm";
 import { ExhibitFormSingle } from '../../_lib/pdf/ExhibitFormSingle';
 import { IPdfForm, PdfForm } from "../../_lib/pdf/PdfForm";
-import { BucketItem, DisclosureItemsParms } from "../consenting-person/BucketItem";
+import { BucketCorrectionForm } from '../consenting-person/BucketItemCorrectionForm';
+import { DisclosureItemsParms } from "../consenting-person/BucketItem";
 import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureForm";
 import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
-import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName } from "../consenting-person/BucketItemMetadata";
+import { BucketItemMetadata } from "../consenting-person/BucketItemMetadata";
 import { test_data as test_exhibit_data } from '../consenting-person/ExhibitEmail';
 import { bugsbunny, daffyduck, yosemitesam } from "./MockObjects";
+import { log } from '../../Utils';
 
 
 export type DisclosureEmailParms = DisclosureItemsParms & {
@@ -63,7 +65,7 @@ export class BasicDisclosureRequest {
   private data:DisclosureFormData;
   private exhibitData:ExhibitFormData;
 
-  constructor(data:DisclosureFormData, exhibitData:ExhibitFormData ) {
+  constructor(data:DisclosureFormData, exhibitData:ExhibitFormData) {
     this.data = data;
     this.exhibitData = exhibitData;
   }
@@ -84,48 +86,54 @@ export class BasicDisclosureRequest {
     const disclosureForm = new DisclosureForm(data);
 
     return send({ 
-      consenterEmail, emailType:'request', disclosureForm, singleExhibitForm, affiliateEmail, entity_name 
+      consenterEmail, emailType:'request', disclosureForm, singleExhibitForm, affiliateEmail, entity_name, correctionForms: []
     });
   }
 }
 
 /**
- * Retrieve the exhibit & disclosure forms from the s3 bucket and sent them as attachments in a disclosure
+ * Retrieve the exhibit & disclosure forms from the s3 bucket and send them as attachments in a disclosure
  * request email.
  * @param parms 
  * @returns 
  */
 const grabFromBucketAndSend = async (parms:DisclosureEmailParms):Promise<boolean> => {
   const { consenterEmail, s3ObjectKeyForExhibitForm, s3ObjectKeyForDisclosureForm, emailType } = parms;
-  const bucketName = process.env[ExhibitFormsBucketEnvironmentVariableName];
-  console.log(`Sending disclosure ${emailType}: ${JSON.stringify({ 
+  log({ 
     consenterEmail, 
     s3ObjectKeyForExhibitForm,
     s3ObjectKeyForDisclosureForm
-  }, null, 2)}`);
+  }, `Sending disclosure ${emailType}`);
 
-  const { entityId, affiliateEmail } = BucketItemMetadata.fromBucketObjectKey(s3ObjectKeyForExhibitForm) ?? {};
+  const { entityId, affiliateEmail, savedDate } = BucketItemMetadata.fromBucketObjectKey(s3ObjectKeyForExhibitForm) ?? {};
   if( ! affiliateEmail) {
     console.error(`Cannot send disclosure ${emailType} email: Affiliate email unknown`);
     return false;
   }
+
+  // Get the exhibit form
   const singleExhibitForm = new class implements IPdfForm {
     async getBytes(): Promise<Uint8Array> {
-      return new BucketExhibitForm(
-        new BucketItem({ email:consenterEmail } as Consenter, bucketName),
-        s3ObjectKeyForExhibitForm
-      ).get();
+      return new BucketExhibitForm(s3ObjectKeyForExhibitForm).get();
     }
   }();
 
+  // Get the disclosure form
   const disclosureForm = new class implements IPdfForm {
     async getBytes(): Promise<Uint8Array> {
-      return new BucketDisclosureForm({
-        bucket: new BucketItem({ email:consenterEmail } as Consenter, bucketName),
-        metadata: s3ObjectKeyForDisclosureForm
-      }).get();
+      return new BucketDisclosureForm({ metadata: s3ObjectKeyForDisclosureForm }).get();
     }
   }();
+
+  // Get the consenter correction forms
+  const correctionFormsBytes = await BucketCorrectionForm.getAll(consenterEmail, savedDate);
+  const correctionForms = correctionFormsBytes.map(bytes => {
+    return new class implements IPdfForm {
+      async getBytes(): Promise<Uint8Array> {
+        return bytes;
+      }
+    }()
+  });
 
   // Get the entity
   const entityDao = DAOFactory.getInstance({ DAOType: 'entity', Payload: { entity_id:entityId} as Entity });
@@ -133,12 +141,18 @@ const grabFromBucketAndSend = async (parms:DisclosureEmailParms):Promise<boolean
   const { entity_name} = entity;
 
   return send({ 
-    consenterEmail, emailType, disclosureForm, singleExhibitForm, affiliateEmail, entity_name 
+    consenterEmail, emailType, disclosureForm, singleExhibitForm, affiliateEmail, correctionForms, entity_name 
   });
 }
 
 type EmailParameters = {
-  consenterEmail:string, emailType?:string, disclosureForm:IPdfForm, singleExhibitForm:IPdfForm, affiliateEmail:string, entity_name:string
+  consenterEmail:string, 
+  emailType?:string, 
+  disclosureForm:IPdfForm, 
+  singleExhibitForm:IPdfForm, 
+  correctionForms:IPdfForm[],
+  affiliateEmail:string, 
+  entity_name:string
 }
 /**
  * Send the disclosure request/reminder email
@@ -146,7 +160,7 @@ type EmailParameters = {
  * @returns 
  */
 const send = async (parms:EmailParameters):Promise<boolean> => {
-  const { consenterEmail, emailType, entity_name, affiliateEmail, disclosureForm, singleExhibitForm } = parms;
+  const { consenterEmail, emailType, entity_name, affiliateEmail, disclosureForm, singleExhibitForm, correctionForms } = parms;
 
   // Get the consenter
   const consenterDao = DAOFactory.getInstance({ DAOType: 'consenter', Payload: { email: consenterEmail} as Consenter});
@@ -156,6 +170,32 @@ const send = async (parms:EmailParameters):Promise<boolean> => {
   const consenterFullName = fullName(firstname, middlename, lastname);
   const context:IContext = <IContext>ctx;
 
+  const attachments = [
+    {
+      pdf: disclosureForm,
+      name: 'disclosure-form.pdf',
+      description: 'disclosure-form.pdf'
+    },
+    {
+      pdf: singleExhibitForm,
+      name: 'exhibit-form-single.pdf',
+      description: 'exhibit-form-single.pdf'
+    },
+    {
+      pdf: new ConsentForm({ consenter, entityName:entity_name }),
+      name: 'consent-form.pdf',
+      description: 'consent-form.pdf'
+    }
+  ];
+
+  for(let i=0; i<correctionForms.length; i++) {
+    attachments.push({
+      pdf: correctionForms[i],
+      name: `correction-form-${i+1}`,
+      description: `correction-form-${i+1}`
+    })
+  };
+
   return sendEmail({
     subject: `ETT Disclosure ${emailType}`,
     from: `noreply@${context.ETT_DOMAIN}`,
@@ -163,23 +203,7 @@ const send = async (parms:EmailParameters):Promise<boolean> => {
       `${consenterFullName} who is the subject of the disclosure and their original exhibit form ` +
       `naming you to disclose.`,
     to: [ affiliateEmail ],
-    attachments: [
-      {
-        pdf: disclosureForm,
-        name: 'disclosure-form.pdf',
-        description: 'disclosure-form.pdf'
-      },
-      {
-        pdf: singleExhibitForm,
-        name: 'exhibit-form-single.pdf',
-        description: 'exhibit-form-single.pdf'
-      },
-      {
-        pdf: new ConsentForm({ consenter, entityName:entity_name }),
-        name: 'consent-form.pdf',
-        description: 'consent-form.pdf'
-      }
-    ]
+    attachments
   } as EmailParms);
 }
 
@@ -193,7 +217,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_SEND_DISCLOSURE_FORM') {
   const email = process.env.PDF_RECIPIENT_EMAIL;
   
   if( ! email) {
-    console.log('Email environment variable is missing. Put PDF_RECIPIENT_EMAIL=[email] in .env in ${workspaceFolder}');
+    log('Email environment variable is missing. Put PDF_RECIPIENT_EMAIL=[email] in .env in ${workspaceFolder}');
     process.exit(1);
   }
 
@@ -208,7 +232,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_SEND_DISCLOSURE_FORM') {
 
   new BasicDisclosureRequest(test_disclosure_data, test_exhibit_data).send(email)
     .then(success => {
-      console.log(success ? 'Succeeded' : 'Failed');
+      log(success ? 'Succeeded' : 'Failed');
     })
     .catch(e => {
       console.error(e);

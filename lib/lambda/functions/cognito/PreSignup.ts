@@ -2,6 +2,7 @@ import { lookupRole, lookupUserPoolClientId, lookupUserPoolId } from "../../_lib
 import { DAOFactory, DAOInvitation } from "../../_lib/dao/dao";
 import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
 import { Consenter, Invitation, Role, Roles, Validator } from "../../_lib/dao/entity";
+import { debugLog } from "../../Utils";
 import { PreSignupEventType } from "./PreSignupEventType";
 
 export enum Messages {
@@ -11,12 +12,6 @@ export enum Messages {
   ROLE_MISSING = 'PreSignUp_AdminCreateUser did not send role information in event.request.clientMetadata',
   RETRACTED = 'Your invitation was retracted signup as '
 }
-
-const debugLog = (entry:String) => { 
-  if(process.env?.DEBUG === 'true') {
-    console.log(entry);
-  }
-};
 
 /**
  * Intercept all signup attempts early, before they reach the confirmation stage, and lookup the email in the
@@ -37,7 +32,7 @@ const debugLog = (entry:String) => {
  */
 export const handler = async (_event:any) => {
   try {
-    debugLog(JSON.stringify(_event, null, 2)); 
+    debugLog(_event); 
 
     const event = _event;
     const { userPoolId, region } = event;

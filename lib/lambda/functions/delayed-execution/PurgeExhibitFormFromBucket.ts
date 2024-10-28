@@ -5,9 +5,9 @@ import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, log } from "../../Utils";
 import { DisclosureItemsParms, Tags } from "../consenting-person/BucketItem";
-import { ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
-import { TagInspector } from "../consenting-person/BucketItemTag";
+import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
 import { getTestItem } from "./TestBucketItem";
+import { TagInspector } from "../consenting-person/BucketItemTag";
 
 
 /**
@@ -30,9 +30,14 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
 
     const { s3ObjectKeyForDisclosureForm, s3ObjectKeyForExhibitForm } = lambdaInput as DisclosureItemsParms;
 
-    await purgeFormFromBucket(EXHIBIT, s3ObjectKeyForExhibitForm, checkAbort);
+    const purgedExhibitForm = await purgeFormFromBucket(EXHIBIT, s3ObjectKeyForExhibitForm, checkAbort);
 
-    await purgeFormFromBucket(DISCLOSURE, s3ObjectKeyForDisclosureForm, checkAbort);
+    const purgedDisclosureForm = await purgeFormFromBucket(DISCLOSURE, s3ObjectKeyForDisclosureForm, checkAbort);
+
+    if(purgedExhibitForm && purgedDisclosureForm) {
+      // No sense in keeping around any correction forms that existed in the same directory since they are now redundat
+      await purgeCorrectionForms(s3ObjectKeyForExhibitForm);
+    }
   }
   catch(e:any) {    
     log(e);
@@ -54,16 +59,28 @@ export const checkAbort = async (s3ObjectKey:string):Promise<boolean> => {
   return new TagInspector(Tags.DISCLOSED).tagExistsAmong(s3ObjectKey, ItemType.EXHIBIT);
 }
 
+export const purgeCorrectionForms = async (s3ObjectKeyForExhibitForm:string):Promise<void> => {
+  const { fromBucketObjectKey } = BucketItemMetadata;
+  const parms = fromBucketObjectKey(s3ObjectKeyForExhibitForm);
+  const { entityId, affiliateEmail, consenterEmail, correction } = parms;
+
+  /**
+   * RESUME NEXT: Get the parent directory of the key indicated by s3ObjectKeyForExhibitForm (which should 
+   * have just been deleted) and remove every correction form from it. Technically, there should not be any
+   * items in the directory by now that are not correction forms, but maybe check for this just in case?
+   */
+}
+
 /**
  * Remove the exhibit form from the s3 bucket.
  * @param exhibitFormS3ObjectKey 
  */
-export const purgeFormFromBucket = async (itemType:ItemType, Key:string, checkAbort?:Function):Promise<void> => {
-  if(checkAbort) {    
+export const purgeFormFromBucket = async (itemType:ItemType, Key:string, checkAbort?:Function):Promise<boolean> => {
+  if(checkAbort) {
     const abort = await checkAbort(Key) as boolean;
     if(abort) {
       console.log(`Aborting purge of pdf from s3: ${Key}`);
-      return;
+      return false;
     }
   }
   log(`Deleting ${itemType} form: ${Key}`);
@@ -73,6 +90,7 @@ export const purgeFormFromBucket = async (itemType:ItemType, Key:string, checkAb
   const output = await s3.deleteObject({ Bucket, Key }) as DeleteObjectCommandOutput;  
   log(`${Key} deleted.`);
   log(output);
+  return true;
 }
 
 const validateEnvironment = ():void => {
@@ -98,7 +116,6 @@ const validateLambdaInput = (lambdaInput:DisclosureItemsParms):void => {
     throw new Error('Lambda input is missing s3ObjectKeyForDisclosureForm parameter!');
   }
 }
-
 
 
 /**

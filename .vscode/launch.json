@@ -133,6 +133,23 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "BucketItemExhibitForm",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/BucketItemExhibitForm.ts",
+        "RUN_MANUALLY_CONSENTER_EXHIBIT_FORM",
+        "us-east-2",
+        "correct"
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "BucketItemExhibitForms",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
@@ -140,7 +157,24 @@
         "${workspaceFolder}/lib/lambda/functions/consenting-person/BucketItemExhibitForms.ts",
         "RUN_MANUALLY_CONSENTER_EXHIBIT_FORMS",
         "us-east-2",
-        "correct"
+        "query"
+      ], 
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      }, 
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "BucketItemExhibitForms",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/BucketItemCorrectionForm.ts",
+        "RUN_MANUALLY_CONSENTER_CORRECTION_FORM",
+        "us-east-2",
+        "add"
       ], 
       "env": {
         "AWS_PROFILE": "bu",
@@ -331,7 +365,8 @@
       "args": [
         "${workspaceFolder}/lib/lambda/functions/delayed-execution/SendDisclosureRequestReminder.ts",
         "RUN_MANUALLY_SEND_DISCLOSURE_REQUEST_REMINDER",
-        "scheduled"
+        "existing",
+        "immediate"
       ], 
       "env": {
         "AWS_PROFILE": "bu",
@@ -423,6 +458,21 @@
         "REGION": "us-east-2"
       },
       "envFile": "${workspaceFolder}/.env",
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF send consenter correction form",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/CorrectionFormEmail.ts",
+        "RUN_MANUALLY_SEND_CONSENTER_CORRECTION_FORM"
+      ],
+      "env": {
+        "AWS_PROFILE": "bu",
+        "REGION": "us-east-2"
+      },
     },
     {
       "type": "node",
@@ -602,6 +652,17 @@
       "args": [
         "${workspaceFolder}/lib/lambda/_lib/pdf/DisclosureFormPage5.ts",
         "RUN_MANUALLY_DISCLOSURE_FORM_PAGE_5"
+      ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "PDF Correction Form",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [
+        "${workspaceFolder}/lib/lambda/_lib/pdf/CorrectionForm.ts",
+        "RUN_MANUALLY_CORRECTION_FORM"
       ],
     },
     {
@@ -1007,6 +1068,36 @@
         "--runTestsByPath", 
         "-i", 
         "${workspaceFolder}/lib/lambda/functions/consenting-person/BucketItemMetadata.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Consenter-Bucket-Inventory",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "killBehavior": "forceful",
+      "args": [ 
+        "--runTestsByPath", 
+        "-i", 
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/BucketInventory.test.ts" 
+      ],
+      "runtimeArgs": [ "--experimental-vm-modules" ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Consenter-Correction-Form",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "killBehavior": "forceful",
+      "args": [ 
+        "--runTestsByPath", 
+        "-i", 
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/BucketCorrectionForm.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",

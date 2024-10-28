@@ -110,22 +110,39 @@ export const errorResponse = (message:string, payload?:any): LambdaProxyIntegrat
   return response;
 }
 
-export const debugLog = (o:any) => {
+export const debugLog = (o:any, msg?:string) => {
   if(process.env.DEBUG == 'true') {
-    log(o);
+    log(o, msg);
   }
 }
 
-export const log = (o:any) => {
+const toConsole = (o:any, out:Function, msg?:string) => {
+  const output = (suffix:string) => {
+    if(msg) msg = msg.endsWith(': ') ? msg : `${msg}: `;
+    out(msg ? `${msg}${suffix}` : suffix);
+  }
   if(o instanceof Error) {
-    console.error(JSON.stringify(o, Object.getOwnPropertyNames(o), 2));
+    console.error(msg);
+    console.error(o);
     return;
   }
-  if(o instanceof Array) {
-    console.log(JSON.stringify(o, null, 2))
+  if(o instanceof Object) {
+    output(JSON.stringify(o, Object.getOwnPropertyNames(o), 2));
     return;
   }
-  console.log(o);
+  output(`${o}`);
+}
+
+export const log = (o:any, msg?:string) => {
+  toConsole(o, (s:string) => console.log(s), msg);
+}
+
+export const warn = (o:any, msg?:string) => {
+  toConsole(o, (s:string) => console.warn(s), msg);
+}
+
+export const error = (o:any, msg?:string) => {
+  toConsole(o, (s:string) => console.error(s), msg);
 }
 
 export const mergeResponses = (responses:LambdaProxyIntegrationResponse[]) => {
@@ -419,6 +436,12 @@ export const deepEqual = (obj1:any, obj2:any, parm?:'log.console'|'log.temp'|'al
   }
 
   return method1();
+}
+
+export const fieldsAreEqual = (fld1:any, fld2:any) => {
+  const compare1 = fld1 instanceof Date ? fld1.toISOString() : fld1;
+  const compare2 = fld2 instanceof Date ? fld2.toISOString() : fld2;
+  return compare1 == compare2;
 }
 
 export const deepClone = (obj:any) => JSON.parse(JSON.stringify(obj));

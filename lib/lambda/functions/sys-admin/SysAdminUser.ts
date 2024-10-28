@@ -7,7 +7,7 @@ import { DAOEntity, DAOFactory } from '../../_lib/dao/dao';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
 import { Config, ConfigNames, Entity, EntityFields, Role, Roles, YN } from '../../_lib/dao/entity';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
-import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
+import { debugLog, error, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
 import { Task as ReAdminTasks, createEntity, createEntityAndInviteUsers, deactivateEntity, inviteUser, inviteUsers, lookupEntity, updateEntity } from '../re-admin/ReAdminUser';
 import { DynamoDbTableOutput } from './DynamoDbTableOutput';
 import { HtmlTableView } from './view/HtmlTableView';
@@ -248,10 +248,10 @@ if(args.length > 3 && args[2] == 'RUN_MANUALLY_SYS_ADMIN') {
       }
 
       const retval = await handler(_event);
-      console.log(`${task} complete. Returned value: ${JSON.stringify(retval, null, 2)}`);
+      log(retval, `${task} complete. Returned value`);
     }
     catch(e) {
-      console.error(e);
+      error(e);
     }
   })(); 
 }

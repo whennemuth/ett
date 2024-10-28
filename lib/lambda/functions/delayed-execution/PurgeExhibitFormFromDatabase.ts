@@ -2,7 +2,7 @@ import { UpdateItemCommandOutput } from "@aws-sdk/client-dynamodb";
 import { DAOFactory } from "../../_lib/dao/dao";
 import { Consenter } from "../../_lib/dao/entity";
 import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../_lib/timer/DelayedExecution";
-import { debugLog, deepClone, log } from "../../Utils";
+import { debugLog, deepClone, log, warn } from "../../Utils";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { IContext } from "../../../../contexts/IContext";
 import { DelayedExecutions } from "../../../DelayedExecution";
@@ -14,7 +14,7 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
     debugLog({ event, context });
 
     const { consenterEmail, entity_id } = lambdaInput ?? {};
-    log(`Deleting exhibit form: ${JSON.stringify({ consenterEmail, entity_id })}`);
+    log({ consenterEmail, entity_id }, `Deleting exhibit form`);
 
     const response = await deleteExhibitForm(consenterEmail, entity_id) as UpdateItemCommandOutput;
     if(response) {
@@ -47,11 +47,19 @@ export const deleteExhibitForm = async (consenterEmail:string, entity_id:string)
       return ef.entity_id != entity_id;
     });
     newConsenterInfo.exhibit_forms = filtered;
+    /**
+     * TODO: If the user saves the exhibit form, the corresponding database content is removed immediately,
+     * in which case, this operation will purge nothing from the database and end as a non-action result.
+     * However, if after saving, the user submits another exhibit form for the same enitity, this new
+     * database entry should get a new timer, but this existing timer execution will purge it BEFORE its time.
+     * So, to account for this, extend the filter above so that removes any exhibit form whose created_date
+     * value indicates it was saved LATER than what would have been this executions egg timer starting point.
+     */
   }
   const remainingForms = newConsenterInfo.exhibit_forms ?? [];
 
   if(remainingForms.length == startingFormCount) {
-    console.warn(`Attempt to delete exhibit form that does not exist ${JSON.stringify({ consenterEmail, entity_id })}`);
+    warn({ consenterEmail, entity_id }, `Attempt to delete exhibit form that does not exist`);
     return;
   }
 
@@ -91,7 +99,7 @@ if(args.length > 3 && args[2] == 'RUN_MANUALLY_PURGE_EXHIBIT_FORM_FROM_DATABASE'
         await delayedTestExecution.startCountdown(timer, `Dynamodb exhibit form purge (TESTING)`);
         break;
       default:
-        console.log(`Unknown task "${task}" specified!`);
+        log(`Unknown task "${task}" specified!`);
         break;
     }
   })();

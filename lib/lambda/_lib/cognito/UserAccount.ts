@@ -168,7 +168,7 @@ export class UserAccount {
       const command = new AdminCreateUserCommand(input);
 
       const response = await client.send(command) as AdminCreateUserCommandOutput;
-      console.log(`Created new cognito user account: ${JSON.stringify(response, null, 2)}`);
+      log(response, 'Created new cognito user account');
       user = response.User;
     }
     catch(e) {

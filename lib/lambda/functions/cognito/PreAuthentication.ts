@@ -4,7 +4,7 @@ import { PreAuthenticationEventType } from "./PreAuthenticationEventType";
 import { lookupRole } from '../../_lib/cognito/Lookup';
 import { DynamoDbConstruct, TableBaseNames } from "../../../DynamoDb";
 import { AdminUpdateUserAttributesCommand, AdminUpdateUserAttributesCommandOutput, AdminUpdateUserAttributesRequest, AttributeType, CognitoIdentityProviderClient } from "@aws-sdk/client-cognito-identity-provider";
-import { isOkStatusCode } from "../../Utils";
+import { debugLog, isOkStatusCode, log } from "../../Utils";
 
 export enum Messages {
   ACCOUNT_UNCONFIRMED = 'Your account has not attained confirmation status',
@@ -16,11 +16,6 @@ export enum Messages {
   SERVER_ERROR = 'Server error during post-signup process at ',
 }
 
-const debugLog = (entry:String) => { 
-  if(process.env?.DEBUG === 'true') {
-    console.log(entry);
-  }
-};
 
 /**
  * Intercept all login attempts and turn away any that indicate the user is using a userpool client that
@@ -30,7 +25,7 @@ const debugLog = (entry:String) => {
  */
 export const handler = async (_event:any) => {
   try {
-    debugLog(JSON.stringify(_event, null, 2));
+    debugLog(_event);
 
     const event = _event as PreAuthenticationEventType;
     const { userPoolId, userName, region } = event;
@@ -63,7 +58,7 @@ export const handler = async (_event:any) => {
          *      "email_verified" attribute must be set to "true" here, and we exit out to avoid the premature
          *      validation checks of the normal pre-authentication scenario.
          */
-        console.log(`FORCE_CHANGE_PASSWORD is in progress, restoring email_verified to true.`);
+        log(`FORCE_CHANGE_PASSWORD is in progress, restoring email_verified to true.`);
         const cognitoUserAccount = getUpdateableUserAccount(userPoolId, userName, region);
         await cognitoUserAccount.updateAttribute('email_verified', 'true');
         return event;
@@ -140,10 +135,10 @@ function getUpdateableUserAccount(UserPoolId:string, Username:string, region:str
     const command = new AdminUpdateUserAttributesCommand(input);
     const response = await client.send(command) as AdminUpdateUserAttributesCommandOutput;
     if( ! isOkStatusCode(response.$metadata.httpStatusCode)) {
-      console.log(`Error updating cognito user account attribute(s): ${JSON.stringify({
+      log({
         commandInput: input,
         commandOutput: response
-      }, null, 2)}`)
+      }, `Error updating cognito user account attribute(s)`);
     }
   }
 
@@ -193,7 +188,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_PRE_AUTHENTICATION') {
 
   handler(mockEvent)
     .then((retval:any) => {
-      console.log(`Successful: ${JSON.stringify(retval, null, 2)}`);
+      console.log(retval, `Successful`);
     })
     .catch((e:any) => {
       JSON.stringify(e, Object.getOwnPropertyNames(e), 2);

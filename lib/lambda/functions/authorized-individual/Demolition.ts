@@ -5,6 +5,7 @@ import { Entity, Invitation, User } from "../../_lib/dao/entity";
 import { CognitoIdentityProviderClient, AdminDeleteUserCommand, AdminDeleteUserRequest, AdminDeleteUserCommandOutput } from '@aws-sdk/client-cognito-identity-provider';
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { DynamoDbConstruct, TableBaseNames } from "../../../DynamoDb";
+import { log } from "../../Utils";
 
 const dbclient = new DynamoDBClient({ region: process.env.REGION });
 const cognitoClient = new CognitoIdentityProviderClient({ region: process.env.REGION });
@@ -74,7 +75,7 @@ export class EntityToDemolish {
     
     // Execute the transaction
     this.dynamodbCommandInput = { TransactItems } as TransactWriteItemsCommandInput;  
-    console.log(`Demolishing entity from dynamodb: ${JSON.stringify(this.dynamodbCommandInput, null, 2)}`);
+    log(this.dynamodbCommandInput, `Demolishing entity from dynamodb`);
     const transCommand = new TransactWriteItemsCommand(this.dynamodbCommandInput);
     if(this._dryRun) {
       return new Promise((resolve) => resolve('dryrun'));
@@ -91,7 +92,7 @@ export class EntityToDemolish {
     const deleteUser = async (Username:string):Promise<AdminDeleteUserCommandOutput|string> => {
       const input = { UserPoolId, Username } as AdminDeleteUserRequest;
       const command = new AdminDeleteUserCommand(input);
-      console.log(`Demolishing users from userpool related to entity ${this.entityId} - ${JSON.stringify(input, null, 2)}`);
+      log(input, `Demolishing users from userpool related to entity ${this.entityId}`);
       if(this._dryRun) {
         return new Promise((resolve) => resolve('dryrun'));
       }
@@ -102,10 +103,10 @@ export class EntityToDemolish {
       try {
         var username = this._deletedUsers[i].sub;
         const output:AdminDeleteUserCommandOutput|string = await deleteUser(username);
-        console.log(`User ${username} deleted: ${JSON.stringify(output, null, 2)}`);
+        log(output, `User ${username} deleted`);
       }
       catch(reason) {
-        console.log(JSON.stringify(reason, Object.getOwnPropertyNames(reason), 2));
+        log(reason);
       }
     }
   }
@@ -174,7 +175,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_DEMOLITION') {
       return entityToDemolish.deleteEntityFromUserPool();
     })
     .then(() => {
-      console.log('Entity deleted');
+      log('Entity deleted');
     })
     .catch((reason) => {
       console.error(reason);

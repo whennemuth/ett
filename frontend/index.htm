@@ -2401,6 +2401,7 @@
               html: task == 'register-consent' ? failureMsg: pendingMsg
             };
             hide('consenter-exhibit-compose-link');
+            hide('consenter-exhibit-amend-link');
             hide('consentOptions');
             show('consentFieldSet');
             fill(msg.id, msg.html);
@@ -2416,12 +2417,14 @@
             show('consentSend');
             if(document.location.pathname == '/consenter/exhibits/index.htm') {
               show('consenter-exhibit-compose-link');
+              show('consenter-exhibit-amend-link');
               populateExhibitFormSignoffFields();
               document.getElementById('waitForAI').style.display = 'none';
               document.getElementById('consenter-exhibit-compose-link').click();
             }
             else {
               hide('consenter-exhibit-compose-link');
+              hide('consenter-exhibit-amend-link');
               document.getElementById('waitForAI').style.display = 'inline';
             }
             show('consentOptions');
@@ -2433,6 +2436,7 @@
           // Hide all consent options
           hidePostConsentFields = () => {
             hide('consenter-exhibit-compose-link');
+            hide('consenter-exhibit-amend-link');
             hide('consentOptions');
             hide('consentFieldSet');
             fill('apiResponse', `${email} found to be deactivated (has not yet submitted consent)`);
@@ -2531,7 +2535,7 @@
       document.getElementById('txtConsentEmail').value = email;
       document.getElementById('txtConsentPhone').value = phone_number;
       document.getElementById('txtConsentEditFirstName').value = firstname;
-      document.getElementById('txtConsentEditMiddleName').value = middlename;
+      document.getElementById('txtConsentEditMiddleName').value = middlename ?? '';
       document.getElementById('txtConsentEditLastName').value = lastname;
       document.getElementById('txtConsentEditEmail').value = email;
       document.getElementById('txtConsentEditPhone').value = phone_number;
@@ -2607,6 +2611,14 @@
       const middlename = document.getElementById('txtConsentEditMiddleName').value;
       const lastname = document.getElementById('txtConsentEditLastName').value;
       const phone_number = document.getElementById('txtConsentEditPhone').value;
+
+      if( ! /^\+[1-9]\d{1,14}$/.test(phone_number)) {
+        alert(`"${phone_number}" is not a valid phone number\n` +
+          'Correct format: ^\+[1-9]\d{1,14}$'
+        );
+        return;
+      }
+      
       await doConsentTask(
         'correct-consenter', 
         { email, new_email, firstname, middlename, lastname, phone_number },

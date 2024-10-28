@@ -16,6 +16,7 @@ import {
   AdminDeleteUserCommandOutput
 } from '@aws-sdk/client-cognito-identity-provider';
 import { Role, Roles } from '../dao/entity';
+import { error } from '../../Utils';
 
 /**
  * A cognito post signup confirmation event will indicate a specific user pool client ID. This client needs to
@@ -57,7 +58,7 @@ export const lookupRole = async (userPoolId:string, clientId:string, region:stri
     return role;
   }
   catch(e) {
-    console.log(e);
+    error(e);
     return;
   }
 }
