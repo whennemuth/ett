@@ -34,7 +34,7 @@ export class BucketExhibitForm {
     const { exhibit_forms=[] } = consenter;
     let { metadata, metadata: { 
       consenterEmail, entityId, affiliateEmail, correction=_correction, savedDate=new Date() }, 
-      bucket, bucket: { bucketName:Bucket, region }
+      bucket: { bucketName:Bucket, region }
     } = this;
 
     try {

@@ -172,14 +172,16 @@ describe('getCommandInputBuilderForConsenterUpdate', () => {
         ["#sub"]: sub,
         ["#title"]: title,
         ["#update_timestamp"]: update_timestamp,
+        ["#exhibit_forms"]: "exhibit_forms",
       },
       ExpressionAttributeValues: {
         [":sub"]: { "S": newConsenter.sub },
         [":title"]: { "S": newConsenter.title },
         [":update_timestamp"]: { "S": isoString },
+        [":exhibit_forms"]: { "L": [] },
       },
       // NOTE: fields will be set in the same order as they appear in the entity.ConsenterFields
-      UpdateExpression: `SET #sub = :sub, #title = :title, #update_timestamp = :update_timestamp`
+      UpdateExpression: `SET #sub = :sub, #title = :title, #update_timestamp = :update_timestamp, #exhibit_forms = :exhibit_forms`
     } as UpdateItemCommandInput;
 
     expect(deepEquivalent(input, expectedOutput)).toBe(true);

@@ -12,7 +12,7 @@ import { ConsentFormData } from "../../_lib/pdf/ConsentForm";
 import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
-import { ComparableDate, debugLog, deepClone, errorResponse, getMostRecent, invalidResponse, log, lookupCloudfrontDomain, okResponse, warn } from "../../Utils";
+import { ComparableDate, debugLog, deepClone, error, errorResponse, getMostRecent, invalidResponse, log, lookupCloudfrontDomain, okResponse, warn } from "../../Utils";
 import { sendDisclosureRequest } from "../authorized-individual/AuthorizedIndividual";
 import { BucketInventory } from "./BucketInventory";
 import { BucketItem, DisclosureItemsParms, Tags } from "./BucketItem";
@@ -494,9 +494,13 @@ export const scheduleExhibitFormPurgeFromDatabase = async (newConsenter:Consente
  */
 export const sendExhibitData = async (consenterEmail:string, exhibitForm:ExhibitForm): Promise<LambdaProxyIntegrationResponse> => {
   
-  const affiliates = [] as Affiliate[];
   const emailFailuresForEntityStaff = [] as string[];
   const emailFailures = () => { return emailFailuresForEntityStaff.length > 0; }
+
+  const bucketItemAddFailures = [] as string[];
+  const bucketAddFailures = () => { return bucketItemAddFailures.length > 0; }
+  
+  const affiliates = [] as Affiliate[];
   let badResponse:LambdaProxyIntegrationResponse|undefined;
   let entity_id:string|undefined;
   let consenter = {} as Consenter;
@@ -580,6 +584,11 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
     const consenterInfo = await getConsenterInfo(consenterEmail, false) as ConsenterInfo;
     const { consenter: _consenter, activeConsent } = consenterInfo ?? {};
 
+    // Abort if there is no matching consenter found
+    if( ! consenter) {
+      throwError(INVALID_RESPONSE_MESSAGES.noSuchConsenter);
+    }
+
     // Abort if the consenter has not yet consented
     if( ! activeConsent) {
       throwError(INVALID_RESPONSE_MESSAGES.missingConsent);
@@ -598,6 +607,7 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
     let _users = await daoUser.read() as User[];
     _users = _users.filter(user => user.active == YN.Yes && (user.role == Roles.RE_AUTH_IND || user.role == Roles.RE_ADMIN));
     entityReps.push(..._users);
+
   }
 
   /**
@@ -608,45 +618,51 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
     const { EXHIBIT, DISCLOSURE } = ItemType;
     const { SECONDS } = PeriodType;
     const configs = new Configurations();
-    const { DELETE_EXHIBIT_FORMS_AFTER: deleteAfter} = ConfigNames;   
+    const { DELETE_EXHIBIT_FORMS_AFTER: deleteAfter} = ConfigNames;
 
     for(let i=0; i<affiliates.length; i++) {
-      const metadata = { 
+      let metadata = { 
         consenterEmail,
         entityId:entity.entity_id, 
         affiliateEmail:affiliates[i].email,
         savedDate: now
       } as BucketItemMetadataParms;
 
-      // 1) Save a copy of the single exhibit form pdf to the s3 bucket
-      metadata.itemType = EXHIBIT;
-      const s3ObjectKeyForExhibitForm = await new BucketExhibitForm(metadata).add(consenter);
+      try {
+        // 1) Save a copy of the single exhibit form pdf to the s3 bucket
+        metadata.itemType = EXHIBIT;
+        const s3ObjectKeyForExhibitForm = await new BucketExhibitForm(metadata).add(consenter);
 
-      // 2) Save a copy of the disclosure form to the s3 bucket
-      metadata.itemType = DISCLOSURE;
-      const authorizedIndividuals = entityReps.filter(user => user.active == YN.Yes && (user.role == Roles.RE_AUTH_IND));
-      const s3ObjectKeyForDisclosureForm = await new BucketDisclosureForm({
-        requestingEntity: entity,
-        requestingEntityAuthorizedIndividuals: authorizedIndividuals,
-        metadata
-      }).add(consenter);
+        // 2) Save a copy of the disclosure form to the s3 bucket
+        metadata.itemType = DISCLOSURE;
+        const authorizedIndividuals = entityReps.filter(user => user.active == YN.Yes && (user.role == Roles.RE_AUTH_IND));
+        const s3ObjectKeyForDisclosureForm = await new BucketDisclosureForm({
+          requestingEntity: entity,
+          requestingEntityAuthorizedIndividuals: authorizedIndividuals,
+          metadata
+        }).add(consenter);
 
-      // 3) Schedule actions against the pdfs that limit how long they survive in the bucket the were just saved to.
-      const envVarName = DelayedExecutions.ExhibitFormBucketPurge.targetArnEnvVarName;
-      const functionArn = process.env[envVarName];
-      if(functionArn) {        
-        const lambdaInput = {
-          consenterEmail:consenter.email,
-          s3ObjectKeyForDisclosureForm,
-          s3ObjectKeyForExhibitForm
-        } as DisclosureItemsParms;        
-        const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
-        const waitTime = (await configs.getAppConfig(deleteAfter)).getDuration();
-        const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
-        await delayedTestExecution.startCountdown(timer, `S3 exhibit form purge`);
+        // 3) Schedule actions against the pdfs that limit how long they survive in the bucket the were just saved to.
+        const envVarName = DelayedExecutions.ExhibitFormBucketPurge.targetArnEnvVarName;
+        const functionArn = process.env[envVarName];
+        if(functionArn) {        
+          const lambdaInput = {
+            consenterEmail:consenter.email,
+            s3ObjectKeyForDisclosureForm,
+            s3ObjectKeyForExhibitForm
+          } as DisclosureItemsParms;        
+          const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
+          const waitTime = (await configs.getAppConfig(deleteAfter)).getDuration();
+          const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
+          await delayedTestExecution.startCountdown(timer, `S3 exhibit form purge`);
+        }
+        else {
+          console.error(`Cannot schedule ${deleteAfter} bucket item purge: ${envVarName} variable is missing from the environment!`);
+        }
       }
-      else {
-        console.error(`Cannot schedule ${deleteAfter} bucket item purge: ${envVarName} variable is missing from the environment!`);
+      catch(e) {
+        error(e);
+        bucketItemAddFailures.push(BucketItemMetadata.toBucketFileKey(metadata));
       }
     }
   }
@@ -663,13 +679,17 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
         emailFailuresForEntityStaff.push(entityReps[i].email);
       }
     }
-
   }
 
   /**
    * Prune a full exhibit form from the consenters database record
    */
   const pruneExhibitFormFromDatabaseRecord = async () => {
+    if(bucketAddFailures()) {
+      log(`There were failures related to file storage for exhibit forms for ${consenter.email}. 
+        Therefore removal of the corresponding data from the consenters database record is deferred until its natural expiration`);
+      return;
+    }
     if(emailFailures()) {
       log(`There were email failures related to exhibit form activty for ${consenter.email}. 
         Therefore removal of the corresponding data from the consenters database record is deferred until its natural expiration`);
@@ -709,9 +729,9 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
 
     await loadInfoFromDatabase();
     
-    await sendFullExhibitFormToEntityStaff();
-    
     await transferSingleExhibitFormsToBucket();
+    
+    await sendFullExhibitFormToEntityStaff();
 
     await pruneExhibitFormFromDatabaseRecord();
 

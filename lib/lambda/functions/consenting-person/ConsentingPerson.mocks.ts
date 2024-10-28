@@ -1,16 +1,16 @@
+import { S3Client } from "@aws-sdk/client-s3";
 import { mockClient } from "aws-sdk-client-mock";
 import 'aws-sdk-client-mock-jest';
 import { IncomingPayload, OutgoingBody } from "../../../role/AbstractRole";
 import { DAOConsenter, DAOEntity, DAOInvitation, DAOUser, FactoryParms } from "../../_lib/dao/dao";
 import { Affiliate, AffiliateTypes, Config, Consenter, Entity, ExhibitForm as ExhibitFormData, Roles, User, YN } from "../../_lib/dao/entity";
+import { DisclosureFormData } from "../../_lib/pdf/DisclosureForm";
 import { IPdfForm } from "../../_lib/pdf/PdfForm";
 import { deepClone } from "../../Utils";
 import { MockCalls, TestParms, invokeAndAssert } from "../../UtilsTest";
-import { BucketItem } from "./BucketItem";
-import { BucketItemMetadataParms } from "./BucketItemMetadata";
+import { BucketDisclosureFormParms } from "./BucketItemDisclosureForm";
+import { BucketItemMetadata, BucketItemMetadataParms } from "./BucketItemMetadata";
 import { FormType, FormTypes } from "./ExhibitEmail";
-import { S3Client } from "@aws-sdk/client-s3";
-import { DisclosureFormData } from "../../_lib/pdf/DisclosureForm";
 
 /**
  * Keeps track of how many times any method of any mock has been called.
@@ -49,10 +49,12 @@ export function ExhibitEmailMock() {
  */
 export function ExhibitFormBucketItemsMock() {
   return {
-    ExhibitBucket: jest.fn().mockImplementation((bucketItem:BucketItem) => {
+    BucketExhibitForm: jest.fn().mockImplementation((metadata:BucketItemMetadataParms|string) => {
       return {
-        add: async (parms:BucketItemMetadataParms) => {
-          mockCalls.update(`bucket.add.exhibit.${parms.affiliateEmail}`);
+        add: async (consenter:Consenter, _correction:boolean=false):Promise<string> => {
+          const { affiliateEmail } = metadata as BucketItemMetadataParms;
+          mockCalls.update(`bucket.add.exhibit.${affiliateEmail}`);
+          return BucketItemMetadata.toBucketFileKey(metadata as BucketItemMetadataParms);
         }
       }
     })
@@ -65,11 +67,14 @@ export function ExhibitFormBucketItemsMock() {
  */
 export function DisclosureFormBucketItemsMock() {
   return {
-    DisclosureFormBucket: jest.fn().mockImplementation((bucketItem:BucketItem) => {
+    BucketDisclosureForm: jest.fn().mockImplementation((parms:BucketDisclosureFormParms) => {
+      const { metadata } = parms;
+      const { affiliateEmail } = metadata as BucketItemMetadataParms;
       return {
-        add: async (parms:BucketItemMetadataParms) => {
-          mockCalls.update(`bucket.add.disclosure.${parms.affiliateEmail}`);
-        }
+        add: async (consenter:Consenter, _correction:boolean=false):Promise<string> => {
+          mockCalls.update(`bucket.add.disclosure.${affiliateEmail}`);
+          return BucketItemMetadata.toBucketFileKey(metadata as BucketItemMetadataParms);
+        }        
       }
     })
   }
@@ -480,7 +485,8 @@ export const SendAffiliateData = {
           email: `${ConsentState.OK}-${sylvesterTheCat.email}`,
           exhibit_data: {
             email: 'yosemitesam@warnerbros.com',
-            entity_id: BAD_ENTITY_ID3,
+            // entity_id: BAD_ENTITY_ID3,
+            entity_id: entity1.entity_id,
             fullname: 'Yosemite Sam',
             affiliates: _affiliates
           } as ExhibitFormData
@@ -489,9 +495,14 @@ export const SendAffiliateData = {
     } as TestParms;
 
     mockCalls.reset();
+    s3ClientMock.reset();
+    // parms.incomingPayload.parameters['exhibit_data']['sent_timestamp'] = 'never';
+    const temp = porkypig.email;
+    porkypig.email = badUser.email;
     await invokeAndAssert(parms);
+    porkypig.email = temp;
     expect(mockCalls.called(`consenter.read`)).toEqual(1);
-    expect(mockCalls.called(`entity.read.${BAD_ENTITY_ID3}`)).toEqual(1);
+    expect(mockCalls.called(`entity.read.${entity1.entity_id}`)).toEqual(1);
     expect(mockCalls.called(`user.read`)).toEqual(1);
     // badUser should throw an error when email is sent, but this should not halt email sending
     // and both bugs bunny and daffyduck should have attempts to email registered.
@@ -519,7 +530,6 @@ export const SendAffiliateData = {
   sendEmailOk: async(_handler:any, mockEvent:any, task:string) => {
     const s3ClientMock = mockClient(S3Client);
     mockCalls.reset();
-    const _affiliates = deepClone(affiliates);
     const getParms = (email:string) => {
       return {
         expectedResponse: {
@@ -538,7 +548,7 @@ export const SendAffiliateData = {
               email: 'yosemitesam@warnerbros.com',
               entity_id: entity1.entity_id,
               fullname: 'Yosemite Sam',
-              affiliates: _affiliates
+              affiliates
             } as ExhibitFormData
           } 
         } as IncomingPayload
