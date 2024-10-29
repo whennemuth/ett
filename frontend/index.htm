@@ -2589,6 +2589,7 @@
     const rescindConsent = async () => {
       const { email } = IDJwtCookie.getUser() ?? {};
       await doConsentTask('rescind-consent', { email });
+      signOut();
     }
 
     /**
