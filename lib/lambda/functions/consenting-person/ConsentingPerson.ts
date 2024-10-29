@@ -25,6 +25,8 @@ import { ConsentFormEmail } from "./ConsentEmail";
 import { ConsentingPersonToCorrect } from "./Correction";
 import { ExhibitCorrectionEmail } from "./ExhibitCorrectionEmail";
 import { ExhibitEmail, FormTypes } from "./ExhibitEmail";
+import { deleteExhibitForm } from "../delayed-execution/PurgeExhibitFormFromDatabase";
+import { CognitoStandardAttributes, UserAccount } from "../../_lib/cognito/UserAccount";
 
 export enum Task {
   SAVE_EXHIBIT_FORM = 'save-exhibit-form',
@@ -303,7 +305,7 @@ export const renewConsent = async (email:string): Promise<LambdaProxyIntegration
 }
 
 /**
- * Rescind consent by appending a rescinded_timestamp value to the consenter database record.
+ * Rescind the consenting individuals consent.
  * @param email 
  * @returns 
  */
@@ -311,26 +313,29 @@ export const rescindConsent = async (email:string): Promise<LambdaProxyIntegrati
   log(`Rescinding consent for ${email}`);
   
   // Abort if consenter lookup fails
-  const consenterInfo = await getConsenterInfo(email, false) as ConsenterInfo;
+  const consenterInfo = await getConsenterInfo(email, true) as ConsenterInfo;
   if( ! consenterInfo) {
     return invalidResponse(INVALID_RESPONSE_MESSAGES.noSuchConsenter + ' ' + email );
   }
 
-  // Abort if the consenter has not yet consented
-  // if( ! consenterInfo?.activeConsent) {
-  //   if(consenterInfo?.consenter?.active == YN.No) {
-  //     return invalidResponse(INVALID_RESPONSE_MESSAGES.inactiveConsenter);
-  //   }
-  //   return invalidResponse(INVALID_RESPONSE_MESSAGES.missingConsent);
-  // }
+  const { consenter, consenter: { exhibit_forms=[] } } = consenterInfo;
 
+  // Delete all exhibit form data from the consenters database record.
+  for(let i=0; i<exhibit_forms.length; i++) {
+    await deleteExhibitForm(email, exhibit_forms[i].entity_id);
+  }
+
+  // Delete the consenter from the cognito userpool.
+  const attributes = { email: { propname:'email', value:email } } as CognitoStandardAttributes;
+  const userAccount = await UserAccount.getInstance(attributes, Roles.CONSENTING_PERSON);
+  await userAccount.Delete();
+
+  // Flip the consenter database record to inactive and push the current timestamp to its rescinded array.
   return appendTimestamp(
-    consenterInfo.consenter, 
+    consenter, 
     ConsenterFields.rescinded_timestamp,
     YN.No
   );
-
-  // TODO: Blank out exhibit forms in db and bucket, and purge the userpool record (client script must also log out).
 };
 
 /**
