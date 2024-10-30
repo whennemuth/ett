@@ -784,24 +784,6 @@ export const correctExhibitData = async (consenterEmail:string, corrections:Exhi
     return invalidResponse(`The affiliate "${invalidAppend.email} can only be replaced, not submitted as a new entry.`);
   }
 
-  /**
-   * Check s3 tagging on s3 objects for evidence of a specific disclosure request having been sent. 
-   * @param affiliateEmail 
-   * @returns 
-   */
-  const affiliateWasSentDisclosureRequest = async (metadata:BucketItemMetadataParms):Promise<boolean> => {
-    const s3ObjectPath = toBucketFolderKey(metadata);
-    if(disclosuresRequestCache.includes(s3ObjectPath)) {
-      return true;
-    }
-    const tagFound = await new TagInspector(Tags.DISCLOSED).tagExistsAmong(s3ObjectPath, ItemType.EXHIBIT);
-    if(tagFound) {
-      disclosuresRequestCache.push(s3ObjectPath);
-      return true;
-    }
-    return false;
-  }
-
   type SendDisclosureRequestParms = {
     EF_S3ObjectKey:string,
     DR_S3ObjectKey:string,
@@ -816,14 +798,34 @@ export const correctExhibitData = async (consenterEmail:string, corrections:Exhi
    * @param DR_S3ObjectKey 
    * @param affiliateEmail 
    */
-  const sendDisclosureRequestEmails = async (parms:SendDisclosureRequestParms) => {
+  const sendDisclosureRequestEmails = async (parms:SendDisclosureRequestParms, allAffiliates:boolean=false) => {
     const { DR_S3ObjectKey, EF_S3ObjectKey, affiliateEmail, reSend=false } = parms;
-    const metadata = { consenterEmail, entityId:entity_id, affiliateEmail, itemType:ItemType.EXHIBIT } as BucketItemMetadataParms;
+    let metadata = { consenterEmail, entityId:entity_id, affiliateEmail, itemType:ItemType.EXHIBIT } as BucketItemMetadataParms;
     let sendable = true;
 
+    if(allAffiliates) {
+      delete metadata.affiliateEmail
+    }
+
     if(reSend) {
-      // A disclosure request is resendable if one was already sent
-      sendable = await affiliateWasSentDisclosureRequest(metadata);
+      // A disclosure request is resendable if one was already sent for the affiliate
+      let s3ObjectPath = toBucketFolderKey(metadata);
+      if( ! disclosuresRequestCache.includes(s3ObjectPath)) {
+        // Check s3 tagging on s3 objects for evidence of a specific disclosure request having been sent.
+        let tagFound = await new TagInspector(Tags.DISCLOSED).tagExistsAmong(s3ObjectPath, ItemType.EXHIBIT);
+        if(tagFound) {
+          disclosuresRequestCache.push(s3ObjectPath);
+        }
+        else if ( ! allAffiliates) {
+          // expand the search to ANY affiliate in case this is a new affiliate (we are not allowing some 
+          // affiliates to have been sent disclosure requests while others have not)
+          await sendDisclosureRequestEmails(parms, true);
+          return;
+        }
+        else {          
+          sendable = false;
+        }
+      }
     }
 
     if(sendable) {
@@ -921,7 +923,7 @@ export const correctExhibitData = async (consenterEmail:string, corrections:Exhi
       }).add(consenter);
 
       // Reissue disclosure requests if already sent 
-      await sendDisclosureRequestEmails( { EF_S3ObjectKey, DR_S3ObjectKey, affiliateEmail, reSend:false });
+      await sendDisclosureRequestEmails( { EF_S3ObjectKey, DR_S3ObjectKey, affiliateEmail, reSend:true });
     }
   }
 

@@ -1,7 +1,7 @@
 import { AdminCreateUserCommand, AdminCreateUserCommandOutput, AdminCreateUserRequest, AdminDeleteUserCommand, AdminDeleteUserCommandOutput, AdminDeleteUserRequest, AdminUpdateUserAttributesCommand, AdminUpdateUserAttributesCommandOutput, AdminUpdateUserAttributesRequest, AttributeType, CognitoIdentityProviderClient, UserType } from "@aws-sdk/client-cognito-identity-provider";
 import { StandardAttributes } from "aws-cdk-lib/aws-cognito";
 import { lookupUserPoolId } from "./Lookup";
-import { debugLog, log } from "../../Utils";
+import { debugLog, error, log } from "../../Utils";
 import { IContext } from "../../../../contexts/IContext";
 import { Role, Roles } from "../dao/entity";
 
@@ -205,7 +205,7 @@ export class UserAccount {
     
   private logError = (e:Error) => {
     this.message = e.message;
-    log(e);
+    error(e);
   }
 
   public getEmail = ():string|undefined => {
