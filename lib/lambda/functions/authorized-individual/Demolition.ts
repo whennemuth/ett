@@ -6,6 +6,7 @@ import { CognitoIdentityProviderClient, AdminDeleteUserCommand, AdminDeleteUserR
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { DynamoDbConstruct, TableBaseNames } from "../../../DynamoDb";
 import { log } from "../../Utils";
+import { IContext } from "../../../../contexts/IContext";
 
 const dbclient = new DynamoDBClient({ region: process.env.REGION });
 const cognitoClient = new CognitoIdentityProviderClient({ region: process.env.REGION });
@@ -152,32 +153,26 @@ export class EntityToDemolish {
  * RUN MANUALLY: Modify the task, landscape, entity_id, and dryRun settings as needed.
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_DEMOLITION') {
-  const region = 'us-east-2';
-  const dryRun = false;
-  const entity_id = 'db542060-7de0-4c55-be58-adc92671d63a';
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/authorized-individual/Demolition.ts')) {
 
-  
-  lookupUserPoolId('ett-dev-cognito-userpool', region)
-    .then((userpoolId) => {
+  (async () => {
+    const context:IContext = await require('../../../../contexts/context.json');
+    const { STACK_ID, REGION, TAGS: { Landscape } } = context;
+    const dryRun = false;
+    const entity_id = 'db542060-7de0-4c55-be58-adc92671d63a';
+    const userpoolId = await lookupUserPoolId(`${STACK_ID}-${Landscape}-cognito-userpool`, REGION);
 
-      process.env.USERPOOL_ID = userpoolId;
-      process.env.REGION = region;
-      process.env.DEBUG = 'true';
+    process.env.USERPOOL_ID = userpoolId;
+    process.env.REGION = REGION;
 
-      const entityToDemolish = new EntityToDemolish(entity_id);
-      entityToDemolish.dryRun = dryRun;
-      entityToDemolish.deletedUsers = [
-        { sub: '44f80329-a6f8-4c3d-8e50-36fc422035d5' } as User,
-        { sub: 'd250ef9d-0e4d-4fb2-b490-c7e60d8e9afd' } as User,
-        { sub: 'f66b3491-5476-4fd1-b0c2-324cd5eac7f4' } as User
-      ];
-      return entityToDemolish.deleteEntityFromUserPool();
-    })
-    .then(() => {
-      log('Entity deleted');
-    })
-    .catch((reason) => {
-      console.error(reason);
-    });
+    const entityToDemolish = new EntityToDemolish(entity_id);
+    entityToDemolish.dryRun = dryRun;
+    entityToDemolish.deletedUsers = [
+      { sub: '44f80329-a6f8-4c3d-8e50-36fc422035d5' } as User,
+      { sub: 'd250ef9d-0e4d-4fb2-b490-c7e60d8e9afd' } as User,
+      { sub: 'f66b3491-5476-4fd1-b0c2-324cd5eac7f4' } as User
+    ];
+    await entityToDemolish.deleteEntityFromUserPool();
+    log('Entity deleted');
+  })();
 }

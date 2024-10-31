@@ -5,8 +5,8 @@ import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, error, log } from "../../Utils";
 import { DisclosureEmailParms, DisclosureRequestReminderEmail } from "../authorized-individual/DisclosureRequestEmail";
 import { BucketInventory } from "../consenting-person/BucketInventory";
-import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
-import { purgeFormFromBucket, purgeCorrectionForms } from "./PurgeExhibitFormFromBucket";
+import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
+import { purgeCorrectionForms, purgeFormFromBucket } from "./PurgeExhibitFormFromBucket";
 import { getTestItem } from "./TestBucketItem";
 
 export type DisclosureRequestReminderLambdaParms = {
@@ -127,10 +127,10 @@ const validateLambdaInput = (lambdaInput:DisclosureRequestReminderLambdaParms):v
  * RUN MANUALLY: Adjust the PeriodType and exhibit_forms entity_id values (must be existing for lookup) as necessary.
  */
 const { argv:args } = process;
-if(args.length > 3 && args[2] == 'RUN_MANUALLY_SEND_DISCLOSURE_REQUEST_REMINDER') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/delayed-execution/SendDisclosureRequestReminder.ts')) {
 
-  const forms = args[3] as 'generate'|'existing';
-  const task = args[4] as 'immediate'|'scheduled';
+  const forms = 'existing' as 'generate'|'existing';
+  const task = 'immediate' as 'immediate'|'scheduled';
   const { MINUTES } = PeriodType;
   const { EXHIBIT, DISCLOSURE } = ItemType;
 

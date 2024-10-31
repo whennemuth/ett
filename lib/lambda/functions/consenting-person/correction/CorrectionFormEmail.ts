@@ -72,7 +72,7 @@ export class ConsenterCorrectionEmail {
  * RUN MANUALLY: Modify entity_id to reflect an existing entity
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_SEND_CONSENTER_CORRECTION_FORM') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/correction/CorrectionFormEmail.ts')) {
 
   const oldConsenter = {
     email: 'bugs@warnerbros.com',

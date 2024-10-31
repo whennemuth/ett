@@ -145,7 +145,7 @@ export class ConsentFormPage1 extends PdfForm implements IPdfForm {
 
 
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENT_FORM_PAGE_1') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/ConsentFormPage1.ts')) {
 
   new ConsentFormPage1({
     entityName: 'Boston University',

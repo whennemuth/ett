@@ -62,7 +62,7 @@ export class ExhibitFormRequestEmail {
  * RUN MANUALLY: Modify email as needed.
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_SEND_EXHIBIT_FORM_REQUEST') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/authorized-individual/ExhibitFormRequestEmail.ts')) {
 
   const consenterEmail = 'cp1@warhen.work';
   const entity_id = '3ef70b3e-456b-42e8-86b0-d8fbd0066628';

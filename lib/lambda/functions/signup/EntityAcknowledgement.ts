@@ -61,7 +61,7 @@ export const handler = async(event:any) => {
  * RUN MANUALLY: Modify the task, landscape, invitation-code, and region as needed.
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_ACKNOWLEDGEMENT') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/signup/EntityAcknowledgement.ts')) {
   
   const task = Task.REGISTER;
   const landscape = 'dev';

@@ -1,3 +1,4 @@
+import { IContext } from "../../../../contexts/IContext";
 import { lookupRole, lookupUserPoolClientId, lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { DAOFactory, DAOInvitation } from "../../_lib/dao/dao";
 import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
@@ -130,33 +131,29 @@ export const handler = async (_event:any) => {
  * RUN MANUALLY: Modify the role, region, etc. as needed.
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_COGNITO_PRE_SIGNUP') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/cognito/PreSignup.ts')) {
 
   const role:Role = Roles.SYS_ADMIN;
-  const userpoolName:string = 'ett-dev-cognito-userpool';
-  const region = 'us-east-2';
-  const email = 'wrh@bu.edu';
-  let userPoolId:string|undefined;
 
-  lookupUserPoolId(userpoolName, region)
-  .then((id:string|undefined) => {
-    userPoolId = id;
-    return lookupUserPoolClientId(userPoolId||'', role, region);
-  })
-  .then((clientId:string|undefined) => {
+  (async () => {
+    const context:IContext = await require('../../../../contexts/context.json');
+    const { STACK_ID, REGION, TAGS: { Landscape } } = context;
+    const userpoolName:string = `${STACK_ID}-${Landscape}-cognito-userpool`;
+    const userPoolId = await lookupUserPoolId(userpoolName, REGION);
+    if( ! userPoolId) throw new Error(`No such userpool: ${userpoolName}`);
+    const clientId = await lookupUserPoolClientId(userPoolId, role, REGION);
+    const email = 'wrh@bu.edu';
+
     const _event = {
-      region, userPoolId,
+      region:REGION, userPoolId,
       callerContext: { clientId },
       request: {
         userAttributes: { email }
       }
     } as PreSignupEventType;
 
-    return handler(_event);
-  })
-  .then(() => {
+    await handler(_event);
+
     console.log('Presignup check complete.');
-  }).catch((reason) => {
-    console.error(reason);
-  });
+  })();
 }

@@ -163,7 +163,7 @@ export class CorrectionForm extends PdfForm implements IPdfForm {
 
 
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_CORRECTION_FORM') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/CorrectionForm.ts')) {
 
   const oldConsenter = {
     email: 'bugs@warnerbros.com',

@@ -152,7 +152,7 @@ function getUpdateableUserAccount(UserPoolId:string, Username:string, region:str
  * RUN MANUALLY
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_PRE_AUTHENTICATION') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/cognito/PreAuthentication.ts')) {
 
   process.env.APP_CONFIGS = "{\"useDatabase\":true,\"configs\":[{\"name\":\"auth-ind-nbr\",\"value\":\"2\",\"config_type\":\"number\",\"description\":\"Number of authorized individuals per entity\"},{\"name\":\"first-reminder\",\"value\":\"1209600\",\"config_type\":\"duration\",\"description\":\"Duration between an initial disclosure request and the 1st automated reminder\"},{\"name\":\"second-reminder\",\"value\":\"1814400\",\"config_type\":\"duration\",\"description\":\"Duration between an initial disclosure request and the second automated reminder\"},{\"name\":\"delete-exhibit-forms-after\",\"value\":\"5184000\",\"config_type\":\"duration\",\"description\":\"Duration exhibit forms, once submitted, can survive in the ETT system before failure to send disclosure request(s) will result their deletion\"},{\"name\":\"delete-drafts-after\",\"value\":\"172800\",\"config_type\":\"duration\",\"description\":\"Duration that partially complete exhibit forms can survive in the ETT system before failure to submit them will result in their deletion\"},{\"name\":\"consent-expiration\",\"value\":\"315360000\",\"config_type\":\"duration\",\"description\":\"Duration an individuals consent is valid for before it automatically expires\"}]}";
   process.env.AWS_NODEJS_CONNECTION_REUSE_ENABLED = '1';
