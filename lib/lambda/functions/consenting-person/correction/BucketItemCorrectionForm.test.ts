@@ -1,6 +1,6 @@
 import { BucketCorrectionForm } from "./BucketItemCorrectionForm";
-import { BucketInventory } from "./BucketInventory";
-import { BucketItemMetadataParms, ItemType } from "./BucketItemMetadata";
+import { BucketInventory } from "../BucketInventory";
+import { BucketItemMetadataParms, ItemType } from "../BucketItemMetadata";
 
 const day = 1000 * 60 * 60 * 24;
 const baseDate = new Date();

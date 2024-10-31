@@ -1,16 +1,16 @@
 import { UserType } from "@aws-sdk/client-cognito-identity-provider";
-import { IContext } from "../../../../contexts/IContext";
-import { CognitoStandardAttributes, UserAccount } from "../../_lib/cognito/UserAccount";
-import { ReadParms } from "../../_lib/dao/dao";
-import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
-import { Consenter, ConsenterFields, Roles, YN } from "../../_lib/dao/entity";
-import { CorrectionForm } from "../../_lib/pdf/CorrectionForm";
+import { IContext } from "../../../../../contexts/IContext";
+import { CognitoStandardAttributes, UserAccount } from "../../../_lib/cognito/UserAccount";
+import { ReadParms } from "../../../_lib/dao/dao";
+import { ConsenterCrud } from "../../../_lib/dao/dao-consenter";
+import { Consenter, ConsenterFields, Roles, YN } from "../../../_lib/dao/entity";
+import { CorrectionForm } from "../../../_lib/pdf/CorrectionForm";
 import { BucketCorrectionForm } from "./BucketItemCorrectionForm";
-import { BucketInventory } from "./BucketInventory";
-import { scheduleExhibitFormPurgeFromDatabase } from "./ConsentingPerson";
+import { BucketInventory } from "../BucketInventory";
+import { scheduleExhibitFormPurgeFromDatabase } from "../ConsentingPerson";
 import { ConsenterCorrectionEmail } from "./CorrectionFormEmail";
-import { ExhibitFormsBucketEnvironmentVariableName } from "./BucketItemMetadata";
-import { error, log } from "../../Utils";
+import { ExhibitFormsBucketEnvironmentVariableName } from "../BucketItemMetadata";
+import { error, log } from "../../../Utils";
 
 /**
  * This class performs modifications to a consenting person that affect email and/or phone. In the case 

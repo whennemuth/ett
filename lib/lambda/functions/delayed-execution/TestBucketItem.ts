@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { IContext } from "../../../../contexts/IContext";
 import { AffiliateTypes, Consenter, YN } from "../../_lib/dao/entity";
-import { BucketCorrectionForm } from '../consenting-person/BucketItemCorrectionForm';
+import { BucketCorrectionForm } from '../consenting-person/correction/BucketItemCorrectionForm';
 import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureForm";
 import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
 import { ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";

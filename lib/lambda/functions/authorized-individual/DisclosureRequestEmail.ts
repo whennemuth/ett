@@ -8,7 +8,7 @@ import { DisclosureForm, DisclosureFormData } from "../../_lib/pdf/DisclosureFor
 import { ExhibitForm } from "../../_lib/pdf/ExhibitForm";
 import { ExhibitFormSingle } from '../../_lib/pdf/ExhibitFormSingle';
 import { IPdfForm, PdfForm } from "../../_lib/pdf/PdfForm";
-import { BucketCorrectionForm } from '../consenting-person/BucketItemCorrectionForm';
+import { BucketCorrectionForm } from '../consenting-person/correction/BucketItemCorrectionForm';
 import { DisclosureItemsParms } from "../consenting-person/BucketItem";
 import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureForm";
 import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";

@@ -1,12 +1,12 @@
 import { S3 } from "@aws-sdk/client-s3";
-import { IContext } from "../../../../contexts/IContext";
-import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
-import { Consenter } from "../../_lib/dao/entity";
-import { CorrectionForm } from "../../_lib/pdf/CorrectionForm";
-import { BucketInventory } from "./BucketInventory";
-import { BucketItem } from "./BucketItem";
-import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "./BucketItemMetadata";
-import { log } from "../../Utils";
+import { IContext } from "../../../../../contexts/IContext";
+import { ConsenterCrud } from "../../../_lib/dao/dao-consenter";
+import { Consenter } from "../../../_lib/dao/entity";
+import { CorrectionForm } from "../../../_lib/pdf/CorrectionForm";
+import { BucketInventory } from "../BucketInventory";
+import { BucketItem } from "../BucketItem";
+import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../BucketItemMetadata";
+import { log } from "../../../Utils";
 
 /**
  * This class deals with "CRUD" operations against an s3 bucket with respect to consenter correction forms.

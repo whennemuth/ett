@@ -92,7 +92,7 @@
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
-        "${workspaceFolder}/lib/lambda/functions/consenting-person/Correction.ts",
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/correction/Correction.ts",
         "RUN_MANUALLY_CONSENTER_CORRECTION",
       ], 
       "env": {
@@ -171,7 +171,7 @@
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
-        "${workspaceFolder}/lib/lambda/functions/consenting-person/BucketItemCorrectionForm.ts",
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/correction/BucketItemCorrectionForm.ts",
         "RUN_MANUALLY_CONSENTER_CORRECTION_FORM",
         "us-east-2",
         "add"
@@ -466,7 +466,7 @@
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
-        "${workspaceFolder}/lib/lambda/functions/consenting-person/CorrectionFormEmail.ts",
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/correction/CorrectionFormEmail.ts",
         "RUN_MANUALLY_SEND_CONSENTER_CORRECTION_FORM"
       ],
       "env": {
@@ -563,7 +563,7 @@
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
-        "${workspaceFolder}/lib/lambda/functions/consenting-person/ExhibitCorrectionEmail.ts",
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/correction/ExhibitCorrectionEmail.ts",
         "RUN_MANUALLY_SEND_EXHIBIT_FORM_CORRECTION"
       ],
       "env": {
@@ -1097,7 +1097,7 @@
       "args": [ 
         "--runTestsByPath", 
         "-i", 
-        "${workspaceFolder}/lib/lambda/functions/consenting-person/BucketCorrectionForm.test.ts" 
+        "${workspaceFolder}/lib/lambda/functions/consenting-person/correction/BucketCorrectionForm.test.ts" 
       ],
       "runtimeArgs": [ "--experimental-vm-modules" ],
       "console": "integratedTerminal",
