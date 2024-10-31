@@ -179,18 +179,16 @@ export class ExhibitBucket {
  * RUN MANUALLY: Modify the region, task, and deleteDepth as needed.
  */
 const { argv:args } = process;
-if(args.length > 4 && args[2] == 'RUN_MANUALLY_CONSENTER_EXHIBIT_FORMS') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/BucketItemExhibitForms.ts')) {
 
   // Process args:
-  const region = args[3];
-  const task = args[4] as 
+  const task = 'query' as 
     'add-all'|'query'|'delete-consenter'|'delete-entity'|'delete-affiliate'|'delete-atomic';
 
   // Other configs:
   const dummyDate = new Date();
   const dummyDateString = dummyDate.toISOString();;
   const { EXHIBIT } = ItemType;
-  process.env.REGION = region;
 
   // Mocked consenter
   const consenter = {
@@ -242,8 +240,9 @@ if(args.length > 4 && args[2] == 'RUN_MANUALLY_CONSENTER_EXHIBIT_FORMS') {
 
   (async () => {
     const context:IContext = await require('../../../../contexts/context.json');
-    const { STACK_ID, TAGS: { Landscape }} = context;
+    const { STACK_ID, REGION, TAGS: { Landscape }} = context;
     const { email:consenterEmail } = consenter;
+    process.env.REGION = REGION;
     process.env[ExhibitFormsBucketEnvironmentVariableName] = `${STACK_ID}-${Landscape}-exhibit-forms`;
     const bucket = new ExhibitBucket(consenter) as ExhibitBucket;
 

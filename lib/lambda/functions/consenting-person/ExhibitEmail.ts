@@ -130,7 +130,7 @@ export const test_data = {
   ]
 } as ExhibitFormData;
 
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_SEND_EXHIBIT_FORM') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/ExhibitEmail.ts')) {
   const email = process.env.PDF_RECIPIENT_EMAIL;
 
   if( ! email) {

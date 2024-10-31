@@ -52,8 +52,8 @@ export class DynamoDbTableOutput {
  */
 const { argv:args } = process;
 
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_DYNAMODB_DISPLAY') {
-  const table = args[3];
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/sys-admin/DynamoDbTableOutput.ts')) {
+  const table = 'cp' as 'user'|'entity'|'invitation'|'cp';
   const { getTableName } = DynamoDbConstruct;
   const { USERS, ENTITIES, INVITATIONS, CONSENTERS } = TableBaseNames;
 

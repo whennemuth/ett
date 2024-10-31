@@ -45,7 +45,7 @@ export class ConsentFormEmail {
  * RUN MANUALLY: Modify email as needed.
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_SEND_CONSENT_FORM') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/ConsentEmail.ts')) {
   const email = process.env.PDF_RECIPIENT_EMAIL;
   
   if( ! email) {

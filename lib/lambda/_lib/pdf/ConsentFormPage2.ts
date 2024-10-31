@@ -130,7 +130,7 @@ export class ConsentFormPage2 extends PdfForm implements IPdfForm {
 
 
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENT_FORM_PAGE_2') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/ConsentFormPage2.ts')) {
 
   new ConsentFormPage2().writeToDisk('./lib/lambda/_lib/pdf/consentForm2.pdf')
   .then((bytes) => {

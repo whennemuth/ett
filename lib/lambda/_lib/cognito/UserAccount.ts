@@ -232,9 +232,9 @@ export class UserAccount {
  * RUN MANUALLY:
  */
 const { argv:args } = process;
-if(args.length > 3 && args[2] == 'RUN_MANUALLY_COGNITO_USER_UPDATE') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/cognito/UserAccount.ts')) {
 
-  const task = args[3] as 'update' | 'replace';
+  let task = 'replace';
 
   (async () => {
 

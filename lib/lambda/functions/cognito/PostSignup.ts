@@ -308,7 +308,7 @@ const scrapeUserValuesFromInvitation = async (email:string, role:Role):Promise<I
  * RUN MANUALLY:
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_POST_SIGNUP') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/cognito/PostSignup.ts')) {
 
   const mockEvent = {
     "version": "1",

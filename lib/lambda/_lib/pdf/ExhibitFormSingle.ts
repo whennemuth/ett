@@ -101,7 +101,7 @@ export class ExhibitFormSingle extends PdfForm implements IPdfForm {
 }
 
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_EXHIBIT_FORM_SINGLE') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/ExhibitFormSingle.ts')) {
 
   const affiliates = [{ 
     affiliateType: AffiliateTypes.EMPLOYER,

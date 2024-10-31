@@ -164,7 +164,7 @@ export class ExhibitCorrectionEmail {
  * RUN MANUALLY: Modify consenter, entity_id
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_SEND_EXHIBIT_FORM_CORRECTION') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/correction/ExhibitCorrectionEmail.ts')) {
 
   const { ACADEMIC, EMPLOYER, OTHER } = AffiliateTypes;
   const correctionEmail = new ExhibitCorrectionEmail('cp2@warhen.work', {

@@ -11,7 +11,6 @@ import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
-import { BucketItem } from "../consenting-person/BucketItem";
 import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureForm";
 import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
 import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
@@ -355,7 +354,7 @@ export const sendDisclosureRequest = async (consenterEmail:string, entity_id:str
  * RUN MANUALLY: Modify the task, landscape, entity_id, and dryRun settings as needed.
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_AUTH_IND') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/authorized-individual/AuthorizedIndividual.ts')) {
 
   const task:Task = Task.GET_CONSENTERS;
 

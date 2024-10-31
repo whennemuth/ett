@@ -176,7 +176,7 @@ export class BucketInventory {
  * RUN MANUALLY: Modify consenter and entityId as needed.
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_BUCKET_INVENTORY') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/BucketInventory.ts')) {
 
   (async() => {
     const context:IContext = await require('../../../../contexts/context.json');

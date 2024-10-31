@@ -325,9 +325,9 @@ export class BucketItem {
  * RUN MANUALLY: Modify consenter and entityId as needed.
  */
 const { argv:args } = process;
-if(args.length > 3 && args[2] == 'RUN_MANUALLY_BUCKET_ITEM') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/BucketItem.ts')) {
 
-  const task = args[3] as 'list'|'tags';
+  const task = 'tags' as 'list'|'tags';
 
   (async() => {
     const context:IContext = await require('../../../../contexts/context.json');

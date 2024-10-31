@@ -158,7 +158,7 @@ export class DisclosureFormPage4 extends PdfForm implements IPdfForm {
 
 
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_DISCLOSURE_FORM_PAGE_4') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/DisclosureFormPage4.ts')) {
 
   new DisclosureFormPage4().writeToDisk('./lib/lambda/_lib/pdf/disclosureForm4.pdf')
   .then((bytes) => {

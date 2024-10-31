@@ -5,6 +5,7 @@ import { ExhibitFormSingle } from "../../_lib/pdf/ExhibitFormSingle";
 import { BucketItem, Tags } from "./BucketItem";
 import { BucketItemMetadata, BucketItemMetadataParms, ItemType } from "./BucketItemMetadata";
 import { log } from "../../Utils";
+import { IContext } from "../../../../contexts/IContext";
 
 /**
  * This class deals with "CRUD" operations against a single exhibit form in the s3 bucket.
@@ -137,16 +138,14 @@ export class BucketExhibitForm {
  * RUN MANUALLY: Modify the region, task, and deleteDepth as needed.
  */
 const { argv:args } = process;
-if(args.length > 4 && args[2] == 'RUN_MANUALLY_CONSENTER_EXHIBIT_FORM') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/BucketItemExhibitForm.ts')) {
 
   // Process args:
-  const region = args[3];
-  const task = args[4] as 'add'|'correct'|'get'|'delete';
+  const task = 'add' as 'add'|'correct'|'get'|'delete';
 
   const dummyDate = new Date();
   const dummyDateString = dummyDate.toISOString();;
   const { EXHIBIT } = ItemType;
-  process.env.REGION = region;
 
   // Mocked consenter
   const consenter = {
@@ -201,6 +200,10 @@ if(args.length > 4 && args[2] == 'RUN_MANUALLY_CONSENTER_EXHIBIT_FORM') {
   let affiliateEmail:string;
 
   (async () => {
+    const context:IContext = await require('../../../../contexts/context.json');
+    const { REGION} = context;
+    process.env.REGION = REGION;
+    
     switch(task) {
       case "add":
         entityId = consenter.exhibit_forms![0].entity_id;

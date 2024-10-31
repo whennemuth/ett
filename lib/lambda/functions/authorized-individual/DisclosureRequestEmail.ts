@@ -213,7 +213,7 @@ const send = async (parms:EmailParameters):Promise<boolean> => {
  * RUN MANUALLY: Modify email as needed.
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_SEND_DISCLOSURE_FORM') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/authorized-individual/DisclosureRequestEmail.ts')) {
   const email = process.env.PDF_RECIPIENT_EMAIL;
   
   if( ! email) {

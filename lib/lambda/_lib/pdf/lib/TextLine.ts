@@ -219,7 +219,7 @@ export class TextLine {
 
 
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_TEXTLINE') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/lib/TextLine.ts')) {
 
   let doc:PDFDocument;
   let page:Page;

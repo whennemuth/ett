@@ -156,9 +156,9 @@ export const PostExecution = () => {
  * RUN MANUALLY: 
  */
 const { argv:args } = process;
-if(args.length > 3 && args[2] == 'RUN_MANUALLY_DELAYED_EXECUTION') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/timer/DelayedExecution.ts')) {
 
-  const task = args[3];
+  const task = 'test' as 'test'|'lambda';
   const { SECONDS, MINUTES } = PeriodType;
   switch(task) {
 

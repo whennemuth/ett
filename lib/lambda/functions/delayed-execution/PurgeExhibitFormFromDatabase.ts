@@ -73,9 +73,9 @@ export const deleteExhibitForm = async (consenterEmail:string, entity_id:string)
  * RUN MANUALLY: Set consenterEmail and entity_id to identify the exhibit form that will be deleted.
  */
 const { argv:args } = process;
-if(args.length > 3 && args[2] == 'RUN_MANUALLY_PURGE_EXHIBIT_FORM_FROM_DATABASE') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/delayed-execution/PurgeExhibitFormFromDatabase.ts')) {
 
-  const task = args[3] as 'immediate'|'scheduled';
+  const task = 'scheduled' as 'immediate'|'scheduled';
   const { MINUTES } = PeriodType;
   const consenterEmail = 'cp1@warhen.work';
   const entity_id = '8ea27b83-1e13-40b0-9192-8f2ce6a5817d';
