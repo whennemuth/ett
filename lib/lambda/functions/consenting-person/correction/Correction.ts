@@ -244,12 +244,12 @@ export class ConsentingPersonToCorrect {
  * RUN MANUALLY:
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTER_CORRECTION') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/correction/Correction.ts')) {
 
   (async () => {
 
     // 1) Get context variables
-    const context:IContext = await require('../../../../contexts/context.json');
+    const context:IContext = await require('../../../../../contexts/context.json');
     const { STACK_ID, REGION, TAGS: { Landscape }} = context;
     const prefix = `${STACK_ID}-${Landscape}`;
     const bucketName = `${prefix}-exhibit-forms`;

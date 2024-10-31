@@ -1,9 +1,10 @@
+import { IContext } from "../../../../contexts/IContext";
 import { LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { DAOFactory } from "../../_lib/dao/dao";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
 import { Entity, Invitation, Roles, User, YN } from "../../_lib/dao/entity";
 import { Registration } from "../../_lib/invitation/Registration";
-import { debugLog, error, errorResponse, invalidResponse, lookupCloudfrontDomain, lookupSingleActiveEntity, okResponse, unauthorizedResponse } from "../../Utils";
+import { debugLog, error, errorResponse, invalidResponse, log, lookupCloudfrontDomain, lookupSingleActiveEntity, okResponse, unauthorizedResponse } from "../../Utils";
 import { demolishEntity } from "../authorized-individual/AuthorizedIndividual";
 
 export enum Task {
@@ -137,20 +138,19 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
  * RUN MANUALLY: Modify the task, landscape, region, invitation-code, and queryStringParameters as needed.
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_ENTITY_REGISTRATION') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/signup/EntityRegistration.ts')) {
   
   const task = Task.LOOKUP_ENTITY as Task;
-  const landscape = 'dev';
   const invitation_code = 'ea14dcfd-2f5a-40e1-9bc1-48a3afeec996';
 
-  lookupCloudfrontDomain(landscape).then((cloudfrontDomain) => {
-    if( ! cloudfrontDomain) {
-      throw('Cloudfront domain lookup failure');
-    }
+  (async () => {
+    const context:IContext = await require('../../../../contexts/context.json');
+    const { TAGS: { Landscape }, REGION } = context;
+
+    const cloudfrontDomain = await lookupCloudfrontDomain(Landscape);
 
     process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
-    process.env.REGION = 'us-east-2'
-    process.env.DEBUG = 'true';
+    process.env.REGION = REGION;
 
     const pathParameters = {
       task,
@@ -177,12 +177,7 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_ENTITY_REGISTRATION') {
         break;
     }
 
-    return handler(_event);
-
-  }).then(() => {
-    console.log(`${task} complete.`)
-  }).catch((reason) => {
-    console.error(reason);
-  });
-
+    const response:LambdaProxyIntegrationResponse = await handler(_event);
+    log(response);
+  })();
 }

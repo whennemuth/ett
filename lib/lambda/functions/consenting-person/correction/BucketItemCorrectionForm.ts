@@ -227,24 +227,18 @@ export class BucketCorrectionForm {
  * RUN MANUALLY: Modify consenter and entityId as necessary.
  */
 const { argv:args } = process;
-if(args.length > 4 && args[2] == 'RUN_MANUALLY_CONSENTER_CORRECTION_FORM') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/correction/BucketItemCorrectionForm.ts')) {
 
-  const task = args[3] as 'add'|'get'|'get-all'
-
-  const consenter = { email:'cp3@warhen.work' } as Consenter;
+  const task = 'add' as 'add'|'get'|'get-all';
 
   (async() => {
-    const context:IContext = await require('../../../../contexts/context.json');
+    const context:IContext = await require('../../../../../contexts/context.json');
     const { STACK_ID, REGION, TAGS: { Landscape }} = context;
     const prefix = `${STACK_ID}-${Landscape}`;
     process.env.REGION = REGION;
-
-    let bucket:BucketCorrectionForm;
-    let entityId:string;
     process.env[ExhibitFormsBucketEnvironmentVariableName] = `${prefix}-exhibit-forms`;
 
     const oldConsenter = await ConsenterCrud({ email:'cp2@warhen.work' } as Consenter).read() as Consenter;
-
     const newConsenter = Object.assign({}, oldConsenter);
     newConsenter.email = 'cp1@warhen.work';
     newConsenter.lastname = `${oldConsenter.lastname} (corrected)`;

@@ -122,9 +122,9 @@ const validateLambdaInput = (lambdaInput:DisclosureItemsParms):void => {
  * RUN MANUALLY: 
  */
 const { argv:args } = process;
-if(args.length > 3 && args[2] == 'RUN_MANUALLY_PURGE_EXHIBIT_FORM_FROM_BUCKET') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/delayed-execution/PurgeExhibitFormFromBucket.ts')) {
 
-  const task = args[3] as 'immediate'|'scheduled';
+  const task = 'scheduled' as 'immediate'|'scheduled';
   const { MINUTES } = PeriodType;
   const { EXHIBIT, DISCLOSURE } = ItemType;
 

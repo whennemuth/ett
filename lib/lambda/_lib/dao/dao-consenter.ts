@@ -262,9 +262,9 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
  */
 const { argv:args } = process;
 enum TASK { create='create', update='update', read='read', Delete='delete' };
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_DAO_CONSENTER') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/dao/dao-consenter.ts')) {
   process.env.REGION = 'us-east-2';
-  const task = args.length > 3 ? args[3] : TASK.create;
+  const task = TASK.update as TASK;
   const email = 'daffy@warnerbros.com';
   let consenter = { } as Consenter;
   let dao:DAOConsenter;
@@ -293,8 +293,8 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_DAO_CONSENTER') {
       break;
     case TASK.update:
       enum UPDATE_TYPE { consent='consent', sub='sub', exhibit='exhibit' };
-      const updateType = args.length > 4 ? args[4] : 'consent';
-      const scenario = (args.length > 5 ? args[5] : '1') as '1'|'2'|'3';
+      const updateType = UPDATE_TYPE.exhibit;
+      const scenario = '1' as '1'|'2'|'3';
       switch(updateType as UPDATE_TYPE) {
         case UPDATE_TYPE.sub:
           consenter = { email, sub: 'cognito-user-sub' } as Consenter;

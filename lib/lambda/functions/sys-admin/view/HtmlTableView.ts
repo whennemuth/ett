@@ -85,9 +85,8 @@ export class HtmlTableView extends AbstractTableView {
  * RUN MANUALLY:
  */
 const { argv:args } = process;
-import { exec } from 'child_process';
 
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_TABLE_VIEW') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/sys-admin/view/HtmlTableView.ts')) {
 
   const getArray = (): any[] => {
     return [

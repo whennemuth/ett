@@ -112,8 +112,12 @@ export const wipeClean = async (dryRun=true) => {
   await (new BucketToEmpty(bucketName)).empty(dryRun);
 }
 
+
+
+
+// RUN MANUALLY
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_BLANK_SHEET_OF_PAPER') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/BlankSheetOfPaper.ts')) {
 
   (async () => {
     try {

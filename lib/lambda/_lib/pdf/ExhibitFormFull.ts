@@ -147,7 +147,7 @@ export class ExhibitFormFull extends PdfForm implements IPdfForm {
 }
 
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_EXHIBIT_FORM_FULL') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/ExhibitFormFull.ts')) {
 
   const baseForm = new ExhibitForm({
     entity_id: 'abc123',

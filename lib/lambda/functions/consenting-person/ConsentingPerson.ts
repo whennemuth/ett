@@ -948,7 +948,7 @@ export const correctExhibitData = async (consenterEmail:string, corrections:Exhi
  * RUN MANUALLY:
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONSENTING_PERSON') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/ConsentingPerson.ts')) {
 
   const task = Task.CORRECT_EXHIBIT_FORM as Task;
   

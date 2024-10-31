@@ -1,3 +1,4 @@
+import { IContext } from '../../../../contexts/IContext';
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
 import { lookupEmail, lookupUserPoolId } from '../../_lib/cognito/Lookup';
 import { DAOEntity, DAOFactory, DAOUser } from '../../_lib/dao/dao';
@@ -485,27 +486,23 @@ export const createEntityAndInviteUsers = async (parameters:any, callerSub?:stri
  * RUN MANUALLY: Modify the task, landscape, email, role, & entity_id as needed.
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_RE_ADMIN') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/re-admin/ReAdminUser.ts')) {
 
-  const task = Task.INVITE_USERS as Task;
-  const landscape = 'dev';
-  const region = 'us-east-2';
+  (async () => {
+    const context:IContext = await require('../../../../contexts/context.json');
+    const { STACK_ID, REGION, TAGS: { Landscape }} = context;
 
-  lookupCloudfrontDomain(landscape).then((cloudfrontDomain) => {
-    if( ! cloudfrontDomain) {
-      throw('Cloudfront domain lookup failure');
-    }
+    const task = Task.INVITE_USERS as Task;
+
+    const cloudfrontDomain = await lookupCloudfrontDomain(Landscape);
     process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
-    return lookupUserPoolId('ett-dev-cognito-userpool', region);
-  })
-  .then((userpoolId) => {
 
+    const userpoolId = await lookupUserPoolId(`${STACK_ID}-${Landscape}-cognito-userpool`, REGION);
     process.env.USERPOOL_ID = userpoolId;
-    process.env.REGION = region;
-    process.env.DEBUG = 'true';
-
+    process.env.REGION = REGION;
     let payload = {};
     let _event = {};
+
     switch(task) {
       case Task.INVITE_USER:
         payload = {
@@ -565,12 +562,8 @@ if(args.length > 2 && args[2] == 'RUN_MANUALLY_RE_ADMIN') {
         break;
     }
 
-    return handler(_event);
-  }).then(() => {
-    log(`${task} complete.`)
-  })
-  .catch((reason) => {
-    console.error(reason);
-  });
- 
+    const response:LambdaProxyIntegrationResponse = await handler(_event);
+    log(response);
+
+  })(); 
 }

@@ -191,13 +191,13 @@ export const cleanSheet = async ():Promise<LambdaProxyIntegrationResponse> => {
  * RUN MANUALLY: Modify the task, landscape, email & role as needed.
  */
 const { argv:args } = process;
-if(args.length > 3 && args[2] == 'RUN_MANUALLY_SYS_ADMIN') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/sys-admin/SysAdminUser.ts')) {
 
   (async () => {
 
     try {
       const task = ReAdminTasks.INVITE_USER;
-      const email = args[3];
+      const email = 'sysadmin1@warhen.work';
       const context:IContext = await require('../../../../contexts/context.json');
       const { STACK_ID, REGION, TAGS: { Landscape } } = context;
       const prefix = `${STACK_ID}-${Landscape}`;

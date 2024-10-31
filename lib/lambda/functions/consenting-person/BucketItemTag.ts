@@ -93,7 +93,7 @@ export class TagInspector {
  * RUN MANUALLY: Modify the region, task, and deleteDepth as needed.
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_BUCKET_ITEM_TAG_INSPECTOR') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/BucketItemTag.ts')) {
 
   (async ()=> {
     const context:IContext = await require('../../../../contexts/context.json');

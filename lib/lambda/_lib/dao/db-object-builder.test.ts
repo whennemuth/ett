@@ -122,7 +122,7 @@ const expectedBigOutput = {
 }
 
 let jestTest = true;
-process.argv.forEach((a) => { if(a === 'non-jest') jestTest = false; });
+process.argv.forEach((a) => { if(a.endsWith('db-object-builder.test.ts')) jestTest = false; });
 
 if(jestTest) {
 
@@ -246,12 +246,7 @@ if(jestTest) {
 else {
   // Jest can take a while to load up, so for much quicker turn-around during non unit test trial and error
   // sessions, use this instead.
-  let task:'convert'|'restore'|undefined;
-
-  process.argv.forEach((a) => { 
-    if(a.toLocaleLowerCase() === 'convert') task = 'convert';
-    else if(a.toLocaleLowerCase() === 'restore') task = 'restore';
-  });
+  const task = 'restore' as 'convert'|'restore'|undefined;
 
   switch(task) {
     case 'convert':
@@ -259,9 +254,6 @@ else {
       break;
     case 'restore':
       log(convertFromApiObject(expectedBigOutput));
-      break;
-    default:
-      log('Insufficient parameters: failed to specify "convert" or "restore"');
       break;
   }
   
