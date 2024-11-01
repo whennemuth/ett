@@ -127,7 +127,12 @@ const toConsole = (o:any, out:Function, msg?:string) => {
     return;
   }
   if(o instanceof Object) {
-    output(JSON.stringify(o, Object.getOwnPropertyNames(o), 2));
+    try {
+      output(JSON.stringify(o, null, 2));
+    }
+    catch(e) {
+      output(JSON.stringify(o, Object.getOwnPropertyNames(o), 2));
+    }
     return;
   }
   output(`${o}`);
