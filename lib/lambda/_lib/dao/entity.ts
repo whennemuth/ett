@@ -156,7 +156,9 @@ export enum ConfigNames {
   THIRD_REMINDER = 'third-reminder',
   FOURTH_REMINDER = 'fourth-reminder',
   DELETE_EXHIBIT_FORMS_AFTER = 'delete-exhibit-forms-after',
-  DELETE_DRAFTS_AFTER = 'delete-drafts-after'
+  DELETE_DRAFTS_AFTER = 'delete-drafts-after',
+  STALE_ASP_VACANCY = 'stale-asp-vacancy',
+  STALE_AI_VACANCY = 'stale-ai-vacancy'
 }
 export type ConfigName = 
   ConfigNames.CONSENT_EXPIRATION |
@@ -166,7 +168,9 @@ export type ConfigName =
   ConfigNames.FIRST_REMINDER |
   ConfigNames.SECOND_REMINDER |
   ConfigNames.THIRD_REMINDER |
-  ConfigNames.FOURTH_REMINDER;
+  ConfigNames.FOURTH_REMINDER |
+  ConfigNames.STALE_AI_VACANCY |
+  ConfigNames.STALE_ASP_VACANCY
 export enum ConfigTypes {
   DURATION = 'duration',
   NUMBER = 'number',

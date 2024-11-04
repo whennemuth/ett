@@ -37,6 +37,18 @@
         "config_type": "duration",
         "description": "Duration that partially complete exhibit forms can survive in the ETT system before failure to submit them will result in their deletion"
       },
+      {
+        "name": "stale-ai-vacancy",
+        "value": "2592000",
+        "config_type": "duration",
+        "description": "Duration beyond having a registered ASP that an entity can remain without a registered AI for before being terminated"
+      },
+      {
+        "name": "stale-asp-vacancy",
+        "value": "2592000",
+        "config_type": "duration",
+        "description": "Duration that an entity can remain without a registered ASP for before being terminated"
+      },
       { 
         "name": "consent-expiration", 
         "value": "315360000",
