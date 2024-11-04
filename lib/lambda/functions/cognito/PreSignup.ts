@@ -1,8 +1,9 @@
 import { IContext } from "../../../../contexts/IContext";
 import { lookupRole, lookupUserPoolClientId, lookupUserPoolId } from "../../_lib/cognito/Lookup";
+import { Configurations } from "../../_lib/config/Config";
 import { DAOFactory, DAOInvitation } from "../../_lib/dao/dao";
 import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
-import { Consenter, Invitation, Role, Roles, Validator } from "../../_lib/dao/entity";
+import { ConfigName, ConfigNames, Consenter, Invitation, Role, Roles, Validator } from "../../_lib/dao/entity";
 import { debugLog } from "../../Utils";
 import { PreSignupEventType } from "./PreSignupEventType";
 
@@ -11,7 +12,8 @@ export enum Messages {
   SERVER_ERROR = 'Server error during initial pre-screening process at ',
   ROLE_LOOKUP_FAILURE = 'Cannot determine role',
   ROLE_MISSING = 'PreSignUp_AdminCreateUser did not send role information in event.request.clientMetadata',
-  RETRACTED = 'Your invitation was retracted signup as '
+  RETRACTED = 'Your invitation was retracted signup as ',
+  EXPIRED = 'Your inviation has expired for '
 }
 
 /**
@@ -117,6 +119,32 @@ export const handler = async (_event:any) => {
         }
         throw new Error(Messages.UNINVITED + role);
       default:
+        if(role == Roles.RE_ADMIN || role == Roles.RE_AUTH_IND) {
+          // Get invitation that was most recently sent for to the user that has not been retracted.
+          const latestInvitation = qualifiedInvitations.reduce((prior:Invitation, current:Invitation) => {
+            if(current.retracted_timestamp && ! prior.retracted_timestamp) return prior;
+            if(prior.retracted_timestamp) return current;
+            const priorSent = prior.sent_timestamp ? new Date(prior.sent_timestamp).getTime() : 0;
+            const currentSent = current.sent_timestamp ? new Date(current.sent_timestamp).getTime() : 0;
+            return currentSent > priorSent ? current : prior;
+          }, qualifiedInvitations[0]);
+
+          if(latestInvitation.retracted_timestamp) {
+            throw new Error(Messages.RETRACTED + role);
+          }
+
+          // Determine if the latest invitation has already expired.
+          const invited = new Date(latestInvitation.sent_timestamp);
+          const configs = new Configurations();
+          const { STALE_ASP_VACANCY, STALE_AI_VACANCY } = ConfigNames;
+          const configName:ConfigName = role == Roles.RE_ADMIN ? STALE_ASP_VACANCY : STALE_AI_VACANCY;
+          const staleAfterSeconds = (await configs.getAppConfig(configName)).getDuration();
+          const staleAtTime = invited.getTime() + (staleAfterSeconds * 1000);
+          if(staleAtTime <= Date.now()) {
+            throw new Error(Messages.EXPIRED + role);
+          }
+        }
+         
         return event;
     }
 
