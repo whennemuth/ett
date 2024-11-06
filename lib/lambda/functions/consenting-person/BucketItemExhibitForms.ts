@@ -5,10 +5,13 @@ import { BucketItem } from "./BucketItem";
 import { BucketExhibitForm } from "./BucketItemExhibitForm";
 import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "./BucketItemMetadata";
 import { log } from "../../Utils";
+import { writeFile, mkdtemp } from "fs/promises";
+import { join } from 'path';
+import { tmpdir } from 'os';
 
 
 /**
- * This class deals with bulk "CRUD" operations against an s3 bucket with respect to single exhibit forms.
+ * This class deals with bulk "CRUD" operations against an s3 bucket with respect to pdf forms.
  */
 export class ExhibitBucket {
   private bucket:BucketItem;
@@ -20,7 +23,7 @@ export class ExhibitBucket {
   }
 
   private putAll = async (entityId:string, task:'add'|'correct', savedDate?:Date):Promise<string[]> => {
-    log({entityId, savedDate }, `Adding each ${task=='add' ? 'new' : 'corrected'} single exhibit form to bucket`);
+    log({entityId, savedDate }, `Adding each ${task=='add' ? 'new' : 'corrected'} pdf form to bucket`);
     const { consenter, bucket, consenter: { email:consenterEmail, exhibit_forms }} = this;
     const exhibitForm:ExhibitFormData|undefined = exhibit_forms?.find(ef => {
       return ef.entity_id = entityId;
@@ -51,7 +54,7 @@ export class ExhibitBucket {
   }
 
   /**
-   * Add each new single exhibit form of a full exhibit form to the bucket
+   * Add each of a collection of pdf forms to the bucket
    * @param entityId 
    */
   public addAll = async (entityId:string, savedDate?:Date):Promise<string[]> => {
@@ -59,7 +62,7 @@ export class ExhibitBucket {
   }
 
   /**
-   * Add each corrected single exhibit form of a full exhibit form to the bucket
+   * Add each corrected pdf form of a full exhibit form to the bucket
    * @param entityId 
    */
   public correctAll = async (entityId:string, savedDate?:Date):Promise<string[]> => {
@@ -68,10 +71,10 @@ export class ExhibitBucket {
 
   /**
    * Delete any of the following from the s3 bucket for a specific consenter:
-   *   1) Any one single exhibit form
-   *   2) All single exhibit forms, original and corrected, for a particular affiliate.
-   *   3) All single exhibit forms, original and corrected, for a partiular entity.
-   *   4) All single exhibit forms, original and corrected, for a particular consenter.
+   *   1) Any one pdf form
+   *   2) All pdf forms, original and corrected, for a particular affiliate.
+   *   3) All pdf forms, original and corrected, for a partiular entity.
+   *   4) All pdf forms, original and corrected, for a particular consenter.
    * @param metadata 
    * @returns 
    */
@@ -85,7 +88,7 @@ export class ExhibitBucket {
       const output = await listKeys(metadata);
       const { keys } = output;
       if( keys.length === 0) {
-        log(`No single exhibit forms found in ${Prefix}`);
+        log(`No matching pdf forms found in ${Prefix}`);
         return;
       }
 
@@ -121,7 +124,7 @@ export class ExhibitBucket {
   }
 
   /**
-   * Download all single exhibit forms stored in s3 that match the supplied metadata as an array of byte arrays.
+   * Download all pdf forms stored in s3 that match the supplied metadata as an array of byte arrays.
    * @param metadata 
    * @param dryrun 
    * @returns 
@@ -142,7 +145,7 @@ export class ExhibitBucket {
       const output = await listKeys(metadata);
       const { keys } = output;
       if( keys.length === 0) {
-        log(`No single exhibit forms found in ${Prefix}`);
+        log(`No matching pdf forms found in ${Prefix}`);
         return emptyArray;
       }
 
@@ -182,8 +185,8 @@ const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/BucketItemExhibitForms.ts')) {
 
   // Process args:
-  const task = 'query' as 
-    'add-all'|'query'|'delete-consenter'|'delete-entity'|'delete-affiliate'|'delete-atomic';
+  const task = 'delete-corrections' as 
+    'add-all'|'query'|'delete-consenter'|'delete-entity'|'delete-affiliate'|'delete-corrections'|'delete-atomic';
 
   // Other configs:
   const dummyDate = new Date();
@@ -192,7 +195,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
 
   // Mocked consenter
   const consenter = {
-    email: 'cp3@warhen.work',
+    email: 'cp2@warhen.work',
     active: YN.Yes,
     create_timestamp: dummyDateString,
     firstname: 'Elmer',
@@ -203,14 +206,14 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     title: 'Wabbit Hunter',
     exhibit_forms: [
       {
-        entity_id: 'eea2d463-2eab-4304-b2cf-cf03cf57dfaa',
+        entity_id: '13376a3d-12d8-40e1-8dee-8c3d099da1b2',
         sent_timestamp: dummyDateString,
         affiliates: [
           { 
             affiliateType: AffiliateTypes.EMPLOYER,
             org: 'Warner Bros.', 
             fullname: 'Foghorn Leghorn', 
-            email: 'affiliate1@warhen.work',
+            email: 'affiliate3@warhen.work',
             title: 'Head Rooster',
             phone_number: '617-333-4444'
           },
@@ -239,52 +242,53 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
   let affiliateEmail:string;
 
   (async () => {
-    const context:IContext = await require('../../../../contexts/context.json');
-    const { STACK_ID, REGION, TAGS: { Landscape }} = context;
-    const { email:consenterEmail } = consenter;
-    process.env.REGION = REGION;
-    process.env[ExhibitFormsBucketEnvironmentVariableName] = `${STACK_ID}-${Landscape}-exhibit-forms`;
-    const bucket = new ExhibitBucket(consenter) as ExhibitBucket;
+    try {
+      const context:IContext = await require('../../../../contexts/context.json');
+      const { STACK_ID, REGION, TAGS: { Landscape }} = context;
+      const { email:consenterEmail } = consenter;
+      process.env.REGION = REGION;
+      process.env[ExhibitFormsBucketEnvironmentVariableName] = `${STACK_ID}-${Landscape}-exhibit-forms`;
+      const bucket = new ExhibitBucket(consenter) as ExhibitBucket;
 
-    switch(task) {
-      case "add-all":
-        entityId = consenter.exhibit_forms![0].entity_id;
-        bucket.addAll(entityId, dummyDate)
-          .then(() => {
-            log('done');
-          })
-          .catch(e => {
-            console.error(e);
-          });
-        break;
-      case "query":
-        entityId = consenter.exhibit_forms![0].entity_id;
-        bucket.query({ consenterEmail, itemType:EXHIBIT, entityId }, true);
-        break;
-      default:
-        // Deletions
-        entityId = consenter.exhibit_forms![0].entity_id;
-        affiliateEmail = consenter.exhibit_forms![0].affiliates![2].email;
-        let metadata = { consenterEmail } as BucketItemMetadataParms;
-        const deleteDepth = task.split('-')[1];
-        switch(deleteDepth) {
-          case "consenter":
-            metadata = { consenterEmail, itemType:EXHIBIT, entityId:'all' }; break;
-          case "entity":
-            metadata = { consenterEmail, itemType:EXHIBIT, entityId }; break;
-          case "affiliate":
-            metadata = { consenterEmail, itemType:EXHIBIT, entityId, affiliateEmail }; break;
-          case "atomic":
-            metadata = { consenterEmail, itemType:EXHIBIT, entityId, affiliateEmail, correction:true, savedDate:dummyDate}; break;
-        }
-        bucket.deleteAll(metadata)
-          .then(() => {
-            log('done');
-          })
-          .catch(e => {
-            console.error(e);
-          });
-        break;
+      switch(task) {
+        case "add-all":
+          entityId = consenter.exhibit_forms![0].entity_id;
+          const keys:string[] = await bucket.addAll(entityId, dummyDate);
+          log(keys, 'Keys of added items');
+          break;
+        case "query":
+          entityId = consenter.exhibit_forms![0].entity_id;
+          const byteArray:Uint8Array[] = await bucket.query({ consenterEmail, itemType:EXHIBIT, entityId }, true);
+          const tempdir:string = await mkdtemp(join(tmpdir(), 'bucket-query-test-'));
+          let i = 1;
+          byteArray.forEach(bytes => writeFile(`${tempdir}/downloaded-${i++}.pdf`, bytes));
+          log(`Files downloaded to ${tempdir}`);      
+          break;
+        default:
+          // Deletions
+          entityId = consenter.exhibit_forms![0].entity_id;
+          affiliateEmail = consenter.exhibit_forms![0].affiliates![0].email;
+          let metadata = { consenterEmail } as BucketItemMetadataParms;
+          const deleteDepth = task.split('-')[1];
+          switch(deleteDepth) {
+            case "consenter":
+              metadata = { consenterEmail, entityId:'all' } as BucketItemMetadataParms; break;
+            case "entity":
+              metadata = { consenterEmail, entityId } as BucketItemMetadataParms; break;
+            case "affiliate":
+              metadata = { consenterEmail, entityId, affiliateEmail } as BucketItemMetadataParms; break;
+            case "corrections":
+              metadata = { consenterEmail, entityId, affiliateEmail, correction:true } as BucketItemMetadataParms; break;
+            case "atomic":
+              metadata = { consenterEmail, itemType:EXHIBIT, entityId, affiliateEmail, correction:true, savedDate:dummyDate}; break;
+          }
+          await bucket.deleteAll(metadata);
+          break;
+      }
+      log('Done.');
+    }
+    catch(e) {
+      log(e);
     }
 
   })();
