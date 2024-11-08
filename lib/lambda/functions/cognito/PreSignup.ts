@@ -38,18 +38,18 @@ export const handler = async (_event:any) => {
     debugLog(_event); 
 
     const event = _event;
-    const { userPoolId, region } = event;
+    const { userPoolId, region, triggerSource, request } = event;
     const { clientId } = event?.callerContext;
     let role:Role|undefined;
 
     // Get the role for the user who is signing up.
-    let { role:sRole } = event?.request?.clientMetadata ?? {};
-    let adminCreateUser:boolean = false;
+    let { role:sRole } = request?.clientMetadata ?? {};
+    let adminCreateUser:boolean = triggerSource == 'PreSignUp_AdminCreateUser';
+    
     if(Validator().isRole(sRole)) {
       // clientId is 'CLIENT_ID_NOT_APPLICABLE' and event.triggerSource = 'PreSignUp_AdminCreateUser'
       role = `${sRole.toUpperCase()}` as Role;
       if( ! role) throw new Error(Messages.ROLE_MISSING);
-      adminCreateUser = true;
     }
     else {
       // Determine what role applies to the "doorway" (userpool client) the user is entering through for signup
@@ -59,9 +59,9 @@ export const handler = async (_event:any) => {
     
     const { email } = event?.request?.userAttributes;
 
-    if(role == Roles.CONSENTING_PERSON && adminCreateUser) {
-      // Consenting persons do not need to be invited to signup and do not need to exist in the
-      // database yet if adminCreateUser is indicated, so exit here.
+    if(adminCreateUser) {
+      // Anyone being created through AdminCreateUser will be an exception to requiring an invitation to signup.
+      // So, end with success here to avoid the invitation checks below.
       return event;
     }
     
