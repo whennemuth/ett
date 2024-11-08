@@ -86,15 +86,22 @@ export class BucketItem {
    * @param parms 
    * @returns 
    */
-  private listObjects = async (parms:BucketItemMetadataParms): Promise<ListObjectsOutput> => {
+  private listObjects = async (parms?:BucketItemMetadataParms): Promise<ListObjectsOutput> => {
     const { getPrefix, bucketName:Bucket, region } = this;
-    const { affiliateEmail, savedDate } = parms;
 
-    const Prefix = getPrefix(parms);
-    log(`Listing bucket content under prefix: ${Prefix}`);
+    let Prefix:string|undefined;
+    if(parms) {
+      const { affiliateEmail, savedDate } = parms;
 
-    if(affiliateEmail && savedDate) {
-      return { Prefix };
+      Prefix = getPrefix(parms);
+      log(`Listing bucket content under prefix: ${Prefix}`);
+
+      if(affiliateEmail && savedDate) {
+        return { Prefix };
+      }
+    }
+    else {
+      log('Listing entire bucket content');
     }
     
     // List all objects in the specified folder, and return if there are none.
@@ -118,7 +125,7 @@ export class BucketItem {
     }
 
     listedObjects.Contents = totalContents;
-    return { Prefix, listedObjects };
+    return { Prefix:(Prefix ?? '/'), listedObjects };
   }
 
   /**
@@ -152,18 +159,47 @@ export class BucketItem {
   }
 
   /**
+   * List every object key in the bucket.
+   * @returns 
+   */
+  public listAllKeys = async (): Promise<string[]> => {
+    const { listObjects } = this;
+    const output:ListObjectsOutput = await listObjects();
+    const { listedObjects } = output;
+    const { Contents } = listedObjects ?? {};
+    if( ! Contents || Contents.length === 0) {
+      return [];
+    }
+    return Contents.map(s3Object => {
+      const { Key } = s3Object;
+      return Key ? Key : undefined;
+    }).filter(metadata => { return metadata != undefined; }) as string[];
+  }
+
+  /**
    * Get a list of metadata objects from a query against the s3 bucket. 
    * @param parms 
    * @returns 
    */
-  public listMetadata = async (parms:BucketItemMetadataParms): Promise<ListMetadataOutput> => {
-    const { listKeys } = this;
-    const output = await listKeys(parms);
-    const { Prefix, keys } = output;
-    const items = keys.map(key => {
-      return BucketItemMetadata.fromBucketObjectKey(key);
-    });
-    return { Prefix, items }
+  public listMetadata = async (parms?:BucketItemMetadataParms): Promise<ListMetadataOutput> => {
+    const { listKeys, listAllKeys } = this;
+    let items = [] as BucketItemMetadataParms[];
+    if(parms) {
+      const output = await listKeys(parms);
+      const { Prefix, keys } = output;
+      items = keys.map(key => {
+        return BucketItemMetadata.fromBucketObjectKey(key);
+      });
+      return { Prefix, items }
+    }
+    else {
+      const keys = await listAllKeys();
+      items = keys.map(key => {
+        return BucketItemMetadata.fromBucketObjectKey(key);
+      }); 
+      return { Prefix:'/', items };     
+    }
+
   }
 
   /**
