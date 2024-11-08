@@ -1,9 +1,9 @@
-import { AdminCreateUserCommand, AdminCreateUserCommandOutput, AdminCreateUserRequest, AdminDeleteUserCommand, AdminDeleteUserCommandOutput, AdminDeleteUserRequest, AdminUpdateUserAttributesCommand, AdminUpdateUserAttributesCommandOutput, AdminUpdateUserAttributesRequest, AttributeType, CognitoIdentityProviderClient, UserType } from "@aws-sdk/client-cognito-identity-provider";
+import { AdminCreateUserCommand, AdminCreateUserCommandOutput, AdminCreateUserRequest, AdminDeleteUserCommand, AdminDeleteUserCommandOutput, AdminDeleteUserRequest, AdminSetUserPasswordCommand, AdminUpdateUserAttributesCommand, AdminUpdateUserAttributesCommandOutput, AdminUpdateUserAttributesRequest, AttributeType, CognitoIdentityProviderClient, UserType } from "@aws-sdk/client-cognito-identity-provider";
 import { StandardAttributes } from "aws-cdk-lib/aws-cognito";
-import { lookupUserPoolId } from "./Lookup";
-import { debugLog, error, log } from "../../Utils";
 import { IContext } from "../../../../contexts/IContext";
+import { debugLog, error, log } from "../../Utils";
 import { Role, Roles } from "../dao/entity";
+import { lookupUserPoolId } from "./Lookup";
 
 export type AttributeValue = {
   propname:string, 
@@ -24,6 +24,8 @@ export class UserAccount {
   private UserPoolId:string;
   private UserAttributes = [] as AttributeType[];
   private message:string = 'ok';
+
+  private constructor() { /** Do nothing */ }
 
   /**
    * Factory method for instances of this class. Can be used as the "read" CRUD operation as it 
@@ -131,12 +133,37 @@ export class UserAccount {
     return user;
   }
 
+  public create = async (userBeingReplaced?:UserAccount):Promise<UserType|undefined> => {
+    return this._create('RESEND', userBeingReplaced)
+  }
+
+  public createWithPassword = async (Password:string):Promise<UserType|undefined> => {
+    const { UserPoolId, region, getEmail, logError } = this;
+    let user:UserType|undefined = undefined;
+    try {
+      user = await this._create('SUPPRESS');
+
+      const Username = getEmail();
+      const client = new CognitoIdentityProviderClient({ region });
+
+      await client.send(new AdminSetUserPasswordCommand({
+        UserPoolId, Username, Password, Permanent: true
+      }));
+    }
+    catch(e) {
+      logError(e as Error);
+    }
+    finally {
+      return user;
+    }
+  }
+
   /**
    * Create the cognito user account
    * @param userBeingReplaced 
    * @returns 
    */
-  public create = async (userBeingReplaced?:UserAccount):Promise<UserType|undefined> => {
+  private _create = async (MessageAction:string, userBeingReplaced?:UserAccount):Promise<UserType|undefined> => {
     const { UserPoolId, region, UserAttributes, role, getEmail, logError } = this;
     let user:UserType|undefined = undefined;
 
@@ -161,13 +188,20 @@ export class UserAccount {
         Username,
         UserAttributes,
         ForceAliasCreation: false,
-        // MessageAction: "RESEND", // Note: "RESEND" is a misnomer in this user creation context, and just means "SEND"
+        MessageAction,
         DesiredDeliveryMediums,        
         ClientMetadata,
       } as AdminCreateUserRequest;
-      const command = new AdminCreateUserCommand(input);
 
+      if(MessageAction === 'RESEND') {
+        // MessageAction should default to "RESEND", but I suspect a difference in behavior by setting it this way.
+        // NOTE: "RESEND" is a misnomer in this user creation context, and just means "SEND"
+        delete input.MessageAction;
+      }
+
+      const command = new AdminCreateUserCommand(input);
       const response = await client.send(command) as AdminCreateUserCommandOutput;
+
       log(response, 'Created new cognito user account');
       user = response.User;
     }
@@ -234,7 +268,7 @@ export class UserAccount {
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/cognito/UserAccount.ts')) {
 
-  let task = 'replace';
+  let task = 'create-password' as 'replace' | 'update' | 'create' | 'create-password';
 
   (async () => {
 
@@ -247,23 +281,48 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/cogn
     process.env.PREFIX = `${STACK_ID}-${Landscape}`;
     process.env.DEBUG = 'true';
 
-    // 3) Configure the original and updated user parameters
-    const original = { email: { propname:'email', value:'cp1@warhen.work' } } as CognitoStandardAttributes;
-    const updated = {
-      email: { propname:'email', value:'cp2@warhen.work' }, 
-      phoneNumber: { propname: 'phone_number', value: '+1234567890' }
-    } as CognitoStandardAttributes
+    // 3) Define the original and updated user parameters
+    let original:CognitoStandardAttributes;
+    let updated:CognitoStandardAttributes
 
     // 4) Execute the update or replacement
-    const user = await UserAccount.getInstance(original, Roles.CONSENTING_PERSON);
+    let user:UserAccount;
     switch(task) {
       case "update":
+        original = { email: { propname:'email', value:'cp1@warhen.work' } };
+        updated = {
+          email: { propname:'email', value:'cp2@warhen.work' }, 
+          phoneNumber: { propname: 'phone_number', value: '+1234567890' }
+        };
         // Make the email address the same so as not to get updated itself.
+        user = await UserAccount.getInstance(original, Roles.CONSENTING_PERSON);
         updated.email!.value = original.email?.value;
         await user.update(updated);
         break;
       case "replace":
+        original = { email: { propname:'email', value:'cp1@warhen.work' } };
+        updated = {
+          email: { propname:'email', value:'cp2@warhen.work' }, 
+          phoneNumber: { propname: 'phone_number', value: '+1234567890' }
+        };
+        user = await UserAccount.getInstance(original, Roles.CONSENTING_PERSON);
         await user.replaceWith(updated);
+        break;
+      case "create":
+        original = {
+          email: { propname:'email', value:'asp1.random.edu@warhen.work', verified:true }, 
+          phoneNumber: { propname: 'phone_number', value: '+1234567890' }
+        };
+        user = await UserAccount.getInstance(original, Roles.RE_ADMIN);
+        await user.create();
+        break;
+      case "create-password":
+        original = {
+          email: { propname:'email', value:'asp1.random.edu@warhen.work', verified:true }, 
+          phoneNumber: { propname: 'phone_number', value: '+1234567890' }
+        };
+        user = await UserAccount.getInstance(original, Roles.RE_ADMIN);
+        await user.createWithPassword('passWORD123!@#');
         break;
     }
     
