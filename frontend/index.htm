@@ -978,10 +978,9 @@
                 <div class="tab-pane fade show active" id="auth-request-exhibits" role="tabpanel" aria-labelledby="auth-request-exhibits-tab">
                   <div id="exhibitsRequest" style="margin-top: 40px; overflow: auto;">
                     <div style="width:400px; margin:10px; display:inline;">
-                      <button id="consentersDropdownButton" style="height:66px;" class="btn btn-dark btn-lg dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        Individuals who have registered consent with ETT:
-                      </button>
-                      <div id="consentersDropdownList" class="dropdown-menu" aria-labelledby="consentersDropdownButton">
+                      <div style="margin-left:10px; font-size:26px;">Consenting Individuals:</div>
+                      <input id="txtConsenterFilter" type="text" style="height:66px; width:493px; font-size:26px; float:left;" class="form-control dropdown-toggle" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" placeholder="Type here to search . . .">
+                      <div id="consentersDropdownList" class="dropdown-menu" aria-labelledby="txtConsenterFilter">
                       </div>
                     </div>
                     <button id="btnSendExhibitsRequest" style="display:inline;" class="btn btn-primary btn-lg" type="button">Send <i class="bi-send-check"></i></button>
@@ -3477,6 +3476,20 @@
      * Make an api call to retrieve information about the currently logged in user along with entity info
      */
     const setUserContext = async () => {
+      if(localTesting()) {
+        userContext = { 
+          entity: { 
+            entity_id:'abc123', 
+            entity_name:'The Hughs Corporation',
+            users: [
+              { email:'kong@skull.island.com', fullname:'King Kong', title:'Head Honcho', role:'RE_ADMIN', active:'Y' },
+              { email:'mary@disney.com', fullname:'Mary Poppins', title:'Nannie', role:'RE_AUTH_IND', active:'Y'},
+              { email:'mickey@disney.com', fullname:'Mickey Mouse', title:'Entertainer', role:'RE_AUTH_IND', active:'Y'}
+            ]
+          },
+        }
+        return;
+      }
       const msg = document.getElementById('apiResponse');
       msg.innerHTML = '';
       try {
@@ -3684,27 +3697,46 @@
      * Populate the picklist that is available for authorized individuals to select from when
      * choosing a consenting individual to whom they want to prompt via email for exhibit forms.
      */
-    const populateConsenters = async () => {
+    const populateConsenters = async (fragment) => {
       const msg = document.getElementById('apiResponse');
       msg.innerHTML = '';
       try {
         const role = AccessJwtCookie.getRole().name;
+        let package;
 
-        const response = await fetch(apiUri(role), {
-          method: 'GET',
-          mode: 'cors',
-          credentials: 'include',
-          headers: {
-            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
-            'Content-Type': 'application/json',
-            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({ 
-              task: 'get-consenter-list', 
-              parameters: { fragment: undefined } 
-            })
-          }
-        });
+        if(localTesting()) {
+          const allConsenters = [
+            { email:'jorge@hannabarbarra.com', fullname:'Jorge Jetson' },
+            { email:'janis@holding.co.com', fullname:'Janis Joplin' },
+            { email:'stevens@peace.train.com', fullname:'Cat Stevens' },
+            { email:'david@spiders.com', fullname:'David Bowie' },
+            { email:'bruce@maiden.com', fullname:'Bruce Dickenson' },
+          ];
 
-        const package = await response.json();
+          package = { payload: {
+            ok: 'Ok',
+            consenters: allConsenters.filter(c => fragment ? c.fullname.toLowerCase().includes(fragment.toLowerCase()) : true)
+          }};
+        }
+        else {
+          const response = await fetch(apiUri(role), {
+            method: 'GET',
+            mode: 'cors',
+            credentials: 'include',
+            headers: {
+              'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+              'Content-Type': 'application/json',
+              [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({ 
+                task: 'get-consenter-list', 
+                parameters: { fragment } 
+              })
+            }
+          });
+
+          package = await response.json();
+        }
+
+
         const { message, payload } = package;
         if(payload.ok) {
           const lbx = document.getElementById('consentersDropdownList');
@@ -4278,13 +4310,17 @@
       });
 
       // Add behavior to selection activity on the consenter picklist for exhibit form requests
-      $('#consentersDropdownButton').on('hide.bs.dropdown', function () {
+      $('#txtConsenterFilter').on('hide.bs.dropdown', function () {
         const a = event.srcElement.parentElement;
-        const button = document.getElementById('consentersDropdownButton');
+        const txt = document.getElementById('txtConsenterFilter');
         if(a.tagName == 'A' && a.name && a.id) {
-          button.innerHTML = a.innerHTML;
+          txt.value = a.id;
           selectedConsenter = a.name;
         }
+      });
+
+      $('#txtConsenterFilter').on('keyup', async () => {
+        populateConsenters(event.srcElement.value);
       });
 
       // Add an event handler for the button to send exhibit form requests to consenters.

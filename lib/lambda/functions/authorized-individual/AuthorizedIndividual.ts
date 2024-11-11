@@ -230,7 +230,7 @@ export const getConsenterList = async (fragment?:string):Promise<LambdaProxyInte
     if( ! fragment) {
       return { email, fullname };
     }
-    const match = fullname.toLocaleUpperCase().includes(fragment.toLocaleLowerCase());
+    const match = fullname.toLowerCase().includes(fragment.toLowerCase());
     return match ? { email, fullname } : undefined;
   }).filter(s => { return s != undefined });
   return okResponse('Ok', { consenters:mapped });
@@ -430,8 +430,9 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         break;
 
       case Task.GET_CONSENTERS:
+        const fragment = 'dd' as string | undefined;
         _event.headers[AbstractRoleApi.ETTPayloadHeader] = JSON.stringify({ task, parameters: {
-          fragment: undefined
+          fragment
         }} as IncomingPayload);
         break;
 
