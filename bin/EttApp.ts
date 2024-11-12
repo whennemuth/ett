@@ -91,7 +91,8 @@ const buildAll = () => {
   // Create all the delayed execution lambda functions
   const delayedExecutionLambdas = new DelayedExecutionLambdas(stack, 'DelayedExecution', {
     cloudfrontDomain: cloudfront.getDistributionDomainName(),
-    exhibitFormsBucket
+    exhibitFormsBucket,
+    userPoolId:cognito.getUserPool().userPoolId
   } as DelayedExecutionLambdaParms);
 
   // Set up an api for every role with cognito as the authorizer and oauth as the flow.
@@ -105,7 +106,8 @@ const buildAll = () => {
     exhibitFormsBucket: exhibitFormsBucket,
     databaseExhibitFormPurgeLambdaArn: delayedExecutionLambdas.databaseExhibitFormPurgeLambda.functionArn,
     disclosureRequestReminderLambdaArn: delayedExecutionLambdas.disclosureRequestReminderLambda.functionArn,
-    bucketExhibitFormPurgeLambdaArn: delayedExecutionLambdas.bucketExhibitFormPurgeLambda.functionArn
+    bucketExhibitFormPurgeLambdaArn: delayedExecutionLambdas.bucketExhibitFormPurgeLambda.functionArn,
+    handleStaleEntityVacancyLambdaArn: delayedExecutionLambdas.handleStaleEntityVacancyLambda.functionArn
   } as ApiConstructParms);
 
   // Grant the apis the necessary permissions (policy actions).
