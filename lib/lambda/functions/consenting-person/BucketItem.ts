@@ -62,6 +62,10 @@ export class BucketItem {
   }
 
   public deleteMultipleItems = async (Objects:ObjectIdentifier[]):Promise<DeleteObjectsCommandOutput> => {
+    if((Objects ?? []).length == 0) {
+      log(`No objects specified for deletion from ${this.bucketName}`);
+      return { $metadata: { httpStatusCode: 200 }} as DeleteObjectsCommandOutput;
+    }
     const { bucketName:Bucket, region } = this;
     const s3 = new S3({ region });
     log(Objects, `Deleting the following objects from ${this.bucketName}`);

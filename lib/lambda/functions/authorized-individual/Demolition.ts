@@ -7,6 +7,10 @@ import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { DynamoDbConstruct, TableBaseNames } from "../../../DynamoDb";
 import { log } from "../../Utils";
 import { IContext } from "../../../../contexts/IContext";
+import { BucketInventory } from "../consenting-person/BucketInventory";
+import { DeleteObjectsCommandOutput, ObjectIdentifier } from "@aws-sdk/client-s3";
+import { BucketItem } from "../consenting-person/BucketItem";
+import { EntityCrud } from "../../_lib/dao/dao-entity";
 
 const dbclient = new DynamoDBClient({ region: process.env.REGION });
 const cognitoClient = new CognitoIdentityProviderClient({ region: process.env.REGION });
@@ -25,13 +29,15 @@ export type DemolitionRecord = {
  */
 export class EntityToDemolish {
   private entityId: string;
+  private purgeBucket: boolean;
   private dynamodbCommandInput: TransactWriteItemsCommandInput;
   private _entity: Entity;
   private _deletedUsers = [] as User[];
   private _dryRun = false;
 
-  constructor(entityId:string) {
+  constructor(entityId:string, purgeBucket:boolean=true) {
     this.entityId = entityId;
+    this.purgeBucket = purgeBucket;
   }
 
   /**
@@ -112,11 +118,47 @@ export class EntityToDemolish {
     }
   }
 
+  /**
+   * Delete the content of every consenter in the exhibit forms bucket that each has related to the entity (if any).
+   */
+  public deleteBucketContentForEntity = async () => {
+    const { entity } = this;
+    if( ! entity) {
+      this._entity = await EntityCrud({ entity_id:this.entityId } as Entity ).read() as Entity;
+    }
+    const { entity: { entity_id } } = this;
+    const inventory = await BucketInventory.getInstanceForEntity(entity_id);
+    const keys = inventory.getKeys();
+    const objIds = keys.map(Key => ({ Key })) as ObjectIdentifier[];
+    const deleteResult:DeleteObjectsCommandOutput = await new BucketItem().deleteMultipleItems(objIds);
+
+    // Handle any returned errors
+    const errors = (deleteResult.Errors ?? []).length;
+    if(errors > 0) {
+      let msg = `Errors encountered deleting bucket content for ${entity_id}:`
+      deleteResult.Errors?.forEach(e => {
+        msg = `${msg}
+        ${JSON.stringify(e, null, 2)}`;
+      });
+      throw new Error(msg);
+    }
+
+    // Log success message
+    console.log("Successful - deleted:", (deleteResult.Deleted ?? []).length, "objects");
+  }
+
   public demolish = async ():Promise<any> => {
 
     await this.deleteEntityFromDatabase();
 
     await this.deleteEntityFromUserPool();
+
+    if( ! this.purgeBucket) {
+      log(`Demolition of entity ${this.entityId} will NOT affect related exhibit form content in S3`);
+      return;
+    }
+
+    await this.deleteBucketContentForEntity();
   }
 
   public get entity(): Entity {

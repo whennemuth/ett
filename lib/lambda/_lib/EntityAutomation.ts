@@ -136,37 +136,6 @@ export class EntityToAutomate {
   }
 
   /**
-   * Delete the content of every consenter in the exhibit forms bucket that each has related to the entity (if any).
-   */
-  private deleteBucketContentForEntity = async () => {
-    const { entity: { entity_id }} = this;
-    const inventory = await BucketInventory.getInstanceForEntity(entity_id);
-    const keys = inventory.getKeys();
-    const objIds = keys.map(Key => ({ Key })) as ObjectIdentifier[];
-    const deleteResult:DeleteObjectsCommandOutput = await new BucketItem().deleteMultipleItems(objIds);
-
-    // Handle any returned errors
-    const errors = (deleteResult.Errors ?? []).length;
-    if(errors > 0) {
-      let msg = `Errors encountered deleting bucket content for ${entity_id}:`
-      deleteResult.Errors?.forEach(e => {
-        msg = `${msg}
-        ${JSON.stringify(e, null, 2)}`;
-      });
-      throw new Error(msg);
-    }
-
-    // Handle any other sign of non-deletion result
-    const deletes = (deleteResult.Deleted ?? []).length;
-    if(deletes == 0) {
-      throw new Error(`Failure to delete any bucket items for ${entity_id}`)
-    }
-
-    // Log success message
-    console.log("Successfully deleted:", (deleteResult.Deleted ?? []).length, "objects");
-  }
-
-  /**
    * Set up the entity (create it and staff it)
    * @returns 
    */
@@ -194,7 +163,7 @@ export class EntityToAutomate {
    * @returns 
    */
   public teardown = async () => {
-    const { getEntity, deleteBucketContentForEntity, entityName } = this;
+    const { getEntity, entityName } = this;
 
     // Lookup the entity
     const entity = await getEntity();
@@ -207,9 +176,6 @@ export class EntityToAutomate {
     // Tear down the entity and its users (database and userpool)
     const demolishable = new EntityToDemolish(entity_id);
     await demolishable.demolish();
-
-    // Remove exhibit forms for any consenter that are for the specified entity from the s3 bucket.
-    await deleteBucketContentForEntity();
   }
 }
 
