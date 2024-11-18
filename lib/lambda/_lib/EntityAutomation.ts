@@ -1,15 +1,14 @@
-import { DeleteObjectsCommandOutput, ObjectIdentifier } from "@aws-sdk/client-s3";
+import { v4 as uuidv4 } from 'uuid';
 import { IContext } from "../../../contexts/IContext";
 import { EntityToDemolish } from "../functions/authorized-individual/Demolition";
-import { BucketInventory } from "../functions/consenting-person/BucketInventory";
+import { ExhibitFormsBucketEnvironmentVariableName } from "../functions/consenting-person/BucketItemMetadata";
 import { log } from "../Utils";
 import { lookupUserPoolId } from "./cognito/Lookup";
 import { CognitoStandardAttributes, UserAccount } from "./cognito/UserAccount";
 import { EntityCrud } from "./dao/dao-entity";
+import { InvitationCrud } from "./dao/dao-invitation";
 import { UserCrud } from "./dao/dao-user";
-import { Entity, Roles, User } from "./dao/entity";
-import { BucketItem } from "../functions/consenting-person/BucketItem";
-import { ExhibitFormsBucketEnvironmentVariableName } from "../functions/consenting-person/BucketItemMetadata";
+import { Entity, Invitation, Roles, User } from "./dao/entity";
 
 /**
  * This class can be used as a time saver in creating and staffing an entity.
@@ -90,7 +89,7 @@ export class EntityToAutomate {
     const sampleUsers = [
       { fullname:'Bugs Bunny', phone_number:'+6173334444', title:'Rabbit' },
       { fullname:'Daffy Duck', phone_number:'+7814448888', title:'Sufferin Succotash!' },
-      { fullname:'Elivs Presley', phone_number:'+5083339999', title:'Entertainer' },
+      { fullname:'Elvis Presley', phone_number:'+5083339999', title:'Entertainer' },
       { fullname:'Sherlock Holmes', phone_number:'+6172334567', title:'Detective' },
       { fullname:'Fred Flintstone', phone_number:'+7812227777', title:'Quarry Manager' },
       { fullname:'Elmer Fudd', phone_number:'+5084567890', title:'Wabbit Hunter' },
@@ -131,8 +130,16 @@ export class EntityToAutomate {
     }
     user.sub = sub;
     user.entity_id = entity_id;
-
     await UserCrud(user).create();
+
+    // Create invitations as if they had been sent, accepted, and used to mark registration date.
+    const now = new Date().toISOString();
+    await InvitationCrud({
+      code: uuidv4(),
+      email, entity_id, entity_name:entityName, role, 
+      acknowledged_timestamp:now, sent_timestamp:now, registered_timestamp:now, 
+      fullname:user.fullname, title:user.title, message_id:uuidv4()
+    } as Invitation).update();
   }
 
   /**
@@ -187,7 +194,7 @@ export class EntityToAutomate {
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/EntityAutomation.ts')) {
 
-  const task = 'teardown' as 'setup' | 'teardown'
+  const task = 'setup' as 'setup' | 'teardown' | 'recycle'
   const entityName = 'The School of Hard Knocks';
 
   // Setup an entity with one ASP and two AIs
@@ -206,17 +213,29 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/Enti
       process.env.USERPOOL_ID = userpoolId;
       process.env[ExhibitFormsBucketEnvironmentVariableName] = `${STACK_ID}-${Landscape}-exhibit-forms`;
       
+      const setup = async () => {
+        await new EntityToAutomate(entityName)
+        .addAsp({ email:'asp1.random.edu@warhen.work' } as User)
+        .addAI({ email:'auth1.random.edu@warhen.work' } as User)
+        .addAI({ email:'auth2.random.edu@warhen.work' } as User)
+        .setup();
+      }
+
+      const teardown = async () => {
+        await new EntityToAutomate(entityName).teardown();
+      }
+
       // 3) Execute the task
       switch(task) {
         case "setup":
-          await new EntityToAutomate(entityName)
-            .addAsp({ email:'asp1.random.edu@warhen.work' } as User)
-            .addAI( { email:'auth1.random.edu@warhen.work' } as User)
-            .addAI( { email:'auth2.random.edu@warhen.work' } as User)
-            .setup();
+          await setup();
           break;
         case "teardown":
-          await new EntityToAutomate(entityName).teardown();
+          await teardown();
+          break;
+        case "recycle":
+          await teardown();
+          await setup();
           break;
       }
     }
