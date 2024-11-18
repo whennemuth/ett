@@ -62,7 +62,7 @@ export class LambdaFunction extends AbstractFunction {
   constructor(scope: Construct, constructId: string, parms:ApiConstructParms) {
     const context:IContext = scope.node.getContext('stack-parms');
     const { STACK_ID, ACCOUNT, REGION, CONFIG } = context;
-    const { userPool, cloudfrontDomain, landscape, exhibitFormsBucket, disclosureRequestReminderLambdaArn } = parms;
+    const { userPool, cloudfrontDomain, landscape, exhibitFormsBucket, disclosureRequestReminderLambdaArn, handleStaleEntityVacancyLambdaArn } = parms;
     const { userPoolId, userPoolArn } = userPool;
     const prefix = `${STACK_ID}-${landscape}`;
     super(scope, constructId, {
@@ -120,7 +120,8 @@ export class LambdaFunction extends AbstractFunction {
               new PolicyStatement({
                 actions: [ 'lambda:AddPermission' ],
                 resources: [
-                  `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${prefix}-${DelayedExecutions.DisclosureRequestReminder.coreName}`
+                  `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${prefix}-${DelayedExecutions.DisclosureRequestReminder.coreName}`,
+                  `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${prefix}-${DelayedExecutions.HandleStaleEntityVacancy.coreName}`
                 ],
                 effect: Effect.ALLOW
               })
@@ -144,6 +145,7 @@ export class LambdaFunction extends AbstractFunction {
         PREFIX: prefix,
         [ExhibitFormsBucketEnvironmentVariableName]: exhibitFormsBucket.bucketName,
         [DelayedExecutions.DisclosureRequestReminder.targetArnEnvVarName]: disclosureRequestReminderLambdaArn,
+        [DelayedExecutions.HandleStaleEntityVacancy.targetArnEnvVarName]: handleStaleEntityVacancyLambdaArn,
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });

@@ -63,7 +63,6 @@ export class DelayedExecutionLambdas extends Construct {
   }
 
   private createDatabaseExhibitFormPurgeLambda = () => {
-    const { scope } = this;
     const { constructId, parms: { cloudfrontDomain }, context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } } = this;
     const baseId = `${constructId}DatabaseExhibitFormPurge`;
     const prefix = `${STACK_ID}-${landscape}`
@@ -130,7 +129,6 @@ export class DelayedExecutionLambdas extends Construct {
   }
 
   private createDisclosureRequestReminderLambda = () => {
-    const { scope } = this;
     const { constructId, parms: { cloudfrontDomain, exhibitFormsBucket: { bucketArn, bucketName } }, context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } } = this;
     const baseId = `${constructId}DisclosureRequestReminder`;
     const prefix = `${STACK_ID}-${landscape}`
@@ -218,7 +216,6 @@ export class DelayedExecutionLambdas extends Construct {
   }
 
   private createBucketExhibitFormPurgeLambda = () => {
-    const { scope } = this;
     const { constructId, parms: { cloudfrontDomain, exhibitFormsBucket: { bucketArn, bucketName } }, context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } } = this;
     const baseId = `${constructId}BucketPurge`;
     const prefix = `${STACK_ID}-${landscape}`
@@ -294,7 +291,6 @@ export class DelayedExecutionLambdas extends Construct {
   }
 
   private createHandleStaleEntityVacancyLambda = () => {
-    const { scope } = this;
     const { constructId, parms: { 
       cloudfrontDomain, 
       userPoolId, 
@@ -365,7 +361,16 @@ export class DelayedExecutionLambdas extends Construct {
                 effect: Effect.ALLOW
               })
             ]
-          })
+          }),
+          [`${functionName}-delete-user-from-pool`]: new PolicyDocument({
+            statements: [ new PolicyStatement({
+              actions: [
+                'cognito-idp:AdminDeleteUser',
+              ],
+              resources: [ `arn:aws:cognito-idp:${REGION}:${ACCOUNT}:userpool/${REGION}_*` ],
+              effect: Effect.ALLOW
+            })]
+          }),
         }
       }),
       environment: {
@@ -377,6 +382,14 @@ export class DelayedExecutionLambdas extends Construct {
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });
+
+    // Grant event bridge permission to invoke the lambda function.
+    this._handleStaleEntityVacancyLambda.addPermission(`${functionName}-invoke-permission`, {
+      principal: new ServicePrincipal('events.amazonaws.com'),
+      action: 'lambda:InvokeFunction',
+      sourceArn: `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
+    })
+
   }
 
   public get databaseExhibitFormPurgeLambda(): AbstractFunction {

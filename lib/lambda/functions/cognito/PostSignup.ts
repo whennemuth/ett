@@ -1,10 +1,14 @@
+import { CONFIG } from '../../../../contexts/IContext';
+import { debugLog, log } from '../../Utils';
 import { lookupRole, removeUserFromUserpool } from '../../_lib/cognito/Lookup';
-import { DAOUser, DAOFactory, DAOConsenter, DAOEntity } from '../../_lib/dao/dao';
-import { Role, UserFields, User, Invitation, Roles, Consenter, ConsenterFields, Entity } from '../../_lib/dao/entity';
-import { PostSignupEventType } from './PostSignupEventType';
+import { Configurations } from '../../_lib/config/Config';
+import { DAOConsenter, DAOEntity, DAOFactory, DAOUser } from '../../_lib/dao/dao';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
+import { UserCrud } from '../../_lib/dao/dao-user';
+import { ConfigNames, ConfigTypes, Consenter, ConsenterFields, Entity, Invitation, Role, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
+import { scheduleStaleEntityVacancyHandler } from '../authorized-individual/correction/EntityCorrection';
 import { updateReAdminInvitationWithNewEntity } from '../re-admin/ReAdminUser';
-import { debugLog } from '../../Utils';
+import { PostSignupEventType } from './PostSignupEventType';
 
 /**
  * After a user confirms their signup (uses verification code) in cognito, that event triggers this 
@@ -18,6 +22,47 @@ export const handler = async (_event:any) => {
   const event = _event as PostSignupEventType;
 
   let role:Role|undefined;
+  let invitation:Invitation|null = null;
+
+  /**
+   * Ensure the incoming event contains all expected fields with valid values.
+   * @param event 
+   * @param role 
+   * @returns 
+   */
+  const checkEvent = (event:PostSignupEventType):string|undefined => {
+    let invalidMsg:string|undefined;
+
+    if( ! event.request || ! event.request.userAttributes) {
+      invalidMsg = 'ERROR: Attributes are missing from the event';
+      console.log(invalidMsg);
+      return invalidMsg;
+    }
+
+    const { sub, email, email_verified, phone_number, 'cognito:user_status':status } = event.request.userAttributes;
+    const goodStatus = ( status && status.toUpperCase() == 'CONFIRMED' );
+    const emailVerified = ( email_verified && email_verified.toLowerCase() == 'true' );
+
+    if( ! goodStatus) {
+      invalidMsg = 'User is not confirmed!';
+    }
+    else if( ! emailVerified) {
+      invalidMsg = 'Users email has not been verified yet!';
+    }
+    else if( ! sub) {
+      invalidMsg = 'Cognito user ID (sub) is missing as an attribute in the event!';
+    }
+    else if( ! email) {
+      invalidMsg = 'Email is missing as an attribute in the event!';
+    }
+    else if( ! phone_number) {
+      invalidMsg = 'Phone number is missing as an attribute in the event!';
+    }
+    if(invalidMsg) {
+      console.error(`ERROR: ${invalidMsg}`);
+    }
+    return invalidMsg;
+  }
 
   /** Call this function to remove the user from the cognito userpool */
   const removeCognitoUser = async (reason:string) => {
@@ -40,6 +85,100 @@ export const handler = async (_event:any) => {
       }
     }
     throw new Error(errmsg);
+  }
+
+  /**
+   * Update the consenter in the database with the coginito sub value and the phone_number
+   * @param event 
+   * @returns 
+   */
+  const updateConsenterInDatabase = async (event:PostSignupEventType):Promise<Consenter|undefined> => {
+    const { sub, email, phone_number } = event.request.userAttributes;
+
+    const consenter = {
+      [ConsenterFields.email]: email,
+      [ConsenterFields.phone_number]: phone_number,
+      [ConsenterFields.sub]: sub,
+    } as Consenter;
+
+    const daoConsenter = DAOFactory.getInstance({ DAOType: 'consenter', Payload:consenter}) as DAOConsenter;
+    try {
+      await daoConsenter.update();
+    }
+    catch(e) {
+      console.error(e);
+      return;
+    }
+
+    return consenter;
+  }
+
+  /**
+   * Create the user in the database.
+   * @param event 
+   * @param role 
+   * @returns 
+   */
+  const addReAdminToDatabase = async (event:PostSignupEventType):Promise<User|undefined> => {
+    const { sub, email, phone_number } = event.request.userAttributes;
+
+    // Lookup the original invitation for the email to get the entity_id, fullname and title values:
+    invitation = await scrapeUserValuesFromInvitation(email, Roles.RE_ADMIN);
+
+    if( ! invitation) return;
+
+    let { entity_id, entity_name, fullname, title } = invitation;
+
+    if(entity_name && entity_name != ENTITY_WAITING_ROOM) {
+      // Create the entity
+      const daoEntity = DAOFactory.getInstance({ 
+        DAOType: 'entity', 
+        Payload: { entity_name, description:entity_name } as Entity
+      }) as DAOEntity;
+      await daoEntity.create();
+      entity_id = daoEntity.id();
+    }
+
+    const user = {
+      [UserFields.email]: email,
+      [UserFields.entity_id]: entity_id,
+      [UserFields.fullname]: fullname,
+      [UserFields.title]: title,
+      [UserFields.phone_number]: phone_number,
+      [UserFields.sub]: sub,
+      [UserFields.role]: Roles.RE_ADMIN
+    } as User;
+
+    const daoUser = DAOFactory.getInstance({ DAOType: 'user', Payload: user }) as DAOUser;
+    try {
+      await daoUser.create();
+
+      if(entity_id && entity_id != ENTITY_WAITING_ROOM) {
+        await updateReAdminInvitationWithNewEntity(email, entity_id);
+      }
+    } 
+    catch (e) {
+      console.error(e);
+      return;
+    } 
+
+    return user;
+  }
+
+  const addAuthIndToDatabase = async (event:PostSignupEventType):Promise<User|undefined> => {
+    const { sub, email, phone_number } = event.request.userAttributes;
+    // Lookup the original invitation for the email to get the entity_id, fullname and title values:
+    invitation = await scrapeUserValuesFromInvitation(email, Roles.RE_AUTH_IND);
+    if( ! invitation) return;
+    return addUserToDatabase(event, Roles.RE_AUTH_IND, invitation);
+  }
+
+  const addSysAdminToDatabase = async (event:PostSignupEventType):Promise<User|undefined> => {
+    const { sub, email, phone_number } = event.request.userAttributes;
+    // Lookup the original invitation for the email to get the entity_id, fullname and title values:
+    invitation = await scrapeUserValuesFromInvitation(email, Roles.SYS_ADMIN);
+    if( ! invitation) return;
+    return addUserToDatabase(event, Roles.SYS_ADMIN, invitation);
   }
 
   const { userPoolId, region, callerContext } = event;
@@ -70,7 +209,6 @@ export const handler = async (_event:any) => {
   let person:User|Consenter|undefined;
 
   switch(role as Roles) {
-
     case Roles.SYS_ADMIN:
       person = await addSysAdminToDatabase(event);
       break;
@@ -94,143 +232,33 @@ export const handler = async (_event:any) => {
     await removeCognitoUser(`Failed to update new ${role} in dynamodb`);
   }
 
+  // If, with the signup of the current user, the entity is nonetheless not fully staffed, create a delayed execution
+  // that will terminate the entity if the remaining user(s) do not register within the time dictated by policy.
+  if((role == Roles.RE_ADMIN || role == Roles.RE_AUTH_IND) && invitation) {
+    const { entity_id, entity_name } = invitation as Invitation;
+    const activeUsers = (await UserCrud({ entity_id } as User).read() as User[]).filter(u => u.active == YN.Yes);
+    const asps = activeUsers.filter(u => u.role == Roles.RE_ADMIN);
+    const ais = activeUsers.filter(u => u.role == Roles.RE_AUTH_IND);
+    const configs = new Configurations();
+    const aiMin = parseInt((await configs.getAppConfig(ConfigNames.AUTH_IND_NBR)).value);
+    const entity = { entity_id, entity_name } as Entity;
+    if(asps.length == 0) {
+      // This is probably not possible in a post signup scenario (ai wouldn't register before an asp), but account for it.
+      log(entity, 'Scheduling delayed execution for handling overdue vacancy of ASP');
+      await scheduleStaleEntityVacancyHandler(entity, Roles.RE_ADMIN);
+    }
+    else if(ais.length < aiMin) {
+      log(entity, 'Scheduling delayed execution for handling overdue vacancy of Authorized Individual');
+      await scheduleStaleEntityVacancyHandler(entity, Roles.RE_AUTH_IND);
+    }
+  }
+
   // Returning the event without change means a "pass" and cognito will carry signup to completion.
   return event;
 }
 
-/**
- * Ensure the incoming event contains all expected fields with valid values.
- * @param event 
- * @param role 
- * @returns 
- */
-const checkEvent = (event:PostSignupEventType):string|undefined => {
-  let invalidMsg:string|undefined;
 
-  if( ! event.request || ! event.request.userAttributes) {
-    invalidMsg = 'ERROR: Attributes are missing from the event';
-    console.log(invalidMsg);
-    return invalidMsg;
-  }
 
-  const { sub, email, email_verified, phone_number, 'cognito:user_status':status } = event.request.userAttributes;
-  const goodStatus = ( status && status.toUpperCase() == 'CONFIRMED' );
-  const emailVerified = ( email_verified && email_verified.toLowerCase() == 'true' );
-
-  if( ! goodStatus) {
-    invalidMsg = 'User is not confirmed!';
-  }
-  else if( ! emailVerified) {
-    invalidMsg = 'Users email has not been verified yet!';
-  }
-  else if( ! sub) {
-    invalidMsg = 'Cognito user ID (sub) is missing as an attribute in the event!';
-  }
-  else if( ! email) {
-    invalidMsg = 'Email is missing as an attribute in the event!';
-  }
-  else if( ! phone_number) {
-    invalidMsg = 'Phone number is missing as an attribute in the event!';
-  }
-  if(invalidMsg) {
-    console.error(`ERROR: ${invalidMsg}`);
-  }
-  return invalidMsg;
-}
-
-/**
- * Update the consenter in the database with the coginito sub value and the phone_number
- * @param event 
- * @returns 
- */
-const updateConsenterInDatabase = async (event:PostSignupEventType):Promise<Consenter|undefined> => {
-  const { sub, email, phone_number } = event.request.userAttributes;
-
-  const consenter = {
-    [ConsenterFields.email]: email,
-    [ConsenterFields.phone_number]: phone_number,
-    [ConsenterFields.sub]: sub,
-  } as Consenter;
-
-  const daoConsenter = DAOFactory.getInstance({ DAOType: 'consenter', Payload:consenter}) as DAOConsenter;
-  try {
-    await daoConsenter.update();
-  }
-  catch(e) {
-    console.error(e);
-    return;
-  }
-
-  return consenter;
-}
-
-/**
- * Create the user in the database.
- * @param event 
- * @param role 
- * @returns 
- */
-const addReAdminToDatabase = async (event:PostSignupEventType):Promise<User|undefined> => {
-  const { sub, email, phone_number } = event.request.userAttributes;
-
-  // Lookup the original invitation for the email to get the entity_id, fullname and title values:
-  const invitation = await scrapeUserValuesFromInvitation(email, Roles.RE_ADMIN);
-
-  if( ! invitation) return;
-
-  let { entity_id, entity_name, fullname, title } = invitation;
-
-  if(entity_name && entity_name != ENTITY_WAITING_ROOM) {
-    // Create the entity
-    const daoEntity = DAOFactory.getInstance({ 
-      DAOType: 'entity', 
-      Payload: { entity_name, description:entity_name } as Entity
-    }) as DAOEntity;
-    await daoEntity.create();
-    entity_id = daoEntity.id();
-  }
-
-  const user = {
-    [UserFields.email]: email,
-    [UserFields.entity_id]: entity_id,
-    [UserFields.fullname]: fullname,
-    [UserFields.title]: title,
-    [UserFields.phone_number]: phone_number,
-    [UserFields.sub]: sub,
-    [UserFields.role]: Roles.RE_ADMIN
-  } as User;
-
-  const daoUser = DAOFactory.getInstance({ DAOType: 'user', Payload: user }) as DAOUser;
-  try {
-    await daoUser.create();
-
-    if(entity_id && entity_id != ENTITY_WAITING_ROOM) {
-      await updateReAdminInvitationWithNewEntity(email, entity_id);
-    }
-  } 
-  catch (e) {
-    console.error(e);
-    return;
-  } 
-
-  return user;
-}
-
-const addAuthIndToDatabase = async (event:PostSignupEventType):Promise<User|undefined> => {
-  const { sub, email, phone_number } = event.request.userAttributes;
-  // Lookup the original invitation for the email to get the entity_id, fullname and title values:
-  const invitation = await scrapeUserValuesFromInvitation(email, Roles.RE_AUTH_IND);
-  if( ! invitation) return;
-  return addUserToDatabase(event, Roles.RE_AUTH_IND, invitation);
-}
-
-const addSysAdminToDatabase = async (event:PostSignupEventType):Promise<User|undefined> => {
-  const { sub, email, phone_number } = event.request.userAttributes;
-  // Lookup the original invitation for the email to get the entity_id, fullname and title values:
-  const invitation = await scrapeUserValuesFromInvitation(email, Roles.SYS_ADMIN);
-  if( ! invitation) return;
-  return addUserToDatabase(event, Roles.SYS_ADMIN, invitation);
-}
 
 const addUserToDatabase = async (event:PostSignupEventType, role:Role, invitation:Invitation):Promise<User|undefined> => {
   const { sub, email, phone_number } = event.request.userAttributes;
@@ -309,6 +337,15 @@ const scrapeUserValuesFromInvitation = async (email:string, role:Role):Promise<I
  */
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/cognito/PostSignup.ts')) {
+
+  // Create a reduced app config just for this test
+  const { AUTH_IND_NBR } = ConfigNames;
+  const configs = { useDatabase:false, configs: [
+    { name: AUTH_IND_NBR, value: '2', config_type: ConfigTypes.NUMBER, description: 'testing' },
+  ]} as CONFIG;
+  
+  // Set the config as an environment variable
+  process.env[Configurations.ENV_VAR_NAME] = JSON.stringify(configs);
 
   const mockEvent = {
     "version": "1",

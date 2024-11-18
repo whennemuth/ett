@@ -362,6 +362,20 @@
         width:200px; height: 67px; font-size: 18px; font-weight: bold;
       }
 
+      table.amendEntity, table.amendEntity td, table.amendEntity th {
+        border-style: none;
+        font-size: 18px;
+      }
+      table.amendEntity th {
+        font-weight:bold;
+      }
+      table.amendEntity td input {
+        font-size: 18px;
+      }
+      table.amendEntity th:nth-child(1) {
+        text-align: center;
+      }
+
       /* .text-left {
         text-align: left;
       } */
@@ -664,16 +678,33 @@
                   and representatives).
                 </li>
               </ol>
-              <div style="text-align: center; border-style:solid; padding:10px; ">
-                Check here
-                <input id="chkRegisterEntity" type="checkbox" class="form-check-input" onclick="document.getElementById('btnRegisterEntitySubmit').disabled = !this.checked;"/>
-                , type your name below, and submit, to digitally sign this Registration Form on behalf of the Registered Entity 
-                and to agree to these terms, register, and confirm your authority to do so.
-                <button id="btnRegisterEntitySubmit" class="btn btn-primary btn-lg" type="button" disabled>SUBMIT</button>
-                <br><br>
-                <div id="divTerminateEntity">
+              <div style="border-style:solid; padding:10px; overflow: auto;">
+
+                <div style="float:left; margin: 5px;">Check here</div>
+                <div style="float:left; margin: 5px; margin-top:3px;">
+                  <input id="chkRegisterEntity" type="checkbox" style="font-size:20px; border:2px solid black" class="form-check-input" /> ,
+                </div>
+                
+                <div style="float:left; clear: both; margin: 5px;">type your name:</div> 
+                <div style="float:left; margin: 5px; margin-top:0px;"><input type="text" class="form-control" id="txtEntityRepSig" style="width:200px; border:2px solid black" disabled>,</div>
+
+                <div style="float:left; clear: both; margin: 5px;">
+                  and submit, to digitally sign this Registration Form on behalf of the Registered Entity 
+                  and to agree to these terms, register, and confirm your authority to do so.
+                </div>
+                <div style="float:left; margin: 5px;">
+                  <span id='register-tooltip-0' data-toggle="tooltip">
+                    <button id="btnRegisterEntitySubmit" class="btn btn-primary btn-lg" type="button" disabled>SUBMIT & APPROVE</button>
+                  </span>
+                  <span style="font-size: 20px"><b> &nbsp;or...&nbsp;</b></span>
+                  <span id='register-tooltip-1' data-toggle="tooltip">
+                    <button id="btnRegisterEntitySubmitAmend" class="btn btn-primary btn-lg" type="button" disabled>SUBMIT & AMEND</button>
+                  </span>                            
+                </div>
+
+                <div style="float:right; clear: both; margin:15px; margin-top: 35px;" id="divTerminateEntity">
                   You may terminate your registration at any time 
-                  <button id="btnTerminateEntity" class="btn btn-danger btn-lg" type="button">Terminate</button>                
+                  <button id="btnTerminateEntity" class="btn btn-danger btn-lg" type="button">TERMINATE</button>                
                 </div>
               </div>
             </div>
@@ -962,9 +993,11 @@
                 <li class="nav-item">
                   <a class="nav-link" id="auth-request-disclosures-tab" data-toggle="tab" href="#auth-request-disclosures" role="tab" aria-controls="auth-request-disclosures-link" aria-selected="true">Request Disclosure Forms</a>
                 </li>
+                <li class="nav-item">
+                  <a class="nav-link" id="auth-amend-entity-tab" data-toggle="tab" href="#auth-amend-entity" role="tab" aria-controls="auth-amend-entity-link" aria-selected="true">Amend Entity</a>
+                </li>
               </ul>
               <h3 class="display-7 fw-bold">Welcome <span id="RE_AUTH_IND_username"></span></h3>
-              <h3 class="display-7 fw-bold">Authorized Individual</h3>
 
               <div id="authNotReady">
                 <p>
@@ -1007,6 +1040,38 @@
                           <button id="btnSendDisclosureRequest" class="btn btn-primary btn-lg" type="button">Send <i class="bi-send-check"></i></button>
                         </td>
                       </tr>
+                    </table>
+                  </div>
+                </div>
+                <div class="tab-pane fade" id="auth-amend-entity" role="tabpanel" aria-labelledby="auth-amend-entity-tab">
+                  <div id="amendEntity" style="margin-top: 40px; overflow:auto;">
+                    <div>
+                      You can amend <span id="spanAmendEntityCurrentName1" style="font-weight:bold;"></span> by modifying its name, or removing any 
+                      of its representatives, ncluding yourself. For removals, you can simply click the "Amend" button 
+                      adjacent to the corresponding individual. If you do this, you can continue normal operation for 
+                      30 days with the vacancy, but <span id="spanAmendEntityCurrentName2" style="font-weight:bold;"></span> will be terminated in 
+                      the ETT system if no replacement registers by then. Optionally, you can also type the email address 
+                      of an individual you intend as a replacement, and that person will be issued an email that invites 
+                      them to register with <span id="spanAmendEntityCurrentName3" style="font-weight:bold;"></span> with a special link. 
+                      The same 30 day deadline applies. 
+                    </div>
+                    <div id="divCancelAmendment" style="margin-top:20px; display:none;">
+                      You are amending <span id="spanAmendEntityCurrentName4" style="font-weight:bold;"></span> as a
+                      final step of your own registration <button id="btnCancelAmendment" class="btn btn-primary" type="button">Cancel Amendment</button>
+                    </div>
+                    <table id="tblAmendEntity" class="amendEntity" style="margin-top:30px;">
+                      <tr>
+                        <th colspan="3" id="tdAmendEntityCurrentName" style="font-size: 24px;"></th>
+                      </tr>
+                      <tr>
+                        <td colspan="2">
+                          <input id="txtAmendEntityNewName" type="text" class="form-control" placeholder="enter new name here . . .">
+                        </td>
+                        <td>
+                          <button id="btnAmendEntityName" class="btn btn-primary" type="button">Amend</button>
+                        </td>
+                      </tr>
+                      
                     </table>
                   </div>
                 </div>                
@@ -1904,8 +1969,10 @@
         invitation = _invitation;
         const { acknowledged_timestamp, registered_timestamp, email:invEmail, role } = invitation;
         selected_role = role;
+        const txtSign = document.getElementById('txtEntityRepSig');
         const chk = document.getElementById('chkRegisterEntity');
-        const btnSubmit = document.getElementById('btnRegisterEntitySubmit');
+        const btnSubmit1 = document.getElementById('btnRegisterEntitySubmit');
+        const btnSubmit2 = document.getElementById('btnRegisterEntitySubmitAmend');
         const divTerminateEntity = document.getElementById('divTerminateEntity');
 
         if(selected_role == 'RE_ADMIN') {
@@ -1921,11 +1988,16 @@
         if(registered_timestamp) {
           msg.innerHTML = `You registered at ${registered_timestamp}`;
           chk.checked = true;
-          btnSubmit.disabled = true;
+          txtSign.disabled = true;
+          btnSubmit1.disabled = true;
+          btnSubmit2.disabled = true;
         }
         else {
           chk.checked = false;
-          btnSubmit.disabled = true;
+          txtSign.value = '';
+          txtSign.disabled = true;
+          btnSubmit1.disabled = true;
+          btnSubmit2.disabled = true;
         }
 
         const sameUser = user =>  invEmail == user.email;
@@ -2055,7 +2127,7 @@
     /**
      * Submit entity registration and if successful, navigate to the cognito hosted UI.
      */
-    function registerEntity(invitationCode) {
+    function registerEntity(invitationCode, amend) {
       const msg = document.getElementById('apiResponse');
       msg.innerHtml = '';
       const uri = `${STATIC_PARAMETERS.REGISTER_ENTITY_API_URI}/register/${invitationCode}`;
@@ -2085,7 +2157,7 @@
               return /^txt[^\d]+Email\d*$/.test(this.id);
           })[0];
           email = email ? email.value : '';
-          signUp(email);
+          signUp(email, amend);
         }
         else {
           msg.innerHTML = `<pre>${message}</pre>`;
@@ -3397,12 +3469,16 @@
     /**
      * Signup for a cognito userpool account.
      */
-    function signUp(email) {
+    function signUp(email, amend) {
+      let redirect = `https://${redirectUri()}?action=post-signup&selected_role=${selected_role}`;
+      if(amend) {
+        redirect = `${redirect}&task=amend`;
+      }
       const params = {
         client_id: clientId(),
         response_type: 'code',
         scope: 'email+openid+phone',
-        redirect_uri: encodeURIComponent(`https://${redirectUri()}?action=post-signup&selected_role=${selected_role}`)
+        redirect_uri: encodeURIComponent(redirect)
       };
 
       if(email) {
@@ -3477,16 +3553,22 @@
      */
     const setUserContext = async () => {
       if(localTesting()) {
-        userContext = { 
-          entity: { 
-            entity_id:'abc123', 
-            entity_name:'The Hughs Corporation',
-            users: [
-              { email:'kong@skull.island.com', fullname:'King Kong', title:'Head Honcho', role:'RE_ADMIN', active:'Y' },
-              { email:'mary@disney.com', fullname:'Mary Poppins', title:'Nannie', role:'RE_AUTH_IND', active:'Y'},
-              { email:'mickey@disney.com', fullname:'Mickey Mouse', title:'Entertainer', role:'RE_AUTH_IND', active:'Y'}
-            ]
-          },
+        const asp = { email:'kong@skull.island.com', fullname:'King Kong', title:'Head Honcho', role:'RE_ADMIN', active:'Y' };
+        const ai1 = { email:'mary@disney.com', fullname:'Mary Poppins', title:'Nannie', role:'RE_AUTH_IND', active:'Y'};
+        const ai2 = { email:'mickey@disney.com', fullname:'Mickey Mouse', title:'Entertainer', role:'RE_AUTH_IND', active:'Y'};
+        const entity_id = 'abc123';
+        const entity_name = 'The Hughs Corporation';
+        if(selected_role == 'RE_ADMIN') {
+          userContext = {
+            fullname: asp.fullname, email: asp.email, title: asp.title, role: asp.role,          
+            entity: { entity_id, entity_name, users: [ ai1, ai2 ]}
+          }
+        }
+        else {
+          userContext = {
+            fullname:ai1.fullname, email: ai1.email, title: ai1.title, role: ai1.role,           
+            entity: { entity_id, entity_name,  users: [ asp, ai2 ]}
+          }
         }
         return;
       }
@@ -3751,6 +3833,178 @@
             a.innerHTML = `<b>${fullname}</b>, <span style='font-style:italic;'>(${email})</span>`;
             lbx.appendChild(a);
           })
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
+    /**
+     * Create line items for representatives portion of the amend entity tab so that the current
+     * user can select and replace any of the existing users of the entity.
+     */
+    const populateAmendableUsers = () => {
+      const tbl = document.getElementById('tblAmendEntity');
+      while(tbl.rows.length > 2){ 
+        tbl.deleteRow(tbl.rows.length-1); 
+      };
+      let { email:_email, fullname:_fullname, title:_title, role:_role, entity: { 
+        entity_name, entity_id, users,  
+      }} = userContext;
+      document.getElementById('tdAmendEntityCurrentName').innerText = entity_name;
+      document.getElementById('spanAmendEntityCurrentName1').innerText = entity_name;
+      document.getElementById('spanAmendEntityCurrentName2').innerText = entity_name;
+      document.getElementById('spanAmendEntityCurrentName3').innerText = entity_name;
+      document.getElementById('spanAmendEntityCurrentName4').innerText = entity_name;
+
+      document.getElementById('btnAmendEntityName').addEventListener('click', async() => {
+        const newEntityName = event.srcElement.parentElement.parentElement.querySelector('.form-control').value;
+        sendEntityAmendmentRequest({
+          task:'amend-entity-name', newEntityName
+        });
+      });
+
+      const { name, email } = IDJwtCookie.getUser();
+      users.push({ fullname:_fullname, email:_email, title:_title, role:_role });
+
+      users.forEach(user => {
+        const { fullname, email, title, role} = user;
+        const myself = email == _email;
+
+        let tr = tbl.insertRow();
+        let td = document.createElement('th');
+        td.style.paddingTop = '30px';
+        td.style.borderBottom = '1px solid black';
+        td.style.paddingBottom = '4px'
+        td.innerHTML = myself ? `Myself <span style='font-style:italic;'>(${fullname})</span>` : fullname;
+        td.colSpan = 3;
+        tr.appendChild(td);
+
+        tr = tbl.insertRow();
+        td = tr.insertCell();
+        td.innerText = 'Role';
+        td.style.fontWeight = 'bold';
+        td.style.textAlign = 'right';
+        td = tr.insertCell();
+        td.innerText = role == 'RE_ADMIN' ? 'Administrative Support Person' : 'Authorized Individual';
+
+        tr = tbl.insertRow();
+        td = tr.insertCell();
+        td.innerText = 'Email';
+        td.style.fontWeight = 'bold';
+        td.style.textAlign = 'right';
+        td = tr.insertCell();
+        td.innerText = email;
+
+        tr = tbl.insertRow();
+        td = tr.insertCell();
+        td.innerText = 'Title';
+        td.style.fontWeight = 'bold';
+        td.style.textAlign = 'right';
+        td = tr.insertCell();
+        td.innerText = title;
+
+        tr = tbl.insertRow();
+        td = tr.insertCell();
+        td.innerHTML = myself ?
+          "Remove me from the entity <span style='font-style:italic;'>(one of the remaining reps will invite my replacement)</span>" :
+          "Remove from the entity <span style='font-style:italic;'>(and optionally invite a replacement)</span>";
+        td.colSpan = myself ? 2 : 3;
+        if( ! myself) {
+          tr = tbl.insertRow();
+          td = tr.insertCell();
+          td.colSpan = 2;
+          let input = document.createElement('input');
+          input.className = 'form-control';
+          input.placeholder = `enter email address of invitee to replace ${fullname} here . . .`;
+          td.appendChild(input);          
+        }         
+
+        td = tr.insertCell();
+        let button = document.createElement('button');
+        let txt = document.createTextNode('Amend');
+        button.appendChild(txt);
+        button.className = 'btn btn-primary';
+        button.addEventListener('click', async() => {
+          const invitee = (event.srcElement.parentElement.parentElement.querySelector('.form-control') ?? {}).value;
+          sendEntityAmendmentRequest({
+            task:'amend-entity-user', email, myself, invitee
+          });
+        });
+        td.appendChild(button);
+      })
+    }
+
+    const sendEntityAmendmentRequest = async (parms) => {
+      let { role, entity: { entity_name, entity_id, users }} = userContext;
+      const { email:replacerEmail } = IDJwtCookie.getUser();
+      const { task, newEntityName, email:replaceableEmail, invitee:replacementEmail, myself } = parms;
+
+      let parameters = {};
+      let confirmMsg;
+      switch(task) {
+        case 'amend-entity-name':
+          if( ! newEntityName) {
+            alert('Please enter a new entity name');
+            return;
+          }
+          if(newEntityName.trim() == entity_name.trim()) {
+            alert('No change detected in your entry for a new entity name.');
+            return;
+          }
+          confirmMsg = `Change ${entity_name}\nto...\n"${newEntityName}"?`
+          parameters = { entity_id, name:newEntityName };
+          if( ! confirm(confirmMsg)) {
+            return;
+          }
+          break;
+        case 'amend-entity-user':;
+          confirmMsg = `Remove ${replaceableEmail} from ${entity_name}`;
+          if(replacementEmail) {
+            confirmMsg = `${confirmMsg}\nand invite ${replacementEmail} as a replacement`
+          }
+          confirmMsg = `${confirmMsg}?`;
+          if( ! confirm(confirmMsg)) {
+            return;
+          }
+          parameters = { entity_id, replacerEmail, replaceableEmail, replacementEmail }
+          break;
+        default:
+          alert(`Invalid/missing task: ${task ?? 'missing'}`);
+          return;
+      }
+
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+        document.body.style.cursor = 'progress';
+        const response = await fetch(apiUri(role), {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({ task, parameters })
+          }
+        });
+
+        const package = await response.json();
+        document.body.style.cursor = 'default';
+
+        if(myself) {
+          signOut();
+        }
+
+        const { message, payload } = package;
+        if(payload.ok) {
+          await setUserContext();
+          populateAmendableUsers();
+          alert('Update complete!');
         }
         else {
           msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
@@ -4084,6 +4338,13 @@
         return true;
       };
       this.getUser = function() {
+        if(localTesting()) {
+          const { entity: { users }} = userContext; 
+          const idx = selected_role == 'RE_ADMIN' ? 0 : 1;
+          const name = users[idx].fullname;
+          const email = users[idx].email;
+          return { name, email, getDisplayName: () => name || email };
+         }
         const decodedToken = this.getDecodedToken();
         const { name, email } = decodedToken;
         return { name, email, getDisplayName: () => name || email };
@@ -4158,6 +4419,7 @@
       const queryParams = new URLSearchParams(window.location.search);
       const action = queryParams.get('action');
       const invitationCode = queryParams.get('code');
+      let task = queryParams.get('task');
  
       // Assign events to buttons
       document.getElementById('btnSignin').addEventListener('click', () => {
@@ -4183,8 +4445,20 @@
       document.getElementById('btnRegisterEntitySubmit').addEventListener('click', () => {
         registerEntity(invitationCode);
       });
+      document.getElementById('btnRegisterEntitySubmitAmend').addEventListener('click', () => {
+        registerEntity(invitationCode, true);
+      });
       document.getElementById('btnTerminateEntity').addEventListener('click', async () => {
         await terminateEntity(invitationCode);
+      });
+      document.getElementById('chkRegisterEntity').addEventListener('click', async () => {
+        const checked = event.srcElement.checked;
+        const controls = [ 'btnRegisterEntitySubmit', 'btnRegisterEntitySubmitAmend', 'txtEntityRepSig' ];
+        controls.forEach(id => {
+          const control = document.getElementById(id);
+          control.disabled = !checked;
+          if( ! checked) control.value = '';
+        });
       });
       document.getElementById('btnCleanSheet').addEventListener('click', async () => {
         await cleanSheet();
@@ -4347,6 +4621,10 @@
           '<br><ol><li><b>Employers</b><br>List your current employers and former employers for the period specified by the ETT-Registered Entity that requested this Exhibit Form (“Registered Entity”) in connection with considering you for a Privilege or Honor, Employment or Role. List up to date contacts of the type specified by the ETT-Registered Entity (e.g., HR, supervisor, department head)</li><li><b>Academic / Professional Societies & Organizations</b><br>List your current and former academic, professional, and field-related honorary and membership societies and organizations (same period as under 1 above). Contact should be the Executive Director/CEO.</li><li><b>Other Affiliated Organizations</b><br>List the current and former organizations where you have or had emeritus/emerita, visiting, or other teaching, research, or administrative appointments—or that have given you an honor or award (same period and contact as under 1 above)</li></ol>',
           'Add another affiliate',
           'Remove this affiliate'
+        ],
+        register: [
+          'Click here to submit your approval of registration.',
+          'Click here to submit your approval of registration combined with an amendment to it.<p>An amendment can include:</p> <ul><li>A change of entity name</li><li>Correction of either of the other entity representatives, including immediate or deferred replacement with another individual.</li></ul>'
         ]
       }
 
@@ -4436,6 +4714,20 @@
               document.getElementById('auth-request-exhibits-tab').addEventListener('show.bs.tab', async event => {
                 await checkConsenterListing();
               });
+
+              if(task == 'amend') {
+                const amendTab = document.querySelector('#auth-amend-entity-tab');
+                const tab = new bootstrap.Tab(amendTab);
+                tab.show();
+                document.getElementById('auth-request-exhibits-tab').style.display = 'none';
+                document.getElementById('auth-request-disclosures-tab').style.display = 'none';
+                document.getElementById('divCancelAmendment').style.display = 'block';
+                document.getElementById('btnCancelAmendment').addEventListener('click', () => {
+                  document.location.href = document.location.href.replace(/\&?task\=amend/, '');
+                });
+              }
+              populateAmendableUsers();
+
               break;
             
             case 'CONSENTING_PERSON':

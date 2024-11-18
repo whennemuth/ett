@@ -1,4 +1,5 @@
 import { IContext } from '../../../../contexts/IContext';
+import { DelayedExecutions } from '../../../DelayedExecution';
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
 import { lookupEmail, lookupUserPoolId } from '../../_lib/cognito/Lookup';
 import { DAOEntity, DAOFactory, DAOUser } from '../../_lib/dao/dao';
@@ -7,6 +8,7 @@ import { Entity, Invitation, Role, Roles, User, UserFields, YN } from '../../_li
 import { UserInvitation } from '../../_lib/invitation/Invitation';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
 import { debugLog, errorResponse, invalidResponse, isOk, log, lookupCloudfrontDomain, lookupPendingInvitations, lookupSingleActiveEntity, lookupSingleUser, lookupUser, mergeResponses, okResponse } from "../../Utils";
+import { ExhibitFormsBucketEnvironmentVariableName } from '../consenting-person/BucketItemMetadata';
 
 export enum Task {
   CREATE_ENTITY = 'create-entity',
@@ -488,18 +490,38 @@ export const createEntityAndInviteUsers = async (parameters:any, callerSub?:stri
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/re-admin/ReAdminUser.ts')) {
 
+  const task = Task.INVITE_USERS as Task;
+  const { DisclosureRequestReminder, HandleStaleEntityVacancy } = DelayedExecutions;
+
   (async () => {
+    // 1) Get context variables
     const context:IContext = await require('../../../../contexts/context.json');
-    const { STACK_ID, REGION, TAGS: { Landscape }} = context;
+    const { STACK_ID, ACCOUNT, REGION, TAGS: { Landscape }} = context;
+    const prefix = `${STACK_ID}-${Landscape}`;
 
-    const task = Task.INVITE_USERS as Task;
-
+    // 2) Get the cloudfront domain
     const cloudfrontDomain = await lookupCloudfrontDomain(Landscape);
-    process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
+    if( ! cloudfrontDomain) {
+      throw('Cloudfront domain lookup failure');
+    }
 
-    const userpoolId = await lookupUserPoolId(`${STACK_ID}-${Landscape}-cognito-userpool`, REGION);
+    // 3) Get the userpool ID
+    const userpoolId = await lookupUserPoolId(`${prefix}-cognito-userpool`, REGION);
+
+    // 4) Get bucket name & lambda function arns
+    const bucketName = `${prefix}-exhibit-forms`;
+    const discFuncName = `${prefix}-${DisclosureRequestReminder.coreName}`;
+    const staleFuncName = `${prefix}-${HandleStaleEntityVacancy.coreName}`;
+
+    // 5) Set environment variables (many are used if the RE_ADMIN is doing work on behalf of an AI)
+    process.env[DisclosureRequestReminder.targetArnEnvVarName] = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${discFuncName}`;
+    process.env[HandleStaleEntityVacancy.targetArnEnvVarName] = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${staleFuncName}`;
+    process.env[ExhibitFormsBucketEnvironmentVariableName] = bucketName;
+    process.env.PREFIX = prefix
+    process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
     process.env.USERPOOL_ID = userpoolId;
     process.env.REGION = REGION;
+
     let payload = {};
     let _event = {};
 

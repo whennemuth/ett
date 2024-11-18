@@ -1,4 +1,5 @@
 import { IContext } from "../../../../../contexts/IContext";
+import { DelayedExecutions } from "../../../../DelayedExecution";
 import { lookupUserPoolId } from "../../../_lib/cognito/Lookup";
 import { CognitoStandardAttributes, UserAccount } from "../../../_lib/cognito/UserAccount";
 import { EntityCrud } from "../../../_lib/dao/dao-entity";
@@ -173,7 +174,7 @@ export class Personnel {
         return;
       }
       const { email, entity_id } = replaceable;
-      await UserCrud(replaceable).update({ email, entity_id, active:YN.No } as User);
+      await UserCrud({ email, entity_id, active:YN.No } as User).update();
     }
 
     const removeUserFromCognito = async ():Promise<void> => {
@@ -183,7 +184,7 @@ export class Personnel {
         return;
       }
       const account = await UserAccount.getInstance({
-        propname:'email', value:replaceable.email
+        email: { propname:'email', value:replaceable.email }
       } as CognitoStandardAttributes, replaceable.role);
 
       const deleted = await account.Delete();
@@ -249,23 +250,35 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
 
   const swapType = 'remove-self' as 'replace-self'|'remove-self'|'replace-another'|'remove-another';
   const dryrun = true;
+  const { HandleStaleEntityVacancy } = DelayedExecutions;
 
   (async () => {
     const context:IContext = await require('../../../../../contexts/context.json');
-    const { STACK_ID, REGION, TAGS: { Landscape }} = context;
+    const { STACK_ID, ACCOUNT, REGION, TAGS: { Landscape }} = context;
+    const prefix = `${STACK_ID}-${Landscape}`;
 
     // Get cloudfront domain
     const cloudfrontDomain = await lookupCloudfrontDomain(Landscape);
-    process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
 
     // Get userpool ID
-    const userpoolId = await lookupUserPoolId(`${STACK_ID}-${Landscape}-cognito-userpool`, REGION);
+    const userpoolId = await lookupUserPoolId(`${prefix}-cognito-userpool`, REGION);
+
+    // Get the arn of the applicable delayed execution lambda function
+    const staleFuncName = `${prefix}-${HandleStaleEntityVacancy.coreName}`;
+
+    // Set environment variables
+    process.env[HandleStaleEntityVacancy.targetArnEnvVarName] = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${staleFuncName}`;
+    process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
     process.env.USERPOOL_ID = userpoolId;
     process.env.REGION = REGION;
+    process.env.PREFIX = prefix;
 
+    // Set parameters
     const replacer = 'auth2.au.edu@warhen.work';
     const replaceable = 'auth1.au.edu@warhen.work';
     const replacement = 'auth3.au.edu@warhen.work';
+
+    // Perform the personnel operation
     let swap:Personnel;
     switch(swapType) {
       case "replace-self":
