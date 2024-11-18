@@ -38,19 +38,25 @@ export class UserAccount {
     const user = new UserAccount();
 
     user.role = role;
+    user.region = process.env.REGION ?? 'us-east-2';
     user.UserAttributes.push(...UserAccount.getUserAttributes(cognitoAttributes));
 
-    // Get environment variables
-    user.region = process.env.REGION ?? 'us-east-2';
+
+    // Get userpool ID directly from the environment
+    let id = process.env.USERPOOL_ID;
+    if(id) {
+      user.UserPoolId = id;
+      return user;    
+    }
+
+    // If undefined, get userpool ID by looking it up against the userpool name
     const prefix = process.env.PREFIX;
-
-    // Get the userpool ID
     const userPoolName = `${prefix}-cognito-userpool`;
-
-    const id = await lookupUserPoolId(userPoolName, user.region);
+    id = await lookupUserPoolId(userPoolName, user.region);
     if( ! id) {
       throw new Error('Userpool ID lookup failed!');
     }
+
     user.UserPoolId = id;
     return user;  
   }
@@ -227,7 +233,7 @@ export class UserAccount {
       debugLog(response);
       const code = response.$metadata.httpStatusCode ?? 200; // Assume ok if no code returned.
       if( ! (code >= 200 && code < 300)) {
-        throw new Error(`Update of user in userpool failed, status code: ${code}`);
+        throw new Error(`Delete of user in userpool failed, status code: ${code}`);
       }
       return true;
     }
