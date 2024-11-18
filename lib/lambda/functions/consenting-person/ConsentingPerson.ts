@@ -659,7 +659,7 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
           const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
           const waitTime = (await configs.getAppConfig(deleteAfter)).getDuration();
           const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
-          await delayedTestExecution.startCountdown(timer, `S3 exhibit form purge`);
+          await delayedTestExecution.startCountdown(timer, `S3 exhibit form purge (${consenter.email})`);
         }
         else {
           console.error(`Cannot schedule ${deleteAfter} bucket item purge: ${envVarName} variable is missing from the environment!`);

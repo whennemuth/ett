@@ -99,7 +99,7 @@ export class EntityToDemolish {
     const deleteUser = async (Username:string):Promise<AdminDeleteUserCommandOutput|string> => {
       const input = { UserPoolId, Username } as AdminDeleteUserRequest;
       const command = new AdminDeleteUserCommand(input);
-      log(input, `Demolishing users from userpool related to entity ${this.entityId}`);
+      log(input, `Demolishing user from userpool related to entity ${this.entityId}`);
       if(this._dryRun) {
         return new Promise((resolve) => resolve('dryrun'));
       }
@@ -110,7 +110,7 @@ export class EntityToDemolish {
       try {
         var username = this._deletedUsers[i].sub;
         const output:AdminDeleteUserCommandOutput|string = await deleteUser(username);
-        log(output, `User ${username} deleted`);
+        log(output, `User ${username}/${this._deletedUsers[i].email} deleted`);
       }
       catch(reason) {
         log(reason);

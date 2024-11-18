@@ -64,7 +64,7 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
         const config = await configs.getAppConfig(STALE_AI_VACANCY) as IAppConfig;
         if(await exceededRoleVacancyTimeLimit(Roles.RE_AUTH_IND, config)) {
           const days = Math.floor(config.getDuration() / DAY);
-          log(`${entity_name} authorized individual vacancy has exceeded the ${days} limit.`);
+          log(`${entity_name} authorized individual vacancy has exceeded the ${days} days limit.`);
           violation = true;
         }
       }

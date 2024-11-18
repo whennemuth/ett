@@ -167,6 +167,7 @@ export class Personnel {
     }
 
     const deactivateUserInDatabase = async ():Promise<void> => {
+      log(replaceable, 'Personnel.deactivateUserInDatabase')
       if(dryrun) {
         log(replaceable, `DRYRUN: deactivating user in database...`);
         return;
@@ -176,6 +177,7 @@ export class Personnel {
     }
 
     const removeUserFromCognito = async ():Promise<void> => {
+      log(replaceable, 'Personnel.removeUserFromCognito')
       if(dryrun) {
         log(`DRYRUN: Removing ${replaceable.email} from cognito...`);
         return;
@@ -206,6 +208,7 @@ export class Personnel {
         log({ invitee, link }, `DRYRUN: Sending invitation`);
         return;
       }
+      log(invitee, 'Personnel.inviteNewUser');
       await inviteUser(invitee, inviterRole, linkGenerator );
     }
 

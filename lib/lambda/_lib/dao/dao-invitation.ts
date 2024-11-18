@@ -108,7 +108,7 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
     let parmEntityId = entity_id ? `entity_id: ${entity_id}` : '';
     if(parmEmail && parmEntityId) parmEntityId = `${parmEntityId}`;
 
-    console.log(`Reading all invitations for ${parmEmail}, ${parmEntityId}`);
+    log({ email:parmEmail, entity_id:parmEntityId }, 'Reading all invitations for');
 
     // Declare QueryCommandInput fields
     let vals = {} as any;
