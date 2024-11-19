@@ -41,7 +41,7 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
    * Create a new user.
    * @returns 
    */
-  const create = async (): Promise<PutItemCommandOutput> => {
+  const create = async (): Promise<UpdateItemCommandOutput> => {
     console.log(`Creating ${role}: ${fullname}`);
 
     // Handle required field validation
@@ -54,25 +54,13 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
 
     // Make sure the original userinfo object gets a create_timestamp value if a default value is invoked.
     if( ! userinfo.create_timestamp) userinfo.create_timestamp = create_timestamp;
+
+    // Make sure the original userinfo object gets an active value if a default value is invoked.
+    if( ! userinfo.active) userinfo.active = active;
     
-    const ItemToCreate = {
-      [UserFields.email]: { S: email }, 
-      [UserFields.entity_id]: { S: entity_id }, 
-      [UserFields.sub]: { S: sub },
-      [UserFields.role]: { S: role },
-      // https://aws.amazon.com/blogs/database/working-with-date-and-timestamp-data-types-in-amazon-dynamodb/
-      [UserFields.create_timestamp]: { S: create_timestamp},
-      [UserFields.update_timestamp]: { S: create_timestamp},
-      [UserFields.active]: { S: active },
-    } as any
-
-    // Add non-required fields
-    if(fullname) ItemToCreate[UserFields.fullname] = { S: fullname };
-    if(title) ItemToCreate[UserFields.title] = { S: title };
-    if(phone_number) ItemToCreate[UserFields.phone_number] = { S: phone_number };
-
-    // Send the command
-    command = new PutItemCommand({ TableName, Item: ItemToCreate });
+    console.log(`Creating user: ${email} / ${entity_id}`);
+    const input = userUpdate(TableName, userinfo).buildUpdateItemCommandInput() as UpdateItemCommandInput;
+    command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
 
@@ -287,4 +275,40 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
   }
   
   return { create, read, update, migrate, Delete, deleteEntity, dryRun, test, } as DAOUser
+}
+
+
+
+/**
+ * RUN MANUALLY
+ */
+const { argv:args } = process;
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/dao/dao-user.ts')) {
+
+  const user = {
+    email: 'testing@testing.com',
+    entity_id: 'test-entity-ID',
+    role: Roles.RE_AUTH_IND,
+    sub: 'abc-123',
+    fullname: 'Bart Simpson',
+    phone_number: '+1234567890',
+    title: 'Prankster',
+    active: YN.Yes
+  } as User;
+
+  const task = 'create' as 'create' | 'update' | 'read' | 'delete' | 'migrate';
+
+  (async () => {
+    switch(task) {
+      case 'create':
+        await UserCrud(user).create();
+        break;
+      case 'update':
+        await UserCrud(user).update();
+        break;
+      case 'read':
+      case 'delete':
+      case 'migrate':
+    }
+  })();
 }
