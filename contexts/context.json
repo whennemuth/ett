@@ -13,6 +13,18 @@
         "config_type": "number",
         "description": "Number of authorized individuals per entity"
       },
+      {
+        "name": "auth-ind-invitation-expire-after",
+        "value": "2592000",
+        "config_type": "duration",
+        "description": "Duration an invitation to an AI lasts before expiring"
+      },
+      {
+        "name": "asp-invitation-expire-after",
+        "value": "2592000",
+        "config_type": "duration",
+        "description": "Duration an invitation to an ASP lasts before expiring"
+      },
       { 
         "name": "first-reminder", 
         "value": "1209600",
