@@ -1,4 +1,4 @@
-import { CognitoLookupMock, InvitationMock, UtilsMock, DaoMock, SignupLinkMock, 
+import { CognitoLookupMock, InvitationMock, UtilsMock, DaoMock, SignupLinkMock, ConfigurationsMock,
   ParameterValidationTests, UserInvitationTests, EntityLookupTests, CreateAndInviteTests, MockingScenario, CreateEntityTests } from './ReAdminUser.mocks';
 
 process.env.CLOUDFRONT_DOMAIN = 'dnkkwr06vb9yr.cloudfront.net';
@@ -28,6 +28,10 @@ const cognitoLookupMock = jest.mock('../../_lib/cognito/Lookup.ts', () => {
 const daoMock = jest.mock('../../_lib/dao/dao.ts', () => {
   const originalModule = jest.requireActual('../../_lib/dao/dao.ts');
   return DaoMock(originalModule);
+});
+
+const configurationsMock = jest.mock('../../_lib/config/Config.ts', () => {
+  return ConfigurationsMock();
 });
 
 import { mockEvent } from './MockEvent';
@@ -74,6 +78,9 @@ describe('ReAdminUser lambda trigger: inviteUser', () => {
   });
   it('Should return 200 if a second invitation is being made for AUTH_IND for same entity', async () => {
     await UserInvitationTests.outstandingInvitationAuthInd(handler, mockEvent, Task.INVITE_USER);
+  });
+  it('Should return 400 if a second invitation is being made for RE_ADMIN by an RE_ADMIN for same entity', async () => {
+    await UserInvitationTests.outstandingInvitationByReAdminForReAdmin(handler, mockEvent, Task.INVITE_USER);
   });
   it('Should return 200 if all validity criterion are met', async () => {
     await UserInvitationTests.send200(handler, mockEvent, Task.INVITE_USER);

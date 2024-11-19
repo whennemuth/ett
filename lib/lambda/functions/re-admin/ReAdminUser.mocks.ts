@@ -2,8 +2,9 @@ import { UpdateItemCommandOutput } from "@aws-sdk/client-dynamodb";
 import { IncomingPayload, OutgoingBody } from "../../../role/AbstractRole";
 import { DAOEntity, DAOInvitation, DAOUser, FactoryParms } from "../../_lib/dao/dao";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
-import { Entity, Invitation, Role, Roles, User, YN } from "../../_lib/dao/entity";
+import { ConfigName, ConfigNames, ConfigType, ConfigTypes, Entity, Invitation, Role, Roles, User, YN } from "../../_lib/dao/entity";
 import { MockCalls, TestParms, invokeAndAssert } from "../../UtilsTest";
+import { AppConfig, IAppConfig } from "../../_lib/config/Config";
 
 /**
  * Keeps track of how many times any method of any mock has been called.
@@ -21,10 +22,15 @@ export function UtilsMock(originalModule: any) {
     ...originalModule,
     lookupSingleUser: async (email:string, entity_id:string):Promise<User|null> => { 
       mockCalls.update('lookupSingleUser');
-      if(email === 'exists@gmail.com') {
-        return {
-          email, entity_id, role:Roles.RE_AUTH_IND
-        } as User;
+      switch(email) {
+        case 'exists@gmail.com':
+          return {
+            email, entity_id, role:Roles.RE_AUTH_IND, active:YN.Yes
+          } as User;
+        case 'alreadyInvitedReAdmin_2@gmail.com':
+          return {
+            email, entity_id, role:Roles.RE_ADMIN, active:YN.Yes
+          } as User
       }
       return null;
     },
@@ -51,7 +57,7 @@ export function UtilsMock(originalModule: any) {
       const pending = [] as Invitation[];
       switch(entity_id) {
         case 'id_for_entity_with_pending_invitation_for_re_admin':
-          pending.push( { code: 'abc123', entity_id, email: 'alreadyInvitedReAdmin@gmail.com', role:Roles.RE_ADMIN } as Invitation );
+          pending.push( { code: 'abc123', entity_id, email: 'alreadyInvitedReAdmin_2@gmail.com', role:Roles.RE_ADMIN, sent_timestamp:new Date().toISOString() } as Invitation );
           break;
         case 'id_for_entity_with_pending_invitation_for_auth_ind':
           pending.push( { code: 'abc123', entity_id, email: 'alreadyInvitedAuthInd@gmail.com', role:Roles.RE_AUTH_IND } as Invitation );
@@ -62,13 +68,19 @@ export function UtilsMock(originalModule: any) {
             role: Roles.RE_ADMIN, retracted_timestamp: new Date().toISOString() 
           } as Invitation );
           break;
-        case 'id_for_entity_with_peer_invitation_for_auth_ind':
+        case 'id_for_entity_with_peer_invitation_for_auth_ind_retracted':
           pending.push( { 
             code: 'abc123', entity_id, email: 'invitedPeer@gmail.com', 
             role:Roles.RE_AUTH_IND, retracted_timestamp: new Date().toISOString() 
           } as Invitation );
           break;
-      }
+        case 'id_for_entity_with_peer_invitation_for_auth_ind_active':
+          pending.push( { 
+            code: 'abc123', entity_id, email: 'invitedPeer@gmail.com', 
+            role:Roles.RE_AUTH_IND,  
+          } as Invitation );
+          break;        
+        }
       return pending;
     },
     lookupSingleActiveEntity: async (entity_id:string):Promise<Entity|null> => {
@@ -154,6 +166,32 @@ export function SignupLinkMock() {
       }
     })
   }
+}
+
+/**
+ * Define a mock for the ASP and AI invitation expirations
+ * @returns 
+ */
+export function ConfigurationsMock() {
+  return {
+    Configurations: jest.fn().mockImplementation(() => {
+      return {
+        getAppConfig: async (name:ConfigName):Promise<IAppConfig> => {
+          switch(name) {
+            case ConfigNames.AUTH_IND_INVITATION_EXPIRE_AFTER:
+            case ConfigNames.ASP_INVITATION_EXPIRE_AFTER:
+              return { 
+                config_type: ConfigTypes.NUMBER,
+                 name, 
+                 value: '2592000',
+                 getDuration: ():number => 2592000
+                } as AppConfig
+          }
+          return {} as IAppConfig;
+        }
+      };
+    })
+  };  
 }
 
 /**
@@ -351,7 +389,7 @@ export const UserInvitationTests = {
       },
     });
   },
-  outstandingInvitationReAdmin: async (_handler:any, eventMock:any, taskName:string) => {
+  outstandingInvitationByReAdminForReAdmin: async (_handler:any, eventMock:any, taskName:string) => {
     await invokeAndAssert({
       _handler, mockEvent:eventMock,
       incomingPayload: {
@@ -365,7 +403,7 @@ export const UserInvitationTests = {
       expectedResponse: {
         statusCode: 400,
         outgoingBody: { 
-          message: `One or more individuals already have outstanding invitations for role: ${Roles.RE_ADMIN} in entity: id_for_entity_with_pending_invitation_for_re_admin`,
+          message: `An ${Roles.RE_ADMIN} can only invite a ${Roles.RE_AUTH_IND}`,
           payload: { invalid: true }
         }
       }
@@ -500,7 +538,7 @@ export const UserInvitationTests = {
         task: taskName,
         parameters: {
           email: "invitedPeer@gmail.com", 
-          entity_id: 'id_for_entity_with_peer_invitation_for_auth_ind', 
+          entity_id: 'id_for_entity_with_peer_invitation_for_auth_ind_retracted', 
           role: Roles.RE_AUTH_IND
         }
       },

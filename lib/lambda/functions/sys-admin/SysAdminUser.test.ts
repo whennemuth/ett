@@ -46,9 +46,6 @@ describe('SysAdminUser lambda trigger: inviteUser', () => {
   it('Should return 400 if user has already accepted an invitation for same role in same entity', async () => {
     await UserInvitationTests.alreadyAccepted(handler, mockEvent, ReAdminTask.INVITE_USER);
   });
-  it('Should return 400 if someone else already has an outstanding RE_ADMIN invitation in same entity', async () => {
-    await UserInvitationTests.outstandingInvitationReAdmin(handler, mockEvent, ReAdminTask.INVITE_USER);
-  });
   it('Should return 400 if the invitation is to an entity that has been deactivated', async () => {
     await UserInvitationTests.deactivatedEntity(handler, mockEvent, ReAdminTask.INVITE_USER);
   });
