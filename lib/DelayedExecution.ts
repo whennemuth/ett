@@ -7,6 +7,7 @@ import { AbstractFunction } from "./AbstractFunction";
 import { TableBaseNames } from "./DynamoDb";
 import { Configurations } from "./lambda/_lib/config/Config";
 import { ExhibitFormsBucketEnvironmentVariableName } from "./lambda/functions/consenting-person/BucketItemMetadata";
+import { Duration } from "aws-cdk-lib";
 
 export type DelayedExecutionNames = {
   coreName: string, targetArnEnvVarName: string
@@ -73,6 +74,7 @@ export class DelayedExecutionLambdas extends Construct {
     this._databaseExhibitFormPurgeLambda = new class extends AbstractFunction { }(this, baseId, {
       runtime: Runtime.NODEJS_18_X,
       // memorySize: 1024,
+      timeout: Duration.seconds(5),
       entry: 'lib/lambda/functions/delayed-execution/PurgeExhibitFormFromDatabase.ts',
       // handler: 'handler',
       functionName,
@@ -139,6 +141,7 @@ export class DelayedExecutionLambdas extends Construct {
     this._disclosureRequestReminderLambda = new class extends AbstractFunction { }(this, baseId, {
       runtime: Runtime.NODEJS_18_X,
       memorySize: 512,
+      timeout: Duration.seconds(5),
       entry: 'lib/lambda/functions/delayed-execution/SendDisclosureRequestReminder.ts',
       // handler: 'handler',
       functionName: `${functionName}`,
@@ -225,6 +228,7 @@ export class DelayedExecutionLambdas extends Construct {
     this._bucketExhibitFormPurgeLambda = new class extends AbstractFunction { }(this, baseId, {
       runtime: Runtime.NODEJS_18_X,
       // memorySize: 1024,
+      timeout: Duration.seconds(5),
       entry: 'lib/lambda/functions/delayed-execution/PurgeExhibitFormFromBucket.ts',
       // handler: 'handler',
       functionName,
@@ -305,6 +309,7 @@ export class DelayedExecutionLambdas extends Construct {
     this._handleStaleEntityVacancyLambda = new class extends AbstractFunction { }(this, baseId, {
       runtime: Runtime.NODEJS_18_X,
       // memorySize: 1024,
+      timeout: Duration.seconds(15),
       entry: 'lib/lambda/functions/delayed-execution/HandleStaleEntityVacancy.ts',
       // handler: 'handler',
       functionName,
