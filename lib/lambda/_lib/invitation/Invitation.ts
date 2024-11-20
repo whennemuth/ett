@@ -1,9 +1,12 @@
-import { Invitation, Role, Roles } from '../dao/entity';
+import { Entity, Invitation, Role, Roles, User } from '../dao/entity';
 import { DAOInvitation, DAOFactory } from '../dao/dao';
 import { SESv2Client, SendEmailCommand, SendEmailCommandInput, SendEmailResponse } from '@aws-sdk/client-sesv2';
 import { v4 as uuidv4 } from 'uuid';
-import { ENTITY_WAITING_ROOM } from '../dao/dao-entity';
-import { error } from '../../Utils';
+import { ENTITY_WAITING_ROOM, EntityCrud } from '../dao/dao-entity';
+import { error, log, lookupCloudfrontDomain } from '../../Utils';
+import { IContext } from '../../../../contexts/IContext';
+import { UserCrud } from '../dao/dao-user';
+import { SignupLink } from './SignupLink';
 
 /**
  * An invitation email is one sent with a link in it to the ETT privacy policy acknowledgement webpage as the
@@ -198,4 +201,61 @@ export class UserInvitation {
   public get link():string {
     return this._link;
   }
+}
+
+
+
+
+/**
+ * RUN MANUALLY:
+ */
+const { argv:args } = process;
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/invitation/Invitation.ts')) {
+
+  const inviterEmail = 'asp.au.edu@warhen.work';
+  const inviteeEmail = 'auth1.au.edu@warhen.work';
+  const role = Roles.RE_AUTH_IND;
+
+  (async () => {
+    // Get context variables
+    const context:IContext = await require('../../../../contexts/context.json');
+    const { REGION, TAGS: { Landscape }} = context;
+
+    // Get the cloudfront domain
+    const cloudfrontDomain = await lookupCloudfrontDomain(Landscape);
+    if( ! cloudfrontDomain) {
+      throw('Cloudfront domain lookup failure');
+    }
+
+    // Set environment variables
+    process.env.REGION = REGION;
+    process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
+
+    // Get the inviter
+    const inviters = await UserCrud({ email:inviterEmail } as User).read() as User[];
+    if(inviters.length == 0) {
+      log(`${inviterEmail} not found!`);
+      return;
+    }
+    if(inviters.length > 1) {
+      log(inviters, `${inviterEmail} found in multiple entities. You will have to specify the entity_id`);
+      return;
+    }
+
+    // Get the link to put in the invitation email
+    const entity_id = inviters[0].entity_id;
+    const link = await new SignupLink().getRegistrationLink(entity_id);
+    
+    // Get the entity
+    const entity = await EntityCrud({ entity_id } as Entity).read() as Entity;
+    const { entity_name } = entity;
+    const invitation = { entity_id, email:inviteeEmail, role } as Invitation
+    const emailInvite = new UserInvitation(invitation, `${link}`, entity_name);
+    if( await emailInvite.send()) {
+      log({ invitation_code: emailInvite.code, invitation_link: emailInvite.link }, 'Invitation successfully sent');
+    }
+    else {
+      log(`Invitation failure: ${emailInvite.code}`);
+    } 
+  })();
 }
