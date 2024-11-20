@@ -1,7 +1,7 @@
 import { IAppConfig } from "../../../_lib/config/Config";
 import { Roles, User, YN } from "../../../_lib/dao/entity";
 import { bugsbunny, daffyduck, yosemitesam } from "../MockObjects";
-import { Personnel } from "./EntityPersonnel";
+import { Personnel, PersonnelParms } from "./EntityPersonnel";
 import { EntityState } from "./EntityState";
 
 const DAY:number = 1000 * 60 * 60 * 24;
@@ -40,8 +40,9 @@ const getBarney = ():User => {
 // Mock the Personnel class
 jest.mock('./EntityPersonnel.ts', () => {
   return {
-    Personnel: jest.fn().mockImplementation((json:string) => {
-      const parms = JSON.parse(json);
+    Personnel: jest.fn().mockImplementation((personnel_parms:PersonnelParms) => {
+      const { entity:json } = personnel_parms;
+      const parms = JSON.parse(json as string);
       const { scenario, nowISO } = parms;
       const now = new Date(nowISO ?? new Date().toISOString());
       return {
@@ -163,31 +164,31 @@ jest.mock('./EntityPersonnel.ts', () => {
 describe('EntityState.isUnderStaffed', () => {
 
   it('Should be understaffed if the ASP is missing', async () => {
-    const personnel = new Personnel('{ "scenario": 1 }');
+    const personnel = new Personnel({ entity:'{ "scenario": 1 }' });
     const state = await EntityState.getInstance(personnel);
     expect(state.isUnderStaffed()).toBeTruthy();
   });
 
   it('Should be understaffed if an AI is missing', async () => {
-    const personnel = new Personnel('{ "scenario": 2 }');
+    const personnel = new Personnel({ entity:'{ "scenario": 2 }' });
     const state = await EntityState.getInstance(personnel);
     expect(state.isUnderStaffed()).toBeTruthy();
   });
 
   it('Should be understaffed if the ASP is NOT active', async () => {
-    const personnel = new Personnel('{ "scenario": 3 }');
+    const personnel = new Personnel({ entity:'{ "scenario": 3 }' });
     const state = await EntityState.getInstance(personnel);
     expect(state.isUnderStaffed()).toBeTruthy();
   });
 
   it('Should be understaffed if an AI is NOT active', async () => {
-    const personnel = new Personnel('{ "scenario": 4 }');
+    const personnel = new Personnel({ entity:'{ "scenario": 4 }' });
     const state = await EntityState.getInstance(personnel);
     expect(state.isUnderStaffed()).toBeTruthy();
   });
 
   it('Should be staffed if full active contingent', async () => {
-    const personnel = new Personnel('{ "scenario": 5 }');
+    const personnel = new Personnel({ entity:'{ "scenario": 5 }' });
     const state = await EntityState.getInstance(personnel);
     expect(state.isUnderStaffed()).toBeFalsy();
   });
@@ -200,42 +201,42 @@ describe('EntityState.exceededRoleVacancyTimeLimit(ASP)', () => {
   const thirtyDays = ():number => (DAY * 30)/1000; // 30 days in seconds
 
   it('Should be overdue if single ASP that has been inactive for too long', async () => {
-    const personnel = new Personnel(`{ "scenario": 6, "nowISO": "${nowISO}" }`);
+    const personnel = new Personnel({ entity:`{ "scenario": 6, "nowISO": "${nowISO}" }` });
     const state = await EntityState.getInstance(personnel);
     const overdue = await state.exceededRoleVacancyTimeLimit(Roles.RE_ADMIN, { getDuration: thirtyDays } as IAppConfig);
     expect(overdue).toBeTruthy();    
   });
 
   it('Should NOT be overdue if single ASP that has NOT been inactive for too long', async () => {
-    const personnel = new Personnel(`{ "scenario": 7, "nowISO": "${nowISO}" }`);
+    const personnel = new Personnel({ entity:`{ "scenario": 7, "nowISO": "${nowISO}" }` });
     const state = await EntityState.getInstance(personnel);
     const overdue = await state.exceededRoleVacancyTimeLimit(Roles.RE_ADMIN, { getDuration: thirtyDays } as IAppConfig);
     expect(overdue).toBeFalsy();    
   });
 
   it('Should be overdue if entity has 2 ASPs that have been inactive for too long', async () => {
-    const personnel = new Personnel(`{ "scenario": 8, "nowISO": "${nowISO}" }`);
+    const personnel = new Personnel({ entity:`{ "scenario": 8, "nowISO": "${nowISO}" }` });
     const state = await EntityState.getInstance(personnel);
     const overdue = await state.exceededRoleVacancyTimeLimit(Roles.RE_ADMIN, { getDuration: thirtyDays } as IAppConfig);
     expect(overdue).toBeTruthy();    
   });
 
   it('Should NOT be overdue if entity has 2 ASPs, both inactive, neither having been inactive for too long', async () => {
-    const personnel = new Personnel(`{ "scenario": 9, "nowISO": "${nowISO}" }`);
+    const personnel = new Personnel({ entity:`{ "scenario": 9, "nowISO": "${nowISO}" }` });
     const state = await EntityState.getInstance(personnel);
     const overdue = await state.exceededRoleVacancyTimeLimit(Roles.RE_ADMIN, { getDuration: thirtyDays } as IAppConfig);
     expect(overdue).toBeFalsy();    
   });
 
   it('Should NOT be overdue if entity has 2 ASPs, both inactive, one having been inactive for too long, but not the other', async () => {
-    const personnel = new Personnel(`{ "scenario": 10, "nowISO": "${nowISO}" }`);
+    const personnel = new Personnel({ entity:`{ "scenario": 10, "nowISO": "${nowISO}" }` });
     const state = await EntityState.getInstance(personnel);
     const overdue = await state.exceededRoleVacancyTimeLimit(Roles.RE_ADMIN, { getDuration: thirtyDays } as IAppConfig);
     expect(overdue).toBeFalsy();  
   });
 
   it('Should NOT be overdue if entity has 2 ASPs, one having been inactive for too long, but one is active', async () => {
-    const personnel = new Personnel(`{ "scenario": 11, "nowISO": "${nowISO}" }`);
+    const personnel = new Personnel({ entity:`{ "scenario": 11, "nowISO": "${nowISO}" }` });
     const state = await EntityState.getInstance(personnel);
     const overdue = await state.exceededRoleVacancyTimeLimit(Roles.RE_ADMIN, { getDuration: thirtyDays } as IAppConfig);
     expect(overdue).toBeFalsy();       
@@ -249,76 +250,76 @@ describe('EntityState.overdueForAI', () => {
   const thirtyDays = ():number => (DAY * 30)/1000; // 30 days in seconds
 
   it('Should be overdue if entity has never had an AI for too long', async () => {
-    let personnel = new Personnel(`{ "scenario": 12, "nowISO": "${nowISO}" }`);
+    let personnel = new Personnel({ entity:`{ "scenario": 12, "nowISO": "${nowISO}" }` });
     let state = await EntityState.getInstance(personnel);
     let overdue = await state.exceededRoleVacancyTimeLimit(Roles.RE_AUTH_IND, { getDuration: thirtyDays } as IAppConfig);
     expect(overdue).toBeTruthy(); 
 
-    personnel = new Personnel(`{ "scenario": 13, "nowISO": "${nowISO}" }`);
+    personnel = new Personnel({ entity:`{ "scenario": 13, "nowISO": "${nowISO}" }` });
     state = await EntityState.getInstance(personnel);
     overdue = await state.exceededRoleVacancyTimeLimit(Roles.RE_AUTH_IND, { getDuration: thirtyDays } as IAppConfig);
     expect(overdue).toBeTruthy();        
   });
 
   it('Should NOT be overdue if entity has never had an AI, but not for too long', async () => {
-    let personnel = new Personnel(`{ "scenario": 14, "nowISO": "${nowISO}" }`);
+    let personnel = new Personnel({ entity:`{ "scenario": 14, "nowISO": "${nowISO}" }` });
     let state = await EntityState.getInstance(personnel);
     let overdue = await state.exceededRoleVacancyTimeLimit(Roles.RE_AUTH_IND, { getDuration: thirtyDays } as IAppConfig);
     expect(overdue).toBeFalsy();  
     
-    personnel = new Personnel(`{ "scenario": 15, "nowISO": "${nowISO}" }`);
+    personnel = new Personnel({ entity:`{ "scenario": 15, "nowISO": "${nowISO}" }` });
     state = await EntityState.getInstance(personnel);
     overdue = await state.exceededRoleVacancyTimeLimit(Roles.RE_AUTH_IND, { getDuration: thirtyDays } as IAppConfig);
     expect(overdue).toBeFalsy();
   });
 
   it('Should be overdue if entity has only one AI and it has been inactive too long', async () => {
-    const personnel = new Personnel(`{ "scenario": 16, "nowISO": "${nowISO}" }`);
+    const personnel = new Personnel({ entity:`{ "scenario": 16, "nowISO": "${nowISO}" }` });
     const state = await EntityState.getInstance(personnel);
     const overdue = await state.exceededRoleVacancyTimeLimit(Roles.RE_AUTH_IND, { getDuration: thirtyDays } as IAppConfig);
     expect(overdue).toBeTruthy();       
   });
 
   it('Should NOT be overdue if entity has only one AI, and it has NOT been inactive for too long', async () => {
-    const personnel = new Personnel(`{ "scenario": 17, "nowISO": "${nowISO}" }`);
+    const personnel = new Personnel({ entity:`{ "scenario": 17, "nowISO": "${nowISO}" }` });
     const state = await EntityState.getInstance(personnel);
     const overdue = await state.exceededRoleVacancyTimeLimit(Roles.RE_AUTH_IND, { getDuration: thirtyDays } as IAppConfig);
     expect(overdue).toBeFalsy();       
   });
 
   it('Should be overdue if entity has one AI that is active, but has been without the 2nd AI for too long', async () => {
-    let personnel = new Personnel(`{ "scenario": 18, "nowISO": "${nowISO}" }`);
+    let personnel = new Personnel({ entity:`{ "scenario": 18, "nowISO": "${nowISO}" }` });
     let state = await EntityState.getInstance(personnel);
     let overdue = await state.exceededRoleVacancyTimeLimit(Roles.RE_AUTH_IND, { getDuration: thirtyDays } as IAppConfig);
     expect(overdue).toBeTruthy();  
     
-    personnel = new Personnel(`{ "scenario": 19, "nowISO": "${nowISO}" }`);
+    personnel = new Personnel({ entity:`{ "scenario": 19, "nowISO": "${nowISO}" }` });
     state = await EntityState.getInstance(personnel);
     overdue = await state.exceededRoleVacancyTimeLimit(Roles.RE_AUTH_IND, { getDuration: thirtyDays } as IAppConfig);
     expect(overdue).toBeTruthy();
     
-    personnel = new Personnel(`{ "scenario": 20, "nowISO": "${nowISO}" }`);
+    personnel = new Personnel({ entity:`{ "scenario": 20, "nowISO": "${nowISO}" }` });
     state = await EntityState.getInstance(personnel);
     overdue = await state.exceededRoleVacancyTimeLimit(Roles.RE_AUTH_IND, { getDuration: thirtyDays } as IAppConfig);
     expect(overdue).toBeTruthy();
   });
 
   it('Should NOT be overdue if entity has one AI that has been inactive too long, one that has not, and one that is active', async () => {
-    const personnel = new Personnel(`{ "scenario": 21, "nowISO": "${nowISO}" }`);
+    const personnel = new Personnel({ entity:`{ "scenario": 21, "nowISO": "${nowISO}" }` });
     const state = await EntityState.getInstance(personnel);
     const overdue = await state.exceededRoleVacancyTimeLimit(Roles.RE_AUTH_IND, { getDuration: thirtyDays } as IAppConfig);
     expect(overdue).toBeFalsy();       
   });
 
   it('Should NOT be overdue if entity has two active AIs', async () => {
-    const personnel = new Personnel(`{ "scenario": 22, "nowISO": "${nowISO}" }`);
+    const personnel = new Personnel({ entity:`{ "scenario": 22, "nowISO": "${nowISO}" }` });
     const state = await EntityState.getInstance(personnel);
     const overdue = await state.exceededRoleVacancyTimeLimit(Roles.RE_AUTH_IND, { getDuration: thirtyDays } as IAppConfig);
     expect(overdue).toBeFalsy();       
   });
 
   it('Should NOT be overdue if entity has two active AIs and one that has been inactive for too long', async () => {
-    const personnel = new Personnel(`{ "scenario": 23, "nowISO": "${nowISO}" }`);
+    const personnel = new Personnel({ entity:`{ "scenario": 23, "nowISO": "${nowISO}" }` });
     const state = await EntityState.getInstance(personnel);
     const overdue = await state.exceededRoleVacancyTimeLimit(Roles.RE_AUTH_IND, { getDuration: thirtyDays } as IAppConfig);
     expect(overdue).toBeFalsy();       

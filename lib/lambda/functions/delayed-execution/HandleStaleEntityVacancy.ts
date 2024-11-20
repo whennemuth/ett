@@ -37,7 +37,7 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
       log(`INVALID INPUT: entity_id is missing!`);
     }
 
-    const stateOfEntity = await EntityState.getInstance(new Personnel(entity_id));
+    const stateOfEntity = await EntityState.getInstance(new Personnel({ entity:entity_id }));
     const { isUnderStaffed, ASPVacancy, AIVacancy, exceededRoleVacancyTimeLimit, getEntity } = stateOfEntity;
     const { entity_name } = getEntity();
 

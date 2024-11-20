@@ -136,7 +136,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     switch(correctable) {
       case "entity":
         const correctedEntityName = `The School of Hard Knocks ${new Date().toISOString()}`;
-        corrector = new EntityToCorrect(new Personnel(entity_id));
+        corrector = new EntityToCorrect(new Personnel({ entity:entity_id }));
         await corrector.correctEntity({ entity_id, entity_name:correctedEntityName } as Entity);
         break;
       case "user":    
@@ -164,7 +164,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         replacementEmail = 'auth3.random.edu@warhen.work';
 
         // Perform the correction
-        corrector = new EntityToCorrect(new Personnel(entity_id, replacerEmail));
+        corrector = new EntityToCorrect(new Personnel({ entity:entity_id, replacer:replacerEmail }));
         const corrected = await corrector.correctPersonnel(replaceableEmail, replacementEmail);
         console.log(corrected ? 'Succeeded' : 'Failed');
         break;

@@ -10,6 +10,10 @@ import { log, lookupCloudfrontDomain } from "../../../Utils";
 import { inviteUser } from "../../re-admin/ReAdminUser";
 import { EntityCorrectionEmail } from "./EntityCorrectionEmail";
 
+export type PersonnelParms = {
+  entity?:Entity|string, replacer?:User|string
+}
+
 /**
  * This class represents an entity with respect to its "personnel" - the ASP and the 2 authorized individuals.
  * The context in which this class is useful is in entity correction, where one AI wants to replace another AI
@@ -29,7 +33,8 @@ export class Personnel {
   private replacer?:User;
   private replaceable?:User;
 
-  constructor(entity?:Entity|string, replacer?:User|string) {
+  constructor(parms:PersonnelParms) {
+    const { entity, replacer } = parms;
     if(entity) {
       if(typeof entity === 'string') {
         this.entity_id = entity;
@@ -103,7 +108,8 @@ export class Personnel {
       }
       this.replacer = _replacer;
     }
-    else {
+
+    if( ! this.replacer) {
       log(`EntityPersonnel: This instance is not sufficiently configured for personnel swaps since the replacer is not specified`);
     }
 
@@ -248,8 +254,8 @@ export class Personnel {
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/authorized-individual/correction/EntityPersonnel.ts')) {
 
-  const swapType = 'remove-self' as 'replace-self'|'remove-self'|'replace-another'|'remove-another';
-  const dryrun = true;
+  const swapType = 'replace-another' as 'replace-self'|'remove-self'|'replace-another'|'remove-another';
+  const dryrun = false;
   const { HandleStaleEntityVacancy } = DelayedExecutions;
 
   (async () => {
@@ -274,24 +280,24 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     process.env.PREFIX = prefix;
 
     // Set parameters
-    const replacer = 'auth2.au.edu@warhen.work';
-    const replaceable = 'auth1.au.edu@warhen.work';
-    const replacement = 'auth3.au.edu@warhen.work';
+    const replacer = 'auth2.random.edu@warhen.work';
+    const replaceable = 'auth1.random.edu@warhen.work';
+    const replacement = 'auth3.random.edu@warhen.work';
 
     // Perform the personnel operation
     let swap:Personnel;
     switch(swapType) {
       case "replace-self":
-        swap = new Personnel(replacer).forRemovalOf().myself().andReplacementWith(replacement);
+        swap = new Personnel({ replacer }).forRemovalOf().myself().andReplacementWith(replacement);
         break;
       case "remove-self":
-        swap = new Personnel(replacer).forRemovalOf().myself();
+        swap = new Personnel({ replacer }).forRemovalOf().myself();
         break;
       case "replace-another":
-        swap = new Personnel(replacer).forRemovalOf(replaceable).andReplacementWith(replacement);
+        swap = new Personnel({ replacer }).forRemovalOf(replaceable).andReplacementWith(replacement);
         break;
       case "remove-another":
-        swap = new Personnel(replacer).forRemovalOf(replaceable);
+        swap = new Personnel({ replacer }).forRemovalOf(replaceable);
         break;
     }
 

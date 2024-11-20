@@ -222,7 +222,7 @@ const amendEntityName = async (entity_id:string, name:string): Promise<LambdaPro
   if( ! name) {
     return invalidResponse('Missing name parameter');
   }
-  const corrector = new EntityToCorrect(new Personnel(entity_id));
+  const corrector = new EntityToCorrect(new Personnel({ entity: entity_id }));
   await corrector.correctEntity({ entity_id, entity_name:name } as Entity);
   return okResponse('Ok', {});
 }
@@ -242,7 +242,7 @@ const amendEntityUser = async (parms:any): Promise<LambdaProxyIntegrationRespons
     return invalidResponse('Missing replaceableEmail parameter');
   }
 
-  const corrector = new EntityToCorrect(new Personnel(entity_id, replacerEmail));
+  const corrector = new EntityToCorrect(new Personnel({ entity:entity_id, replacer:replacerEmail }));
   const corrected = await corrector.correctPersonnel(replaceableEmail, replacementEmail);
   if(corrected) {
     return okResponse('Ok', {});

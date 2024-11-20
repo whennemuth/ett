@@ -153,7 +153,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     ctx.CONFIG.useDatabase = false;
     let configs = new Configurations(ctx.CONFIG as CONFIG);
 
-    const state = await EntityState.getInstance(new Personnel('auth2.au.edu@warhen.work'), configs);
+    const state = await EntityState.getInstance(new Personnel({ replacer: 'auth2.au.edu@warhen.work' }), configs);
     // log(state.getUsers());
     console.log(state.isUnderStaffed() ? 'understaffed' : 'staffed');
 
