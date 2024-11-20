@@ -1,6 +1,7 @@
 import { CONFIG } from "../../../../../contexts/IContext";
 import { Configurations, IAppConfig } from "../../../_lib/config/Config";
 import { ConfigNames, Entity, Role, Roles, User, YN } from "../../../_lib/dao/entity";
+import { humanReadableFromMilliseconds } from "../../../_lib/timer/DurationConverter";
 import { Personnel } from "./EntityPersonnel";
 
 const MINIMUM_AIS = 2;
@@ -14,6 +15,7 @@ const MINIMUM_ASPS = 1;
 export class EntityState {
   private personnel:Personnel;
   private configs?:Configurations;
+  private _humanReadable?:string
 
   private constructor(personnel:Personnel, configs?:Configurations) {
     this.personnel = personnel;
@@ -64,7 +66,7 @@ export class EntityState {
       const priorUpdated = new Date(getCreatedISO(prior)).getTime();
       const currentUpdated = new Date(getCreatedISO(current)).getTime();
       return currentUpdated > priorUpdated ? current : prior;
-  }
+    }
 
     // Get the minimum number of users allowed for a role, below which constitutes a "vacancy".
     const minimum = role == Roles.RE_ADMIN ? MINIMUM_ASPS : MINIMUM_AIS;
@@ -86,8 +88,11 @@ export class EntityState {
         .reduce(getYoungerUser);
       if(youngestActiveAsp) {
         const updated = new Date(getCreatedISO(youngestActiveAsp));
-        return (Date.now() - updated.getTime()) >= maxVacancyTime;
-      }        
+        const vacancyTime = Date.now() - updated.getTime();
+        this._humanReadable = humanReadableFromMilliseconds(Math.abs(maxVacancyTime - vacancyTime));
+        return vacancyTime >= maxVacancyTime;
+      } 
+      this._humanReadable = 'just now';   
       return true;
     }
 
@@ -126,7 +131,9 @@ export class EntityState {
       }
 
       // Check if duration constraint is violated
-      if(belowMinimumSince && (Date.now() - belowMinimumSince.getTime() >= maxVacancyTime)) {
+      const vacancyTime = Date.now() - belowMinimumSince.getTime();
+      this._humanReadable = humanReadableFromMilliseconds(Math.abs(maxVacancyTime - vacancyTime));
+      if(belowMinimumSince && vacancyTime >= maxVacancyTime) {
         return true;
       }
     }
@@ -137,6 +144,8 @@ export class EntityState {
   public getUsers = ():User[] => this.personnel.getUsers();
 
   public getEntity = ():Entity => this.personnel.getEntity();
+
+  public humanReadable = ():string|undefined => this._humanReadable
 }
 
 

@@ -1811,15 +1811,21 @@
      * acquiring an authorization code to exchange for a JWT.
      */
     function initiateAuthorizationRequest(codeChallenge, state) {
+      const queryParams = new URLSearchParams(window.location.search);
+      let redirect_uri = `https://${redirectUri()}?action=login&selected_role=${selected_role}`;
+      const task = queryParams.get('task');
+      if(task) {
+        redirect_uri = `${redirect_uri}&task=${task}`;
+      }
       const params = {
         response_type: 'code',
         client_id: clientId(),
-        redirect_uri: `https://${redirectUri()}?action=login&selected_role=${selected_role}`,
+        redirect_uri,
         state: state,
         code_challenge: codeChallenge,
         code_challenge_method: 'S256'
       };
-      
+    
       const queryString = Object.keys(params).map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`).join('&');
       const authorizationUrl = `https://${STATIC_PARAMETERS.COGNITO_DOMAIN}/oauth2/authorize?${queryString}`;
  
@@ -1849,10 +1855,16 @@
       }
 
       const codeVerifier = window.sessionStorage.getItem("code_verifier");
+
+      let redirect_uri = `https://${redirectUri()}?action=login&selected_role=${selected_role}`;
+      const task = queryParams.get('task');
+      if(task) {
+        redirect_uri = `${redirect_uri}&task=${task}`;
+      }
       const params = {
         grant_type: 'authorization_code',
         client_id: clientId(),
-        redirect_uri: `https://${redirectUri()}?action=login&selected_role=${selected_role}`,
+        redirect_uri,
         state: savedState,
         code: authorizationCode,
         code_verifier: codeVerifier
@@ -4801,6 +4813,12 @@
           if(document.location.pathname == '/consenter/exhibits/index.htm') {
             href = `${href}/consenter/exhibits/index.htm`;
           }
+          // Add back the task parameter if it was originally present.
+          const queryParams = new URLSearchParams(window.location.search);
+          let task = queryParams.get('task'); 
+          if(task) {
+            href = `${href}?task=${task}`;
+          }         
           document.location.href = href;
           break;
 

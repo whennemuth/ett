@@ -6,6 +6,7 @@ import { EntityCrud } from "../../_lib/dao/dao-entity";
 import { ConfigNames, Entity, Roles, User } from "../../_lib/dao/entity";
 import { EntityToAutomate } from "../../_lib/EntityAutomation";
 import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../_lib/timer/DelayedExecution";
+import { humanReadableFromSeconds } from "../../_lib/timer/DurationConverter";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, log } from "../../Utils";
 import { Personnel } from "../authorized-individual/correction/EntityPersonnel";
@@ -38,7 +39,7 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
     }
 
     const stateOfEntity = await EntityState.getInstance(new Personnel({ entity:entity_id }));
-    const { isUnderStaffed, ASPVacancy, AIVacancy, exceededRoleVacancyTimeLimit, getEntity } = stateOfEntity;
+    const { isUnderStaffed, ASPVacancy, AIVacancy, exceededRoleVacancyTimeLimit, getEntity, humanReadable } = stateOfEntity;
     const { entity_name } = getEntity();
 
     if(isUnderStaffed()) {
@@ -46,25 +47,31 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
       log(`${entity_name} is understaffed`);
       const configs = new Configurations();
       const { STALE_ASP_VACANCY, STALE_AI_VACANCY } = ConfigNames;
-      const DAY = 60 * 60 * 24; // Day in seconds
       let violation = false;
+      let config:IAppConfig = {} as IAppConfig;
 
       if(ASPVacancy()) {
         log(`${entity_name} has an ASP vacancy`);
-        const config = await configs.getAppConfig(STALE_ASP_VACANCY) as IAppConfig;
+        config = await configs.getAppConfig(STALE_ASP_VACANCY) as IAppConfig;
         if(await exceededRoleVacancyTimeLimit(Roles.RE_ADMIN, config)) {
-          const days = Math.floor(config.getDuration() / DAY);
-          log(`${entity_name} ASP vacancy has exceeded the ${days} limit.`);
+          const info = {
+            limit: humanReadableFromSeconds(config.getDuration()),
+            exceededBy: humanReadable() ?? 'unknown'
+          }
+          log(info, `${entity_name} ASP vacancy has exceeded the allowed limit.`);
           violation = true;
         }
       }
 
-      if(AIVacancy()) {
+      if(AIVacancy() && ! violation) {
         log(`${entity_name} has an authorized individual vacancy`);
-        const config = await configs.getAppConfig(STALE_AI_VACANCY) as IAppConfig;
+        config = await configs.getAppConfig(STALE_AI_VACANCY) as IAppConfig;
         if(await exceededRoleVacancyTimeLimit(Roles.RE_AUTH_IND, config)) {
-          const days = Math.floor(config.getDuration() / DAY);
-          log(`${entity_name} authorized individual vacancy has exceeded the ${days} days limit.`);
+          const info = {
+            limit: humanReadableFromSeconds(config.getDuration()),
+            exceededBy: humanReadable() ?? 'unknown'
+          }
+          log(info, `${entity_name} authorized individual vacancy has exceeded the allowed limit.`);
           violation = true;
         }
       }
@@ -76,7 +83,12 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
         await entityToDemolish.demolish();
       }
       else {
-        log(`${entity_name} is NOT yet in violation of role vacancy policy`);
+        const limit = config.getDuration ? config.getDuration() : 0;
+        const info = {
+          limit: limit == 0 ? 'unknown' : humanReadableFromSeconds(limit),
+          remainingTime: humanReadable() ?? 'unknown'
+        }
+        log(info, `${entity_name} is NOT yet in violation of role vacancy policy`);
       }
     }
     else {
@@ -137,7 +149,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
 
     const entityName = 'The School of Hard Knocks';
     const stage = 'execute' as 'setup' | 'execute' | 'teardown';
-    const executionType = 'immediate' as 'immediate'|'scheduled';
+    const executionType = 'scheduled' as 'immediate'|'scheduled';
   
     switch(stage) {
       case "setup":

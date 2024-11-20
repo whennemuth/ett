@@ -47,6 +47,7 @@
     "aws-sdk-client-mock": "^3.0.0",
     "aws-sdk-client-mock-jest": "^3.0.0",
     "constructs": "^10.0.0",
+    "humanize-duration": "^3.32.1",
     "pdf-lib": "^1.17.1",
     "source-map-support": "^0.5.21",
     "uuid": "^9.0.1"
