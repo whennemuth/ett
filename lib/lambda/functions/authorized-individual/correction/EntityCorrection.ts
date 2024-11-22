@@ -107,7 +107,8 @@ export const scheduleStaleEntityVacancyHandler = async (entity:Entity, role:Role
     const lambdaInput = { entity_id } as StaleVacancyLambdaParms;
     const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
     const staleAfter = role == Roles.RE_ADMIN ? STALE_ASP_VACANCY : STALE_AI_VACANCY;
-    const waitTime = (await configs.getAppConfig(staleAfter)).getDuration();
+    let waitTime = (await configs.getAppConfig(staleAfter)).getDuration();
+    waitTime += 60; // Event bridge seems to trigger early at times by anywhere up to 18 seconds, so tack on an extra minute.
     const timer = EggTimer.getInstanceSetFor(waitTime, PeriodType.SECONDS);
     await delayedTestExecution.startCountdown(timer, `Stale entity vacancy handler: ${entity_name}`);
   }
