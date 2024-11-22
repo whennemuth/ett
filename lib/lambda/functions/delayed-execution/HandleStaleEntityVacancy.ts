@@ -39,7 +39,7 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
     }
 
     const stateOfEntity = await EntityState.getInstance(new Personnel({ entity:entity_id }));
-    const { isUnderStaffed, ASPVacancy, AIVacancy, exceededRoleVacancyTimeLimit, getEntity, humanReadable } = stateOfEntity;
+    const { isUnderStaffed, ASPVacancy, AIVacancy, exceededRoleVacancyTimeLimit, getEntity, getOverUnderTime, getReport } = stateOfEntity;
     const { entity_name } = getEntity();
 
     if(isUnderStaffed()) {
@@ -56,9 +56,10 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
         if(await exceededRoleVacancyTimeLimit(Roles.RE_ADMIN, config)) {
           const info = {
             limit: humanReadableFromSeconds(config.getDuration()),
-            exceededBy: humanReadable() ?? 'unknown'
+            exceededBy: getOverUnderTime() ?? 'unknown',
+            report: getReport()
           }
-          log(info, `${entity_name} ASP vacancy has exceeded the allowed limit.`);
+          log(info, `${entity_name} ASP vacancy has exceeded the allowed limit`);
           violation = true;
         }
       }
@@ -69,9 +70,10 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
         if(await exceededRoleVacancyTimeLimit(Roles.RE_AUTH_IND, config)) {
           const info = {
             limit: humanReadableFromSeconds(config.getDuration()),
-            exceededBy: humanReadable() ?? 'unknown'
+            exceededBy: getOverUnderTime() ?? 'unknown',
+            report: getReport()
           }
-          log(info, `${entity_name} authorized individual vacancy has exceeded the allowed limit.`);
+          log(info, `${entity_name} authorized individual vacancy has exceeded the allowed limit`);
           violation = true;
         }
       }
@@ -86,7 +88,8 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
         const limit = config.getDuration ? config.getDuration() : 0;
         const info = {
           limit: limit == 0 ? 'unknown' : humanReadableFromSeconds(limit),
-          remainingTime: humanReadable() ?? 'unknown'
+          remainingTime: getOverUnderTime() ?? 'unknown',
+          report: getReport()
         }
         log(info, `${entity_name} is NOT yet in violation of role vacancy policy`);
       }
@@ -128,8 +131,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     // Create a reduced app config just for this test
     const { STALE_AI_VACANCY, STALE_ASP_VACANCY } = ConfigNames;
     const configs = { useDatabase:false, configs: [
-      { name: STALE_AI_VACANCY, value: '180', config_type: 'duration', description: 'testing' },
-      { name: STALE_ASP_VACANCY, value: '180', config_type: 'duration', description: 'testing' },
+      { name: STALE_AI_VACANCY, value: '60', config_type: 'duration', description: 'testing' },
+      { name: STALE_ASP_VACANCY, value: '60', config_type: 'duration', description: 'testing' },
     ]} as CONFIG;
     process.env[Configurations.ENV_VAR_NAME] = JSON.stringify(configs);
 
@@ -149,7 +152,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
 
     const entityName = 'The School of Hard Knocks';
     const stage = 'execute' as 'setup' | 'execute' | 'teardown';
-    const executionType = 'scheduled' as 'immediate'|'scheduled';
+    const executionType = 'scheduled' as 'immediate' | 'scheduled';
   
     switch(stage) {
       case "setup":

@@ -2,6 +2,7 @@ import { CONFIG } from "../../../../../contexts/IContext";
 import { Configurations, IAppConfig } from "../../../_lib/config/Config";
 import { ConfigNames, Entity, Role, Roles, User, YN } from "../../../_lib/dao/entity";
 import { humanReadableFromMilliseconds } from "../../../_lib/timer/DurationConverter";
+import { log } from "../../../Utils";
 import { Personnel } from "./EntityPersonnel";
 
 const MINIMUM_AIS = 2;
@@ -15,7 +16,8 @@ const MINIMUM_ASPS = 1;
 export class EntityState {
   private personnel:Personnel;
   private configs?:Configurations;
-  private _humanReadable?:string
+  private overUnderTime?:string
+  private report:any = {};
 
   private constructor(personnel:Personnel, configs?:Configurations) {
     this.personnel = personnel;
@@ -89,24 +91,43 @@ export class EntityState {
       if(youngestActiveAsp) {
         const updated = new Date(getCreatedISO(youngestActiveAsp));
         const vacancyTime = Date.now() - updated.getTime();
-        this._humanReadable = humanReadableFromMilliseconds(Math.abs(maxVacancyTime - vacancyTime));
+        this.overUnderTime = humanReadableFromMilliseconds(Math.abs(maxVacancyTime - vacancyTime));
         return vacancyTime >= maxVacancyTime;
       } 
-      this._humanReadable = 'just now';   
+      this.overUnderTime = 'just now';   
       return true;
     }
 
     const activeUsers = users.filter(u => u.active === YN.Yes);
     const inactiveUsers = users.filter(u => u.active === YN.No);
+    const deactivationRemainders = [] as number[];
     let activeCount = activeUsers.length;
     let validInactiveCount = 0;
 
     // Count active users and determine valid inactive users
     for(const user of inactiveUsers) {
       const deactivationTime = new Date(getUpdatedISO(user));
-      if(Date.now() - deactivationTime.getTime() < maxVacancyTime) {
+      const vacancyTime = Date.now() - deactivationTime.getTime();
+      const { active, email, update_timestamp, fullname } = user;
+      if(vacancyTime < maxVacancyTime) {
+        const remainder = humanReadableFromMilliseconds(maxVacancyTime - vacancyTime);
+        deactivationRemainders.push(maxVacancyTime - vacancyTime);
+        // Complete report info (for logging) for "under" deactivated users.
+        this.report[`${email}`] = { role, active, fullname, remainder, update_timestamp }
         validInactiveCount++; // Count inactive users that are within the allowed inactivity period
       }
+      else {
+        // Complete report info (for logging) for "over" deactivated users.
+        const overBy = humanReadableFromMilliseconds(vacancyTime - maxVacancyTime);
+        this.report[`${email}`] = { role, active, fullname, overBy, update_timestamp }
+      }
+    }
+
+    // Complete report info (for logging) for active users.
+    log({ activeCount, validInactiveCount, minimum });
+    for(const user of activeUsers) {
+      const { email, fullname, update_timestamp, active } = user;
+      this.report[`${email}`] = { role, active, fullname, update_timestamp };
     }
 
     // Check if the active or valid inactive count is below the minimum required
@@ -132,9 +153,18 @@ export class EntityState {
 
       // Check if duration constraint is violated
       const vacancyTime = Date.now() - belowMinimumSince.getTime();
-      this._humanReadable = humanReadableFromMilliseconds(Math.abs(maxVacancyTime - vacancyTime));
+      this.overUnderTime = humanReadableFromMilliseconds(Math.abs(maxVacancyTime - vacancyTime));
       if(belowMinimumSince && vacancyTime >= maxVacancyTime) {
         return true;
+      }
+    }
+    else {
+      // A user was deactivated recently enough to still "count" against vacancy time limit violation
+      if(deactivationRemainders.length > 0) {
+        const smallestRemainder = deactivationRemainders.reduce((prior:number, current:number) => {
+          return prior > current ? current : prior;
+        });
+        this.overUnderTime = humanReadableFromMilliseconds(smallestRemainder);
       }
     }
 
@@ -145,7 +175,9 @@ export class EntityState {
 
   public getEntity = ():Entity => this.personnel.getEntity();
 
-  public humanReadable = ():string|undefined => this._humanReadable
+  public getOverUnderTime = ():string|undefined => this.overUnderTime
+
+  public getReport = ():any => this.report;
 }
 
 
