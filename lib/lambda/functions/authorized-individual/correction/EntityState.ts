@@ -138,8 +138,11 @@ export class EntityState {
       for(const user of users) {
         if(user.active === YN.No) {
           const deactivationTime = new Date(getUpdatedISO(user));
-          if( ! belowMinimumSince || deactivationTime < belowMinimumSince) {
-            belowMinimumSince = deactivationTime; // Track the earliest deactivation time
+          // if( ! belowMinimumSince || deactivationTime < belowMinimumSince) {
+          //   // Track the earliest deactivation time (assumes update_timestamp never changes while active is set to 'N')
+          if( ! belowMinimumSince || deactivationTime > belowMinimumSince) {
+            // Track the latest deactivation time (assumes update_timestamp never changes while active is set to 'N')
+              belowMinimumSince = deactivationTime; 
           }
         }
       }
