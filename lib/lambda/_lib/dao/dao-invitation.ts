@@ -108,7 +108,7 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
     let parmEntityId = entity_id ? `entity_id: ${entity_id}` : '';
     if(parmEmail && parmEntityId) parmEntityId = `${parmEntityId}`;
 
-    log({ email:parmEmail, entity_id:parmEntityId }, 'Reading all invitations for');
+    log({ email, entity_id }, 'Reading all invitations for');
 
     // Declare QueryCommandInput fields
     let vals = {} as any;
@@ -201,6 +201,7 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
     command = new DeleteItemCommand(input);
     return await sendCommand(command);
   }
+  
   /**
    * Envelope the clientdb send function with error handling.
    * @param command 
