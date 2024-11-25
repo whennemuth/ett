@@ -1009,7 +1009,28 @@
 
               <div class="tab-content" id="authIndContent">
                 <div class="tab-pane fade show active" id="auth-request-exhibits" role="tabpanel" aria-labelledby="auth-request-exhibits-tab">
-                  <div id="exhibitsRequest" style="margin-top: 40px; overflow: auto;">
+                  
+                  <p style="margin-top:40px; margin-bottom:15px; font-weight: bold; font-size: 20px;">
+                    What affiliate information are you requesting from the consenting individual?</span> 
+                  </p>
+                  <div id="divAffiliateConstraint" style="overflow: auto; border-top:1px solid #cccccc; padding-top:15px;">
+                    <form id="formAffiliateConstraint" name="formAffiliateConstraint">
+                      <label class="containerRDO">Current Employer(s) only
+                        <input type="radio" name="affiliateConstraint" value="CURRENT">
+                        <span class="checkmark"></span>
+                      </label>
+                      <label class="containerRDO">Other affiliates & Prior Employer(s)
+                        <input type="radio" name="affiliateConstraint" value="PRIOR">
+                        <span class="checkmark"></span>
+                      </label>
+                      <label class="containerRDO">Both - Any of the above
+                        <input type="radio" name="affiliateConstraint" value="BOTH" checked="checked">
+                        <span class="checkmark"></span>
+                      </label>
+                    </form>
+                  </div>
+                
+                  <div id="exhibitsRequest" style="margin-top: 20px; overflow: auto;">
                     <div style="width:400px; margin:10px; display:inline;">
                       <div style="margin-left:10px; font-size:26px;">Consenting Individuals:</div>
                       <input id="txtConsenterFilter" type="text" style="height:66px; width:493px; font-size:26px; float:left;" class="form-control dropdown-toggle" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" placeholder="Type here to search . . .">
@@ -1018,6 +1039,7 @@
                     </div>
                     <button id="btnSendExhibitsRequest" style="display:inline;" class="btn btn-primary btn-lg" type="button">Send <i class="bi-send-check"></i></button>
                   </div>
+
                 </div>
                 <div class="tab-pane fade" id="auth-request-disclosures" role="tabpanel" aria-labelledby="auth-request-disclosures-tab">
                   <div id="disclosureRequest" style="margin-top: 40px;">
@@ -4057,6 +4079,7 @@
         const role = AccessJwtCookie.getRole().name;
         const { entity } = userContext;
         const { entity_id, entity_name } = (entity ?? {});
+        const constraint = document.forms.formAffiliateConstraint.affiliateConstraint.value;
 
         document.body.style.cursor = 'progress';
         const response = await fetch(apiUri(role), {
@@ -4068,7 +4091,7 @@
             'Content-Type': 'application/json',
             [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({ 
               task: 'send-exhibit-form-request', 
-              parameters: { consenterEmail:selectedConsenter, entity_id } 
+              parameters: { consenterEmail:selectedConsenter, entity_id, constraint } 
             })
           }
         });
