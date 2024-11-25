@@ -204,7 +204,6 @@ export class BucketInventory {
  */
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/BucketInventory.ts')) {
-
   const inventoryType = 'entity' as 'consenter' | 'entity';
 
   (async() => {
