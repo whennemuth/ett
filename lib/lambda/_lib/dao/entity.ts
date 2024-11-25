@@ -150,23 +150,31 @@ export type Invitation = {
 /**************** CONFIG ****************/
 export enum ConfigNames { 
   CONSENT_EXPIRATION = 'consent-expiration',
+  AUTH_IND_INVITATION_EXPIRE_AFTER = 'auth-ind-invitation-expire-after',
+  ASP_INVITATION_EXPIRE_AFTER = 'asp-invitation-expire-after',
   AUTH_IND_NBR = 'auth-ind-nbr',
   FIRST_REMINDER = 'first-reminder',
   SECOND_REMINDER = 'second-reminder',
   THIRD_REMINDER = 'third-reminder',
   FOURTH_REMINDER = 'fourth-reminder',
   DELETE_EXHIBIT_FORMS_AFTER = 'delete-exhibit-forms-after',
-  DELETE_DRAFTS_AFTER = 'delete-drafts-after'
+  DELETE_DRAFTS_AFTER = 'delete-drafts-after',
+  STALE_ASP_VACANCY = 'stale-asp-vacancy',
+  STALE_AI_VACANCY = 'stale-ai-vacancy'
 }
 export type ConfigName = 
   ConfigNames.CONSENT_EXPIRATION |
+  ConfigNames.AUTH_IND_INVITATION_EXPIRE_AFTER |
+  ConfigNames.ASP_INVITATION_EXPIRE_AFTER |
   ConfigNames.AUTH_IND_NBR | 
   ConfigNames.DELETE_DRAFTS_AFTER | 
   ConfigNames.DELETE_EXHIBIT_FORMS_AFTER | 
   ConfigNames.FIRST_REMINDER |
   ConfigNames.SECOND_REMINDER |
   ConfigNames.THIRD_REMINDER |
-  ConfigNames.FOURTH_REMINDER;
+  ConfigNames.FOURTH_REMINDER |
+  ConfigNames.STALE_AI_VACANCY |
+  ConfigNames.STALE_ASP_VACANCY
 export enum ConfigTypes {
   DURATION = 'duration',
   NUMBER = 'number',

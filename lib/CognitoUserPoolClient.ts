@@ -46,6 +46,11 @@ export class EttUserPoolClient extends UserPoolClient {
       logoutUrls.push(`https://${callbackDomainName}/consenter/exhibits/index.htm?action=${Actions.logout}`)
     }
 
+    if(role != Roles.CONSENTING_PERSON) {
+      callbackUrls.push(`${callbackUrls[1]}&task=amend`);
+      callbackUrls.push(`${callbackUrls[2]}&task=amend`);
+    }
+
     const client = new EttUserPoolClient(userPool, id, {
       userPool,
       userPoolClientName: `${role}-${STACK_ID}-${Landscape}-userpool-client`,

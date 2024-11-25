@@ -8,8 +8,8 @@ import * as ctx from '../contexts/context.json';
 import { AbstractStack } from '../lib/AbstractStack';
 import { ApiConstruct, ApiConstructParms } from '../lib/Api';
 import { CloudfrontConstruct, CloudfrontConstructProps } from '../lib/Cloudfront';
-import { CognitoConstruct } from '../lib/Cognito';
-import { DelayedExecutionLambdaParms, DelayedExecutionLambdas } from '../lib/DelayedExecution';
+import { CognitoConstruct, CognitoConstructParms } from '../lib/Cognito';
+import { DelayedExecutionLambdaParms, DelayedExecutionLambdas, DelayedExecutions } from '../lib/DelayedExecution';
 import { DynamoDbConstruct } from '../lib/DynamoDb';
 import { SignupApiConstruct, SignupApiConstructParms } from '../lib/SignupApi';
 import { StaticSiteConstruct } from '../lib/StaticSite';
@@ -35,7 +35,7 @@ const stackProps: StackProps = {
  * if the region is not us-east-1
  * @param context 
  */
-if( context.REGION != 'us-east-1' ) {
+if( region != 'us-east-1' ) {
   const { EDGE_VIEWER_REQUEST_CODE_FILE:outfile } = CloudfrontConstruct;
 
   (async () => {
@@ -77,7 +77,12 @@ const buildAll = () => {
   const cloudfront = new CloudfrontConstruct(stack, 'Cloudfront', { bucket } as CloudfrontConstructProps);
 
   // Set up the cognito userpool and userpool client
-  const cognito = new CognitoConstruct(stack, 'Cognito');
+  const cognito = new CognitoConstruct({
+    scope:stack, 
+    constructId:'Cognito',
+    exhibitFormsBucket: exhibitFormsBucket,
+    handleStaleEntityVacancyLambdaArn: `arn:aws:lambda:${region}:${account}:function:${stackName}-${DelayedExecutions.ExhibitFormDbPurge.coreName}`
+  } as CognitoConstructParms);
 
   // Set up the dynamodb table for users.
   const dynamodb = new DynamoDbConstruct(stack, 'Dynamodb');
@@ -91,7 +96,8 @@ const buildAll = () => {
   // Create all the delayed execution lambda functions
   const delayedExecutionLambdas = new DelayedExecutionLambdas(stack, 'DelayedExecution', {
     cloudfrontDomain: cloudfront.getDistributionDomainName(),
-    exhibitFormsBucket
+    exhibitFormsBucket,
+    userPoolId:cognito.getUserPool().userPoolId
   } as DelayedExecutionLambdaParms);
 
   // Set up an api for every role with cognito as the authorizer and oauth as the flow.
@@ -105,7 +111,8 @@ const buildAll = () => {
     exhibitFormsBucket: exhibitFormsBucket,
     databaseExhibitFormPurgeLambdaArn: delayedExecutionLambdas.databaseExhibitFormPurgeLambda.functionArn,
     disclosureRequestReminderLambdaArn: delayedExecutionLambdas.disclosureRequestReminderLambda.functionArn,
-    bucketExhibitFormPurgeLambdaArn: delayedExecutionLambdas.bucketExhibitFormPurgeLambda.functionArn
+    bucketExhibitFormPurgeLambdaArn: delayedExecutionLambdas.bucketExhibitFormPurgeLambda.functionArn,
+    handleStaleEntityVacancyLambdaArn: delayedExecutionLambdas.handleStaleEntityVacancyLambda.functionArn
   } as ApiConstructParms);
 
   // Grant the apis the necessary permissions (policy actions).

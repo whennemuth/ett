@@ -116,6 +116,17 @@ export const debugLog = (o:any, msg?:string) => {
   }
 }
 
+export const serializeObject = (o:any, seen = new Set()):any => {
+  if (o && typeof o === 'object') {
+    if (seen.has(o)) return '[Circular]';
+    seen.add(o);
+
+    if (Array.isArray(o)) return o.map(item => serializeObject(item, seen));
+    return Object.fromEntries(Object.entries(o).map(([key, value]) => [key, serializeObject(value, seen)]));
+  }
+  return o;
+}
+
 const toConsole = (o:any, out:Function, msg?:string) => {
   const output = (suffix:string) => {
     if(msg) msg = msg.endsWith(': ') ? msg : `${msg}: `;
@@ -127,7 +138,7 @@ const toConsole = (o:any, out:Function, msg?:string) => {
     return;
   }
   if(o instanceof Object) {
-    output(JSON.stringify(o, Object.getOwnPropertyNames(o), 2));
+    output(JSON.stringify(serializeObject(o), null, 2));
     return;
   }
   output(`${o}`);
@@ -247,7 +258,9 @@ export const lookupPendingInvitations = async (entity_id?:string|null):Promise<I
     DAOType: 'invitation',
     Payload: { entity_id } as Invitation
   }) as DAOInvitation;
-  return await dao.read() as Invitation[];
+  const invitations = await dao.read() as Invitation[];
+  // Return those invitations that have not been retracted and have not yet registered
+  return invitations.filter(i => ( ! i.retracted_timestamp ) && ( ! i.registered_timestamp ) )
 }
 
 export const lookupCloudfrontDomain = async (landscape:string):Promise<string|undefined> => {

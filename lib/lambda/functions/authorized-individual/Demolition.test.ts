@@ -1,12 +1,13 @@
 import { AdminDeleteUserCommand, CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 import { DynamoDBClient, TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb';
+import { DeleteObjectsCommandOutput, ObjectIdentifier } from '@aws-sdk/client-s3';
 import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest';
 import { DAOConfig, DAOConsenter, DAOEntity, DAOInvitation, DAOUser, FactoryParms } from '../../_lib/dao/dao';
 import { Config, Consenter, Invitation, User } from '../../_lib/dao/entity';
 import { EntityToDemolish } from './Demolition';
 import { expectedCommandInput } from './DemolitionCommandInputMock';
-import { entity, bugsbunny, daffyduck, yosemitesam, bugbunny_invitation, daffyduck_invitation, yosemitesam_invitation } from './MockObjects';
+import { bugbunny_invitation, bugsbunny, daffyduck, daffyduck_invitation, entity, yosemitesam, yosemitesam_invitation } from './MockObjects';
 
 const dbMockClient = mockClient(DynamoDBClient);
 const cognitoMockClient = mockClient(CognitoIdentityProviderClient);
@@ -63,6 +64,26 @@ jest.mock('../../_lib/dao/dao.ts', () => {
     }
   }
 });
+
+jest.mock('../consenting-person/BucketItem.ts', () => {
+  return {
+    BucketItem: jest.fn().mockImplementation(() => { 
+      return {
+        deleteMultipleItems: async (Objects:ObjectIdentifier[]):Promise<DeleteObjectsCommandOutput> => {
+          return {
+            $metadata: { httpStatusCode: 200 },
+            Deleted: [],
+            Errors: []
+          } as DeleteObjectsCommandOutput
+        },
+        listAllKeys: async () => {
+          return [];
+        }
+      }
+    })
+  }
+});
+
 
 describe('Demolish an entity from the database', () => {
 

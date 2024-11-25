@@ -7,6 +7,7 @@ import { AbstractFunction } from "./AbstractFunction";
 import { TableBaseNames } from "./DynamoDb";
 import { Configurations } from "./lambda/_lib/config/Config";
 import { ExhibitFormsBucketEnvironmentVariableName } from "./lambda/functions/consenting-person/BucketItemMetadata";
+import { Duration } from "aws-cdk-lib";
 
 export type DelayedExecutionNames = {
   coreName: string, targetArnEnvVarName: string
@@ -23,12 +24,17 @@ export const DelayedExecutions = {
   ExhibitFormBucketPurge: {
     coreName: 'purge-exhibit-forms-from-bucket',
     targetArnEnvVarName: 'EXHIBIT_FORM_BUCKET_PURGE_FUNCTION_ARN'
+  } as DelayedExecutionNames,
+  HandleStaleEntityVacancy: {
+    coreName: 'handle-stale-entity-vacancy',
+    targetArnEnvVarName: 'HANDLE_STALE_ENTITY_VACANCY_ARN'
   } as DelayedExecutionNames
 }
 
 export type DelayedExecutionLambdaParms = {
   cloudfrontDomain: string,
-  exhibitFormsBucket: Bucket
+  exhibitFormsBucket: Bucket,
+  userPoolId: string
 }
 export class DelayedExecutionLambdas extends Construct {
   private scope:Construct;
@@ -38,6 +44,7 @@ export class DelayedExecutionLambdas extends Construct {
   private _databaseExhibitFormPurgeLambda:AbstractFunction;
   private _disclosureRequestReminderLambda:AbstractFunction;
   private _bucketExhibitFormPurgeLambda:AbstractFunction;
+  private _handleStaleEntityVacancyLambda:AbstractFunction;
 
   constructor(scope:Construct, constructId:string, parms:DelayedExecutionLambdaParms) {
     super(scope, constructId);
@@ -52,10 +59,11 @@ export class DelayedExecutionLambdas extends Construct {
     this.createDisclosureRequestReminderLambda();
 
     this.createBucketExhibitFormPurgeLambda();
+
+    this.createHandleStaleEntityVacancyLambda();
   }
 
   private createDatabaseExhibitFormPurgeLambda = () => {
-    const { scope } = this;
     const { constructId, parms: { cloudfrontDomain }, context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } } = this;
     const baseId = `${constructId}DatabaseExhibitFormPurge`;
     const prefix = `${STACK_ID}-${landscape}`
@@ -66,6 +74,7 @@ export class DelayedExecutionLambdas extends Construct {
     this._databaseExhibitFormPurgeLambda = new class extends AbstractFunction { }(this, baseId, {
       runtime: Runtime.NODEJS_18_X,
       // memorySize: 1024,
+      timeout: Duration.seconds(5),
       entry: 'lib/lambda/functions/delayed-execution/PurgeExhibitFormFromDatabase.ts',
       // handler: 'handler',
       functionName,
@@ -122,7 +131,6 @@ export class DelayedExecutionLambdas extends Construct {
   }
 
   private createDisclosureRequestReminderLambda = () => {
-    const { scope } = this;
     const { constructId, parms: { cloudfrontDomain, exhibitFormsBucket: { bucketArn, bucketName } }, context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } } = this;
     const baseId = `${constructId}DisclosureRequestReminder`;
     const prefix = `${STACK_ID}-${landscape}`
@@ -133,6 +141,7 @@ export class DelayedExecutionLambdas extends Construct {
     this._disclosureRequestReminderLambda = new class extends AbstractFunction { }(this, baseId, {
       runtime: Runtime.NODEJS_18_X,
       memorySize: 512,
+      timeout: Duration.seconds(5),
       entry: 'lib/lambda/functions/delayed-execution/SendDisclosureRequestReminder.ts',
       // handler: 'handler',
       functionName: `${functionName}`,
@@ -210,7 +219,6 @@ export class DelayedExecutionLambdas extends Construct {
   }
 
   private createBucketExhibitFormPurgeLambda = () => {
-    const { scope } = this;
     const { constructId, parms: { cloudfrontDomain, exhibitFormsBucket: { bucketArn, bucketName } }, context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } } = this;
     const baseId = `${constructId}BucketPurge`;
     const prefix = `${STACK_ID}-${landscape}`
@@ -220,6 +228,7 @@ export class DelayedExecutionLambdas extends Construct {
     this._bucketExhibitFormPurgeLambda = new class extends AbstractFunction { }(this, baseId, {
       runtime: Runtime.NODEJS_18_X,
       // memorySize: 1024,
+      timeout: Duration.seconds(5),
       entry: 'lib/lambda/functions/delayed-execution/PurgeExhibitFormFromBucket.ts',
       // handler: 'handler',
       functionName,
@@ -285,6 +294,109 @@ export class DelayedExecutionLambdas extends Construct {
     })
   }
 
+  private createHandleStaleEntityVacancyLambda = () => {
+    const { constructId, parms: { 
+      cloudfrontDomain, 
+      userPoolId, 
+      exhibitFormsBucket: { bucketArn, bucketName } }, 
+      context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } 
+    } = this;
+    const baseId = `${constructId}HandleStaleEntityVacancy`;
+    const prefix = `${STACK_ID}-${landscape}`
+    const functionName = `${prefix}-${DelayedExecutions.HandleStaleEntityVacancy.coreName}`;
+    const description = 'Function for handling entity termination for vacancies in entity roles that have lasted too long';
+
+    this._handleStaleEntityVacancyLambda = new class extends AbstractFunction { }(this, baseId, {
+      runtime: Runtime.NODEJS_18_X,
+      // memorySize: 1024,
+      timeout: Duration.seconds(15),
+      entry: 'lib/lambda/functions/delayed-execution/HandleStaleEntityVacancy.ts',
+      // handler: 'handler',
+      functionName,
+      description,
+      cleanup: true,
+      bundling: {
+        externalModules: [
+          '@aws-sdk/*',
+        ]
+      },
+      role: new Role(this, 'HandleStaleEntityVacancyRole', {
+        assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+        description: 'Grants access to dynamodb, s3, ses, and event-bridge',
+        inlinePolicies: {
+          [`${functionName}--db-policy`]: new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'dynamodb:DeleteItem', 'dynamodb:Query', 'dynamodb:GetItem' ],
+                resources: [
+                  `arn:aws:dynamodb:${REGION}:${ACCOUNT}:table/${prefix}-*`,
+                  `arn:aws:dynamodb:${REGION}:${ACCOUNT}:table/${prefix}-*/index/*`
+                ],
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
+          [`${functionName}-s3-policy`]: new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 's3:*' ],
+                resources: [ bucketArn, `${bucketArn}/*` ],
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
+          [`${functionName}-ses-policy`]: new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'ses:Send*', 'ses:Get*' ],
+                resources: [
+                  `arn:aws:ses:${REGION}:${ACCOUNT}:identity/*`
+                ],
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
+          [`${functionName}-eventbridge-policy`]: new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'events:DeleteRule', 'events:RemoveTargets' ],
+                resources: [
+                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
+                ],
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
+          [`${functionName}-delete-user-from-pool`]: new PolicyDocument({
+            statements: [ new PolicyStatement({
+              actions: [
+                'cognito-idp:AdminDeleteUser',
+              ],
+              resources: [ `arn:aws:cognito-idp:${REGION}:${ACCOUNT}:userpool/${REGION}_*` ],
+              effect: Effect.ALLOW
+            })]
+          }),
+        }
+      }),
+      environment: {
+        REGION,
+        CLOUDFRONT_DOMAIN: cloudfrontDomain,
+        USERPOOL_ID: userPoolId,
+        PREFIX: prefix,
+        [ExhibitFormsBucketEnvironmentVariableName]: bucketName,
+        [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
+      }
+    });
+
+    // Grant event bridge permission to invoke the lambda function.
+    this._handleStaleEntityVacancyLambda.addPermission(`${functionName}-invoke-permission`, {
+      principal: new ServicePrincipal('events.amazonaws.com'),
+      action: 'lambda:InvokeFunction',
+      sourceArn: `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
+    })
+
+  }
+
   public get databaseExhibitFormPurgeLambda(): AbstractFunction {
     return this._databaseExhibitFormPurgeLambda;
   }
@@ -295,5 +407,9 @@ export class DelayedExecutionLambdas extends Construct {
 
   public get bucketExhibitFormPurgeLambda(): AbstractFunction {
     return this._bucketExhibitFormPurgeLambda;
+  }
+
+  public get handleStaleEntityVacancyLambda():AbstractFunction {
+    return this._handleStaleEntityVacancyLambda;
   }
 }

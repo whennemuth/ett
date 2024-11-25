@@ -1,12 +1,16 @@
 import { IContext } from '../../../../contexts/IContext';
+import { DelayedExecutions } from '../../../DelayedExecution';
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
 import { lookupEmail, lookupUserPoolId } from '../../_lib/cognito/Lookup';
+import { Configurations } from '../../_lib/config/Config';
 import { DAOEntity, DAOFactory, DAOUser } from '../../_lib/dao/dao';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
-import { Entity, Invitation, Role, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
+import { UserCrud } from '../../_lib/dao/dao-user';
+import { ConfigNames, Entity, Invitation, Role, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
 import { UserInvitation } from '../../_lib/invitation/Invitation';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
 import { debugLog, errorResponse, invalidResponse, isOk, log, lookupCloudfrontDomain, lookupPendingInvitations, lookupSingleActiveEntity, lookupSingleUser, lookupUser, mergeResponses, okResponse } from "../../Utils";
+import { ExhibitFormsBucketEnvironmentVariableName } from '../consenting-person/BucketItemMetadata';
 
 export enum Task {
   CREATE_ENTITY = 'create-entity',
@@ -79,15 +83,6 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
 
 /**
  * Get the users information, including the entity details, as well as the other users in the entity.
- * 
- * TODO: Replace the filtering (ie: user.active, user.role, etc) with filters applied by the dynamodb query itself.
- * This would entail modifying the _read and _query functions so that extra attributes supplied in the User object
- * payload parameter that are neither the Partition Key or Sort Key get applied as the equivalent of a 
- * "where clause" (research how to do this in dynamodb). This will become more necessary as CONSENTING_PERSON
- * users start to pile up in the entity and it becomes inefficient to filter them all off with javascript if the
- * use case doesn't even call for including them in the lookup.
- * 
- * TODO: Refactor this lambda so that each task is broken out into its own module. Adjust unit tests accordingly.
  * @param email 
  * @param role 
  * @returns 
@@ -341,24 +336,65 @@ export const inviteUser = async (user:User, inviterRole:Role, linkGenerator:Func
 
     // Prevent inviting the user if they already have an account with the specified entity.
     const user = await lookupSingleUser(email, entity_id);
-    if(user) {
+    if(user && user.active == YN.Yes) {
       return invalidResponse(`Invitee ${email} has already accepted invitation for entity ${entity_id}`);
-      // TODO: What if the user is deactivated? Should an invitation be allowed that reactivates them instead of creating a new user?
     }
 
     // Prevent inviting a non-RE_AUTH_IND user if somebody has already been invited for the same role in the same entity.
     const pendingInvitations = await lookupPendingInvitations(entity_id) as Invitation[];
+    log(`Checking existing/prior invitations for ${role} to ${entity_id} for conflicts...`);
     const conflictingInvitations = pendingInvitations.filter((invitation) => {
       if(invitation.retracted_timestamp) return false;
       if(invitedToWaitingRoom()) return false; // Anybody can be invited into the waiting room.
-      if(role == Roles.RE_AUTH_IND) return false; // You can invite any number of AUTH_IND users to an entity.
-      if(invitation.role != role) return false;
-      return true;
+      if(invitation.role == Roles.RE_AUTH_IND) return false; // You can invite any number of AUTH_IND users to an entity (despite config limit).
+
+      const { registered_timestamp, retracted_timestamp, sent_timestamp, email:invEmail, role } = invitation;
+      const sent = sent_timestamp ? new Date(sent_timestamp).getTime() : 0;
+      const registered = registered_timestamp ? new Date(registered_timestamp).getTime() : 0;
+      const retracted = retracted_timestamp ? new Date(retracted_timestamp).getTime() : 0;
+
+      if(retracted > sent) {
+        log(`${invEmail} is NOT invited as ${role} because the their invitation was retracted after 
+          it was last sent. Thus they are re-invitable to register`);
+        return false; 
+      }
+
+      if(sent > registered) {
+        // The user has not registered with this invitation yet, So, Figure out if the invitation has expired.
+        const mils = Date.now() - sent;
+        const configs = new Configurations();
+        let expireAfterMils = 0;
+        (async () => {
+          expireAfterMils = (await configs.getAppConfig(ConfigNames.ASP_INVITATION_EXPIRE_AFTER)).getDuration() * 1000;
+        })();
+        if(mils >= expireAfterMils) {
+          log(`${invEmail} was invited to register as ${role}, but that invitation expired. Thus they are re-invitatable`);
+          return false;
+        }
+      }
+
+      let deactivated = true;
+      (async () => {
+        const invitedUser = await lookupSingleUser(invEmail, entity_id);
+        if( ! invitedUser || ! invitedUser.active || invitedUser.active == YN.No) {
+          log(`${invEmail} has used non-retracted invitation to register as ${role}, 
+            but has since been deactivated. Thus they are re-invitable (to re-register)`);
+          return;
+        }
+        deactivated = false;
+      })();
+
+      if(deactivated) {
+        return false; // Another user was invited for the same role in the same entity, but they are not active, exclude them as conflicting.
+      }
+
+      return true; // // Another currently active user was invited for the same role in the same entity, thus conflicting.
     });
+
     if(conflictingInvitations.length > 0) {
       return invalidResponse(`One or more individuals already have outstanding invitations for role: ${role} in entity: ${entity_id}`);
     }
-    
+
     const link = await linkGenerator(entity_id, role);
 
     // Instantiate an invitation
@@ -488,18 +524,38 @@ export const createEntityAndInviteUsers = async (parameters:any, callerSub?:stri
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/re-admin/ReAdminUser.ts')) {
 
+  const task = Task.INVITE_USERS as Task;
+  const { DisclosureRequestReminder, HandleStaleEntityVacancy } = DelayedExecutions;
+
   (async () => {
+    // 1) Get context variables
     const context:IContext = await require('../../../../contexts/context.json');
-    const { STACK_ID, REGION, TAGS: { Landscape }} = context;
+    const { STACK_ID, ACCOUNT, REGION, TAGS: { Landscape }} = context;
+    const prefix = `${STACK_ID}-${Landscape}`;
 
-    const task = Task.INVITE_USERS as Task;
-
+    // 2) Get the cloudfront domain
     const cloudfrontDomain = await lookupCloudfrontDomain(Landscape);
-    process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
+    if( ! cloudfrontDomain) {
+      throw('Cloudfront domain lookup failure');
+    }
 
-    const userpoolId = await lookupUserPoolId(`${STACK_ID}-${Landscape}-cognito-userpool`, REGION);
+    // 3) Get the userpool ID
+    const userpoolId = await lookupUserPoolId(`${prefix}-cognito-userpool`, REGION);
+
+    // 4) Get bucket name & lambda function arns
+    const bucketName = `${prefix}-exhibit-forms`;
+    const discFuncName = `${prefix}-${DisclosureRequestReminder.coreName}`;
+    const staleFuncName = `${prefix}-${HandleStaleEntityVacancy.coreName}`;
+
+    // 5) Set environment variables (many are used if the RE_ADMIN is doing work on behalf of an AI)
+    process.env[DisclosureRequestReminder.targetArnEnvVarName] = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${discFuncName}`;
+    process.env[HandleStaleEntityVacancy.targetArnEnvVarName] = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${staleFuncName}`;
+    process.env[ExhibitFormsBucketEnvironmentVariableName] = bucketName;
+    process.env.PREFIX = prefix
+    process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
     process.env.USERPOOL_ID = userpoolId;
     process.env.REGION = REGION;
+
     let payload = {};
     let _event = {};
 

@@ -8,7 +8,13 @@ import path = require('path');
 import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { DynamoDbConstruct, TableBaseNames } from './DynamoDb';
 import { Configurations } from './lambda/_lib/config/Config';
+import { ExhibitFormsBucketEnvironmentVariableName } from './lambda/functions/consenting-person/BucketItemMetadata';
+import { DelayedExecutions } from './DelayedExecution';
+import { Bucket } from 'aws-cdk-lib/aws-s3';
 
+export type CognitoConstructParms = {
+  scope:Construct, constructId:string, exhibitFormsBucket:Bucket, handleStaleEntityVacancyLambdaArn:string
+}
 export class CognitoConstruct extends Construct {
 
   private constructId: string;
@@ -17,8 +23,12 @@ export class CognitoConstruct extends Construct {
   private userPoolDomain: UserPoolDomain;
   private userPoolName: string;
   private landscape: string;
+  private exhibitFormsBucket:Bucket;
+  private handleStaleEntityVacancyLambdaArn:string;
+  private prefix:string;
 
-  constructor(scope: Construct, constructId: string) {
+  constructor(parms:CognitoConstructParms) {
+    const { scope, constructId, exhibitFormsBucket, handleStaleEntityVacancyLambdaArn } = parms;
 
     super(scope, constructId);
 
@@ -26,12 +36,15 @@ export class CognitoConstruct extends Construct {
     this.context = scope.node.getContext('stack-parms');
     const { TAGS: { Landscape }, STACK_ID } = this.context;
     this.landscape = Landscape;
+    this.prefix = `${STACK_ID}-${Landscape}`;
+    this.exhibitFormsBucket = exhibitFormsBucket;
+    this.handleStaleEntityVacancyLambdaArn = handleStaleEntityVacancyLambdaArn;
     this.userPoolName = `${STACK_ID}-${Landscape}-${this.constructId.toLowerCase()}-userpool`;
     this.buildResources();
   }
 
   buildResources(): void {
-    const { context: { REGION, ACCOUNT, CONFIG:config, STACK_ID:stackId }, constructId, landscape } = this;
+    const { prefix, context: { REGION, ACCOUNT, CONFIG:config, STACK_ID:stackId }, constructId, landscape, exhibitFormsBucket, handleStaleEntityVacancyLambdaArn } = this;
     const { CONFIG, CONSENTERS, ENTITIES, INVITATIONS, USERS } = TableBaseNames;
     const { getTableName } = DynamoDbConstruct;
 
@@ -49,11 +62,14 @@ export class CognitoConstruct extends Construct {
     ] as string[];
 
     const environment = {
+      PREFIX: prefix,
       DYNAMODB_USER_TABLE_NAME: getTableName(USERS),
       DYNAMODB_INVITATION_TABLE_NAME: getTableName(INVITATIONS),
       DYNAMODB_ENTITY_TABLE_NAME: getTableName(ENTITIES),
       DYNAMODB_CONSENTER_TABLE_NAME: getTableName(CONSENTERS),
       DYNAMODB_CONFIG_TABLE_NAME: getTableName(CONFIG),
+      [ExhibitFormsBucketEnvironmentVariableName]: exhibitFormsBucket.bucketName,
+      [DelayedExecutions.HandleStaleEntityVacancy.targetArnEnvVarName]: handleStaleEntityVacancyLambdaArn,
       [Configurations.ENV_VAR_NAME]: new Configurations(config).getJson() 
     };
 
@@ -143,6 +159,26 @@ export class CognitoConstruct extends Construct {
               effect: Effect.ALLOW
             })],
           }),
+          'EttPostSignupEventBridgePolicy': new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'events:PutRule', 'events:PutTargets' ],
+                resources: [
+                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/*`
+                ],
+                effect: Effect.ALLOW
+              }),
+              new PolicyStatement({
+                actions: [ 'lambda:AddPermission' ],
+                resources: [
+                  `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${stackId}-${DelayedExecutions.HandleStaleEntityVacancy.coreName}`
+                ],
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
+
+
         }
       }),
       environment

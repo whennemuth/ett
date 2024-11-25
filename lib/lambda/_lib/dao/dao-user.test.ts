@@ -1,9 +1,9 @@
-import { DeleteItemCommand, DynamoDBClient, GetItemCommand, PutItemCommand, QueryCommand, UpdateItemCommand } from '@aws-sdk/client-dynamodb';
+import { DeleteItemCommand, DynamoDBClient, GetItemCommand, QueryCommand, UpdateItemCommand } from '@aws-sdk/client-dynamodb';
 import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest';
+import { DynamoDbConstruct, TableBaseNames } from '../../../DynamoDb';
 import { DAOFactory, DAOUser } from './dao';
 import { Roles, User, UserFields, YN } from './entity';
-import { DynamoDbConstruct, TableBaseNames } from '../../../DynamoDb';
 
 const dbMockClient = mockClient(DynamoDBClient);
 
@@ -97,7 +97,7 @@ const testPut = () => {
           TableName
         }
       };
-      dbMockClient.on(PutItemCommand).resolves(expectedResponse);
+      dbMockClient.on(UpdateItemCommand).resolves(expectedResponse);
       const dao = DAOFactory.getInstance({
         DAOType: 'user', Payload: {
           [UserFields.email]: email,
@@ -129,7 +129,7 @@ const testPut = () => {
           TableName
         }
       };
-      dbMockClient.on(PutItemCommand).resolves(expectedResponse);
+      dbMockClient.on(UpdateItemCommand).resolves(expectedResponse);
       const dao = DAOFactory.getInstance({
         DAOType: 'user', Payload: {
           [UserFields.email]: email,
@@ -227,7 +227,7 @@ const testUpdate = () => {
           [UserFields.fullname]: 'Daffy Duck',
       }});
       await dao.update();
-      expect(dbMockClient).toHaveReceivedCommandTimes(UpdateItemCommand, 1);
+      expect(dbMockClient).toHaveReceivedCommandTimes(UpdateItemCommand, 3);
     })
   });
 }

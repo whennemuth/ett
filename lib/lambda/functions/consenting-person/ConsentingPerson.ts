@@ -322,7 +322,7 @@ export const rescindConsent = async (email:string): Promise<LambdaProxyIntegrati
 
   // Delete all exhibit form data from the consenters database record.
   for(let i=0; i<exhibit_forms.length; i++) {
-    await deleteExhibitForm(email, exhibit_forms[i].entity_id);
+    await deleteExhibitForm(email, exhibit_forms[i].entity_id, 0);
   }
 
   // Delete the consenter from the cognito userpool.
@@ -477,11 +477,11 @@ export const scheduleExhibitFormPurgeFromDatabase = async (newConsenter:Consente
   const envVarName = DelayedExecutions.ExhibitFormDbPurge.targetArnEnvVarName;
   const functionArn = process.env[envVarName];
   if(functionArn) {
-    const lambdaInput = { consenterEmail: newConsenter.email, entity_id: exhibitForm.entity_id };
-    const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
     const configs = new Configurations();
-    const { SECONDS } = PeriodType;
     const waitTime = (await configs.getAppConfig(ConfigNames.DELETE_DRAFTS_AFTER)).getDuration();
+    const lambdaInput = { consenterEmail: newConsenter.email, entity_id: exhibitForm.entity_id, delaySeconds:waitTime };
+    const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
+    const { SECONDS } = PeriodType;
     const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
     await delayedTestExecution.startCountdown(timer, `Dynamodb exhibit form purge`);
   }
@@ -659,7 +659,7 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
           const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
           const waitTime = (await configs.getAppConfig(deleteAfter)).getDuration();
           const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
-          await delayedTestExecution.startCountdown(timer, `S3 exhibit form purge`);
+          await delayedTestExecution.startCountdown(timer, `S3 exhibit form purge (${consenter.email})`);
         }
         else {
           console.error(`Cannot schedule ${deleteAfter} bucket item purge: ${envVarName} variable is missing from the environment!`);

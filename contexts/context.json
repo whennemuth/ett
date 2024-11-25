@@ -13,6 +13,18 @@
         "config_type": "number",
         "description": "Number of authorized individuals per entity"
       },
+      {
+        "name": "auth-ind-invitation-expire-after",
+        "value": "2592000",
+        "config_type": "duration",
+        "description": "Duration an invitation to an AI lasts before expiring"
+      },
+      {
+        "name": "asp-invitation-expire-after",
+        "value": "2592000",
+        "config_type": "duration",
+        "description": "Duration an invitation to an ASP lasts before expiring"
+      },
       { 
         "name": "first-reminder", 
         "value": "1209600",
@@ -36,6 +48,18 @@
         "value": "172800",
         "config_type": "duration",
         "description": "Duration that partially complete exhibit forms can survive in the ETT system before failure to submit them will result in their deletion"
+      },
+      {
+        "name": "stale-ai-vacancy",
+        "value": "2592000",
+        "config_type": "duration",
+        "description": "Duration beyond having a registered ASP that an entity can remain without a registered AI for before being terminated"
+      },
+      {
+        "name": "stale-asp-vacancy",
+        "value": "2592000",
+        "config_type": "duration",
+        "description": "Duration that an entity can remain without a registered ASP for before being terminated"
       },
       { 
         "name": "consent-expiration", 

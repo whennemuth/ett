@@ -19,6 +19,8 @@ import { lookupEntity } from "../re-admin/ReAdminUser";
 import { DemolitionRecord, EntityToDemolish } from "./Demolition";
 import { DisclosureEmailParms, DisclosureRequestEmail } from "./DisclosureRequestEmail";
 import { ExhibitFormRequestEmail } from "./ExhibitFormRequestEmail";
+import { EntityToCorrect } from "./correction/EntityCorrection";
+import { Personnel } from "./correction/EntityPersonnel";
 
 export enum Task {
   LOOKUP_USER_CONTEXT = 'lookup-user-context',
@@ -26,6 +28,8 @@ export enum Task {
   SEND_DISCLOSURE_REQUEST = 'send-disclosure-request',
   SEND_EXHIBIT_FORM_REQUEST = 'send-exhibit-form-request',
   GET_CONSENTERS = 'get-consenter-list',
+  AMEND_ENTITY_NAME = 'amend-entity-name',  
+  AMEND_ENTITY_USER = 'amend-entity-user',  
   PING = 'ping'
 };
 
@@ -75,6 +79,13 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           var { fragment } = parameters;
           return await getConsenterList(fragment);
 
+        case Task.AMEND_ENTITY_NAME:
+          var { entity_id, name } = parameters;
+          return await amendEntityName(entity_id, name);
+
+        case Task.AMEND_ENTITY_USER:
+          return await amendEntityUser(parameters);
+      
         case Task.PING:
           return okResponse('Ping!', parameters);
       } 
@@ -198,6 +209,48 @@ export const notifyUserOfDemolition = async (emailAddress:string, entity:Entity)
 }
 
 /**
+ * Change the name of the specified entity
+ * @param entity_id 
+ * @param name 
+ * @returns 
+ */
+const amendEntityName = async (entity_id:string, name:string): Promise<LambdaProxyIntegrationResponse> => {
+  log({ entity_id, name }, `amendEntityName`)
+  if( ! entity_id) {
+    return invalidResponse('Missing entity_id parameter');
+  }
+  if( ! name) {
+    return invalidResponse('Missing name parameter');
+  }
+  const corrector = new EntityToCorrect(new Personnel({ entity: entity_id }));
+  await corrector.correctEntity({ entity_id, entity_name:name } as Entity);
+  return okResponse('Ok', {});
+}
+
+/**
+ * Remove a user from the specified entity and optionally invite a replacement
+ * @param parms 
+ * @returns 
+ */
+const amendEntityUser = async (parms:any): Promise<LambdaProxyIntegrationResponse> => {
+  log(parms, `amendEntityUser`)
+  var { entity_id, replacerEmail, replaceableEmail, replacementEmail } = parms;
+  if( ! entity_id) {
+    return invalidResponse('Missing entity_id parameter');
+  }
+  if( ! replaceableEmail) {
+    return invalidResponse('Missing replaceableEmail parameter');
+  }
+
+  const corrector = new EntityToCorrect(new Personnel({ entity:entity_id, replacer:replacerEmail }));
+  const corrected = await corrector.correctPersonnel(replaceableEmail, replacementEmail);
+  if(corrected) {
+    return okResponse('Ok', {});
+  }
+  return errorResponse(`Entity correction failure: ${corrector.getMessage()}`);
+}
+
+/**
  * Get the email address of the first system administrator found in a lookup.
  * @returns 
  */
@@ -230,7 +283,7 @@ export const getConsenterList = async (fragment?:string):Promise<LambdaProxyInte
     if( ! fragment) {
       return { email, fullname };
     }
-    const match = fullname.toLocaleUpperCase().includes(fragment.toLocaleLowerCase());
+    const match = fullname.toLowerCase().includes(fragment.toLowerCase());
     return match ? { email, fullname } : undefined;
   }).filter(s => { return s != undefined });
   return okResponse('Ok', { consenters:mapped });
@@ -309,7 +362,7 @@ export const sendDisclosureRequest = async (consenterEmail:string, entity_id:str
       const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
       const waitTime = (await configs.getAppConfig(configName)).getDuration();
       const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
-      await delayedTestExecution.startCountdown(timer, `Disclosure request: ${configName}`);
+      await delayedTestExecution.startCountdown(timer, `Disclosure request: ${configName} (${disclosureEmailParms.consenterEmail})`);
     }
     else {
       console.error(`Cannot schedule ${configName} disclosure request reminder: ${envVarName} variable is missing from the environment!`);
@@ -357,6 +410,7 @@ const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/authorized-individual/AuthorizedIndividual.ts')) {
 
   const task:Task = Task.GET_CONSENTERS;
+  const { DisclosureRequestReminder, HandleStaleEntityVacancy } = DelayedExecutions;
 
   (async () => {
     // 1) Get context variables
@@ -373,12 +427,14 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     // 3) Get the userpool ID
     const userpoolId = await lookupUserPoolId(`${prefix}-cognito-userpool`, REGION);
 
-    // 4) Get bucket name & lambda function arn
+    // 4) Get bucket name & lambda function arns
     const bucketName = `${prefix}-exhibit-forms`;
-    const functionName = `${prefix}-${DelayedExecutions.DisclosureRequestReminder.coreName}`;
+    const discFuncName = `${prefix}-${DisclosureRequestReminder.coreName}`;
+    const staleFuncName = `${prefix}-${HandleStaleEntityVacancy.coreName}`;
 
     // 5) Set environment variables
-    process.env[DelayedExecutions.DisclosureRequestReminder.targetArnEnvVarName] = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${functionName}`;
+    process.env[DisclosureRequestReminder.targetArnEnvVarName] = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${discFuncName}`;
+    process.env[HandleStaleEntityVacancy.targetArnEnvVarName] = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${staleFuncName}`;
     process.env[ExhibitFormsBucketEnvironmentVariableName] = bucketName;
     process.env.PREFIX = prefix
     process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
@@ -430,8 +486,9 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         break;
 
       case Task.GET_CONSENTERS:
+        const fragment = 'dd' as string | undefined;
         _event.headers[AbstractRoleApi.ETTPayloadHeader] = JSON.stringify({ task, parameters: {
-          fragment: undefined
+          fragment
         }} as IncomingPayload);
         break;
 

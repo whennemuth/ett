@@ -10,7 +10,7 @@ export type EmailParms = {
 
 export const sendEmail = async (parms:EmailParms):Promise<boolean> => {
   
-  const { subject, to, cc=[], bcc=[], message, from, attachments } = parms;
+  const { subject, to, cc=[], bcc=[], message, from, attachments=[] } = parms;
 
   log({ subject, to, cc, bcc, from }, 'Sending email');
 

@@ -15,6 +15,12 @@ export class BucketInventory {
   private keys:string[] = [];
   private contents:BucketItemMetadataParms[] = [];
 
+  /**
+   * Get an instance that constitutes a bucket inventory for a specific consenter.
+   * @param consenterEmail 
+   * @param entityId 
+   * @returns 
+   */
   public static getInstance = async (consenterEmail:string, entityId?:string):Promise<BucketInventory> => {
     const inventory = new BucketInventory(consenterEmail, entityId);
     const { fromBucketObjectKey } = BucketItemMetadata
@@ -31,6 +37,27 @@ export class BucketInventory {
       inventory.contents.push(fromBucketObjectKey(key));      
     })
   
+    return inventory;
+  }
+
+  /**
+   * Get an instance that constitutes bucket inventory for every consenter with respect to a specific entity.
+   * @param entityId 
+   * @returns 
+   */
+  public static getInstanceForEntity = async(entityId:string):Promise<BucketInventory> => {
+    const inventory = new BucketInventory('', entityId);
+    const { fromBucketObjectKey } = BucketItemMetadata
+    const bucketItem = new BucketItem();
+    const keys = await bucketItem.listAllKeys() as string[];
+    keys.forEach(key => {
+      const item = fromBucketObjectKey(key);
+      if(item.entityId == entityId) {
+        inventory.keys.push(key);
+        inventory.contents.push(item);
+      }
+    });
+
     return inventory;
   }
 
@@ -177,6 +204,7 @@ export class BucketInventory {
  */
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/BucketInventory.ts')) {
+  const inventoryType = 'entity' as 'consenter' | 'entity';
 
   (async() => {
     const context:IContext = await require('../../../../contexts/context.json');
@@ -187,13 +215,22 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     process.env[ExhibitFormsBucketEnvironmentVariableName] = bucketName;
     process.env.REGION = REGION;
 
+    let inventory:BucketInventory;
     let entityId:string|undefined;
-    entityId = 'eea2d463-2eab-4304-b2cf-cf03cf57dfaa'
-    const inventory = await BucketInventory.getInstance('cp3@warhen.work', entityId);
+    entityId = '13376a3d-12d8-40e1-8dee-8c3d099da1b2';
 
-    // log(inventory.getKeys());
-    // log(inventory.getAffiliateEmails());
-    log(inventory.getAffiliateForms('affiliate1@warhen.work', ItemType.EXHIBIT));
-    // log(inventory.getLatestAffiliateItem('affiliate1@warhen.work', ItemType.EXHIBIT));
+    switch(inventoryType) {
+      case "consenter":
+        inventory = await BucketInventory.getInstance('cp3@warhen.work', entityId);
+        // log(inventory.getKeys());
+        // log(inventory.getAffiliateEmails());
+        log(inventory.getAffiliateForms('affiliate1@warhen.work', ItemType.EXHIBIT));
+        // log(inventory.getLatestAffiliateItem('affiliate1@warhen.work', ItemType.EXHIBIT));
+        break;
+      case "entity":
+        inventory = await BucketInventory.getInstanceForEntity(entityId);
+        log(inventory.getKeys());
+        break;
+    }
   })();
 }

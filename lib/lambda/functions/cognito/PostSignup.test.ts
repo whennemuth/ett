@@ -1,10 +1,12 @@
 import 'aws-sdk-client-mock-jest';
-import { DAOEntity, DAOInvitation, DAOUser } from '../../_lib/dao/dao';
-import { Entity, Invitation, Role, Roles, User } from '../../_lib/dao/entity';
+import { DAOEntity, DAOInvitation, DAOUser, ReadParms } from '../../_lib/dao/dao';
+import { ConfigName, ConfigNames, ConfigTypes, Entity, Invitation, Role, Roles, User, YN } from '../../_lib/dao/entity';
 import { handler } from './PostSignup';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
 import { AdminDeleteUserCommandOutput } from '@aws-sdk/client-cognito-identity-provider';
 import { UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
+import { AppConfig, Configurations, IAppConfig } from '../../_lib/config/Config';
+import { CONFIG } from '../../../../contexts/IContext';
 
 // ---------------------- EVENT DETAILS ----------------------
 const clientId = '6s4a2ilv9e5solo78f4d75hlp8';
@@ -12,9 +14,11 @@ const userPoolId = 'us-east-2_J9AbymKIz'
 let create_user_attempts = 0;
 let remove_user_attempts = 0;
 let role_lookup_attempts = 0;
+let delayed_executions_scheduled = 0;
 let invitation_lookup_attempts = 0;
 let invitationRole:Role = Roles.RE_ADMIN;
 let invitationScenario = 'match';
+let delayedExecutionScenario = 'complete' as 'complete' | 'missing-ai' | 'inactive-ai' | 'missing-asp' | 'inactive-asp';
 
 /**
  * Define a partial mock for the cognito Lookup.ts module
@@ -52,7 +56,95 @@ jest.mock('../re-admin/ReAdminUser.ts', () => {
       return;
     }
   }
-});  
+});
+
+jest.mock('../../_lib/config/Config.ts', () => {
+  return {
+    Configurations: jest.fn().mockImplementation(() => {
+      return {
+        getAppConfig: async (name:ConfigName):Promise<IAppConfig> => {
+          if(name == ConfigNames.AUTH_IND_NBR) {
+            return {
+              config_type: ConfigTypes.NUMBER,
+              name,
+              value: '2'
+            } as AppConfig
+          }
+          return {} as IAppConfig;
+        }
+      };
+    })
+  };
+});
+
+jest.mock('../../_lib/dao/dao-user.ts', () => {
+  const originalModule = jest.requireActual('../../_lib/dao/dao-user');
+  return {
+    __esModule: true,
+    ...originalModule,
+    UserCrud: (user:User, _dryRun:boolean=false): DAOUser => {
+      return {
+        read: async (readParms?:ReadParms):Promise<(User|null)|User[]> => {
+          switch(delayedExecutionScenario) {
+            case 'complete':
+              return [
+                { role: Roles.RE_ADMIN, active: YN.Yes } as User,
+                { role: Roles.RE_AUTH_IND, active: YN.Yes } as User,
+                { role: Roles.RE_AUTH_IND, active: YN.Yes } as User
+              ] as User[];
+            case 'missing-ai':
+              return [
+                { role: Roles.RE_ADMIN, active: YN.Yes } as User,
+                { role: Roles.RE_AUTH_IND, active: YN.Yes } as User
+              ] as User[];
+            case 'inactive-ai':
+              return [
+                { role: Roles.RE_ADMIN, active: YN.Yes } as User,
+                { role: Roles.RE_AUTH_IND, active: YN.Yes } as User,
+                { role: Roles.RE_AUTH_IND, active: YN.No } as User
+              ] as User[];
+            case 'missing-asp':
+              return [
+                { role: Roles.RE_AUTH_IND, active: YN.Yes } as User,
+                { role: Roles.RE_AUTH_IND, active: YN.Yes } as User
+              ] as User[];
+            case 'inactive-asp':
+              return [
+                { role: Roles.RE_ADMIN, active: YN.No } as User,
+                { role: Roles.RE_AUTH_IND, active: YN.Yes } as User,
+                { role: Roles.RE_AUTH_IND, active: YN.Yes } as User
+              ] as User[];
+          }
+        }
+      } as DAOUser
+    }
+  }
+});
+
+jest.mock('../../_lib/dao/dao-entity.ts', () => {
+  const originalModule = jest.requireActual('../../_lib/dao/dao-entity');
+  return {
+    __esModule: true,
+    ...originalModule,
+    EntityCrud: (entityInfo:Entity, _dryRun:boolean=false): DAOEntity => {
+      return {
+        read: async (readParms?:ReadParms):Promise<(Entity|null)|Entity[]> => {
+          return null;
+          // TODO: Put in a scenario that returns an entity for when an RE_ADMIN is signing up into an entity
+          // that already exists, and not part of that entities initial registration.
+        }
+      } as DAOEntity
+    }
+  }
+});
+
+jest.mock('../../functions/authorized-individual/correction/EntityCorrection.ts', () => {
+  return {
+    scheduleStaleEntityVacancyHandler: async (entity:Entity, role:Role) => {
+      delayed_executions_scheduled++;
+    }
+  }
+})
 
 /**
  * Define a partial mock for the dao.ts module
@@ -92,9 +184,7 @@ jest.mock('../../_lib/dao/dao.ts', () => {
                 acknowledgeMismatch.acknowledged_timestamp = undefined;
                 var registrationMismatch = Object.assign({}, match);
                 registrationMismatch.registered_timestamp = undefined;
-                var entityMismatch = Object.assign({}, match);
-                entityMismatch.entity_id = 'abc123';
-                var retval = [roleMismatch, acknowledgeMismatch, registrationMismatch, entityMismatch] as Invitation[];
+                var retval = [ roleMismatch, acknowledgeMismatch, registrationMismatch ] as Invitation[];
                 if (invitationScenario == 'match') {
                   retval.push(match);
                 }
@@ -134,6 +224,7 @@ const resetMockCounters = () => {
   create_user_attempts = 0;
   remove_user_attempts = 0;
   invitation_lookup_attempts = 0;
+  delayed_executions_scheduled = 0;
 }
 
 beforeEach(() => {
@@ -159,6 +250,7 @@ describe('Post signup lambda trigger: handler', () => {
     expect(invitation_lookup_attempts).toEqual(0);
     expect(create_user_attempts).toEqual(0);
     expect(remove_user_attempts).toEqual(0);
+    expect(delayed_executions_scheduled).toEqual(0);
   });
 
   it('Should skip all SDK use if the event has no clientId, and throw error.' , async () => {
@@ -172,6 +264,7 @@ describe('Post signup lambda trigger: handler', () => {
     expect(invitation_lookup_attempts).toEqual(0);
     expect(create_user_attempts).toEqual(0);
     expect(remove_user_attempts).toEqual(1);
+    expect(delayed_executions_scheduled).toEqual(0);
   });
 
   it('Should NOT attempt to make a dynamodb entry for the user if lookupRole fails', async () => {
@@ -182,6 +275,7 @@ describe('Post signup lambda trigger: handler', () => {
     expect(invitation_lookup_attempts).toEqual(0);
     expect(create_user_attempts).toEqual(0);
     expect(remove_user_attempts).toEqual(1);
+    expect(delayed_executions_scheduled).toEqual(0);
   });
 
   it('Should NOT attempt to make a dynamodb entry for the user if client lookup found a match, \
@@ -196,6 +290,7 @@ describe('Post signup lambda trigger: handler', () => {
     expect(invitation_lookup_attempts).toEqual(0);
     expect(create_user_attempts).toEqual(0);
     expect(remove_user_attempts).toEqual(0);
+    expect(delayed_executions_scheduled).toEqual(0);
     resetMockCounters();
     
     await expect(async () => {
@@ -215,6 +310,7 @@ describe('Post signup lambda trigger: handler', () => {
     expect(role_lookup_attempts).toEqual(1);
     expect(invitation_lookup_attempts).toEqual(0);
     expect(create_user_attempts).toEqual(0);
+    expect(delayed_executions_scheduled).toEqual(0);
   });
 
   it('Should make it as far as the invitation lookup if role lookup succeeds and \
@@ -234,6 +330,7 @@ describe('Post signup lambda trigger: handler', () => {
     expect(invitation_lookup_attempts).toEqual(1);
     expect(create_user_attempts).toEqual(0);
     expect(remove_user_attempts).toEqual(1);
+    expect(delayed_executions_scheduled).toEqual(0);
     resetMockCounters();    
 
     invitationRole = Roles.SYS_ADMIN;
@@ -245,6 +342,7 @@ describe('Post signup lambda trigger: handler', () => {
     expect(invitation_lookup_attempts).toEqual(1);
     expect(create_user_attempts).toEqual(0);
     expect(remove_user_attempts).toEqual(1);
+    expect(delayed_executions_scheduled).toEqual(0);
     resetMockCounters();    
 
     invitationRole = Roles.RE_AUTH_IND;
@@ -255,6 +353,7 @@ describe('Post signup lambda trigger: handler', () => {
     expect(role_lookup_attempts).toEqual(1);
     expect(invitation_lookup_attempts).toEqual(1);
     expect(create_user_attempts).toEqual(0);
+    expect(delayed_executions_scheduled).toEqual(0);
     expect(remove_user_attempts).toEqual(1);
   });
 
@@ -273,6 +372,7 @@ describe('Post signup lambda trigger: handler', () => {
     expect(invitation_lookup_attempts).toEqual(1);
     expect(create_user_attempts).toEqual(1);
     expect(remove_user_attempts).toEqual(0);
+    expect(delayed_executions_scheduled).toEqual(0);
     resetMockCounters();    
 
     invitationRole = Roles.SYS_ADMIN;
@@ -282,6 +382,7 @@ describe('Post signup lambda trigger: handler', () => {
     expect(invitation_lookup_attempts).toEqual(1);
     expect(create_user_attempts).toEqual(1);
     expect(remove_user_attempts).toEqual(0);
+    expect(delayed_executions_scheduled).toEqual(0);
     resetMockCounters();    
 
     invitationRole = Roles.RE_AUTH_IND;
@@ -291,6 +392,59 @@ describe('Post signup lambda trigger: handler', () => {
     expect(invitation_lookup_attempts).toEqual(1);
     expect(create_user_attempts).toEqual(1);
     expect(remove_user_attempts).toEqual(0);
+    expect(delayed_executions_scheduled).toEqual(0);
   });
+
+  it('Should schedule delayed execution for stale enity vacancy handling when necessary', async () => {
+    const event = { 
+      userPoolId, 
+      callerContext: { clientId },
+      request
+    };
+    invitationScenario = 'match';
+
+    process.env[Configurations.ENV_VAR_NAME] = '{"useDatabase":true,"configs":[{"name":"auth-ind-nbr","value":"2"}]}';
+
+    invitationRole = Roles.RE_ADMIN;
+    delayedExecutionScenario = 'missing-ai';
+    await handler(event);
+    expect(delayed_executions_scheduled).toEqual(1);
+    resetMockCounters();    
+
+    invitationRole = Roles.RE_AUTH_IND;
+    await handler(event);
+    expect(delayed_executions_scheduled).toEqual(1);
+    resetMockCounters();    
+
+    invitationRole = Roles.RE_ADMIN;
+    delayedExecutionScenario = 'inactive-ai';
+    await handler(event);
+    expect(delayed_executions_scheduled).toEqual(1);
+    resetMockCounters();    
+
+    invitationRole = Roles.RE_AUTH_IND;
+    await handler(event);
+    expect(delayed_executions_scheduled).toEqual(1);
+    resetMockCounters();    
+
+    invitationRole = Roles.RE_AUTH_IND;
+    delayedExecutionScenario = 'missing-asp';
+    await handler(event);
+    expect(delayed_executions_scheduled).toEqual(1);
+    resetMockCounters();    
+
+    invitationRole = Roles.RE_AUTH_IND;
+    delayedExecutionScenario = 'inactive-asp';
+    await handler(event);
+    expect(delayed_executions_scheduled).toEqual(1);
+    resetMockCounters();    
+
+    invitationRole = Roles.SYS_ADMIN;
+    delayedExecutionScenario = 'inactive-asp';
+    await handler(event);
+    expect(delayed_executions_scheduled).toEqual(0);
+    resetMockCounters();    
+  })
 });
+
 

@@ -155,7 +155,7 @@ export class Configurations {
  * RUN MANUALLY: 
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2] == 'RUN_MANUALLY_CONFIG') {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/config/Config.ts')) {
   (async () => {
     const ctx = await import('../../../../contexts/context.json');
     ctx.CONFIG.useDatabase = false;
