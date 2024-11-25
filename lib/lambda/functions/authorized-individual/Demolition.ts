@@ -96,10 +96,10 @@ export class EntityToDemolish {
    */
   public deleteEntityFromUserPool = async ():Promise<any> => {
     const UserPoolId = process.env.USERPOOL_ID;
-    const deleteUser = async (Username:string):Promise<AdminDeleteUserCommandOutput|string> => {
+    const deleteUser = async (Username:string, email:string):Promise<AdminDeleteUserCommandOutput|string> => {
       const input = { UserPoolId, Username } as AdminDeleteUserRequest;
       const command = new AdminDeleteUserCommand(input);
-      log(input, `Demolishing user from userpool related to entity ${this.entityId}`);
+      log(input, `Demolishing ${email} from userpool related to entity ${this.entityId}`);
       if(this._dryRun) {
         return new Promise((resolve) => resolve('dryrun'));
       }
@@ -107,13 +107,18 @@ export class EntityToDemolish {
       return output;
     }
     for(var i=0; i<this._deletedUsers.length; i++) {
+      const { sub:username, email } = this._deletedUsers[i];
       try {
-        var username = this._deletedUsers[i].sub;
-        const output:AdminDeleteUserCommandOutput|string = await deleteUser(username);
-        log(output, `User ${username}/${this._deletedUsers[i].email} deleted`);
+        const output:AdminDeleteUserCommandOutput|string = await deleteUser(username, email);
+        log(output, `User ${username}/${email} deleted`);
       }
-      catch(reason) {
-        log(reason);
+      catch(reason:any) {
+        if(reason.name == 'UserNotFoundException') {
+          log(`Cannot delete ${email} from userpool: ${reason.message}`)
+        }
+        else {
+          log(reason);
+        }        
       }
     }
   }
