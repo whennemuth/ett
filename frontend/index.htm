@@ -3731,8 +3731,9 @@
           return;
         }
         if( ! email2) {
-          alert('Required entry: Authorized Individual 2 email address');
-          return;
+          if( ! confirm('Are you sure you only want to invite one authorized individual?')) {
+            return
+          }
         }
 
         const outgoingPayload = {
@@ -3743,10 +3744,13 @@
               from: {
                 email, role
               },
-              invitee1: { email: email1, role:'RE_AUTH_IND' },
-              invitee2: { email: email2, role:'RE_AUTH_IND' }
+              invitee1: { email: email1, role:'RE_AUTH_IND' }
             }
           }
+        }
+
+        if(email2) {
+          outgoingPayload.parameters.invitations.invitee2 = { email: email2, role:'RE_AUTH_IND' };
         }
 
         let successMessage;
