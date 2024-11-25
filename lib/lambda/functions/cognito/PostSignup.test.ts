@@ -121,6 +121,23 @@ jest.mock('../../_lib/dao/dao-user.ts', () => {
   }
 });
 
+jest.mock('../../_lib/dao/dao-entity.ts', () => {
+  const originalModule = jest.requireActual('../../_lib/dao/dao-entity');
+  return {
+    __esModule: true,
+    ...originalModule,
+    EntityCrud: (entityInfo:Entity, _dryRun:boolean=false): DAOEntity => {
+      return {
+        read: async (readParms?:ReadParms):Promise<(Entity|null)|Entity[]> => {
+          return null;
+          // TODO: Put in a scenario that returns an entity for when an RE_ADMIN is signing up into an entity
+          // that already exists, and not part of that entities initial registration.
+        }
+      } as DAOEntity
+    }
+  }
+});
+
 jest.mock('../../functions/authorized-individual/correction/EntityCorrection.ts', () => {
   return {
     scheduleStaleEntityVacancyHandler: async (entity:Entity, role:Role) => {
@@ -167,9 +184,7 @@ jest.mock('../../_lib/dao/dao.ts', () => {
                 acknowledgeMismatch.acknowledged_timestamp = undefined;
                 var registrationMismatch = Object.assign({}, match);
                 registrationMismatch.registered_timestamp = undefined;
-                var entityMismatch = Object.assign({}, match);
-                entityMismatch.entity_id = 'abc123';
-                var retval = [roleMismatch, acknowledgeMismatch, registrationMismatch, entityMismatch] as Invitation[];
+                var retval = [ roleMismatch, acknowledgeMismatch, registrationMismatch ] as Invitation[];
                 if (invitationScenario == 'match') {
                   retval.push(match);
                 }

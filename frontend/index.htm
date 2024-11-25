@@ -1979,7 +1979,7 @@
       try {
         const { invitation:_invitation, users, entity } = payload;
         invitation = _invitation;
-        const { acknowledged_timestamp, registered_timestamp, email:invEmail, role } = invitation;
+        const { acknowledged_timestamp, registered_timestamp, email:invEmail, role, entity_name:invEntityName } = invitation;
         selected_role = role;
         const txtSign = document.getElementById('txtEntityRepSig');
         const chk = document.getElementById('chkRegisterEntity');
@@ -2015,6 +2015,9 @@
         const sameUser = user =>  invEmail == user.email;
         const setField = (user, userfld, basename, index) => {
           let html = user[userfld] || '';
+          if(userfld == 'entity_name') {
+            index = '';
+          }
           if( ! user.hasAccount()) {
             switch(userfld) {
               case 'email':
@@ -2029,6 +2032,10 @@
             if(userfld == 'phone_number') {
               document.getElementById(`td${basename}${index}`).innerHTML = html;
               document.getElementById(`td${basename}${index}Label`).innerHTML = '';
+            }
+            else if(userfld == 'entity_name' && entity && invEntityName) {
+              document.getElementById(`td${basename}${index}`).innerHTML = invEntityName;
+              html = invEntityName;
             }
             else {
               html = `<input type="text" class="form-control" id="txt${basename}${index}" value="${html}">`
@@ -2058,6 +2065,7 @@
           document.getElementById('tdEntityName').innerHTML = entity.entity_name;
           document.getElementById('tblAuthInd1').style.display = 'inline'; 
           let authIndCounter = 0;
+          let aspCounter = 0;
           if(users && users.length > 0) {
             users.forEach((user) => {
               user.hasAccount = () => true;
@@ -2065,6 +2073,7 @@
               switch(user.role) {
                 case 'RE_ADMIN':
                   setFields(user, 'ReAdmin');
+                  aspCounter++;
                   break;
                 case 'RE_AUTH_IND':
                   setFields(user, 'AuthInd', ++authIndCounter);
@@ -2082,6 +2091,12 @@
                 entity_name, email, fullname, title, phone_number, hasAccount: () => email != code
               }, 'AuthInd', authIndCounter+1);
             }
+          }
+          if(aspCounter == 0) {
+            let { entity_name, email, code, fullname, title, phone_number } = invitation;
+            setFields({
+              entity_name, email, fullname, title, phone_number, hasAccount: () => email != code
+            }, 'ReAdmin');
           }
         }
         else if(role == 'RE_ADMIN') {

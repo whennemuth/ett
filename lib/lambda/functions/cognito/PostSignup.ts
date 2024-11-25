@@ -3,7 +3,7 @@ import { debugLog, log } from '../../Utils';
 import { lookupRole, removeUserFromUserpool } from '../../_lib/cognito/Lookup';
 import { Configurations } from '../../_lib/config/Config';
 import { DAOConsenter, DAOEntity, DAOFactory, DAOUser } from '../../_lib/dao/dao';
-import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
+import { ENTITY_WAITING_ROOM, EntityCrud } from '../../_lib/dao/dao-entity';
 import { UserCrud } from '../../_lib/dao/dao-user';
 import { ConfigNames, ConfigTypes, Consenter, ConsenterFields, Entity, Invitation, Role, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
 import { scheduleStaleEntityVacancyHandler } from '../authorized-individual/correction/EntityCorrection';
@@ -59,7 +59,7 @@ export const handler = async (_event:any) => {
       invalidMsg = 'Phone number is missing as an attribute in the event!';
     }
     if(invalidMsg) {
-      console.error(`ERROR: ${invalidMsg}`);
+      console.error(invalidMsg);
     }
     return invalidMsg;
   }
@@ -113,47 +113,59 @@ export const handler = async (_event:any) => {
     return consenter;
   }
 
-  /**
-   * Create the user in the database.
-   * @param event 
-   * @param role 
-   * @returns 
-   */
   const addReAdminToDatabase = async (event:PostSignupEventType):Promise<User|undefined> => {
     const { sub, email, phone_number } = event.request.userAttributes;
 
     // Lookup the original invitation for the email to get the entity_id, fullname and title values:
-    invitation = await scrapeUserValuesFromInvitation(email, Roles.RE_ADMIN);
+    invitation = await scrapeUserValuesFromInvitations(getUserInvitationsForRole, email, Roles.RE_ADMIN);
 
     if( ! invitation) return;
 
     let { entity_id, entity_name, fullname, title } = invitation;
+    let user:User;
 
-    if(entity_name && entity_name != ENTITY_WAITING_ROOM) {
-      // Create the entity
-      const daoEntity = DAOFactory.getInstance({ 
-        DAOType: 'entity', 
-        Payload: { entity_name, description:entity_name } as Entity
-      }) as DAOEntity;
-      await daoEntity.create();
-      entity_id = daoEntity.id();
-    }
-
-    const user = {
-      [UserFields.email]: email,
-      [UserFields.entity_id]: entity_id,
-      [UserFields.fullname]: fullname,
-      [UserFields.title]: title,
-      [UserFields.phone_number]: phone_number,
-      [UserFields.sub]: sub,
-      [UserFields.role]: Roles.RE_ADMIN
-    } as User;
-
-    const daoUser = DAOFactory.getInstance({ DAOType: 'user', Payload: user }) as DAOUser;
     try {
+      let preExistingEntity:Entity|null = null;
+      if(entity_id != ENTITY_WAITING_ROOM) {
+        preExistingEntity = await EntityCrud({ entity_id } as Entity).read() as Entity;
+      }
+
+      /**
+       * @returns Indication that the RE_ADMIN who is signing up is doing so as part of entity registration.
+       * Alternatively, the RE_ADMIN could simply be replacing a prior RE_ADMIN in an already existing entity.
+       */
+      const entityBeingRegistered = ():boolean => {
+        return (preExistingEntity == null && entity_name && entity_name != ENTITY_WAITING_ROOM) ? true : false;
+      }
+
+      // Create the entity if indicated
+      if(entityBeingRegistered()) {
+        const daoEntity = DAOFactory.getInstance({ 
+          DAOType: 'entity', 
+          Payload: { entity_name, description:entity_name } as Entity
+        }) as DAOEntity;
+        await daoEntity.create();
+        entity_id = daoEntity.id();
+        // Update the invitation object locally so that scheduleStaleEntityVacancyHandler can be configured properly.
+        invitation.entity_id = entity_id;
+        invitation.entity_name = entity_name;
+      }
+
+      // Add the user to the database
+      user = {
+        [UserFields.email]: email,
+        [UserFields.entity_id]: entity_id,
+        [UserFields.fullname]: fullname,
+        [UserFields.title]: title,
+        [UserFields.phone_number]: phone_number,
+        [UserFields.sub]: sub,
+        [UserFields.role]: Roles.RE_ADMIN
+      } as User;
+      const daoUser = DAOFactory.getInstance({ DAOType: 'user', Payload: user }) as DAOUser;
       await daoUser.create();
 
-      if(entity_id && entity_id != ENTITY_WAITING_ROOM) {
+      // Update the original invitation to reflect the name of the entity the user now belongs to (if indicated).
+      if(entityBeingRegistered()) {
         await updateReAdminInvitationWithNewEntity(email, entity_id);
       }
     } 
@@ -168,7 +180,7 @@ export const handler = async (_event:any) => {
   const addAuthIndToDatabase = async (event:PostSignupEventType):Promise<User|undefined> => {
     const { sub, email, phone_number } = event.request.userAttributes;
     // Lookup the original invitation for the email to get the entity_id, fullname and title values:
-    invitation = await scrapeUserValuesFromInvitation(email, Roles.RE_AUTH_IND);
+    invitation = await scrapeUserValuesFromInvitations(getUserInvitationsForRole, email, Roles.RE_AUTH_IND);
     if( ! invitation) return;
     return addUserToDatabase(event, Roles.RE_AUTH_IND, invitation);
   }
@@ -176,7 +188,7 @@ export const handler = async (_event:any) => {
   const addSysAdminToDatabase = async (event:PostSignupEventType):Promise<User|undefined> => {
     const { sub, email, phone_number } = event.request.userAttributes;
     // Lookup the original invitation for the email to get the entity_id, fullname and title values:
-    invitation = await scrapeUserValuesFromInvitation(email, Roles.SYS_ADMIN);
+    invitation = await scrapeUserValuesFromInvitations(getUserInvitationsForRole, email, Roles.SYS_ADMIN);
     if( ! invitation) return;
     return addUserToDatabase(event, Roles.SYS_ADMIN, invitation);
   }
@@ -258,8 +270,13 @@ export const handler = async (_event:any) => {
 }
 
 
-
-
+/**
+ * Create the user in the database.
+ * @param event 
+ * @param role 
+ * @param invitation 
+ * @returns 
+ */
 const addUserToDatabase = async (event:PostSignupEventType, role:Role, invitation:Invitation):Promise<User|undefined> => {
   const { sub, email, phone_number } = event.request.userAttributes;
 
@@ -287,41 +304,51 @@ const addUserToDatabase = async (event:PostSignupEventType, role:Role, invitatio
   return user;
 }
 
+export type RoleInvitationsLookup = (email:string, role:Role) => Promise<Invitation[]>;
+
 /**
  * Find the original invitation for the user who is signing up.
  * @param email 
  * @param role 
  * @returns 
  */
-const scrapeUserValuesFromInvitation = async (email:string, role:Role):Promise<Invitation|null> => {
-
+export const getUserInvitationsForRole:RoleInvitationsLookup = async (email:string, role:Role):Promise<Invitation[]> => {
   // Lookup any invitations for the email:
-  const daoInvitation = DAOFactory.getInstance({
-    DAOType: 'invitation',
-    Payload: {
-      email
-    } as Invitation
-  });
-  let invitations = await daoInvitation.read() as Invitation[];
+  const daoInvitation = DAOFactory.getInstance({ DAOType: 'invitation', Payload: { email } as Invitation });
+  const invitations = await daoInvitation.read() as Invitation[];
+  return invitations.filter(i => i.role == role);
+}
 
+/**
+ * Find the original invitation for the user who is signing up.
+ * @param invitations 
+ * @param email 
+ * @param role 
+ * @returns 
+ */
+export const scrapeUserValuesFromInvitations = async (invitationLookup:RoleInvitationsLookup, email:string, role:Role):Promise<Invitation|null> => {
+  
   // Filter off invitations that are retracted, unregistered, for other roles, or not to the expected entity.
+  let invitations = await invitationLookup(email, role) as Invitation[];
   invitations = invitations.filter((invitation) => {
-    if(invitation.retracted_timestamp) return false;
-    if( ! invitation.acknowledged_timestamp) return false;
-    if( ! invitation.registered_timestamp) return false;
-    if( invitation.role != role) return false;
-    // Should NEVER find these role and entity_id combinations for associated invitation directly after signup
-    // An RE_ADMIN is always in the waiting room BEFORE they create their entity.
-    // A SYS_ADMIN is always in the waiting room since they transcend entities.
-    if(role == Roles.RE_AUTH_IND && invitation.entity_id == ENTITY_WAITING_ROOM) return false;
-    if(role == Roles.RE_ADMIN && invitation.entity_id != ENTITY_WAITING_ROOM) return false;
-    if(role == Roles.SYS_ADMIN && invitation.entity_id != ENTITY_WAITING_ROOM) return false;
+    const {registered_timestamp, retracted_timestamp, acknowledged_timestamp, entity_id } = invitation;
+    if(retracted_timestamp) return false;
+    if( ! acknowledged_timestamp) return false;
+    if( ! registered_timestamp) return false;
+    if(role == Roles.RE_AUTH_IND && entity_id == ENTITY_WAITING_ROOM) return false;
+    if(role == Roles.RE_ADMIN && entity_id != ENTITY_WAITING_ROOM) {
+      log(`${email} is being invited to ${entity_id} to replace a prior ${role}`);
+    }
+    if(role == Roles.SYS_ADMIN && entity_id != ENTITY_WAITING_ROOM) {
+      // A SYS_ADMIN is always in the waiting room since they transcend entities.
+      return false;
+    }
     return true;
   });
 
   // Handle lookup failure
   if(invitations.length == 0) {
-    console.error(`ERROR: Cannot find qualifying invitation for ${email} for fullname and title - User creation cancelled.`);
+    console.error(`Cannot find qualifying invitation for ${email} for fullname and title - User creation cancelled.`);
     return null;
   }
 
@@ -338,42 +365,70 @@ const scrapeUserValuesFromInvitation = async (email:string, role:Role):Promise<I
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/cognito/PostSignup.ts')) {
 
-  // Create a reduced app config just for this test
-  const { AUTH_IND_NBR } = ConfigNames;
-  const configs = { useDatabase:false, configs: [
-    { name: AUTH_IND_NBR, value: '2', config_type: ConfigTypes.NUMBER, description: 'testing' },
-  ]} as CONFIG;
-  
-  // Set the config as an environment variable
-  process.env[Configurations.ENV_VAR_NAME] = JSON.stringify(configs);
+  const task = 'scrape' as 'handler' | 'scrape';
 
-  const mockEvent = {
-    "version": "1",
-    "region": "us-east-2",
-    "userPoolId": "us-east-2_FFxJkLmaJ",
-    "userName": "51bbc580-30e1-7065-2eb0-1ac0362e7d60",
-    "callerContext": {
-        "awsSdkVersion": "aws-sdk-unknown-unknown",
-        "clientId": "1c74v2fe28ti22gf4fala0ce62"
-    },
-    "triggerSource": "PostConfirmation_ConfirmSignUp",
-    "request": {
-        "userAttributes": {
-            "sub": "51bbc580-30e1-7065-2eb0-1ac0362e7d60",
-            "email_verified": "true",
-            "cognito:user_status": "CONFIRMED",
-            "phone_number_verified": "false",
-            "phone_number": "+6172224444",
-            "email": "asp.au.edu@warhen.work"
+  (async () => {
+    switch(task) {
+
+      case 'handler':
+
+        // Create a reduced app config just for this test
+        const { AUTH_IND_NBR } = ConfigNames;
+        const configs = { useDatabase:false, configs: [
+          { name: AUTH_IND_NBR, value: '2', config_type: ConfigTypes.NUMBER, description: 'testing' },
+        ]} as CONFIG;
+        
+        // Set the config as an environment variable
+        process.env[Configurations.ENV_VAR_NAME] = JSON.stringify(configs);
+
+        const mockEvent = {
+          "version": "1",
+          "region": "us-east-2",
+          "userPoolId": "us-east-2_FFxJkLmaJ",
+          "userName": "51bbc580-30e1-7065-2eb0-1ac0362e7d60",
+          "callerContext": {
+              "awsSdkVersion": "aws-sdk-unknown-unknown",
+              "clientId": "1c74v2fe28ti22gf4fala0ce62"
+          },
+          "triggerSource": "PostConfirmation_ConfirmSignUp",
+          "request": {
+              "userAttributes": {
+                  "sub": "51bbc580-30e1-7065-2eb0-1ac0362e7d60",
+                  "email_verified": "true",
+                  "cognito:user_status": "CONFIRMED",
+                  "phone_number_verified": "false",
+                  "phone_number": "+6172224444",
+                  "email": "asp.au.edu@warhen.work"
+              }
+          },
+          "response": {}
         }
-    },
-    "response": {}
-  }
 
-  handler(mockEvent).then(() => {
-    console.log('done');
-  })
-  .catch((reason) => {
-    console.error(reason);
-  });
+        await handler(mockEvent);
+
+        break;
+
+      case 'scrape':
+        const invitation = await scrapeUserValuesFromInvitations(
+          ():Promise<Invitation[]> => new Promise((resolve) => resolve([{
+            code: "6dce2b00-b76e-48d1-85aa-4cbf3b249d4e",
+            acknowledged_timestamp: "2024-11-22T18:50:38.044Z",
+            email: "asp2.random.edu@warhen.work",
+            entity_id: "fe2e9f55-408f-472e-8ea7-65dc1f896390",
+            entity_name: undefined,
+            fullname: "Abraham Lincoln",
+            message_id: "010f019355356592-9bd26186-1e5d-4a96-94c8-180e221d0418-000000",
+            registered_timestamp: "2024-11-22T18:51:02.119Z",
+            role: Roles.RE_ADMIN,
+            sent_timestamp: "2024-11-22T18:49:43.131Z",          
+          } as Invitation] as Invitation[])),
+          'asp2.random.edu@warhen.work',
+          Roles.RE_ADMIN
+        );
+
+        log(invitation, 'Scraped Invitation');
+        break;
+    }
+  })();
+
 }
