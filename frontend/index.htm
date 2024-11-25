@@ -1380,11 +1380,11 @@
                             <td><input name="org-name" type="text" class="form-control"></td>
                             <td>
                               <span id='exhibit-tooltip-1' data-toggle="tooltip">
-                                <select name="org-type" class="form-control">
-                                  <option><- Select One -></option>
-                                  <option value="EMPLOYER">1) Employers</option>
-                                  <option value="ACADEMIC">2) Academic / Professional Societies & Organizations</option>
-                                  <option value="OTHER">3) Other Affiliated Organizations</option>
+                                <select name="org-type" class="form-control" style="min-width: 150px;">
+                                  <option id="header"><- Select One -></option>
+                                  <option id="EMPLOYER" value="EMPLOYER">1) Employers</option>
+                                  <option id="ACADEMIC" value="ACADEMIC">2) Academic / Professional Societies & Organizations</option>
+                                  <option id="OTHER" value="OTHER">3) Other Affiliated Organizations</option>
                                 </select>
                               </span>
                             </td>
@@ -1712,35 +1712,6 @@
     const clientId = () => { return STATIC_PARAMETERS.ROLES[selected_role].CLIENT_ID; }
     const apiUri = () => { return STATIC_PARAMETERS.ROLES[selected_role].API_URI; }
 
-    const ExhibitsPath = () => {
-      const isMatch = () => {
-        const exhibits = document.location.pathname.startsWith('/consenter/exhibits/');
-        return selected_role == 'CONSENTING_PERSON' && exhibits;
-      }
-      const getRedirectUri = () => {
-        const url = new URL(STATIC_PARAMETERS.ROLES[selected_role].REDIRECT_URI);
-        return url.origin + document.location.pathname;
-      }
-      const getOriginAndPath = () => {
-        const url = new URL(document.location.href);
-        return url.origin + url.pathname;
-      }
-      return { isExhibitsLink, getRedirectUri };
-    }
-
-    const exhibitsPath = ExhibitsPath();
-
-    /**
-     * Get the uri that cognito is to redirect to after successful signin
-     */
-    const redirectUri = () => {
-      const exhibitsPath = ExhibitsPath();
-      if(exhibitsPath.isMatch()) {
-        return exhibitsPath.getRedirectUri();
-      }
-      return STATIC_PARAMETERS.ROLES[selected_role].REDIRECT_URI;
-    }
-
     const roleChange = () => {
       selected_role = document.forms['formRole']['rdoRole'].value;
       var desc = document.getElementById('apiDescription');
@@ -1766,7 +1737,7 @@
     let RefreshJwtCookie;
 
     const getSelectedRole = () => {
-      if(exhibitsPath.isMatch()) {
+      if(document.location.pathname.startsWith('/consenter/exhibits/')) {
         return 'CONSENTING_PERSON';
       }
       let role = new URL(document.location.href).searchParams.get('selected_role');
@@ -1793,6 +1764,37 @@
     let selectedEntityForExhibitUpdate;
 
     let selectedConsenter;
+
+    const ExhibitsPath = () => {
+      const isMatch = () => {
+        const exhibits = document.location.pathname.startsWith('/consenter/exhibits/');
+        return selected_role == 'CONSENTING_PERSON' && exhibits;
+      }
+      const getRedirectUri = () => {
+        const url = new URL(`https://${STATIC_PARAMETERS.ROLES[selected_role].REDIRECT_URI}`);
+        return url.hostname + document.location.pathname;
+      }
+      const getOriginAndPath = () => {
+        const url = new URL(document.location.href);
+        return url.origin + url.pathname;
+      }
+      const getType = () => {
+        return document.location.pathname.split('/')[3];
+      }
+      return { isMatch, getRedirectUri, getOriginAndPath, getType };
+    }
+
+    const exhibitsPath = ExhibitsPath();
+
+    /**
+     * Get the uri that cognito is to redirect to after successful signin
+     */
+    const redirectUri = () => {
+      if(exhibitsPath.isMatch()) {
+        return exhibitsPath.getRedirectUri();
+      }
+      return STATIC_PARAMETERS.ROLES[selected_role].REDIRECT_URI;
+    }
 
     const rdoRoles = document.getElementsByName('rdoRole');
     rdoRoles.forEach(rdoRole => {
@@ -2563,6 +2565,19 @@
               populateExhibitFormSignoffFields();
               document.getElementById('waitForAI').style.display = 'none';
               document.getElementById('consenter-exhibit-compose-link').click();
+              const affiliateTypes = document.querySelector('select[name=org-type]').options;
+              switch(exhibitsPath.getType()) {
+                case 'CURRENT':
+                  affiliateTypes.namedItem('header').remove();
+                  affiliateTypes.namedItem('ACADEMIC').remove();
+                  affiliateTypes.namedItem('OTHER').remove();
+                  break;
+                case 'OTHER':
+                  affiliateTypes.namedItem('EMPLOYER').remove();
+                  break;
+                case 'BOTH': default:
+                  break;
+              }
             }
             else {
               hide('consenter-exhibit-compose-link');
@@ -4833,7 +4848,7 @@
           await showAppForRole();        
         }
         else if(exhibitsPath.isMatch()) {
-          // Not signed in and is consenter coming in on the "private" link emailed to them by AI
+          // Not signed in and consenter is coming in on the "private" link emailed to them by AI
           signIn(); 
         }
         else if(!RefreshJwtCookie.jwtExpired()) {
