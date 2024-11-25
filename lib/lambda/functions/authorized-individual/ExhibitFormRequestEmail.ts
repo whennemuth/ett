@@ -6,20 +6,22 @@ import { EmailParms, sendEmail } from "../../_lib/EmailWithAttachments";
 import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { lookupCloudfrontDomain } from "../../Utils";
 
+export type ExhibitFormRequestEmailParms = {
+  consenterEmail:string;
+  entity_id:string;
+  domain:string;
+  constraint: 'CURRENT' | 'OTHER' | 'BOTH'
+}
 
 export class ExhibitFormRequestEmail {
-  private consenterEmail:string;
-  private entity_id:string;
-  private domain:string;
+  private parms:ExhibitFormRequestEmailParms;
 
-  constructor(consenterEmail:string, entity_id:string, domain:string) {
-    this.consenterEmail = consenterEmail;
-    this.entity_id = entity_id;
-    this.domain = domain;
+  constructor(parms:ExhibitFormRequestEmailParms) {
+    this.parms = parms;
   }
 
   public send = async ():Promise<boolean> => {
-    const { consenterEmail, entity_id, domain } = this;
+    const { parms: { consenterEmail, entity_id, domain, constraint }} = this;
 
     // Get the consenter
     const consenterDao = DAOFactory.getInstance({ DAOType: 'consenter', Payload: { email: consenterEmail} as Consenter});
@@ -47,7 +49,7 @@ export class ExhibitFormRequestEmail {
       message: `Thankyou ${consenterFullName} for registering with the Ethical Tranparency Tool.<br>` +
         `${entity_name} is requesting you take the next step and fill out a prior contacts or "exhibit" form.<br>` +
         `Follow the link provided below to log in to your ETT account and to access the form:` + 
-        `<p>https://${domain}/consenter/exhibits/index.htm</p>`,
+        `<p>https://${domain}/consenter/exhibits/${constraint}/index.htm</p>`,
       from: `noreply@${context.ETT_DOMAIN}`,
       attachments: []
     } as EmailParms);
@@ -80,7 +82,11 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     }
     process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
     
-    await new ExhibitFormRequestEmail(consenterEmail, entity_id, cloudfrontDomain).send();
+    await new ExhibitFormRequestEmail({ 
+      consenterEmail, 
+      entity_id, domain:cloudfrontDomain, 
+      constraint:"BOTH" 
+    } as ExhibitFormRequestEmailParms).send();
 
     console.log('Email sent!');
   })();

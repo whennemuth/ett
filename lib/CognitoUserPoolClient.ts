@@ -42,8 +42,14 @@ export class EttUserPoolClient extends UserPoolClient {
     ] as string[];
 
     if(role == Roles.CONSENTING_PERSON) {
-      callbackUrls.push(`https://${callbackDomainName}/consenter/exhibits/index.htm?action=${Actions.login}&selected_role=${role}`);
-      logoutUrls.push(`https://${callbackDomainName}/consenter/exhibits/index.htm?action=${Actions.logout}`)
+      callbackUrls.push(`https://${callbackDomainName}/consenter/exhibits/CURRENT/index.htm?action=${Actions.login}&selected_role=${role}`);
+      logoutUrls.push(`https://${callbackDomainName}/consenter/exhibits/CURRENT/index.htm?action=${Actions.logout}`);
+      
+      callbackUrls.push(`https://${callbackDomainName}/consenter/exhibits/OTHER/index.htm?action=${Actions.login}&selected_role=${role}`);
+      logoutUrls.push(`https://${callbackDomainName}/consenter/exhibits/OTHER/index.htm?action=${Actions.logout}`);
+      
+      callbackUrls.push(`https://${callbackDomainName}/consenter/exhibits/BOTH/index.htm?action=${Actions.login}&selected_role=${role}`);
+      logoutUrls.push(`https://${callbackDomainName}/consenter/exhibits/BOTH/index.htm?action=${Actions.logout}`);
     }
 
     if(role != Roles.CONSENTING_PERSON) {

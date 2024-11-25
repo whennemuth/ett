@@ -68,8 +68,8 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           return await demolishEntity(entity_id, notify, dryRun);
 
         case Task.SEND_EXHIBIT_FORM_REQUEST:
-          var { consenterEmail, entity_id } = parameters;
-          return await sendExhibitFormRequest(consenterEmail, entity_id);
+          var { consenterEmail, entity_id, constraint } = parameters;
+          return await sendExhibitFormRequest(consenterEmail, entity_id, constraint);
 
         case Task.SEND_DISCLOSURE_REQUEST:
           var { consenterEmail, entity_id, affiliateEmail } = parameters;
@@ -295,20 +295,32 @@ export const getConsenterList = async (fragment?:string):Promise<LambdaProxyInte
  * @param entity_id 
  * @returns 
  */
-export const sendExhibitFormRequest = async (consenterEmail:string, entity_id:string):Promise<LambdaProxyIntegrationResponse> => {
+export const sendExhibitFormRequest = async (consenterEmail:string, entity_id:string, constraint:string):Promise<LambdaProxyIntegrationResponse> => {
 
   const cloudfrontDomain = process.env.CLOUDFRONT_DOMAIN;
   if( ! cloudfrontDomain) {
     return errorResponse('Email failure for exhibit form request: CLOUDFRONT_DOMAIN environment variable not set!');
   }
-  const sent = await new ExhibitFormRequestEmail(consenterEmail, entity_id, cloudfrontDomain).send();
 
-  // Bail out if the email failed
-  if( ! sent) {
-    return errorResponse(`Email failure for exhibit form request: ${JSON.stringify({ consenterEmail, entity_id }, null, 2)}`);
+  switch(constraint) {
+    case 'CURRENT': case 'OTHER': case 'BOTH':
+      const sent = await new ExhibitFormRequestEmail({ 
+        consenterEmail, 
+        entity_id, 
+        domain:cloudfrontDomain, 
+        constraint 
+      }).send();
+
+      // Bail out if the email failed
+      if( ! sent) {
+        return errorResponse(`Email failure for exhibit form request: ${JSON.stringify({ consenterEmail, entity_id }, null, 2)}`);
+      }
+      
+      return okResponse('Ok', {});
+      
+    default:
+      return invalidResponse(`Invalid/missing affiliate constraint parameter: ${constraint}`);
   }
-  
-  return okResponse('Ok', {});
 }
 
 /**
