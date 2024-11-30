@@ -263,7 +263,7 @@ export const lookupPendingInvitations = async (entity_id?:string|null):Promise<I
   return invitations.filter(i => ( ! i.retracted_timestamp ) && ( ! i.registered_timestamp ) )
 }
 
-export const lookupCloudfrontDomain = async (landscape:string):Promise<string|undefined> => {
+export const lookupDistributionSummary = async (landscape:string):Promise<DistributionSummary|undefined> => {
   const context:IContext = <IContext>ctx;
   const { STACK_ID } = context;
   const client = new CloudFrontClient({});
@@ -273,9 +273,19 @@ export const lookupCloudfrontDomain = async (landscape:string):Promise<string|un
     return ds.Comment && ds.Comment == `${STACK_ID}-${landscape}-distribution`;
   }) as DistributionSummary[]
   if(distributions!.length > 0) {
-    return distributions[0]!.DomainName;
+    return distributions[0];
   }
   return undefined;
+}
+
+export const lookupCloudfrontDomain = async (landscape:string):Promise<string|undefined> => {
+  const summary = await lookupDistributionSummary(landscape);
+  return summary?.DomainName;
+}
+
+export const lookupCloudfrontDistributionId = async (landscape:string):Promise<string|undefined> => {
+  const summary = await lookupDistributionSummary(landscape);
+  return summary?.Id;
 }
 
 export const bytesToBase64 = (bytes:Uint8Array) => {
