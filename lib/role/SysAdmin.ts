@@ -63,7 +63,7 @@ export class LambdaFunction extends AbstractFunction {
     const config = new Configurations(CONFIG);
     const { userPool, userPoolName, userPoolDomain, cloudfrontDomain, redirectPath, exhibitFormsBucket } = parms;
     const { userPoolArn } = userPool;
-    const redirectURI = `${cloudfrontDomain}/${redirectPath}`.replace('//', '/');
+    const redirectUri = `https://${(cloudfrontDomain + '/' + redirectPath).replace('//', '/')}`;
     const prefix = `${STACK_ID}-${landscape}`;
 
     super(scope, constructId, {
@@ -125,7 +125,7 @@ export class LambdaFunction extends AbstractFunction {
         USERPOOL_NAME: userPoolName,
         COGNITO_DOMAIN: userPoolDomain,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
-        REDIRECT_URI: redirectURI,
+        REDIRECT_URI: redirectUri,
         [ExhibitFormsBucketEnvironmentVariableName]: exhibitFormsBucket.bucketName,
       }
     });

@@ -1737,7 +1737,7 @@
     let RefreshJwtCookie;
 
     const getSelectedRole = () => {
-      if(document.location.pathname.startsWith('/consenter/exhibits/')) {
+      if(document.location.pathname.startsWith('/bootstrap/consenter/exhibits/')) {
         return 'CONSENTING_PERSON';
       }
       let role = new URL(document.location.href).searchParams.get('selected_role');
@@ -1767,12 +1767,12 @@
 
     const ExhibitsPath = () => {
       const isMatch = () => {
-        const exhibits = document.location.pathname.startsWith('/consenter/exhibits/');
+        const exhibits = document.location.pathname.startsWith('/bootstrap/consenter/exhibits/');
         return selected_role == 'CONSENTING_PERSON' && exhibits;
       }
       const getRedirectUri = () => {
-        const url = new URL(`https://${STATIC_PARAMETERS.ROLES[selected_role].REDIRECT_URI}`);
-        return url.hostname + document.location.pathname;
+        const url = new URL(`${STATIC_PARAMETERS.ROLES[selected_role].REDIRECT_URI}`);
+        return 'https://' + url.hostname + document.location.pathname;
       }
       const getOriginAndPath = () => {
         const url = new URL(document.location.href);
@@ -1858,7 +1858,7 @@
      */
     function initiateAuthorizationRequest(codeChallenge, state) {
       const queryParams = new URLSearchParams(window.location.search);
-      let redirect_uri = `https://${redirectUri()}?action=login&selected_role=${selected_role}`;
+      let redirect_uri = `${redirectUri()}?action=login&selected_role=${selected_role}`;
       const task = queryParams.get('task');
       if(task) {
         redirect_uri = `${redirect_uri}&task=${task}`;
@@ -1902,7 +1902,7 @@
 
       const codeVerifier = window.sessionStorage.getItem("code_verifier");
 
-      let redirect_uri = `https://${redirectUri()}?action=login&selected_role=${selected_role}`;
+      let redirect_uri = `${redirectUri()}?action=login&selected_role=${selected_role}`;
       const task = queryParams.get('task');
       if(task) {
         redirect_uri = `${redirect_uri}&task=${task}`;
@@ -2182,7 +2182,7 @@
         .then((json) => {
           const { message, payload } = json;
           if(payload.ok) {
-            document.location.href = `./?action=register-entity&code=${invitationCode}`;
+            document.location.href = `./index.htm?action=register-entity&code=${invitationCode}`;
           }
           else {
             msg.innerHTML = message;
@@ -3453,7 +3453,7 @@
         configs = await getAppConfigs();
       }
       const bdpScript = document.createElement('script');
-      bdpScript.src = `${origin}/bootstrap-duration-picker.js`;
+      bdpScript.src = `${origin}/bootstrap/bootstrap-duration-picker.js`;
       bdpScript.async = false;
       const minute = 60;
       const hour = minute * 60;
@@ -3556,7 +3556,7 @@
      * Signup for a cognito userpool account.
      */
     function signUp(email, amend) {
-      let redirect = `https://${redirectUri()}?action=post-signup&selected_role=${selected_role}`;
+      let redirect = `${redirectUri()}?action=post-signup&selected_role=${selected_role}`;
       if(amend) {
         redirect = `${redirect}&task=amend`;
       }
@@ -3597,7 +3597,7 @@
     function signOut() {
       const params = {
         client_id: clientId(),
-        logout_uri: encodeURIComponent(`https://${redirectUri()}?action=logout`)
+        logout_uri: encodeURIComponent(`${redirectUri()}?action=logout`)
       };
       const queryString = Object.keys(params).map(key => `${key}=${params[key]}`).join('&');
       const signOutUrl = `https://${STATIC_PARAMETERS.COGNITO_DOMAIN}/logout?${queryString}`;
@@ -3748,7 +3748,7 @@
       }
       const payload = {
         task: 'invite-user',
-        parameters: { email, role }
+        parameters: { email, role, registrationUri:redirectUri() }
       }
       fetch(apiUri, {
         method: 'GET',
@@ -3799,6 +3799,7 @@
           task: 'invite-users',
           parameters: {
             entity: { },
+            registrationUri:redirectUri(),
             invitations: {
               from: {
                 email, role
@@ -4061,7 +4062,8 @@
           if( ! confirm(confirmMsg)) {
             return;
           }
-          parameters = { entity_id, replacerEmail, replaceableEmail, replacementEmail }
+          const registrationUri = redirectUri();
+          parameters = { entity_id, replacerEmail, replaceableEmail, replacementEmail, registrationUri }
           break;
         default:
           alert(`Invalid/missing task: ${task ?? 'missing'}`);
@@ -4128,7 +4130,7 @@
             'Content-Type': 'application/json',
             [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({ 
               task: 'send-exhibit-form-request', 
-              parameters: { consenterEmail:selectedConsenter, entity_id, constraint } 
+              parameters: { consenterEmail:selectedConsenter, entity_id, constraint, linkUri:redirectUri() } 
             })
           }
         });
@@ -4887,17 +4889,22 @@
 
         case 'login':
           await exchangeAuthorizationCode(checkAuth);
-          // Redirect back to the root url and path (minus querystring) to shed the action, code, and state parameters
-          let href = document.location.origin;
+          // Build a redirect url back to the root url and path (minus querystring) to shed the action, 
+          // code, and state parameters.
+          let href = `${document.location.origin}/bootstrap`;
           if(exhibitsPath.isMatch()) {
             href = exhibitsPath.getOriginAndPath();
           }
-          // Add back the task parameter if it was originally present.
+          href = `${href}/index.htm`; 
+
+          // Add back the task querystring parameter if it was originally present.
           const queryParams = new URLSearchParams(window.location.search);
           let task = queryParams.get('task'); 
           if(task) {
             href = `${href}?task=${task}`;
-          }         
+          }
+          
+          // Redirect
           document.location.href = href;
           break;
 

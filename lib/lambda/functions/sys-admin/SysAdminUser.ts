@@ -62,11 +62,12 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
         case ReAdminTasks.DEACTIVATE_ENTITY:
           return await deactivateEntity(parameters);
         case ReAdminTasks.INVITE_USER:
+          const { registrationUri } = parameters;
           return await inviteUser(parameters, Roles.SYS_ADMIN, async (entity_id:string, role:Role) => {
             if(role == Roles.SYS_ADMIN) {
-              return await new SignupLink().getCognitoLinkForRole(role);
+              return await new SignupLink().getCognitoLinkForRole(role, registrationUri);
             }
-            return await new SignupLink().getRegistrationLink(entity_id);
+            return await new SignupLink().getRegistrationLink({ entity_id, registrationUri });
           });
         case ReAdminTasks.INVITE_USERS:
           return await inviteUsers(parameters);
@@ -232,7 +233,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
       }
 
       process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
-      process.env.REDIRECT_URI = `${cloudfrontDomain}/index.htm`;
+      process.env.REDIRECT_URI = `${cloudfrontDomain}/bootstrap/index.htm`;
+      // process.env.REDIRECT_URI = `${cloudfrontDomain}/index.html`;
 
       const payload = {
         task, parameters: {

@@ -165,7 +165,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         replacementEmail = 'auth3.random.edu@warhen.work';
 
         // Perform the correction
-        corrector = new EntityToCorrect(new Personnel({ entity:entity_id, replacer:replacerEmail }));
+        const registrationUri = `https://${cloudfrontDomain}/bootstrap/index.htm`;
+        corrector = new EntityToCorrect(new Personnel({ entity:entity_id, replacer:replacerEmail, registrationUri }));
         const corrected = await corrector.correctPersonnel(replaceableEmail, replacementEmail);
         console.log(corrected ? 'Succeeded' : 'Failed');
         break;

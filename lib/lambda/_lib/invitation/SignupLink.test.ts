@@ -9,11 +9,11 @@ const clientId1 = '6lgr9r32asit6hn3ugo9f71hp';
 let clientIdScenario = 'mismatch';
 
 const cloudfrontDomain = 'd3a53ihnef1k0j.cloudfront.net';
-const redirectURI =  `${cloudfrontDomain}/index.htm`;
+const redirectUri =  `https://${cloudfrontDomain}/index.htm`;
 const cognitoDomain = 'ett-dev.auth.us-east-2.amazoncognito.com';
 process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
 process.env.COGNITO_DOMAIN = cognitoDomain;
-process.env.REDIRECT_URI = redirectURI;
+process.env.REDIRECT_URI = redirectUri;
 process.env.REGION = 'us-east-2'
 
 /**
@@ -51,7 +51,7 @@ describe('Cognito signup link ', () => {
   it('Should return the expected signup link', async () => {
     clientIdScenario = 'match';
     const signupLink = new SignupLink({userPoolName}); 
-    const expectedRedirectParm = encodeURIComponent(`https://${redirectURI}?action=${Actions.post_signup}&selected_role=${Roles.RE_ADMIN}`);
+    const expectedRedirectParm = encodeURIComponent(`${redirectUri}?action=${Actions.post_signup}&selected_role=${Roles.RE_ADMIN}`);
     const expectedLink = `https://${cognitoDomain}/signup?client_id=${clientId1}&response_type=code&scope=email+openid+phone&redirect_uri=${expectedRedirectParm}`;
     const link = await signupLink.getCognitoLinkForRole(Roles.RE_ADMIN);
     expect(link).toEqual(expectedLink);
@@ -63,12 +63,16 @@ describe('Registration signup link', () => {
   it('Should incorporate produce the expected registration link value', async () => {
     const signupLink = new SignupLink({userPoolName}); 
     let expectedLink = `https://${cloudfrontDomain}?action=${Actions.acknowledge_entity}`;
-    let link = await signupLink.getRegistrationLink();
+    let link = await signupLink.getRegistrationLink({});
     expect(link).toEqual(expectedLink);
 
     const entity_id='abc123'
     expectedLink = `${expectedLink}&entity_id=${entity_id}`;
-    link = await signupLink.getRegistrationLink(entity_id);
+    link = await signupLink.getRegistrationLink({ entity_id });
     expect(link).toEqual(expectedLink);
+
+    const registrationUri = 'https://mydomain/path/to/something';
+    expectedLink = `${registrationUri}?action=${Actions.acknowledge_entity}&entity_id=${entity_id}`;
+    link = await signupLink.getRegistrationLink({ entity_id, registrationUri });
   })
 })

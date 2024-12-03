@@ -9,7 +9,7 @@ import { lookupCloudfrontDomain } from "../../Utils";
 export type ExhibitFormRequestEmailParms = {
   consenterEmail:string;
   entity_id:string;
-  domain:string;
+  linkUri:string;
   constraint: 'CURRENT' | 'OTHER' | 'BOTH'
 }
 
@@ -21,7 +21,10 @@ export class ExhibitFormRequestEmail {
   }
 
   public send = async ():Promise<boolean> => {
-    const { parms: { consenterEmail, entity_id, domain, constraint }} = this;
+    let { parms: { consenterEmail, entity_id, linkUri, constraint }} = this;
+    if( ! linkUri.endsWith('/')) {
+      linkUri = linkUri.substring(0, linkUri.length -1); // Clip off trailing '/'
+    }
 
     // Get the consenter
     const consenterDao = DAOFactory.getInstance({ DAOType: 'consenter', Payload: { email: consenterEmail} as Consenter});
@@ -49,11 +52,10 @@ export class ExhibitFormRequestEmail {
       message: `Thankyou ${consenterFullName} for registering with the Ethical Tranparency Tool.<br>` +
         `${entity_name} is requesting you take the next step and fill out a prior contacts or "exhibit" form.<br>` +
         `Follow the link provided below to log in to your ETT account and to access the form:` + 
-        `<p>https://${domain}/consenter/exhibits/${constraint}/index.htm</p>`,
+        `<p>${linkUri}/consenter/exhibits/${constraint}/index.htm</p>`,
       from: `noreply@${context.ETT_DOMAIN}`,
       attachments: []
-    } as EmailParms);
-  
+    } as EmailParms);  
   }
 }
 
@@ -84,7 +86,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     
     await new ExhibitFormRequestEmail({ 
       consenterEmail, 
-      entity_id, domain:cloudfrontDomain, 
+      entity_id, 
+      linkUri:`https://${cloudfrontDomain}/bootstrap`, 
       constraint:"BOTH" 
     } as ExhibitFormRequestEmailParms).send();
 
