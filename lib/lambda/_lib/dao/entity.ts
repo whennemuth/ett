@@ -39,8 +39,8 @@ export type User = {
 };
 
 /**************** CONSENTER ****************/
-export enum AffiliateTypes { EMPLOYER = 'EMPLOYER', ACADEMIC = 'ACADEMIC', OTHER = 'OTHER' };
-export type AffiliateType = AffiliateTypes.EMPLOYER | AffiliateTypes.ACADEMIC | AffiliateTypes.OTHER;
+export enum AffiliateTypes { EMPLOYER = 'EMPLOYER', EMPLOYER_PRIOR = 'EMPLOYER_PRIOR', ACADEMIC = 'ACADEMIC', OTHER = 'OTHER' };
+export type AffiliateType = AffiliateTypes.EMPLOYER | AffiliateTypes.EMPLOYER_PRIOR | AffiliateTypes.ACADEMIC | AffiliateTypes.OTHER;
 export type Affiliate = {
   affiliateType: AffiliateType,
   email: string,

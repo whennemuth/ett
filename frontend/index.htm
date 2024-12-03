@@ -941,6 +941,7 @@
             <!--                    RE_ADMIN                    -->
             <!---------------------------------------------------->
             <div id="app-section-RE_ADMIN" style="display:none">
+              <h3 class="display-7 fw-bold">Welcome <span id="RE_ADMIN_username"></span></h3>
               <ul class="nav nav-tabs" id="reAdmin" role="tablist">
                 <li class="nav-item">
                   <a class="nav-link active" id="re-admin-entity-link" data-toggle="tab" href="#re-admin-entity" role="tab" aria-controls="re-admin-entity" aria-selected="true">Entity/Organization</a>
@@ -949,7 +950,6 @@
                   <a class="nav-link" id="re-admin-misc-link" data-toggle="tab" href="#re-admin-misc" role="tab" aria-controls="re-admin-misc" aria-selected="false">Miscellaneous</a>
                 </li>
               </ul>
-              <h3 class="display-7 fw-bold">Welcome <span id="RE_ADMIN_username"></span></h3>
               <div class="tab-content" id="reAdminContent">
                 <div class="tab-pane fade show active" id="re-admin-entity" role="tabpanel" aria-labelledby="re-admin-entity-link">
                   <div id="divCreateEntity">
@@ -986,6 +986,8 @@
             <!--                  RE_AUTH_IND                   -->
             <!---------------------------------------------------->
             <div id="app-section-RE_AUTH_IND" style="display:none;">
+              <h3 class="display-7 fw-bold">Welcome <span id="RE_AUTH_IND_username"></span></h3>
+
               <ul class="nav nav-tabs" id="authInd" role="tablist">
                 <li class="nav-item">
                   <a class="nav-link active" id="auth-request-exhibits-tab" data-toggle="tab" href="#auth-request-exhibits" role="tab" aria-controls="auth-request-exhibits-link" aria-selected="true">Request Exhibit Forms</a>
@@ -997,7 +999,6 @@
                   <a class="nav-link" id="auth-amend-entity-tab" data-toggle="tab" href="#auth-amend-entity" role="tab" aria-controls="auth-amend-entity-link" aria-selected="true">Amend Entity</a>
                 </li>
               </ul>
-              <h3 class="display-7 fw-bold">Welcome <span id="RE_AUTH_IND_username"></span></h3>
 
               <div id="authNotReady">
                 <p>
@@ -1009,7 +1010,28 @@
 
               <div class="tab-content" id="authIndContent">
                 <div class="tab-pane fade show active" id="auth-request-exhibits" role="tabpanel" aria-labelledby="auth-request-exhibits-tab">
-                  <div id="exhibitsRequest" style="margin-top: 40px; overflow: auto;">
+                  
+                  <p style="margin-top:40px; margin-bottom:15px; font-weight: bold; font-size: 20px;">
+                    What affiliate information are you requesting from the consenting individual?</span> 
+                  </p>
+                  <div id="divAffiliateConstraint" style="overflow: auto; border-top:1px solid #cccccc; padding-top:15px;">
+                    <form id="formAffiliateConstraint" name="formAffiliateConstraint">
+                      <label class="containerRDO">Current Employer(s) only
+                        <input type="radio" name="affiliateConstraint" value="CURRENT">
+                        <span class="checkmark"></span>
+                      </label>
+                      <label class="containerRDO">Other affiliates & Prior Employer(s)
+                        <input type="radio" name="affiliateConstraint" value="OTHER">
+                        <span class="checkmark"></span>
+                      </label>
+                      <label class="containerRDO">Both - Any of the above
+                        <input type="radio" name="affiliateConstraint" value="BOTH" checked="checked">
+                        <span class="checkmark"></span>
+                      </label>
+                    </form>
+                  </div>
+                
+                  <div id="exhibitsRequest" style="margin-top: 20px; overflow: auto;">
                     <div style="width:400px; margin:10px; display:inline;">
                       <div style="margin-left:10px; font-size:26px;">Consenting Individuals:</div>
                       <input id="txtConsenterFilter" type="text" style="height:66px; width:493px; font-size:26px; float:left;" class="form-control dropdown-toggle" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" placeholder="Type here to search . . .">
@@ -1018,6 +1040,7 @@
                     </div>
                     <button id="btnSendExhibitsRequest" style="display:inline;" class="btn btn-primary btn-lg" type="button">Send <i class="bi-send-check"></i></button>
                   </div>
+
                 </div>
                 <div class="tab-pane fade" id="auth-request-disclosures" role="tabpanel" aria-labelledby="auth-request-disclosures-tab">
                   <div id="disclosureRequest" style="margin-top: 40px;">
@@ -1357,11 +1380,11 @@
                             <td><input name="org-name" type="text" class="form-control"></td>
                             <td>
                               <span id='exhibit-tooltip-1' data-toggle="tooltip">
-                                <select name="org-type" class="form-control">
-                                  <option><- Select One -></option>
-                                  <option value="EMPLOYER">1) Employers</option>
-                                  <option value="ACADEMIC">2) Academic / Professional Societies & Organizations</option>
-                                  <option value="OTHER">3) Other Affiliated Organizations</option>
+                                <select name="org-type" class="form-control" style="min-width: 150px;">
+                                  <option id="header"><- Select One -></option>
+                                  <option id="EMPLOYER" value="EMPLOYER">1) Employers</option>
+                                  <option id="ACADEMIC" value="ACADEMIC">2) Academic / Professional Societies & Organizations</option>
+                                  <option id="OTHER" value="OTHER">3) Other Affiliated Organizations</option>
                                 </select>
                               </span>
                             </td>
@@ -1688,14 +1711,6 @@
     const localTesting = () => /^STATIC_PARAMETERS_.*$/.test(STATIC_PARAMETERS);
     const clientId = () => { return STATIC_PARAMETERS.ROLES[selected_role].CLIENT_ID; }
     const apiUri = () => { return STATIC_PARAMETERS.ROLES[selected_role].API_URI; }
-    const redirectUri = () => {
-      const defaultUri = STATIC_PARAMETERS.ROLES[selected_role].REDIRECT_URI;
-      if(selected_role == 'CONSENTING_PERSON' && document.location.pathname == '/consenter/exhibits/index.htm') {
-        const domain = defaultUri.substring(0, defaultUri.indexOf('/'));
-        return `${domain}/consenter/exhibits/index.htm`;
-      }
-      return defaultUri;
-    }
 
     const roleChange = () => {
       selected_role = document.forms['formRole']['rdoRole'].value;
@@ -1722,7 +1737,7 @@
     let RefreshJwtCookie;
 
     const getSelectedRole = () => {
-      if(document.location.pathname == '/consenter/exhibits/index.htm') {
+      if(document.location.pathname.startsWith('/consenter/exhibits/')) {
         return 'CONSENTING_PERSON';
       }
       let role = new URL(document.location.href).searchParams.get('selected_role');
@@ -1749,6 +1764,37 @@
     let selectedEntityForExhibitUpdate;
 
     let selectedConsenter;
+
+    const ExhibitsPath = () => {
+      const isMatch = () => {
+        const exhibits = document.location.pathname.startsWith('/consenter/exhibits/');
+        return selected_role == 'CONSENTING_PERSON' && exhibits;
+      }
+      const getRedirectUri = () => {
+        const url = new URL(`https://${STATIC_PARAMETERS.ROLES[selected_role].REDIRECT_URI}`);
+        return url.hostname + document.location.pathname;
+      }
+      const getOriginAndPath = () => {
+        const url = new URL(document.location.href);
+        return url.origin + url.pathname;
+      }
+      const getType = () => {
+        return document.location.pathname.split('/')[3];
+      }
+      return { isMatch, getRedirectUri, getOriginAndPath, getType };
+    }
+
+    const exhibitsPath = ExhibitsPath();
+
+    /**
+     * Get the uri that cognito is to redirect to after successful signin
+     */
+    const redirectUri = () => {
+      if(exhibitsPath.isMatch()) {
+        return exhibitsPath.getRedirectUri();
+      }
+      return STATIC_PARAMETERS.ROLES[selected_role].REDIRECT_URI;
+    }
 
     const rdoRoles = document.getElementsByName('rdoRole');
     rdoRoles.forEach(rdoRole => {
@@ -2513,12 +2559,25 @@
             show('consentRescind');
             show('consentRenew');
             show('consentSend');
-            if(document.location.pathname == '/consenter/exhibits/index.htm') {
+            if(exhibitsPath.isMatch()) {
               show('consenter-exhibit-compose-link');
               show('consenter-exhibit-amend-link');
               populateExhibitFormSignoffFields();
               document.getElementById('waitForAI').style.display = 'none';
               document.getElementById('consenter-exhibit-compose-link').click();
+              const affiliateTypes = document.querySelector('select[name=org-type]').options;
+              switch(exhibitsPath.getType()) {
+                case 'CURRENT':
+                  affiliateTypes.namedItem('header').remove();
+                  affiliateTypes.namedItem('ACADEMIC').remove();
+                  affiliateTypes.namedItem('OTHER').remove();
+                  break;
+                case 'OTHER':
+                  affiliateTypes.namedItem('EMPLOYER').remove();
+                  break;
+                case 'BOTH': default:
+                  break;
+              }
             }
             else {
               hide('consenter-exhibit-compose-link');
@@ -4057,6 +4116,7 @@
         const role = AccessJwtCookie.getRole().name;
         const { entity } = userContext;
         const { entity_id, entity_name } = (entity ?? {});
+        const constraint = document.forms.formAffiliateConstraint.affiliateConstraint.value;
 
         document.body.style.cursor = 'progress';
         const response = await fetch(apiUri(role), {
@@ -4068,7 +4128,7 @@
             'Content-Type': 'application/json',
             [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({ 
               task: 'send-exhibit-form-request', 
-              parameters: { consenterEmail:selectedConsenter, entity_id } 
+              parameters: { consenterEmail:selectedConsenter, entity_id, constraint } 
             })
           }
         });
@@ -4787,8 +4847,8 @@
           setName(AccessJwtCookie.getRole(), IDJwtCookie.getUser())
           await showAppForRole();        
         }
-        else if(document.location.pathname == '/consenter/exhibits/index.htm') {
-          // Not signed in and is consenter coming in on the "private" link emailed to them by AI
+        else if(exhibitsPath.isMatch()) {
+          // Not signed in and consenter is coming in on the "private" link emailed to them by AI
           signIn(); 
         }
         else if(!RefreshJwtCookie.jwtExpired()) {
@@ -4829,8 +4889,8 @@
           await exchangeAuthorizationCode(checkAuth);
           // Redirect back to the root url and path (minus querystring) to shed the action, code, and state parameters
           let href = document.location.origin;
-          if(document.location.pathname == '/consenter/exhibits/index.htm') {
-            href = `${href}/consenter/exhibits/index.htm`;
+          if(exhibitsPath.isMatch()) {
+            href = exhibitsPath.getOriginAndPath();
           }
           // Add back the task parameter if it was originally present.
           const queryParams = new URLSearchParams(window.location.search);
