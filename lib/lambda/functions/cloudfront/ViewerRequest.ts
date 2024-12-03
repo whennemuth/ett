@@ -8,15 +8,19 @@ export const handler =  async (event:any) => {
 
   try {
     const request = event.Records[0].cf.request;
-    const uri = request.uri;
+    const uri = `${request.uri}`;
 
     // Rewrite the request to the root index.htm if the path follows predefined patterns:
-    if(`${uri}`.startsWith('/consenter/exhibits/')) {
-      const parts = uri.split('/');
-      const item = parts[parts.length-1];
-      request.uri = `/${item}`;
+    if(uri.startsWith('/bootstrap/')) {
+      // Assume that every item being requested resides at the root of the bucket, regardless of the uri path.
+      request.uri = uri.substring(uri.lastIndexOf('/'), uri.length);
     }
 
+    console.log(JSON.stringify({ 
+      incomingURI: uri,
+      outgoingURI: request.uri
+    }, null, 2));
+    
     return request;
   } 
   catch (e:any) {

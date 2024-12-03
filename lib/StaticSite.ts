@@ -1,9 +1,19 @@
+import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from "constructs";
 import { IContext } from '../contexts/IContext';
-import { RemovalPolicy } from 'aws-cdk-lib';
-import { BlockPublicAccess, Bucket } from 'aws-cdk-lib/aws-s3';
-import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
-import * as path from 'path';
+import { AbstractRoleApi } from "./role/AbstractRole";
+
+export interface StaticSiteConstructParms {
+  bucket: Bucket,
+  distributionId: string,
+  cloudfrontDomain: string,
+  cognitoDomain: string,
+  cognitoUserpoolRegion: string,
+  entityAcknowledgeApiUri: string,
+  registerEntityApiUri: string,
+  registerConsenterApiUri: string,
+  apis: AbstractRoleApi[]
+}
 
 /**
  * This is the boilerplate for the static site. It includes bucket creation and the uploading of an index file.
@@ -15,60 +25,50 @@ export abstract class StaticSiteConstruct extends Construct {
   scope: Construct;
   context: IContext;
   bucket: Bucket;
-  props: any;
+  parms: StaticSiteConstructParms;
   
-  constructor(scope: Construct, constructId: string, props:any) {
+  constructor(scope: Construct, constructId: string, parms:StaticSiteConstructParms) {
 
     super(scope, constructId);
 
     this.scope = scope;
     this.constructId = constructId;
-    this.props = props;
+    this.parms = parms;
     this.context = scope.node.getContext('stack-parms');
-  
-    this.customize();
+
+    if(Object.entries(parms).length > 0) {
+      this.customize();
+    }
   }
 
-  public abstract customize(): void;
- 
-  public getBucket = (): Bucket => {
-    const { TAGS: { Landscape }, STACK_ID } = this.context;
-    if( ! this.bucket) {
-      if(this.props?.bucket) {
-        this.bucket = this.props.bucket;
-      }
-      else {
-        this.bucket = new Bucket(this, 'Bucket', {
-          bucketName: `${STACK_ID}-${Landscape}-static-site-content`,
-          publicReadAccess: false,
-          blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-          removalPolicy: RemovalPolicy.DESTROY,    
-          autoDeleteObjects: true  
-        });
-      }
-    }
-    return this.bucket;
-  }
+  protected abstract customize(): void;
+
+  public abstract getBucket(suffix?:string): Bucket;
+
+  public abstract setBucketDeployment(dependOn?:Construct[]): void;
 
   /**
-   * Set up a bucket deployment to upload the index.htm file to the bucket as part of the overall
-   * cdk deployment. If a lambda needs to have been created already that will intercept this file on its
-   * way into the bucket so as to modify it's content, a dependency to the corresponding resource(s)
-   * needs to be applied to the BucketDeployment.
+   * @param parms 
+   * @returns A parameter object comprising all values client apps need to authenticate and talk with the backend.
    */
-  public setIndexFileForUpload = (dependOn?:Construct[]) => {
-    const deployment = new BucketDeployment(this, 'BucketContentDeployment', {
-      destinationBucket: this.getBucket(),
-      sources: [
-        Source.asset(path.resolve(__dirname, `../frontend`))
-      ],
+  public buildSiteParmObject = (parms: StaticSiteConstructParms, redirectPath:string):any => {
+    let jsonObj = {
+      COGNITO_DOMAIN: parms.cognitoDomain,
+      USER_POOL_REGION: parms.cognitoUserpoolRegion,
+      PAYLOAD_HEADER: AbstractRoleApi.ETTPayloadHeader,
+      ACKNOWLEDGE_ENTITY_API_URI: parms.entityAcknowledgeApiUri,
+      REGISTER_ENTITY_API_URI: parms.registerEntityApiUri,
+      REGISTER_CONSENTER_API_URI: parms.registerConsenterApiUri,
+      ROLES: { } as any
+    };
+    parms.apis.forEach((api:AbstractRoleApi) => {
+      jsonObj.ROLES[api.getRole()] = {
+        CLIENT_ID: api.getUserPoolClientId(),
+        REDIRECT_URI: `https://${parms.cloudfrontDomain}/${redirectPath}`,
+        API_URI: api.getRestApiUrl(),
+        FULLNAME: api.getRoleFullName()
+      }
     });
-
-    if(dependOn) {
-      dependOn.forEach(d => {
-        deployment.node.addDependency(d);
-      })
-    }
-    deployment.node.addDependency(this.getBucket())
+    return jsonObj;
   }
 }

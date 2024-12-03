@@ -31,31 +31,60 @@ export class EttUserPoolClient extends UserPoolClient {
       scopes = scopes.concat(customScopes);
     }
 
-    const callbackUrls = [
-      `https://${callbackDomainName}/index.htm`,
-      `https://${callbackDomainName}/index.htm?action=${Actions.login}&selected_role=${role}`,
-      `https://${callbackDomainName}/index.htm?action=${Actions.post_signup}&selected_role=${role}`,
-    ] as string[];
+    /**
+     * Get urls to the app location that cognito will "callback" or redirect to upon successful signin.
+     */
+    const getCallbackUrls = (rootObject:string, subfolder:string=''): string[] => {
+      let callbackUrlRoot = `https://${callbackDomainName}`;
+      if(subfolder) {
+        callbackUrlRoot = `${callbackUrlRoot}/${subfolder}`;
+      }
+      const urls = [
+        `${callbackUrlRoot}/${rootObject}`,
+        `${callbackUrlRoot}/${rootObject}?action=${Actions.login}&selected_role=${role}`,
+        `${callbackUrlRoot}/${rootObject}?action=${Actions.post_signup}&selected_role=${role}`,
+      ] as string[];
 
-    const logoutUrls = [
-      `https://${callbackDomainName}/index.htm?action=${Actions.logout}`,
-    ] as string[];
+      if(role == Roles.CONSENTING_PERSON) {
+        urls.push(`${callbackUrlRoot}/consenter/exhibits/CURRENT/${rootObject}?action=${Actions.login}&selected_role=${role}`);        
+        urls.push(`${callbackUrlRoot}/consenter/exhibits/OTHER/${rootObject}?action=${Actions.login}&selected_role=${role}`);        
+        urls.push(`${callbackUrlRoot}/consenter/exhibits/BOTH/${rootObject}?action=${Actions.login}&selected_role=${role}`);
+      }
+      else {
+        urls.push(`${urls[1]}&task=amend`);
+        urls.push(`${urls[2]}&task=amend`);
+      }
 
-    if(role == Roles.CONSENTING_PERSON) {
-      callbackUrls.push(`https://${callbackDomainName}/consenter/exhibits/CURRENT/index.htm?action=${Actions.login}&selected_role=${role}`);
-      logoutUrls.push(`https://${callbackDomainName}/consenter/exhibits/CURRENT/index.htm?action=${Actions.logout}`);
-      
-      callbackUrls.push(`https://${callbackDomainName}/consenter/exhibits/OTHER/index.htm?action=${Actions.login}&selected_role=${role}`);
-      logoutUrls.push(`https://${callbackDomainName}/consenter/exhibits/OTHER/index.htm?action=${Actions.logout}`);
-      
-      callbackUrls.push(`https://${callbackDomainName}/consenter/exhibits/BOTH/index.htm?action=${Actions.login}&selected_role=${role}`);
-      logoutUrls.push(`https://${callbackDomainName}/consenter/exhibits/BOTH/index.htm?action=${Actions.logout}`);
+      return urls;
     }
 
-    if(role != Roles.CONSENTING_PERSON) {
-      callbackUrls.push(`${callbackUrls[1]}&task=amend`);
-      callbackUrls.push(`${callbackUrls[2]}&task=amend`);
+    /**
+     * Get urls to the app location that cognito will redirect to upon successful signout.
+     */
+    const getLogoutUrls = (rootObject:string, subfolder:string=''): string[] => {
+      let callbackUrlRoot = `https://${callbackDomainName}`;
+      if(subfolder) {
+        callbackUrlRoot = `${callbackUrlRoot}/${subfolder}`;
+      }
+
+      const urls = [
+        `${callbackUrlRoot}/${rootObject}?action=${Actions.logout}`,
+      ] as string[];
+
+      if(role == Roles.CONSENTING_PERSON) {
+        urls.push(`${callbackUrlRoot}/consenter/exhibits/CURRENT/${rootObject}?action=${Actions.logout}`);
+        urls.push(`${callbackUrlRoot}/consenter/exhibits/OTHER/${rootObject}?action=${Actions.logout}`);
+        urls.push(`${callbackUrlRoot}/consenter/exhibits/BOTH/${rootObject}?action=${Actions.logout}`);
+      }
+
+      return urls;
     }
+
+    const callbackUrls = getCallbackUrls('index.htm', 'bootstrap');
+    callbackUrls.push(...getCallbackUrls('index.html'));
+
+    const logoutUrls = getLogoutUrls('index.htm', 'bootstrap');
+    logoutUrls.push(...getLogoutUrls('index.html'));
 
     const client = new EttUserPoolClient(userPool, id, {
       userPool,
