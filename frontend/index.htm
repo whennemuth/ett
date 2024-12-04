@@ -1382,9 +1382,10 @@
                               <span id='exhibit-tooltip-1' data-toggle="tooltip">
                                 <select name="org-type" class="form-control" style="min-width: 150px;">
                                   <option id="header"><- Select One -></option>
-                                  <option id="EMPLOYER" value="EMPLOYER">1) Employers</option>
-                                  <option id="ACADEMIC" value="ACADEMIC">2) Academic / Professional Societies & Organizations</option>
-                                  <option id="OTHER" value="OTHER">3) Other Affiliated Organizations</option>
+                                  <option id="EMPLOYER" value="EMPLOYER">1) Current Employer(s)</option>
+                                  <option id="EMPLOYER_PRIOR" value="EMPLOYER_PRIOR">2) Prior Employers</option>
+                                  <option id="ACADEMIC" value="ACADEMIC">3) Academic / Professional Societies & Organizations</option>
+                                  <option id="OTHER" value="OTHER">4) Other Affiliated Organizations</option>
                                 </select>
                               </span>
                             </td>
@@ -1779,7 +1780,7 @@
         return url.origin + url.pathname;
       }
       const getType = () => {
-        return document.location.pathname.split('/')[3];
+        return document.location.pathname.split('/')[4];
       }
       return { isMatch, getRedirectUri, getOriginAndPath, getType };
     }
@@ -2570,6 +2571,7 @@
                 case 'CURRENT':
                   affiliateTypes.namedItem('header').remove();
                   affiliateTypes.namedItem('ACADEMIC').remove();
+                  affiliateTypes.namedItem('EMPLOYER_PRIOR').remove();
                   affiliateTypes.namedItem('OTHER').remove();
                   break;
                 case 'OTHER':
@@ -2800,7 +2802,7 @@
       let _on_off = on_off;
       if(on_off == undefined) {
         _on_off = fld.id == 'requestingEntityDropdown' && ! selectedEntity;
-        _on_off ||= fld.nodeName == 'SELECT' && fld.selectedIndex == 0;
+        _on_off ||= fld.nodeName == 'SELECT' && ! fld.value;
         _on_off ||= fld.nodeName == 'INPUT' && ! fld.value;
       }
       fld.style.borderStyle = _on_off ? 'solid' : '';
