@@ -11,7 +11,7 @@ import { inviteUser } from "../../re-admin/ReAdminUser";
 import { EntityCorrectionEmail } from "./EntityCorrectionEmail";
 
 export type PersonnelParms = {
-  entity?:Entity|string, replacer?:User|string
+  entity?:Entity|string, replacer?:User|string, registrationUri?:string
 }
 
 /**
@@ -32,9 +32,11 @@ export class Personnel {
   private entity:Entity;
   private replacer?:User;
   private replaceable?:User;
+  private registrationUri?:string;
 
   constructor(parms:PersonnelParms) {
-    const { entity, replacer } = parms;
+    const { entity, replacer, registrationUri } = parms;
+    this.registrationUri = registrationUri;
     if(entity) {
       if(typeof entity === 'string') {
         this.entity_id = entity;
@@ -202,13 +204,14 @@ export class Personnel {
     };
 
     const inviteNewUser = async () => {
+      const { registrationUri } = this;
       const invitee = { email:replacementEmail, entity_id, role:replaceable.role } as User;
       const inviterRole = replacer.role;
       if( ! inviterRole) {
         throw new Error(`Cannot invite ${replacementEmail} - unable to determine role of inviter`);
       }
       const linkGenerator = async (entity_id:string, role?:Role) => {
-        return await new SignupLink().getRegistrationLink(entity_id);
+        return await new SignupLink().getRegistrationLink({ entity_id, registrationUri });
       };
       if(dryrun) {
         const link = await linkGenerator(entity_id);
@@ -286,18 +289,20 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
 
     // Perform the personnel operation
     let swap:Personnel;
+    const registrationUri = `https://${cloudfrontDomain}/bootstrap/index.htm`;
+    const parms = { replacer, registrationUri } as PersonnelParms
     switch(swapType) {
       case "replace-self":
-        swap = new Personnel({ replacer }).forRemovalOf().myself().andReplacementWith(replacement);
+        swap = new Personnel(parms).forRemovalOf().myself().andReplacementWith(replacement);
         break;
       case "remove-self":
-        swap = new Personnel({ replacer }).forRemovalOf().myself();
+        swap = new Personnel(parms).forRemovalOf().myself();
         break;
       case "replace-another":
-        swap = new Personnel({ replacer }).forRemovalOf(replaceable).andReplacementWith(replacement);
+        swap = new Personnel(parms).forRemovalOf(replaceable).andReplacementWith(replacement);
         break;
       case "remove-another":
-        swap = new Personnel({ replacer }).forRemovalOf(replaceable);
+        swap = new Personnel(parms).forRemovalOf(replaceable);
         break;
     }
 

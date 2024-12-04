@@ -9,7 +9,8 @@ import { IContext } from '../contexts/IContext';
 import path = require('path');
 
 export interface CloudfrontConstructProps {
-  bucket: Bucket,
+  bootstrapBucket: Bucket,
+  websiteBucket: Bucket,
   olapAlias?: string
 };
 
@@ -36,7 +37,7 @@ export class CloudfrontConstruct extends Construct {
     this.distribution = new Distribution(this, 'Distribution', {
       defaultBehavior,
       comment: `${STACK_ID}-${landscape}-distribution`,
-      defaultRootObject: 'index.htm',
+      defaultRootObject: 'index.html',
       logBucket: new Bucket(this, 'DistributionLogsBucket', {
         removalPolicy: RemovalPolicy.DESTROY,    
         autoDeleteObjects: true,
@@ -44,19 +45,32 @@ export class CloudfrontConstruct extends Construct {
       }),
     });
 
-    // Create an lambda@edge viewer request function that can rewrite paths to the origin
+    // Create an lambda@edge viewer request function for the bootstrap origin that can rewrite paths to that origin
     const edgeLambdas = [] as EdgeLambda[];
     createEdgeFunctionForViewerRequest(this, this.context, (edgeLambda:any) => {
       edgeLambdas.push(edgeLambda);
     });
-
-    // Create a behavior that targets the s3 bucket as the origin
-    this.distribution.addBehavior('*.*', new S3Origin(props.bucket), {
+    // Create a behavior that targets the bootstrap bucket as the origin
+    this.distribution.addBehavior('/bootstrap/*.*', new S3Origin(props.bootstrapBucket), {
       cachePolicy: CachePolicy.CACHING_DISABLED,
       edgeLambdas
     });
+    // Give cloudfront access to the bootstrap bucket
+    const oacBootstrap = new CfnOriginAccessControl(this, 'StaticSiteAccessControlForBootstrap', {
+      originAccessControlConfig: {
+        name: `${STACK_ID}-${landscape}-static-site-for-bootstap`,
+        originAccessControlOriginType: 's3',
+        signingBehavior: 'always',
+        signingProtocol: 'sigv4',
+        description: 'This access control ensures cloudfront signs all http requests it makes to s3 buckets or object lambda access points',
+      },
+    });
 
-    // Give cloudfront access to the bucket
+    // Create a behavior that targets the official content bucket as the origin
+    this.distribution.addBehavior('*.*', new S3Origin(props.websiteBucket), {
+      cachePolicy: CachePolicy.CACHING_DISABLED,
+    });
+    // Give cloudfront access to the official content bucket
     const oac = new CfnOriginAccessControl(this, 'StaticSiteAccessControl', {
       originAccessControlConfig: {
         name: `${STACK_ID}-${landscape}-static-site`,
@@ -73,12 +87,25 @@ export class CloudfrontConstruct extends Construct {
      * with escape hatches:
      */
     const cfnDist = this.distribution.node.defaultChild as CfnDistribution;
-    cfnDist.addPropertyOverride('DistributionConfig.Origins.1.OriginAccessControlId', oac.attrId);
+    cfnDist.addPropertyOverride('DistributionConfig.Origins.1.OriginAccessControlId', oacBootstrap.attrId);
     cfnDist.addPropertyOverride('DistributionConfig.Origins.1.S3OriginConfig.OriginAccessIdentity', "");
+
+    cfnDist.addPropertyOverride('DistributionConfig.Origins.2.OriginAccessControlId', oac.attrId);
+    cfnDist.addPropertyOverride('DistributionConfig.Origins.2.S3OriginConfig.OriginAccessIdentity', "");
 
     if(props.olapAlias) {
       cfnDist.addPropertyOverride('DistributionConfig.Origins.1.DomainName', `${props.olapAlias}.s3.${this.context.REGION}.amazonaws.com`);
+      cfnDist.addPropertyOverride('DistributionConfig.Origins.2.DomainName', `${props.olapAlias}.s3.${this.context.REGION}.amazonaws.com`);
     }
+
+    // index.html is a react artifact that simulates its own reverse proxy
+    // Therefore, all paths must "point" to the same index.html origin.
+    cfnDist.addPropertyOverride('DistributionConfig.CustomErrorResponses', [ {
+      ErrorCode: 403,
+      ResponseCode: 200,
+      ResponsePagePath: '/index.html',
+    } ]);
+
   }
 
   public getDistributionId(): string {

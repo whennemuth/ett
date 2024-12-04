@@ -12,8 +12,9 @@ import { CognitoConstruct, CognitoConstructParms } from '../lib/Cognito';
 import { DelayedExecutionLambdaParms, DelayedExecutionLambdas, DelayedExecutions } from '../lib/DelayedExecution';
 import { DynamoDbConstruct } from '../lib/DynamoDb';
 import { SignupApiConstruct, SignupApiConstructParms } from '../lib/SignupApi';
-import { StaticSiteConstruct } from '../lib/StaticSite';
-import { StaticSiteCustomInConstruct, StaticSiteCustomInConstructParms } from '../lib/StaticSiteCustomIn';
+import { StaticSiteConstructParms } from '../lib/StaticSite';
+import { StaticSiteBootstrapConstruct } from '../lib/StaticSiteBootstrap';
+import { StaticSiteWebsiteConstruct } from '../lib/StaticSiteWebsite';
 import { Roles } from '../lib/lambda/_lib/dao/entity';
 
 const context:IContext = <IContext>ctx;
@@ -59,10 +60,9 @@ Tags.of(stack).add('Function', Function);
 Tags.of(stack).add('Landscape', Landscape);
 
 const buildAll = () => {
-  // Set up the static site bucket only.
-  const bucket = new class extends StaticSiteConstruct {
-    public customize(): void { console.log('No customization'); }
-  }(stack, 'StaticSiteBucket', {}).getBucket();
+  // Set up the static site buckets only.
+  const bootstrapBucket = StaticSiteBootstrapConstruct.getBasicBucket(stack, 'bootstrap'); 
+  const websiteBucket = StaticSiteWebsiteConstruct.getBasicBucket(stack); 
 
   // Create a bucket for exhibit forms
   const exhibitFormsBucket = new Bucket(stack, 'ExhibitFormsBucket', {
@@ -74,7 +74,7 @@ const buildAll = () => {
   });
 
   // Set up the cloudfront distribution, origins, behaviors, and oac
-  const cloudfront = new CloudfrontConstruct(stack, 'Cloudfront', { bucket } as CloudfrontConstructProps);
+  const cloudfront = new CloudfrontConstruct(stack, 'Cloudfront', { bootstrapBucket, websiteBucket } as CloudfrontConstructProps);
 
   // Set up the cognito userpool and userpool client
   const cognito = new CognitoConstruct({
@@ -106,7 +106,7 @@ const buildAll = () => {
     userPoolName: cognito.getUserPoolName(),  
     userPoolDomain: cognito.getUserPoolDomain(),  
     cloudfrontDomain: cloudfront.getDistributionDomainName(),
-    redirectPath: 'index.htm',
+    redirectPath: 'index.html',
     landscape: Landscape,
     exhibitFormsBucket: exhibitFormsBucket,
     databaseExhibitFormPurgeLambdaArn: delayedExecutionLambdas.databaseExhibitFormPurgeLambda.functionArn,
@@ -119,27 +119,34 @@ const buildAll = () => {
   api.grantPermissionsTo(dynamodb, cognito, exhibitFormsBucket);
   signupApi.grantPermissionsTo(dynamodb);
 
-  // Set up the event, lambda and associated policies for modification of html files as they are uploaded to the bucket.
-  const staticSite = new StaticSiteCustomInConstruct(stack, 'StaticSite', {
-    bucket,
-    distributionId: cloudfront.getDistributionId(),
-    cloudfrontDomain: cloudfront.getDistributionDomainName(),
-    cognitoDomain: cognito.getUserPoolDomain(),
-    cognitoUserpoolRegion: region,
-    entityAcknowledgeApiUri: signupApi.entityAcknowledgeApiUri,
-    registerEntityApiUri: signupApi.registerEntityApiUri,
-    registerConsenterApiUri: signupApi.registerConsenterApiUri,
-    apis: [ 
-      api.helloWorldApi.getApi(), 
-      api.sysAdminApi.getApi(), 
-      api.reAdminApi.getApi(), 
-      api.authIndApi.getApi(),
-      api.consentingPersonApi.getApi()
-    ]
-  } as StaticSiteCustomInConstructParms);  
+  const getStaticSiteParameters = (bucket:Bucket): StaticSiteConstructParms => {
+    return {
+      bucket,
+      distributionId: cloudfront.getDistributionId(),
+      cloudfrontDomain: cloudfront.getDistributionDomainName(),
+      cognitoDomain: cognito.getUserPoolDomain(),
+      cognitoUserpoolRegion: region,
+      entityAcknowledgeApiUri: signupApi.entityAcknowledgeApiUri,
+      registerEntityApiUri: signupApi.registerEntityApiUri,
+      registerConsenterApiUri: signupApi.registerConsenterApiUri,
+      apis: [ 
+        api.helloWorldApi.getApi(), 
+        api.sysAdminApi.getApi(), 
+        api.reAdminApi.getApi(), 
+        api.authIndApi.getApi(),
+        api.consentingPersonApi.getApi()
+      ]
+    } as StaticSiteConstructParms
+  };
+  
+  // Set up the event, lambda and associated policies for modification of html files as they are uploaded 
+  // to the bootstrap bucket and ensure that static html content is uploaded to it.
+  const bootstrapStaticSite = new StaticSiteBootstrapConstruct(stack, 'StaticSiteBootstap', getStaticSiteParameters(bootstrapBucket));  
+  bootstrapStaticSite.setBucketDeployment([ cloudfront, cognito ]);
 
-  // Ensure that static html content is uploaded to the bucket that was created.
-  staticSite.setIndexFileForUpload([ cloudfront, cognito ]);
+  // Set up the non-bootstap bucket
+  const websiteStaticSite = new StaticSiteWebsiteConstruct(stack, 'StaticSite', getStaticSiteParameters(websiteBucket));
+  websiteStaticSite.setBucketDeployment([ cloudfront, cognito ]);
 
   // Set the cloudformation outputs.
   new CfnOutput(stack, 'CloudFrontURL', {

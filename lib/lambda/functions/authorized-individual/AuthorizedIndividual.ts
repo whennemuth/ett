@@ -68,8 +68,10 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           return await demolishEntity(entity_id, notify, dryRun);
 
         case Task.SEND_EXHIBIT_FORM_REQUEST:
-          var { consenterEmail, entity_id, constraint } = parameters;
-          return await sendExhibitFormRequest(consenterEmail, entity_id, constraint);
+          var { consenterEmail, entity_id, constraint, linkUri } = parameters;
+          return await sendExhibitFormRequest( { 
+            consenterEmail, entity_id, constraint, linkUri 
+          } as SendExhibitFormRequestParms);
 
         case Task.SEND_DISCLOSURE_REQUEST:
           var { consenterEmail, entity_id, affiliateEmail } = parameters;
@@ -234,7 +236,7 @@ const amendEntityName = async (entity_id:string, name:string): Promise<LambdaPro
  */
 const amendEntityUser = async (parms:any): Promise<LambdaProxyIntegrationResponse> => {
   log(parms, `amendEntityUser`)
-  var { entity_id, replacerEmail, replaceableEmail, replacementEmail } = parms;
+  var { entity_id, replacerEmail, replaceableEmail, replacementEmail, registrationUri } = parms;
   if( ! entity_id) {
     return invalidResponse('Missing entity_id parameter');
   }
@@ -242,7 +244,7 @@ const amendEntityUser = async (parms:any): Promise<LambdaProxyIntegrationRespons
     return invalidResponse('Missing replaceableEmail parameter');
   }
 
-  const corrector = new EntityToCorrect(new Personnel({ entity:entity_id, replacer:replacerEmail }));
+  const corrector = new EntityToCorrect(new Personnel({ entity:entity_id, replacer:replacerEmail, registrationUri }));
   const corrected = await corrector.correctPersonnel(replaceableEmail, replacementEmail);
   if(corrected) {
     return okResponse('Ok', {});
@@ -289,17 +291,25 @@ export const getConsenterList = async (fragment?:string):Promise<LambdaProxyInte
   return okResponse('Ok', { consenters:mapped });
 }
 
+export type SendExhibitFormRequestParms = {
+  consenterEmail:string, entity_id:string, constraint:string, linkUri?:string
+}
+
 /**
  * Send an email to a consenting individual to prompt them to submit their exhibit form through ETT.
  * @param consenterEmail 
  * @param entity_id 
  * @returns 
  */
-export const sendExhibitFormRequest = async (consenterEmail:string, entity_id:string, constraint:string):Promise<LambdaProxyIntegrationResponse> => {
+export const sendExhibitFormRequest = async (parms:SendExhibitFormRequestParms):Promise<LambdaProxyIntegrationResponse> => {
+  let { consenterEmail, constraint, entity_id, linkUri } = parms;
 
-  const cloudfrontDomain = process.env.CLOUDFRONT_DOMAIN;
-  if( ! cloudfrontDomain) {
-    return errorResponse('Email failure for exhibit form request: CLOUDFRONT_DOMAIN environment variable not set!');
+  if( ! linkUri) {
+    const cloudfrontDomain = process.env.CLOUDFRONT_DOMAIN;
+    if( ! cloudfrontDomain) {
+      return errorResponse('Email failure for exhibit form request: CLOUDFRONT_DOMAIN environment variable not set!');
+    }
+    linkUri = `https://${process.env.CLOUDFRONT_DOMAIN}`
   }
 
   switch(constraint) {
@@ -307,7 +317,7 @@ export const sendExhibitFormRequest = async (consenterEmail:string, entity_id:st
       const sent = await new ExhibitFormRequestEmail({ 
         consenterEmail, 
         entity_id, 
-        domain:cloudfrontDomain, 
+        linkUri, 
         constraint 
       }).send();
 

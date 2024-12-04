@@ -8,6 +8,11 @@ export type SignupLinkParms = {
   region?:string
 }
 
+export type RegistrationLinkParms = {
+  entity_id?:string,
+  registrationUri?:string
+}
+
 /**
  * This class provides a method to construct a link that brings the user to the signin screen for a 
  * particular cognito userpool client associated with the specified role.
@@ -19,33 +24,35 @@ export class SignupLink {
   constructor(parms?:SignupLinkParms) {
     if(parms) {
       this.userPoolName = parms.userPoolName;
-      this.region = parms.region
+      this.region = parms.region;
     }
     this.region = this.region || process.env.REGION;
     this.userPoolName = this.userPoolName || process.env.USERPOOL_NAME;
   }
 
-  public getCognitoLinkForRole = async (role:Role):Promise<string|undefined> => {
+  public getCognitoLinkForRole = async (role:Role, redirectUri?:string):Promise<string|undefined> => {
 
     try {
 
-      if( ! this.region) {
+      let { region, userPoolName } = this;
+
+      if( ! region) {
         console.error('Missing region parameter!');
         return;
       }
 
-      if( ! this.userPoolName) {
+      if( ! userPoolName) {
         console.error('Missing userpool name parameter!');
         return;
       }
 
-      const userPoolId = await lookupUserPoolId(this.userPoolName, this.region);
+      const userPoolId = await lookupUserPoolId(userPoolName, region);
       if( ! userPoolId ) {
         console.error('Could not determine userpool ID for signin link');
         return;
       }
   
-      const userPoolClientId = await lookupUserPoolClientId(userPoolId, role, this.region);
+      const userPoolClientId = await lookupUserPoolClientId(userPoolId, role, region);
       if( ! userPoolClientId ) {
         console.error('Could not determine userpool client ID for signin link');
         return;
@@ -57,17 +64,19 @@ export class SignupLink {
         return;
       }      
   
-      const redirectURI = process.env.REDIRECT_URI;
-      if( ! redirectURI ) {
-        console.error('Could not determine redirect URI for signin link');
-        return;
+      if( ! redirectUri) {
+        redirectUri = process.env.REDIRECT_URI;
+        if( ! redirectUri ) {
+          console.error('Could not determine redirect URI for signin link');
+          return;
+        }
       }
   
       const params = {
         client_id: userPoolClientId,
         response_type: 'code',
         scope: 'email+openid+phone',
-        redirect_uri: encodeURIComponent(`https://${redirectURI}?action=${Actions.post_signup}&selected_role=${role}`)
+        redirect_uri: encodeURIComponent(`${redirectUri}?action=${Actions.post_signup}&selected_role=${role}`)
       } as any;
   
       const queryString = Object.keys(params).map(key => `${key}=${params[key]}`).join('&');
@@ -80,10 +89,13 @@ export class SignupLink {
     }  
   }
 
-  public getRegistrationLink = async (entity_id?:string):Promise<string|undefined> => {
+  public getRegistrationLink = async (parms:RegistrationLinkParms):Promise<string|undefined> => {
+    let { entity_id, registrationUri } = parms;
     return new Promise((resolve, reject) => {
-      const cfdomain = process.env.CLOUDFRONT_DOMAIN;
-      let link = `https://${cfdomain}?action=${Actions.acknowledge_entity}`;
+      if( ! registrationUri) {
+        registrationUri = `https://${process.env.CLOUDFRONT_DOMAIN}`;
+      }
+      let link = `${registrationUri}?action=${Actions.acknowledge_entity}`;
       if(entity_id) {
         link = `${link}&entity_id=${entity_id}`
       }

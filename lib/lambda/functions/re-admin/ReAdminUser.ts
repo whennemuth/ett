@@ -5,7 +5,6 @@ import { lookupEmail, lookupUserPoolId } from '../../_lib/cognito/Lookup';
 import { Configurations } from '../../_lib/config/Config';
 import { DAOEntity, DAOFactory, DAOUser } from '../../_lib/dao/dao';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
-import { UserCrud } from '../../_lib/dao/dao-user';
 import { ConfigNames, Entity, Invitation, Role, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
 import { UserInvitation } from '../../_lib/invitation/Invitation';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
@@ -61,10 +60,10 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
         case Task.DEACTIVATE_ENTITY:
           return await deactivateEntity(parameters);
         case Task.INVITE_USER:
-          var { email, entity_id, role } = parameters;
+          var { email, entity_id, role, registrationUri } = parameters;
           var user = { email, entity_id, role } as User;
           return await inviteUser(user, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
-            return await new SignupLink().getRegistrationLink(entity_id);
+            return await new SignupLink().getRegistrationLink({ entity_id, registrationUri });
           }, callerSub);
         case Task.INVITE_USERS:
           return await inviteUsers(parameters, callerSub);
@@ -445,7 +444,7 @@ const getInvitedUsersValidationResult = (parameters:any, callerSub?:string):Lamb
  * @returns 
  */
 export const inviteUsers = async (parameters:any, callerSub?:string):Promise<LambdaProxyIntegrationResponse> =>  {
-  const { entity, invitations } = parameters;
+  const { entity, invitations, registrationUri } = parameters;
   const { entity_id } = (entity ?? {}) as Entity;
   const { email:email1, role:role1 } = invitations?.invitee1 || {};
   const { email:email2, role:role2 } = invitations?.invitee2 || {};
@@ -457,11 +456,11 @@ export const inviteUsers = async (parameters:any, callerSub?:string):Promise<Lam
   const user2 = { email:email2, role:role2, entity_id } as User
 
   const response1 = await inviteUser(user1, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
-    return await new SignupLink().getRegistrationLink(entity_id);
+    return await new SignupLink().getRegistrationLink({ entity_id, registrationUri });
   }, callerSub);
 
   const response2 = await inviteUser(user2, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
-    return await new SignupLink().getRegistrationLink(entity_id);
+    return await new SignupLink().getRegistrationLink({ entity_id, registrationUri });
   }, callerSub);
 
   let response = await lookupEntity(email1, role1);
