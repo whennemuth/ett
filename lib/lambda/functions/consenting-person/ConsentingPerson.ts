@@ -373,7 +373,7 @@ export const sendConsent = async (consenter:Consenter, entityName:string): Promi
     // email was the only piece of information provided about the consenter, so retrieve the rest from the database.
     consenterInfo = await getConsenterInfo(email, false) as ConsenterInfo;
     if(consenterInfo) {
-      const { consenter: { firstname, middlename, lastname}} = consenterInfo ?? { consenter: {}};
+      const { consenter, consenter: { firstname, middlename, lastname}} = consenterInfo ?? { consenter: {}};
       consenterInfo = { 
         consenter, 
         fullName: PdfForm.fullName(firstname, middlename, lastname),
@@ -950,7 +950,7 @@ export const correctExhibitData = async (consenterEmail:string, corrections:Exhi
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/ConsentingPerson.ts')) {
 
-  const task = Task.CORRECT_EXHIBIT_FORM as Task;
+  const task = Task.SEND_CONSENT as Task;
   
   const bugs = {
     affiliateType:"employer",
@@ -1095,7 +1095,11 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
 
         case Task.GET_CONSENTER:
         case Task.SEND_CONSENT:
+          payload.parameters = { email: 'cp1@warhen.work' };
+          break;
         case Task.RENEW_CONSENT:
+          payload.parameters = { email: 'cp1@warhen.work' };
+          break;
         case Task.RESCIND_CONSENT:
           payload.parameters = { email: 'cp1@warhen.work' };
           break;
