@@ -2,7 +2,7 @@ import { IContext } from "../../../../contexts/IContext";
 import { LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { DAOFactory } from "../../_lib/dao/dao";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
-import { Entity, Invitation, Roles, User, YN } from "../../_lib/dao/entity";
+import { Invitation, Roles, User, YN } from "../../_lib/dao/entity";
 import { Registration } from "../../_lib/invitation/Registration";
 import { debugLog, error, errorResponse, invalidResponse, log, lookupCloudfrontDomain, lookupSingleActiveEntity, okResponse, unauthorizedResponse } from "../../Utils";
 import { demolishEntity } from "../authorized-individual/AuthorizedIndividual";
@@ -49,7 +49,7 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
 
     switch(task) {
 
-      // Just want the invitation, probably to know its acknowledge and registration statuses.
+      // Just want the invitation, probably to know its registration status.
       case Task.LOOKUP_INVITATION:
         return okResponse('Ok', invitation);
 
@@ -98,10 +98,7 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
           title = decodeURIComponent(title);
         }
         
-        const { acknowledged_timestamp, registered_timestamp } = invitation;
-        if( ! acknowledged_timestamp) {
-          return unauthorizedResponse('Unauthorized: Privacy policy has not yet been acknowledged');
-        }
+        const { registered_timestamp } = invitation;
         if(registered_timestamp) {
           return okResponse(`Ok: Already registered at ${registered_timestamp}`);
         }

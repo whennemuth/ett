@@ -174,8 +174,7 @@ const testUpdate = () => {
         DAOType: 'invitation', Payload: {
           [InvitationFields.code]: code,
           [InvitationFields.entity_id]: entityId,
-          [InvitationFields.role] : Roles.SYS_ADMIN,
-          [InvitationFields.acknowledged_timestamp]: new Date().toISOString()
+          [InvitationFields.role] : Roles.SYS_ADMIN
       }});
       await dao.update();
       expect(dbMockClient).toHaveReceivedCommandTimes(UpdateItemCommand, 1);

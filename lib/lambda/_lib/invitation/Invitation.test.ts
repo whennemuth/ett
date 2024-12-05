@@ -12,18 +12,16 @@ const invitationParms = {
 } as Invitation;
 
 const entity_name = 'Boston University';
-const link = `https://some/path/to/index.htm?action=${Actions.acknowledge_entity}`;
+const link = `https://some/path/to/index.htm?action=${Actions.register_entity}`;
 
 let daoInviteAttempts = 0;
-let acknowledged:boolean = false;
 let registered = false;
-let preRegistered = ():boolean => acknowledged && registered;
+let preRegistered = ():boolean => registered;
 jest.mock('../../_lib/dao/dao.ts', () => {
   return {
     __esModule: true,
     DAOFactory: {
       getInstance: jest.fn().mockImplementation((parms:any) => {
-        acknowledged = parms?.Payload?.acknowledged_timestamp ? true : false;
         registered = parms?.Payload?.registered_timestamp ? true : false;
         return {
           create: async ():Promise<any> => {

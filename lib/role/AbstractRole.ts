@@ -25,9 +25,7 @@ export enum Actions {
   login = 'login',
   logout = 'logout',
   post_signup = 'post-signup',
-  acknowledge_entity = 'acknowledge-entity',
   register_entity = 'register-entity',
-  acknowledge_consenter = 'acknowledge-consenter',
   register_consenter = 'register-consenter'
 };
 

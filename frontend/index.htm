@@ -461,7 +461,7 @@
                     &nbsp;<input id="chkAcknowledgeEntity" type="checkbox" class="form-check-input" onclick="document.getElementById('btnAcknowledgeEntitySubmit').disabled = !this.checked;"/> 
                   </td>
                   <td style="padding-left:10px; border-style:none; vertical-align: bottom;">
-                    <button id="btnAcknowledgeEntitySubmit" class="btn btn-primary btn-lg" type="button" disabled>Submit</button>&nbsp;
+                    <button id="btnAcknowledgeEntitySubmit" class="btn btn-primary btn-lg" type="button" disabled>Acknowledge</button>&nbsp;
                   </td>
                 </tr>
               </table>
@@ -697,7 +697,7 @@
                     <button id="btnRegisterEntitySubmit" class="btn btn-primary btn-lg" type="button" disabled>SUBMIT & APPROVE</button>
                   </span>
                   <span id='register-tooltip-1' data-toggle="tooltip">
-                    <span style="font-size: 20px" id="span"><b> &nbsp;or...&nbsp;</b></span>
+                    <span style="font-size: 20px;"><b> &nbsp;or...&nbsp;</b></span>
                     <button id="btnRegisterEntitySubmitAmend" class="btn btn-primary btn-lg" type="button" disabled>SUBMIT & AMEND</button>
                   </span>                            
                 </div>
@@ -953,7 +953,7 @@
               <div class="tab-content" id="reAdminContent">
                 <div class="tab-pane fade show active" id="re-admin-entity" role="tabpanel" aria-labelledby="re-admin-entity-link">
                   <div id="divCreateEntity">
-                    <h5 class="display-7 fw-bold" style="text-align:center;">Create your entity and invite authorized individuals</h5>
+                    <h5 class="display-7 fw-bold" style="text-align:center; margin-top:20px;">Invite authorized individuals</h5>
                     <div id="divReAdminEntityName" class="divSysAdminOption" style="text-align: right;">
                       Entity Name:
                       <input id="txtReAdminEntityName" type="text" class="form-control" style="width:fit-content; display:inline-block;">
@@ -1943,7 +1943,7 @@
      * Lookup the invitation with an api call. The invitation will also contain information as whether or not
      * the user has acknowledged privacy policy or registered already. Reflect the findings in the current screen.
      */
-    function showEntityRegistrationScreen(step, invitationCode, callback) {
+    const fetchRegistrationScreenInfo = async (invitationCode) => {
       const msg = document.getElementById('apiResponse');
       msg.innerHTML = '';
 
@@ -1954,80 +1954,49 @@
        */
       logout();
 
-      switch(step) {
-        case 'acknowledge-entity':
-          var uri = `${STATIC_PARAMETERS.ACKNOWLEDGE_ENTITY_API_URI}/lookup-invitation/${invitationCode}`;
-          break;
-        case 'register-entity':
-          var uri = `${STATIC_PARAMETERS.REGISTER_ENTITY_API_URI}/lookup-entity/${invitationCode}`;
-          break;
-      }
-      fetch(uri, {
-        method: 'GET',
-        credentials: 'omit',
-        mode: 'cors',
-      })
-      .then(response => response.json())
-      .then((json) => {
-        const { message, payload } = json;
+      var uri = `${STATIC_PARAMETERS.REGISTER_ENTITY_API_URI}/lookup-entity/${invitationCode}`;
+
+      try {
+        document.body.style.cursor = 'progress';
+        const response = await fetch(uri, {
+          method: 'GET',
+          credentials: 'omit',
+          mode: 'cors',
+        });
+
+        const package = await response.json();
+        document.body.style.cursor = 'default';
+        const { message, payload } = package;
         if(payload.ok) {
           if(payload.entity) {
             entityInfo = payload.entity;
           }
-          callback(payload);
+          return payload;
         }
         else {
           msg.innerHTML = message;
         }
-      })
-      .catch((e) => {
-        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
-        callback({ invitation: { role: selected_role }}); // Should work for localhost testing
-        // showSection(step);
-      }); 
-    }
-
-    /**
-     * This function is triggered as a callback from showEntityRegistrationScreen with the returned invitation.
-     * If the invitation shows an acknowledgement timestamp, then enable buttons to goto the register-entity screen.
-     */
-    function showAcknowledgeEntityScreen(payload) {
-      const msg = document.getElementById('apiResponse');
-      msg.innerHTML = '';
-      try {
-        invitation = payload;
-        const { acknowledged_timestamp } = invitation;
-        const chk = document.getElementById('chkAcknowledgeEntity');
-        const btnSubmit = document.getElementById('btnAcknowledgeEntitySubmit');
-        if(acknowledged_timestamp) {
-          msg.innerHTML = `You acknowledged the privacy policy at ${acknowledged_timestamp}`;
-          chk.checked = true;
-          btnSubmit.disabled = false;
-        }
-        else {
-          chk.checked = false;
-        }
       }
       catch(e) {
         msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
-      }
-      finally {
-        showSection('acknowledge-entity');
+        return { invitation: { role: selected_role }}; // Should work for localhost testing
       }
     }
 
     /**
-     * This function is triggered as a callback from showEntityRegistrationScreen with the returned invitation.
+     * This function is triggered after a fetch for invitation data..
      * If the invitation shows a register-entity timestamp, then enable buttons to goto cognito login.
      */
     function showRegisterEntityScreen(payload) {
       const msg = document.getElementById('apiResponse');
       msg.innerHTML = '';
       try {
-        const { invitation:_invitation, users, entity } = payload;
+        const { invitation:_invitation, users, entity } = payload ?? {};
         invitation = _invitation;
-        const { acknowledged_timestamp, registered_timestamp, email:invEmail, role, entity_name:invEntityName } = invitation;
-        selected_role = role;
+        const { registered_timestamp, email:invEmail, role, entity_name:invEntityName } = invitation ?? {};
+        if(role) {
+          selected_role = role;
+        }
         const txtSign = document.getElementById('txtEntityRepSig');
         const chk = document.getElementById('chkRegisterEntity');
         const btnSubmit1 = document.getElementById('btnRegisterEntitySubmit');
@@ -2040,10 +2009,6 @@
         }
         else {
           divTerminateEntity.style.display = 'inline';
-        }
-        if( ! acknowledged_timestamp) {
-          showAcknowledgeEntityScreen(invitation);
-          return;
         }
         if(registered_timestamp) {
           msg.innerHTML = `You registered at ${registered_timestamp}`;
@@ -2155,7 +2120,7 @@
           }, 'ReAdmin');
         }
         else {
-          showAcknowledgeEntityScreen(invitation);
+          showSection('acknowledge-entity');
           return;
         }
       }
@@ -2163,39 +2128,7 @@
         msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
       }
       finally {
-        showSection('register-entity');
-      }
-    }
-
-    /**
-     * Submit acknowledgement of the privacy policy and if successful, navigate to the register-entity screen
-     */
-     function acknowledgeEntity(invitationCode) {
-      const msg = document.getElementById('apiResponse');
-      msg.innerHTML = '';
-      try {
-        const uri = `${STATIC_PARAMETERS.ACKNOWLEDGE_ENTITY_API_URI}/register/${invitationCode}`;
-        fetch(uri, {
-          method: 'GET',
-          credentials: 'omit',
-          mode: 'cors',
-        })
-        .then(response => response.json())
-        .then((json) => {
-          const { message, payload } = json;
-          if(payload.ok) {
-            document.location.href = `./index.htm?action=register-entity&code=${invitationCode}`;
-          }
-          else {
-            msg.innerHTML = message;
-          }
-        })
-        .catch((e) => {
-          msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
-        }); 
-      }
-      catch(err) {
-        msg.innerHTML = `<pre>${JSON.stringify(err, Object.getOwnPropertyNames(err), 2)}</pre>`;
+        showSection('acknowledge-entity');
       }
     }
 
@@ -4536,7 +4469,7 @@
         signOut();
       });
       document.getElementById('btnAcknowledgeEntitySubmit').addEventListener('click', () => {
-        acknowledgeEntity(invitationCode);
+        showSection('register-entity');
       });
       document.getElementById('btnRegisterEntitySubmit').addEventListener('click', () => {
         registerEntity(invitationCode);
@@ -4872,22 +4805,16 @@
        */
       switch(action) {
 
-        case 'acknowledge-entity':
-          showEntityRegistrationScreen(action, invitationCode, showAcknowledgeEntityScreen);
-          break;
-
         case 'register-entity':
-          showEntityRegistrationScreen(action, invitationCode, showRegisterEntityScreen);
-          break;
-
-        case 'acknowledge-consenter': 
-          showSection(action);
+          let payload = { invitation: { role: selected_role }};
+          if( ! localTesting()) {
+            payload = await fetchRegistrationScreenInfo(invitationCode); 
+          }
+          showRegisterEntityScreen(payload);
           break;
         
         case 'register-consenter':
-          let acknowledged = document.getElementById('chkAcknowledgeConsenter').checked;
-          const section = acknowledged ? action : 'acknowledge-consenter';
-          showSection(section);
+          showSection(action);
           break;
 
         case 'login':

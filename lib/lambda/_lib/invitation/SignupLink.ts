@@ -95,7 +95,7 @@ export class SignupLink {
       if( ! registrationUri) {
         registrationUri = `https://${process.env.CLOUDFRONT_DOMAIN}`;
       }
-      let link = `${registrationUri}?action=${Actions.acknowledge_entity}`;
+      let link = `${registrationUri}?action=${Actions.register_entity}`;
       if(entity_id) {
         link = `${link}&entity_id=${entity_id}`
       }

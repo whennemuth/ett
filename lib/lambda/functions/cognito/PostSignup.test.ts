@@ -171,7 +171,6 @@ jest.mock('../../_lib/dao/dao.ts', () => {
             const basicMatch = {
               entity_id: ENTITY_WAITING_ROOM,
               email: 'bugsbunny@warnerbros.com',
-              acknowledged_timestamp: dte,
               registered_timestamp: dte
             } as Invitation;
             switch (invitationRole) {
@@ -180,11 +179,9 @@ jest.mock('../../_lib/dao/dao.ts', () => {
                 match.role = Roles.RE_ADMIN;
                 var roleMismatch = Object.assign({}, match);
                 roleMismatch.role = Roles.SYS_ADMIN;
-                var acknowledgeMismatch = Object.assign({}, match);
-                acknowledgeMismatch.acknowledged_timestamp = undefined;
                 var registrationMismatch = Object.assign({}, match);
                 registrationMismatch.registered_timestamp = undefined;
-                var retval = [ roleMismatch, acknowledgeMismatch, registrationMismatch ] as Invitation[];
+                var retval = [ roleMismatch, registrationMismatch ] as Invitation[];
                 if (invitationScenario == 'match') {
                   retval.push(match);
                 }

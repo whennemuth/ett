@@ -87,7 +87,7 @@ const buildAll = () => {
   // Set up the dynamodb table for users.
   const dynamodb = new DynamoDbConstruct(stack, 'Dynamodb');
 
-  // Set up the public api endpoints (acknowledgement & register) for "pre-signup" that are called before any cognito signup occurs.
+  // Set up the public api register endpoints for "pre-signup" that are called before any cognito signup occurs.
   const signupApi = new SignupApiConstruct(stack, 'SignupApi', {
     cloudfrontDomain: cloudfront.getDistributionDomainName(),
     userPool:cognito.getUserPool()
@@ -126,7 +126,6 @@ const buildAll = () => {
       cloudfrontDomain: cloudfront.getDistributionDomainName(),
       cognitoDomain: cognito.getUserPoolDomain(),
       cognitoUserpoolRegion: region,
-      entityAcknowledgeApiUri: signupApi.entityAcknowledgeApiUri,
       registerEntityApiUri: signupApi.registerEntityApiUri,
       registerConsenterApiUri: signupApi.registerConsenterApiUri,
       apis: [ 

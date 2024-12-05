@@ -66,21 +66,6 @@ describe('getInvitation', () => {
   });
 });
 
-describe('registerAcknowledgement', () => {
-
-  it('Should return false if an update error occurs', async () => {
-    const registration = new Registration(code);
-    expect(await registration.registerAcknowledgement()).toBe(false);
-    expect(daoUpdateAttempts).toEqual(1);
-  });
-
-  it('Should return true no update error occurs', async () => {
-    const registration = new Registration(code);
-    expect(await registration.registerAcknowledgement()).toBe(true);
-    expect(daoUpdateAttempts).toEqual(2);
-  });
-});
-
 describe('registerUser', () => {
   
   it('Should return false if an error occurs', async () => {
@@ -90,7 +75,7 @@ describe('registerUser', () => {
       fullname: 'Daffy Duck',
       title: 'Cartoon Character'
     } as Invitation)).toBe(false);
-    expect(daoUpdateAttempts).toEqual(3);
+    expect(daoUpdateAttempts).toEqual(1);
   });
 
   it('Should return true if no error occurs', async () => {
@@ -100,6 +85,6 @@ describe('registerUser', () => {
       fullname: 'Bugs Bunny',
       title: 'Cartoon Character'
     } as Invitation)).toBe(true);
-    expect(daoUpdateAttempts).toEqual(4);
+    expect(daoUpdateAttempts).toEqual(2);
   });
 });

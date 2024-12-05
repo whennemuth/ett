@@ -11,7 +11,6 @@ let roleSubstitution:Roles|undefined;
 let invitationCodeForEntityMismatch:string|undefined;
 let code = event.pathParameters['invitation-code'];
 let dte = new Date().toISOString();
-let alreadyAcknowledged:boolean = true;
 let alreadyRegistered:boolean = true;
 let entityNameAlreadyInUse = false;
 
@@ -95,9 +94,6 @@ jest.mock('../../_lib/invitation/Registration', () => {
             }
 
             retval = payload;
-            if(alreadyAcknowledged) {
-              retval.acknowledged_timestamp = dte;
-            }
             if(alreadyRegistered) {
               retval.registered_timestamp = dte;
             }
@@ -265,7 +261,7 @@ describe(`Entity Registration lambda trigger: handler ${Task.LOOKUP_INVITATION}`
   
   it('Should return a message_id in the payload if the invitation code is matched', async () => {
     goodCode = code;
-    const expectedPayload = { ok: true, code, email:bugs.email, acknowledged_timestamp:dte, registered_timestamp:dte };
+    const expectedPayload = { ok: true, code, email:bugs.email, registered_timestamp:dte };
     Object.assign(expectedPayload, goodWaitingRoomInvitationPayload);
     await invokeAndAssert({
       _handler:handler, code, task: Task.LOOKUP_INVITATION,
@@ -319,7 +315,6 @@ describe(`Entity Registration lambda trigger: handler ${Task.LOOKUP_ENTITY}`, ()
     inviteToWaitingRoom = false;
     const expectedPayload = { ok: true };
     const expectedInvitation = Object.assign({}, goodNonWaitingRoomInvitationPayload);
-    expectedInvitation.acknowledged_timestamp = dte;
     expectedInvitation.registered_timestamp = dte;
     expectedInvitation.code = 'my_invitation_code2',
     expectedInvitation.email = bugs.email;
@@ -344,7 +339,6 @@ describe(`Entity Registration lambda trigger: handler ${Task.REGISTER}`, () => {
 
   it('Should NOT attempt to update if email querystring parameter is missing', async () => {
     goodCode = code;
-    alreadyAcknowledged = true;
     alreadyRegistered = false;
     await invokeAndAssert({
       _handler:handler, code, task: Task.REGISTER,
@@ -365,7 +359,6 @@ describe(`Entity Registration lambda trigger: handler ${Task.REGISTER}`, () => {
 
   it('Should NOT attempt to update if fullname querystring parameter is missing', async () => {
     goodCode = code;
-    alreadyAcknowledged = true;
     alreadyRegistered = false;
     await invokeAndAssert({
       _handler:handler, code, task: Task.REGISTER,
@@ -386,7 +379,6 @@ describe(`Entity Registration lambda trigger: handler ${Task.REGISTER}`, () => {
 
   it('Should NOT attempt to update if entity_name querystring parameter is missing for RE_ADMIN', async () => {
     goodCode = code;
-    alreadyAcknowledged = true;
     alreadyRegistered = false;
     await invokeAndAssert({
       _handler:handler, code, task: Task.REGISTER,
@@ -401,31 +393,8 @@ describe(`Entity Registration lambda trigger: handler ${Task.REGISTER}`, () => {
     });
   });
   
-  it('Should NOT attempt to update the invitation if successfully found without existing acknowledgement', async () => {
-    goodCode = code;
-    alreadyAcknowledged = false;
-    alreadyRegistered = false;
-    await invokeAndAssert({
-      _handler:handler, code, task: Task.REGISTER,
-      queryStringParameters: { 
-        entity_id: bugs.entity_id, 
-        email: bugs.email, 
-        fullname: bugs.fullname ,
-        entity_name: goodNonWaitingRoomInvitationPayload.entity_name
-      },
-      expectedResponse: {
-        statusCode: 401,
-        outgoingBody: {
-          message: 'Unauthorized: Privacy policy has not yet been acknowledged',
-          payload: { unauthorized: true }
-        } as OutgoingBody
-      }
-    });
-  });
-  
   it('Should NOT attempt to update the invitation if successfully found with existing registration', async () => {
     goodCode = code;
-    alreadyAcknowledged = true;
     alreadyRegistered = true;
     await invokeAndAssert({
       _handler:handler, code, task: Task.REGISTER,
@@ -447,7 +416,6 @@ describe(`Entity Registration lambda trigger: handler ${Task.REGISTER}`, () => {
 
   it('Should NOT attempt to update the registration if successfully found, but would collide with existing entity', async () => {
     goodCode = code;
-    alreadyAcknowledged = true;
     alreadyRegistered = false;
     entityNameAlreadyInUse = true;
     inviteToWaitingRoom = false;
@@ -492,7 +460,6 @@ describe(`Entity Registration lambda trigger: handler ${Task.REGISTER}`, () => {
   
   it('Should attempt to update the invitation if successfully found needing registration', async () => {
     goodCode = code;
-    alreadyAcknowledged = true;
     alreadyRegistered = false;
     entityNameAlreadyInUse = false;
     await invokeAndAssert({

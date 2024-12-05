@@ -137,7 +137,7 @@ export class EntityToAutomate {
     await InvitationCrud({
       code: uuidv4(),
       email, entity_id, entity_name:entityName, role, 
-      acknowledged_timestamp:now, sent_timestamp:now, registered_timestamp:now, 
+      sent_timestamp:now, registered_timestamp:now, 
       fullname:user.fullname, title:user.title, message_id:uuidv4()
     } as Invitation).update();
   }

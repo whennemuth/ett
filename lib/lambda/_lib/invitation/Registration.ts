@@ -4,7 +4,7 @@ import { Entity, Invitation, InvitationFields } from "../dao/entity";
 
 /**
  * The invitation has already been sent. That invitation now serves to register changes in state with regard
- * to the invited users registration (acknowledgement of privacy policy and registration with signature).
+ * to the invited users registration steps.
  */
 export class Registration {
 
@@ -28,30 +28,6 @@ export class Registration {
     const dao = DAOFactory.getInstance({ DAOType:'entity', Payload: { entity_name_lower } });
     const matches = await dao.read() as Entity[];
     return matches.length > 0;
-  }
-  
-  /**
-   * Update the database item for an invitation to reflect the acknowledgement time.
-   * @returns 
-   */
-  public registerAcknowledgement = async (timestamp?:string):Promise<boolean> => {
-    try {
-      if( ! timestamp) {
-        timestamp = new Date().toISOString();
-      }
-
-      const dao = DAOFactory.getInstance({ DAOType: 'invitation', Payload: {
-        code:this.code, 
-        [InvitationFields.acknowledged_timestamp]: timestamp       
-      } as Invitation}) as DAOInvitation;
-
-      const output = await dao.update();
-      return true;
-    }
-    catch (e:any) {
-      error(e);
-      return false;      
-    }
   }
 
   /**
