@@ -331,9 +331,8 @@ export const scrapeUserValuesFromInvitations = async (invitationLookup:RoleInvit
   // Filter off invitations that are retracted, unregistered, for other roles, or not to the expected entity.
   let invitations = await invitationLookup(email, role) as Invitation[];
   invitations = invitations.filter((invitation) => {
-    const {registered_timestamp, retracted_timestamp, acknowledged_timestamp, entity_id } = invitation;
+    const {registered_timestamp, retracted_timestamp, entity_id } = invitation;
     if(retracted_timestamp) return false;
-    if( ! acknowledged_timestamp) return false;
     if( ! registered_timestamp) return false;
     if(role == Roles.RE_AUTH_IND && entity_id == ENTITY_WAITING_ROOM) return false;
     if(role == Roles.RE_ADMIN && entity_id != ENTITY_WAITING_ROOM) {
@@ -412,7 +411,6 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         const invitation = await scrapeUserValuesFromInvitations(
           ():Promise<Invitation[]> => new Promise((resolve) => resolve([{
             code: "6dce2b00-b76e-48d1-85aa-4cbf3b249d4e",
-            acknowledged_timestamp: "2024-11-22T18:50:38.044Z",
             email: "asp2.random.edu@warhen.work",
             entity_id: "fe2e9f55-408f-472e-8ea7-65dc1f896390",
             entity_name: undefined,

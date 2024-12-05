@@ -9,54 +9,6 @@ https://u4k2uilit9.execute-api.us-east-2.amazonaws.com/dev
 
 where `"u4k2uilit9.execute-api.us-east-2.amazonaws.com"` identifies the API gateway resource, `"dev"` identifies the environment.
 
-- #### `/acknowledge-entity/{task}/{invitation-code}`
-
-  Acknowledgment of privacy policy is recorded for a user by "marking" their invitation dynamodb record accordingly.
-
-  - Allowed Methods: POST, GET, OPTIONS
-
-  - Path Elements:
-
-    - task: 
-
-      - "lookup-invitation":
-        Returns information about the invitation
-
-        ```
-        {
-          "message": "Ok",
-          "payload": {
-            "ok": "true", {
-              code: string,
-              role: Role,
-              email: string,
-              entity_id: string,
-              sent_timestamp: string,
-              message_id: string,
-              fullname?: string,
-              title?: string,
-              acknowledged_timestamp?: string,
-              registered_timestamp?: string,
-              retracted_timestamp?: string
-            }
-          }
-        }
-        ```
-
-      - "register"
-        Register acknowledgement of the privacy policy for the invited individual.
-        Returns as follows:
-
-        ```
-        { "message": "Ok: Acknowledgement registered for [invitation-code]" }
-        or...
-        { "message": "Ok: Already acknowledged at [timestamp]" }
-        ```
-
-    - invitation-code:
-
-  - Headers: NONE
-
 - #### `/register-entity/{task}/{invitation-code}`
 
   Consent to the terms of ETT is recorded for a user by "marking" their invitation dynamodb record accordingly.
@@ -83,7 +35,6 @@ where `"u4k2uilit9.execute-api.us-east-2.amazonaws.com"` identifies the API gate
               message_id: string,
               fullname?: string,
               title?: string,
-              acknowledged_timestamp?: string,
               registered_timestamp?: string,
               retracted_timestamp?: string
             }

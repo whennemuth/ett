@@ -76,8 +76,8 @@ describe('Pre signup lambda trigger: handler', () => {
     role = Roles.RE_ADMIN;
     const dte = new Date().toISOString();
     invitationLookupResults = [
-      { role: Roles.SYS_ADMIN, acknowledged_timestamp: dte, registered_timestamp: dte },
-      { role: Roles.RE_AUTH_IND, acknowledged_timestamp: dte, registered_timestamp: dte },      
+      { role: Roles.SYS_ADMIN, registered_timestamp: dte },
+      { role: Roles.RE_AUTH_IND, registered_timestamp: dte },      
     ] as Invitation[];
     expect(async () => {
       await handler(event);
@@ -90,7 +90,6 @@ describe('Pre signup lambda trigger: handler', () => {
     invitationLookupResults = [
       { 
         role: Roles.RE_ADMIN, 
-        acknowledged_timestamp: dte, 
         registered_timestamp: dte, 
         retracted_timestamp: dte 
       },      
@@ -105,14 +104,14 @@ describe('Pre signup lambda trigger: handler', () => {
     const dte = new Date().toISOString();
     
     invitationLookupResults = [
-      { role: Roles.RE_ADMIN, acknowledged_timestamp: dte, registered_timestamp: dte },      
+      { role: Roles.RE_ADMIN, registered_timestamp: dte },      
     ] as Invitation[];
     let retval = await handler(event);
     expect(retval).toEqual(event);
     
     invitationLookupResults = [
-      { role: Roles.RE_ADMIN, acknowledged_timestamp: dte, registered_timestamp: dte },      
-      { role: Roles.RE_ADMIN, acknowledged_timestamp: dte, registered_timestamp: dte }   
+      { role: Roles.RE_ADMIN, registered_timestamp: dte },      
+      { role: Roles.RE_ADMIN, registered_timestamp: dte }   
     ] as Invitation[];
     retval = await handler(event);
     expect(retval).toEqual(event);

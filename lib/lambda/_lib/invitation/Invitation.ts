@@ -153,7 +153,7 @@ export class UserInvitation {
 
   /**
    * Registering the invitation to the database to reflect the email that would have just got sent.
-   * NOTE: The email address itself is NOT saved (cannot do this until acknowledgement and entity registration have occurred.)
+   * NOTE: The email address itself is NOT saved (cannot do this until entity registration have occurred.)
    * @returns 
    */
   private persist = async ():Promise<any> => {
@@ -179,7 +179,6 @@ export class UserInvitation {
       // A SYS_ADMIN should only have to go through the cognito stage of the registration process.
       if(role == Roles.SYS_ADMIN) {
         Payload.email = email;
-        Payload.acknowledged_timestamp = sent_timestamp,
         Payload.registered_timestamp = sent_timestamp
       }
 
