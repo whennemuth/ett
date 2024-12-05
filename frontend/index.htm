@@ -696,8 +696,8 @@
                   <span id='register-tooltip-0' data-toggle="tooltip">
                     <button id="btnRegisterEntitySubmit" class="btn btn-primary btn-lg" type="button" disabled>SUBMIT & APPROVE</button>
                   </span>
-                  <span style="font-size: 20px"><b> &nbsp;or...&nbsp;</b></span>
                   <span id='register-tooltip-1' data-toggle="tooltip">
+                    <span style="font-size: 20px" id="span"><b> &nbsp;or...&nbsp;</b></span>
                     <button id="btnRegisterEntitySubmitAmend" class="btn btn-primary btn-lg" type="button" disabled>SUBMIT & AMEND</button>
                   </span>                            
                 </div>
@@ -2036,6 +2036,7 @@
 
         if(selected_role == 'RE_ADMIN') {
           divTerminateEntity.style.display = 'none';
+          document.getElementById('register-tooltip-1').style.display = 'none';
         }
         else {
           divTerminateEntity.style.display = 'inline';
