@@ -9,7 +9,6 @@ export interface StaticSiteConstructParms {
   cloudfrontDomain: string,
   cognitoDomain: string,
   cognitoUserpoolRegion: string,
-  entityAcknowledgeApiUri: string,
   registerEntityApiUri: string,
   registerConsenterApiUri: string,
   apis: AbstractRoleApi[]
@@ -56,7 +55,6 @@ export abstract class StaticSiteConstruct extends Construct {
       COGNITO_DOMAIN: parms.cognitoDomain,
       USER_POOL_REGION: parms.cognitoUserpoolRegion,
       PAYLOAD_HEADER: AbstractRoleApi.ETTPayloadHeader,
-      ACKNOWLEDGE_ENTITY_API_URI: parms.entityAcknowledgeApiUri,
       REGISTER_ENTITY_API_URI: parms.registerEntityApiUri,
       REGISTER_CONSENTER_API_URI: parms.registerConsenterApiUri,
       ROLES: { } as any

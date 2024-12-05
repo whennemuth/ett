@@ -16,18 +16,15 @@ export type SignupApiConstructParms = {
 };
 
 /**
- * Construct for all api gateways and integrated lambda functions for pre-cognito signup activity (
- * privacy policy acknowledgement & registration).
+ * Construct for all api gateways and integrated lambda functions for pre-cognito signup through registration activity.
  */
 export class SignupApiConstruct extends Construct {
 
   private outerScope:Construct;
   private constructId:string;
   private stageName:string;
-  private _acknowledgeEntityApiUri:string;
   private _registerEntityApiUri:string;
   private _registerConsenterApiUri:string;
-  private acknowledgeEntityLambda:AbstractFunction;
   private registerEntityLambda:AbstractFunction;
   private registerConsenterLambda:AbstractFunction;
   private context:IContext;
@@ -42,70 +39,9 @@ export class SignupApiConstruct extends Construct {
     this.context = scope.node.getContext('stack-parms');
     this.stageName = this.context.TAGS.Landscape;
 
-    this.createAcknowledgeEntityApi();
-
     this.createRegisterEntityApi();
 
     this.createRegisterConsenterApi();
-  }
-
-  /**
-   * Create the lambda function and api for checking invitation code and registering a new user has acknowledged privacy policy.
-   */
-  private createAcknowledgeEntityApi = () => {
-    const { constructId, parms: { cloudfrontDomain }, stageName, context: { REGION, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } } = this;
-    const basename = `${constructId}AcknowledgeEntity`;
-    const description = 'for checking invitation code and registering a new user has acknowledged privacy policy';
-
-    // Create the lambda function
-    this.acknowledgeEntityLambda = new class extends AbstractFunction { }(this, basename, {
-      runtime: Runtime.NODEJS_18_X,
-      memorySize: 1024,
-      entry: 'lib/lambda/functions/signup/EntityAcknowledgement.ts',
-      // handler: 'handler',
-      functionName: `${STACK_ID}-${landscape}-signup-acknowledge-entity-lambda`,
-      description: `Function ${description}`,
-      cleanup: true,
-      bundling: {
-        externalModules: [
-          '@aws-sdk/*',
-        ]
-      },
-      environment: {
-        REGION,
-        CLOUDFRONT_DOMAIN: cloudfrontDomain,
-        [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
-      }
-    });
-
-    // Create the rest api
-    const api = new LambdaRestApi(this, `${basename}LambdaRestApi`, {
-      deployOptions: {
-        description: `API ${description}`,
-        stageName
-      },
-      restApiName: `${STACK_ID}-${landscape}-signup-acknowledge-entity-rest-api`,
-      handler: this.acknowledgeEntityLambda,
-      proxy: false
-    });
-
-    // Add the root resource path element of ${Actions.acknowledge_entity}
-    const acknowledgePath = api.root.addResource(Actions.acknowledge_entity);
-    // Add the task path element
-    const taskPath = acknowledgePath.addResource('{task}')
-    // Add the "invitation-code" parameter as the last path element.
-    const invitationCodePath = taskPath.addResource('{invitation-code}');
-    invitationCodePath.addMethod('GET');   // GET /${Actions.acknowledge_entity}/task/{invitation-code}
-    invitationCodePath.addMethod('POST');
-    invitationCodePath.addCorsPreflight({
-      allowOrigins: [ `https://${cloudfrontDomain}` ],
-      // allowHeaders: Cors.DEFAULT_HEADERS.concat('Is a header needed?'),
-      allowMethods: [ 'POST', 'GET', 'OPTIONS' ],
-      maxAge: Duration.minutes(10),
-      // allowCredentials: true
-    });
-
-    this._acknowledgeEntityApiUri = api.urlForPath(`/${Actions.acknowledge_entity}`);
   }
 
   /**
@@ -242,11 +178,11 @@ export class SignupApiConstruct extends Construct {
     });
 
     // Add the root resource path element of "${Actions.register_consenter}"
-    const acknowledgePath = api.root.addResource(Actions.register_consenter);
-    acknowledgePath.addMethod
-    acknowledgePath.addMethod('GET');   // GET /${Actions.register_consenter}
-    acknowledgePath.addMethod('POST');
-    acknowledgePath.addCorsPreflight({
+    const registrationPath = api.root.addResource(Actions.register_consenter);
+    registrationPath.addMethod
+    registrationPath.addMethod('GET');   // GET /${Actions.register_consenter}
+    registrationPath.addMethod('POST');
+    registrationPath.addCorsPreflight({
       allowOrigins: [ `https://${cloudfrontDomain}` ],
       allowHeaders: Cors.DEFAULT_HEADERS.concat([AbstractRoleApi.ETTPayloadHeader]),
       allowMethods: [ 'POST', 'GET', 'OPTIONS' ],
@@ -258,18 +194,12 @@ export class SignupApiConstruct extends Construct {
   }
 
   public grantPermissionsTo = (dynamodb:DynamoDbConstruct) => {
-    dynamodb.getInvitationsTable().grantReadWriteData(this.acknowledgeEntityLambda);
     dynamodb.getInvitationsTable().grantReadWriteData(this.registerEntityLambda);
     dynamodb.getEntitiesTable().grantReadWriteData(this.registerEntityLambda);
     dynamodb.getUsersTable().grantReadWriteData(this.registerEntityLambda);
     dynamodb.getConsentersTable().grantReadWriteData(this.registerConsenterLambda);
-    dynamodb.getConfigTable().grantReadData(this.acknowledgeEntityLambda);
     dynamodb.getConfigTable().grantReadData(this.registerEntityLambda);
     dynamodb.getConfigTable().grantReadData(this.registerConsenterLambda);
-  }
-
-  public get entityAcknowledgeApiUri() {
-    return this._acknowledgeEntityApiUri;
   }
 
   public get registerEntityApiUri() {

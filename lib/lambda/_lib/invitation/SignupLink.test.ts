@@ -62,7 +62,7 @@ describe('Registration signup link', () => {
 
   it('Should incorporate produce the expected registration link value', async () => {
     const signupLink = new SignupLink({userPoolName}); 
-    let expectedLink = `https://${cloudfrontDomain}?action=${Actions.acknowledge_entity}`;
+    let expectedLink = `https://${cloudfrontDomain}?action=${Actions.register_entity}`;
     let link = await signupLink.getRegistrationLink({});
     expect(link).toEqual(expectedLink);
 
@@ -72,7 +72,7 @@ describe('Registration signup link', () => {
     expect(link).toEqual(expectedLink);
 
     const registrationUri = 'https://mydomain/path/to/something';
-    expectedLink = `${registrationUri}?action=${Actions.acknowledge_entity}&entity_id=${entity_id}`;
+    expectedLink = `${registrationUri}?action=${Actions.register_entity}&entity_id=${entity_id}`;
     link = await signupLink.getRegistrationLink({ entity_id, registrationUri });
   })
 })
