@@ -83,6 +83,11 @@ export const handler = async (_event:any) => {
         }}) as DAOConsenter;
 
         matchingPerson = await daoConsenter.read({ convertDates: false }) as Consenter;
+        const { consented_timestamp, active } = matchingPerson;
+        if(consented_timestamp.length == 0 && `${active}` != YN.Yes ) {
+          // The consenter has not consented yet, hence not active, but pretend they are so login is possible.
+          matchingPerson.active = YN.Yes;
+        }
       }
       else {
         const daoUser:DAOUser = DAOFactory.getInstance({ DAOType: "user", Payload: {
