@@ -218,6 +218,16 @@
         padding: 10px;
       }
 
+      .divSysAdminOption2 {
+        float:left; 
+        clear:both; 
+        text-align:left; 
+        font-weight:bold; 
+        font-size:16px;
+        vertical-align: middle;
+        padding: 10px;
+      }
+
       h3 {
         text-align: center;
         margin-bottom: 20px;
@@ -338,6 +348,32 @@
       div.bdp-block input, div.bdp-block div {
         width:70px;
         display:inline-table;      
+      }
+
+      table.sysAdminShortcuts th, table.sysAdminShortcuts td {
+        border: 1px solid #cccccc;
+        border-collapse: collapse;
+      }
+      table.sysAdminShortcuts tr.open th, table.sysAdminShortcuts tr.open td {
+        border-style:none;
+      }
+      table.sysAdminShortcuts td:nth-child(1) {
+        text-align: right;
+      }
+      table.sysAdminShortcuts th {
+        font-size: 18px;
+        text-align: center;
+      }
+      table.sysAdminShortcuts hr {
+        margin-top:10px;
+        margin-bottom: 10px;
+      } 
+      table.sysAdminShortcuts td input {
+        font-size: 18px;
+      }
+      table.sysAdminShortcuts table th, table.sysAdminShortcuts table td {
+        border-style:none;
+        text-align: center;
       }
 
       #authNotReady {
@@ -838,7 +874,10 @@
                 <li class="nav-item">
                   <a class="nav-link" id="sys-admin-db-tab" data-toggle="tab" href="#sys-admin-db" role="tab" aria-controls="sys-admin-db" aria-selected="false">Database</a>
                 </li>
-                <li class="nav-item"></li>
+                <li class="nav-item">
+                  <a class="nav-link" id="sys-admin-shortcuts-tab" data-toggle="tab" href="#sys-admin-shortcuts" role="tab" aria-controls="sys-admin-shortcuts" aria-selected="false">Shortcuts</a>
+                </li>
+                <li class="nav-item">
                   <a class="nav-link" id="sys-clean-sheet-tab" data-toggle="tab" href="#sys-admin-clean-sheet" role="tab" aria-controls="sys-admin-clean-sheet" aria-selected="false">Clean Sheet of Paper</a>
                 </li>
               </ul>
@@ -907,6 +946,84 @@
                       <div class="dbTableLabel">Consenters</div>
                       <button class="btn btn-primary btn" type="button" onclick="refreshDbTable('consenters')">Load/Refresh</button>
                       <div id="db-table-consenters" style="margin-top:10px;"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="tab-pane fade" id="sys-admin-shortcuts" role="tabpanel" aria-labelledby="sys-admin-shortcuts-tab">
+                  <h3 class="display-7 fw-bold" style="text-align:center; margin-bottom: 20px;">Shortcuts</h3>
+                  <div style="overflow:auto;">
+                    <div class="divSysAdminOption2">
+
+                      <table class="sysAdminShortcuts">
+                        <tr class="open">
+                          <th colspan="2">Setup a new Entity</th>
+                        </tr>
+                        <tr>
+                          <td>Entity Name</td>
+                          <td><input id="txtShortcutEntityName" type="text" class="form-control" value="The School of Hard Knocks"></td>
+                        </tr>
+                        <tr>
+                          <td>Representatives</td>
+                          <td>
+                            <table class="sysAdminShortcuts">
+                              <tr>
+                                <td>Role</td>
+                                <td>Email</td>
+                                <td>Fullname</td>
+                                <td>Phone</td>
+                                <td>Title</td>
+                              </tr>
+                              <tr>
+                                <td>ASP</td>
+                                <td><input id="txtShortcutAspEmail" type="text" class="form-control" value="asp1.random.edu@warhen.work"></td>
+                                <td><input id="txtShortcutAspFullname" type="text" class="form-control" value="Elvis Presley"></td>
+                                <td><input id="txtShortcutAspPhone" type="text" class="form-control" value="+5083339999"></td>
+                                <td><input id="txtShortcutAspTitle" type="text" class="form-control" value="Entertainer"></td>
+                              </tr>
+                              <tr>
+                                <td>AI (1)</td>
+                                <td><input id="txtShortcutAuth1Email" type="text" class="form-control" value="auth1.random.edu@warhen.work"></td>
+                                <td><input id="txtShortcutAuth1Fullname" type="text" class="form-control" value="Sherlock Holmes"></td>
+                                <td><input id="txtShortcutAuth1Phone" type="text" class="form-control" value="+6172334567"></td>
+                                <td><input id="txtShortcutAuth1Title" type="text" class="form-control" value="Detective"></td>
+                              </tr>
+                              <tr>
+                                <td>AI (2)</td>
+                                <td><input id="txtShortcutAuth2Email" type="text" class="form-control" value="auth2.random.edu@warhen.work"></td>
+                                <td><input id="txtShortcutAuth2Fullname" type="text" class="form-control" value="Fred Flintstone"></td>
+                                <td><input id="txtShortcutAuth2Phone" type="text" class="form-control" value="+7812227777"></td>
+                                <td><input id="txtShortcutAuth2Title" type="text" class="form-control" value="Quarry Foreman"></td>
+                              </tr>
+                            </table>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="align-items: end;" colspan="2">
+                            <button id="btnShortcutsCreateEntity" class="btn btn-primary">CREATE & STAFF ENTITY</button> 
+                          </td>
+                        </tr>
+                        <tr>
+                          <td colspan="2" style="border-style:none;">&nbsp;</td>
+                        </tr>
+                        <tr class="open">
+                          <th colspan="2">Tear down an entity</th>
+                        </tr>
+                        <tr>
+                          <tr>
+                            <td>Entity</td>
+                            <td>
+                              <select id="lbxSysAdminEntities2" class="form-control">
+                                <option><-- Select One --></option>
+                              </select>
+                            </td>
+                          </tr>
+                        </tr>
+                        <tr>
+                          <td style="align-items: end;" colspan="2">
+                            <button id="btnShortcutsRemoveEntity" class="btn btn-primary">TEAR DOWN ENTITY</button> 
+                          </td>
+                        </tr>
+                      </table>
                     </div>
                   </div>
                 </div>
