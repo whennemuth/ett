@@ -3589,7 +3589,7 @@
         else {
           userContext = {
             fullname:ai1.fullname, email: ai1.email, title: ai1.title, role: ai1.role,           
-            entity: { entity_id, entity_name,  users: [ asp, ai2 ]}
+            entity: { entity_id, entity_name, users: [ asp, ai2 ], totalUserCount:3}
           }
         }
         return;
@@ -3876,6 +3876,12 @@
      */
     const populateAmendableUsers = () => {
       const tbl = document.getElementById('tblAmendEntity');
+      const { entity } = userContext;
+      const { users:_users=[], totalUserCount } = (entity ?? {});
+      const validUsers = _users.filter(u => { return u.active == 'Y'; });
+      const incompleteRegistration = () => totalUserCount < 3
+      const underStaffed = () => validUsers < 2
+
       while(tbl.rows.length > 2){ 
         tbl.deleteRow(tbl.rows.length-1); 
       };
@@ -3948,6 +3954,9 @@
           let input = document.createElement('input');
           input.className = 'form-control';
           input.placeholder = `enter email address of invitee to replace ${fullname} here . . .`;
+          if(incompleteRegistration()) {
+            input.disabled = true;
+          }
           td.appendChild(input);          
         }         
 
@@ -3962,6 +3971,9 @@
             task:'amend-entity-user', email, myself, invitee
           });
         });
+        if(incompleteRegistration()) {
+          button.disabled = true;
+        }
         td.appendChild(button);
       })
     }
@@ -4716,10 +4728,12 @@
             case 'RE_AUTH_IND':
               await setUserContext();
               const { entity } = userContext;
-              const { users=[], entity_name } = (entity ?? {});
+              const { users=[], entity_name, totalUserCount } = (entity ?? {});
               const validUsers = users.filter(u => { return u.active == 'Y'; });
+              const incompleteRegistration = () => totalUserCount < 3
               document.getElementById('app-section-RE_AUTH_IND').style.display = 'inline';
-              if(validUsers.length < 2) {
+
+              if(incompleteRegistration()) {
                 document.getElementById('authNotReady').style.display = 'inline';
                 if(entity_name) {
                   document.getElementById('disclosureRequestEntityName').innerText = entity_name;
@@ -4727,8 +4741,12 @@
                 document.querySelectorAll(`#disclosureRequest table`).forEach(d => d.style.color = '#cccccc');
                 document.querySelectorAll(`#disclosureRequest input`).forEach(i => i.disabled = true);
                 document.querySelectorAll(`#disclosureRequest button`).forEach(b => b.disabled = true);
-                document.querySelectorAll(`#exhibitsRequest select`).forEach(i => i.disabled = true);
-                document.querySelectorAll(`#exhibitsRequest button`).forEach(b => b.disabled = true);
+                document.querySelectorAll(`#authIndContent input`).forEach(i => i.disabled = true);
+                document.querySelectorAll(`#authIndContent div`).forEach(d => d.style.color = '#cccccc');
+                document.querySelectorAll(`#authIndContent label`).forEach(l => l.style.color = '#cccccc');
+                document.querySelectorAll(`#authIndContent button`).forEach(b => b.disabled = true);
+                document.querySelectorAll(`#amendEntity button`).forEach(b => b.disabled = true);
+                document.querySelectorAll(`#amendEntity input`).forEach(i => i.disabled = true);
               }
               const checkConsenterListing = async () => {
                 const exhibitsTabFocus = document.getElementById('auth-request-exhibits').className.includes('show');

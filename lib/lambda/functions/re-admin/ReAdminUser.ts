@@ -89,6 +89,7 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
 export const lookupEntity = async (email:string, role:Role):Promise<LambdaProxyIntegrationResponse> => {
 
   const userinfo = [ ] as any[];
+  let totalUserCount = 0;
 
   // Should return just one user unless the same email has taken the same role at another entity (edge case).
   const getUser = async ():Promise<User[]> => {
@@ -102,6 +103,7 @@ export const lookupEntity = async (email:string, role:Role):Promise<LambdaProxyI
   const getOtherUsers = async (entity_id:string):Promise<User[]> => {
     const dao = DAOFactory.getInstance({ DAOType:'user', Payload: { entity_id }});
     let users = await dao.read() as User[];
+    totalUserCount = users.length; 
     users = users.filter(user => user.active == YN.Yes && user.email != email);
     return users;
   }
@@ -130,6 +132,7 @@ export const lookupEntity = async (email:string, role:Role):Promise<LambdaProxyI
       delete retval.entity_id;
       return retval;
     });
+    usr.entity.totalUserCount = totalUserCount;
     userinfo.push(usr);
   }
 
