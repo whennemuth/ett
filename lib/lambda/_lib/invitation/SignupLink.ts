@@ -92,12 +92,19 @@ export class SignupLink {
   public getRegistrationLink = async (parms:RegistrationLinkParms):Promise<string|undefined> => {
     let { entity_id, registrationUri } = parms;
     return new Promise((resolve, reject) => {
-      if( ! registrationUri) {
-        registrationUri = `https://${process.env.CLOUDFRONT_DOMAIN}`;
+      let link:string;
+      if(registrationUri) {
+        link = registrationUri;
+        const url = new URL(link);
+        if(url.pathname.startsWith('/bootstrap/')) {
+          link = `${link}?action=${Actions.register_entity}`;
+          if(entity_id) {
+            link = `${link}&entity_id=${entity_id}`
+          }    
+        }
       }
-      let link = `${registrationUri}?action=${Actions.register_entity}`;
-      if(entity_id) {
-        link = `${link}&entity_id=${entity_id}`
+      else {
+        link = `https://${process.env.CLOUDFRONT_DOMAIN}`;
       }
       resolve(link);
     });

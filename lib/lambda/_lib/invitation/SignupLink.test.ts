@@ -6,6 +6,7 @@ import { Actions } from '../../../role/AbstractRole';
 const userPoolId = 'us-east-2_J9AbymKIz';
 const userPoolName = 'EttCognito-userpool'
 const clientId1 = '6lgr9r32asit6hn3ugo9f71hp';
+let userPoolIdScenario = 'mismatch';
 let clientIdScenario = 'mismatch';
 
 const cloudfrontDomain = 'd3a53ihnef1k0j.cloudfront.net';
@@ -25,7 +26,7 @@ jest.mock('../cognito/Lookup.ts', () => {
     __esModule: true,
     ...originalModule,
     lookupUserPoolId: async (userpoolName:string):Promise<string|undefined> => {
-      return userPoolId;
+      return userPoolIdScenario == 'match' ? userPoolId : undefined;
     },
     lookupUserPoolClientId: async (UserPoolId:string, role:Role):Promise<string|undefined> => {
       return clientIdScenario == 'match' ? clientId1 : undefined;
@@ -36,12 +37,15 @@ jest.mock('../cognito/Lookup.ts', () => {
 describe('Cognito signup link ', () => {
 
   it('Should never error out if fed parameters for non-existing user pool', async () => {
+    userPoolIdScenario = 'mismatch';
+    clientIdScenario = 'match';
     const signupLink = new SignupLink({ userPoolName }); 
     const link = await signupLink.getCognitoLinkForRole(Roles.RE_ADMIN);
     expect(link).toBeUndefined();
   });
 
   it('Should never error out if fed a role that has no corresponding user pool client', async () => {
+    userPoolIdScenario = 'match';
     clientIdScenario = 'mismatch';
     const signupLink = new SignupLink({userPoolName}); 
     const link = await signupLink.getCognitoLinkForRole(Roles.RE_AUTH_IND);
@@ -49,6 +53,7 @@ describe('Cognito signup link ', () => {
   });
 
   it('Should return the expected signup link', async () => {
+    userPoolIdScenario = 'match';
     clientIdScenario = 'match';
     const signupLink = new SignupLink({userPoolName}); 
     const expectedRedirectParm = encodeURIComponent(`${redirectUri}?action=${Actions.post_signup}&selected_role=${Roles.RE_ADMIN}`);
@@ -60,19 +65,38 @@ describe('Cognito signup link ', () => {
 
 describe('Registration signup link', () => {
 
-  it('Should incorporate produce the expected registration link value', async () => {
+  it('Should incorporate the expected registration link value that targets the bootstrap app', async () => {
     const signupLink = new SignupLink({userPoolName}); 
-    let expectedLink = `https://${cloudfrontDomain}?action=${Actions.register_entity}`;
-    let link = await signupLink.getRegistrationLink({});
+    let expectedLink = `https://${cloudfrontDomain}/bootstrap/index.htm?action=${Actions.register_entity}`;
+    let registrationUri = `https://${cloudfrontDomain}/bootstrap/index.htm`;
+    let link = await signupLink.getRegistrationLink({ registrationUri });
     expect(link).toEqual(expectedLink);
 
     const entity_id='abc123'
     expectedLink = `${expectedLink}&entity_id=${entity_id}`;
+    link = await signupLink.getRegistrationLink({ registrationUri, entity_id });
+    expect(link).toEqual(expectedLink);
+
+    registrationUri = 'https://mydomain/bootstrap/path/to/something';
+    expectedLink = `${registrationUri}?action=${Actions.register_entity}&entity_id=${entity_id}`;
+    link = await signupLink.getRegistrationLink({ entity_id, registrationUri });
+  });
+
+
+  it('Should incorporate the expected registration link value that targets the default app', async () => {
+    const signupLink = new SignupLink({userPoolName}); 
+    let expectedLink = `https://${cloudfrontDomain}`;
+    let link = await signupLink.getRegistrationLink({});
+    expect(link).toEqual(expectedLink);
+
+    const entity_id='abc123'
     link = await signupLink.getRegistrationLink({ entity_id });
     expect(link).toEqual(expectedLink);
 
     const registrationUri = 'https://mydomain/path/to/something';
-    expectedLink = `${registrationUri}?action=${Actions.register_entity}&entity_id=${entity_id}`;
+    expectedLink = registrationUri;
     link = await signupLink.getRegistrationLink({ entity_id, registrationUri });
+    expect(link).toEqual(expectedLink);
   })
+
 })
