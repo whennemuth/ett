@@ -16,6 +16,7 @@ import { StaticSiteConstructParms } from '../lib/StaticSite';
 import { StaticSiteBootstrapConstruct } from '../lib/StaticSiteBootstrap';
 import { StaticSiteWebsiteConstruct } from '../lib/StaticSiteWebsite';
 import { Roles } from '../lib/lambda/_lib/dao/entity';
+import { ViewerRequestParametersConstruct } from '../lib/lambda/functions/cloudfront/ViewerRequestParameters';
 
 const context:IContext = <IContext>ctx;
 
@@ -139,6 +140,15 @@ const buildAll = () => {
       ]
     } as StaticSiteConstructParms
   };
+
+  const parameters = new ViewerRequestParametersConstruct(
+    cloudfront, 'ViewerRequestParameters', 
+    { 
+      bootstrap: getStaticSiteParameters(bootstrapBucket), 
+      website: getStaticSiteParameters(websiteBucket),
+      context 
+    }
+  );
   
   // Set up the event, lambda and associated policies for modification of html files as they are uploaded 
   // to the bootstrap bucket and ensure that static html content is uploaded to it.
