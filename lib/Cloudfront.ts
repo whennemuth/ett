@@ -29,7 +29,7 @@ export class CloudfrontConstruct extends Construct {
 
     this.constructId = constructId;
     this.context = scope.node.getContext('stack-parms');
-    const { TAGS: { Landscape:landscape }, STACK_ID } = this.context;
+    const { context: { TAGS: { Landscape:landscape }, STACK_ID, REDIRECT_PATH_WEBSITE } } = this;
     const  defaultBehavior = { 
       origin: new HttpOrigin('dummy-origin.com', { originId: 'dummy-origin' })
     }
@@ -37,7 +37,7 @@ export class CloudfrontConstruct extends Construct {
     this.distribution = new Distribution(this, 'Distribution', {
       defaultBehavior,
       comment: `${STACK_ID}-${landscape}-distribution`,
-      defaultRootObject: 'index.html',
+      defaultRootObject: REDIRECT_PATH_WEBSITE,
       logBucket: new Bucket(this, 'DistributionLogsBucket', {
         removalPolicy: RemovalPolicy.DESTROY,    
         autoDeleteObjects: true,
@@ -103,8 +103,8 @@ export class CloudfrontConstruct extends Construct {
     cfnDist.addPropertyOverride('DistributionConfig.CustomErrorResponses', [ {
       ErrorCode: 403,
       ResponseCode: 200,
-      ResponsePagePath: '/index.html',
-    } ]);
+      ResponsePagePath: `/${REDIRECT_PATH_WEBSITE}`,
+    }]);
 
   }
 

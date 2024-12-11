@@ -21,7 +21,9 @@ const context:IContext = <IContext>ctx;
 
 const app = new App();
 app.node.setContext('stack-parms', context);
-const { STACK_ID, ACCOUNT:account, REGION:region, TAGS: { Function, Landscape, Service }, SCENARIO:scenario } = context;
+const { 
+  STACK_ID, ACCOUNT:account, REGION:region, TAGS: { Function, Landscape, Service }, SCENARIO:scenario, REDIRECT_PATH_WEBSITE
+} = context;
 const stackName = `${STACK_ID}-${Landscape}`;
 
 const stackProps: StackProps = {
@@ -106,7 +108,7 @@ const buildAll = () => {
     userPoolName: cognito.getUserPoolName(),  
     userPoolDomain: cognito.getUserPoolDomain(),  
     cloudfrontDomain: cloudfront.getDistributionDomainName(),
-    redirectPath: 'index.html',
+    redirectPath: REDIRECT_PATH_WEBSITE,
     landscape: Landscape,
     exhibitFormsBucket: exhibitFormsBucket,
     databaseExhibitFormPurgeLambdaArn: delayedExecutionLambdas.databaseExhibitFormPurgeLambda.functionArn,

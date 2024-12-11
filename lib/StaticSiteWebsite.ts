@@ -1,9 +1,9 @@
-import { Construct } from "constructs";
-import { StaticSiteConstruct, StaticSiteConstructParms } from "./StaticSite";
+import { RemovalPolicy } from "aws-cdk-lib";
 import { Effect, PolicyStatement, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { BlockPublicAccess, Bucket } from "aws-cdk-lib/aws-s3";
-import { RemovalPolicy } from "aws-cdk-lib";
 import { BucketDeployment, Source } from "aws-cdk-lib/aws-s3-deployment";
+import { Construct } from "constructs";
+import { StaticSiteConstruct, StaticSiteConstructParms } from "./StaticSite";
 
 /**
  * This construct is for an s3 bucket that is to host the single page app html file and related
@@ -62,11 +62,12 @@ export class StaticSiteWebsiteConstruct extends StaticSiteConstruct {
   }
 
   public setBucketDeployment(dependOn?: Construct[]): void {
-    const { parms, buildSiteParmObject } = this;
+    const { parms, context: { REDIRECT_PATH_WEBSITE } } = this;
+    const { buildSiteParmObject } = StaticSiteWebsiteConstruct;
     const deployment = new BucketDeployment(this, 'WebsiteBucketContentDeployment', {
       destinationBucket: this.getBucket(),      
       sources: [
-        Source.jsonData('SiteParameters.json', buildSiteParmObject(parms, 'index.html'))
+        Source.jsonData('SiteParameters.json', buildSiteParmObject(parms, REDIRECT_PATH_WEBSITE))
       ],
     });
 

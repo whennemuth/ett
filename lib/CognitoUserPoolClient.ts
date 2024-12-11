@@ -24,7 +24,7 @@ export class EttUserPoolClient extends UserPoolClient {
   public static buildCustomScopedClient(userPool: UserPool, id: string, props: EttUserPoolClientProps): EttUserPoolClient {
     
     const context: IContext = userPool.node.getContext('stack-parms');
-    const { TAGS: {Landscape }, STACK_ID } = context;
+    const { TAGS: {Landscape }, STACK_ID, REDIRECT_PATH_BOOTSTRAP, REDIRECT_PATH_WEBSITE } = context;
     let scopes:OAuthScope[] = [ OAuthScope.EMAIL, OAuthScope.PHONE, OAuthScope.PROFILE ];
     const {customScopes, callbackDomainName, role } = props;
     if(customScopes) {
@@ -34,8 +34,10 @@ export class EttUserPoolClient extends UserPoolClient {
     /**
      * Get urls to the app location that cognito will "callback" or redirect to upon successful signin.
      */
-    const getCallbackUrls = (rootObject:string, subfolder:string=''): string[] => {
+    const getCallbackUrls = (rootPath:string): string[] => {
       let callbackUrlRoot = `https://${callbackDomainName}`;
+      const subfolder = rootPath.substring(0, rootPath.lastIndexOf('/'));
+      const rootObject = rootPath.substring(rootPath.lastIndexOf('/')+1);
       if(subfolder) {
         callbackUrlRoot = `${callbackUrlRoot}/${subfolder}`;
       }
@@ -61,8 +63,10 @@ export class EttUserPoolClient extends UserPoolClient {
     /**
      * Get urls to the app location that cognito will redirect to upon successful signout.
      */
-    const getLogoutUrls = (rootObject:string, subfolder:string=''): string[] => {
+    const getLogoutUrls = (rootPath:string): string[] => {
       let callbackUrlRoot = `https://${callbackDomainName}`;
+      const subfolder = rootPath.substring(0, rootPath.lastIndexOf('/'));
+      const rootObject = rootPath.substring(rootPath.lastIndexOf('/')+1);
       if(subfolder) {
         callbackUrlRoot = `${callbackUrlRoot}/${subfolder}`;
       }
@@ -80,11 +84,11 @@ export class EttUserPoolClient extends UserPoolClient {
       return urls;
     }
 
-    const callbackUrls = getCallbackUrls('index.htm', 'bootstrap');
-    callbackUrls.push(...getCallbackUrls('index.html'));
+    const callbackUrls = getCallbackUrls(REDIRECT_PATH_BOOTSTRAP);
+    callbackUrls.push(...getCallbackUrls(REDIRECT_PATH_WEBSITE));
 
-    const logoutUrls = getLogoutUrls('index.htm', 'bootstrap');
-    logoutUrls.push(...getLogoutUrls('index.html'));
+    const logoutUrls = getLogoutUrls(REDIRECT_PATH_BOOTSTRAP);
+    logoutUrls.push(...getLogoutUrls(REDIRECT_PATH_WEBSITE));
 
     const client = new EttUserPoolClient(userPool, id, {
       userPool,
