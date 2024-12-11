@@ -1,12 +1,13 @@
 import { RemovalPolicy } from 'aws-cdk-lib';
-import { CachePolicy, CfnDistribution, CfnOriginAccessControl, Distribution, EdgeLambda, LambdaEdgeEventType, experimental } from 'aws-cdk-lib/aws-cloudfront';
+import { CachePolicy, CfnDistribution, CfnOriginAccessControl, Distribution, LambdaEdgeEventType, experimental } from 'aws-cdk-lib/aws-cloudfront';
 import { HttpOrigin, S3Origin } from 'aws-cdk-lib/aws-cloudfront-origins';
-import { Code, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { Code, Function, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { Bucket, ObjectOwnership } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import { IContext } from '../contexts/IContext';
 import path = require('path');
+import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 
 export interface CloudfrontConstructProps {
   bootstrapBucket: Bucket,
@@ -22,6 +23,8 @@ export class CloudfrontConstruct extends Construct {
   scope: Construct;
   context: IContext;
   distribution: Distribution;
+  props:CloudfrontConstructProps
+  edgeLambdas: any[] = [];
 
   constructor(scope: Construct, constructId:string, props:CloudfrontConstructProps) {
 
@@ -29,6 +32,8 @@ export class CloudfrontConstruct extends Construct {
 
     this.constructId = constructId;
     this.context = scope.node.getContext('stack-parms');
+    this.scope = scope;
+    this.props = props;
     const { context: { TAGS: { Landscape:landscape }, STACK_ID, REDIRECT_PATH_WEBSITE } } = this;
     const  defaultBehavior = { 
       origin: new HttpOrigin('dummy-origin.com', { originId: 'dummy-origin' })
@@ -45,18 +50,59 @@ export class CloudfrontConstruct extends Construct {
       }),
     });
 
+    const behaviors = new CloudfrontBehaviors(this);
+
+    behaviors.addBootstrapBehavior();
+  
+    behaviors.addWebsiteBehavior();
+    
+    // REDIRECT_PATH_WEBSITE corresponds to a react artifact that simulates its own reverse proxy
+    // Therefore, all paths must "point" to this same artifact at the origin.
+    const cfnDist = this.distribution.node.defaultChild as CfnDistribution;
+    cfnDist.addPropertyOverride('DistributionConfig.CustomErrorResponses', [ {
+      ErrorCode: 403,
+      ResponseCode: 200,
+      ResponsePagePath: `/${REDIRECT_PATH_WEBSITE}`,
+    }]);
+  }
+
+  public getDistributionId(): string {
+    return this.distribution.distributionId;
+  }
+
+  public getDistributionDomainName(): string {
+    return this.distribution.domainName;
+  }
+}
+
+
+export class CloudfrontBehaviors {
+
+  private cloudfront:CloudfrontConstruct;
+  private edgeLambdas: any[] = [];
+
+  constructor(cloudfront:CloudfrontConstruct) {
+    this.cloudfront = cloudfront;
+  }
+
+  public addBootstrapBehavior(): void {
+    const { context, distribution, props, scope } = this.cloudfront;
+    const { edgeLambdas, createEdgeFunctionForViewerRequest } = this;
+    const { TAGS: { Landscape:landscape }, STACK_ID, REGION } = context;
+
     // Create an lambda@edge viewer request function for the bootstrap origin that can rewrite paths to that origin
-    const edgeLambdas = [] as EdgeLambda[];
-    createEdgeFunctionForViewerRequest(this, this.context, (edgeLambda:any) => {
-      edgeLambdas.push(edgeLambda);
-    });
+    if(edgeLambdas.length == 0) {
+      createEdgeFunctionForViewerRequest();
+    }
+
     // Create a behavior that targets the bootstrap bucket as the origin
-    this.distribution.addBehavior('/bootstrap/*.*', new S3Origin(props.bootstrapBucket), {
+    distribution.addBehavior('/bootstrap/*', new S3Origin(props.bootstrapBucket), {
       cachePolicy: CachePolicy.CACHING_DISABLED,
       edgeLambdas
     });
+
     // Give cloudfront access to the bootstrap bucket
-    const oacBootstrap = new CfnOriginAccessControl(this, 'StaticSiteAccessControlForBootstrap', {
+    const oacBootstrap = new CfnOriginAccessControl(scope, 'StaticSiteAccessControlForBootstrap', {
       originAccessControlConfig: {
         name: `${STACK_ID}-${landscape}-static-site-for-bootstap`,
         originAccessControlOriginType: 's3',
@@ -66,12 +112,38 @@ export class CloudfrontConstruct extends Construct {
       },
     });
 
+    /**
+     * The cdk has not caught up with the newer origin access control (oac). You can get there by letting it
+     * produce an oai and tying it to the S3Config, but then you must blank it out (not remove it) and add the oac 
+     * with escape hatches:
+     */
+    const cfnDist = distribution.node.defaultChild as CfnDistribution;
+    cfnDist.addPropertyOverride('DistributionConfig.Origins.1.OriginAccessControlId', oacBootstrap.attrId);
+    cfnDist.addPropertyOverride('DistributionConfig.Origins.1.S3OriginConfig.OriginAccessIdentity', "");
+
+    if(props.olapAlias) {
+      cfnDist.addPropertyOverride('DistributionConfig.Origins.1.DomainName', `${props.olapAlias}.s3.${REGION}.amazonaws.com`);
+    }
+  }
+
+  public addWebsiteBehavior(): void {
+    const { context, distribution, props, scope } = this.cloudfront;
+    const { edgeLambdas, createEdgeFunctionForViewerRequest } = this;
+    const { TAGS: { Landscape:landscape }, STACK_ID, REGION } = context;
+
+    // Create an lambda@edge viewer request function for the bootstrap origin that can rewrite paths to that origin
+    if(edgeLambdas.length == 0) {
+      createEdgeFunctionForViewerRequest();
+    }
+
     // Create a behavior that targets the official content bucket as the origin
-    this.distribution.addBehavior('*.*', new S3Origin(props.websiteBucket), {
+    distribution.addBehavior('/*', new S3Origin(props.websiteBucket), {
       cachePolicy: CachePolicy.CACHING_DISABLED,
+      edgeLambdas
     });
+    
     // Give cloudfront access to the official content bucket
-    const oac = new CfnOriginAccessControl(this, 'StaticSiteAccessControl', {
+    const oac = new CfnOriginAccessControl(scope, 'StaticSiteAccessControl', {
       originAccessControlConfig: {
         name: `${STACK_ID}-${landscape}-static-site`,
         originAccessControlOriginType: 's3',
@@ -86,85 +158,59 @@ export class CloudfrontConstruct extends Construct {
      * produce an oai and tying it to the S3Config, but then you must blank it out (not remove it) and add the oac 
      * with escape hatches:
      */
-    const cfnDist = this.distribution.node.defaultChild as CfnDistribution;
-    cfnDist.addPropertyOverride('DistributionConfig.Origins.1.OriginAccessControlId', oacBootstrap.attrId);
-    cfnDist.addPropertyOverride('DistributionConfig.Origins.1.S3OriginConfig.OriginAccessIdentity', "");
-
+    const cfnDist = distribution.node.defaultChild as CfnDistribution;
     cfnDist.addPropertyOverride('DistributionConfig.Origins.2.OriginAccessControlId', oac.attrId);
     cfnDist.addPropertyOverride('DistributionConfig.Origins.2.S3OriginConfig.OriginAccessIdentity', "");
 
     if(props.olapAlias) {
-      cfnDist.addPropertyOverride('DistributionConfig.Origins.1.DomainName', `${props.olapAlias}.s3.${this.context.REGION}.amazonaws.com`);
-      cfnDist.addPropertyOverride('DistributionConfig.Origins.2.DomainName', `${props.olapAlias}.s3.${this.context.REGION}.amazonaws.com`);
+      cfnDist.addPropertyOverride('DistributionConfig.Origins.2.DomainName', `${props.olapAlias}.s3.${REGION}.amazonaws.com`);
     }
 
-    // index.html is a react artifact that simulates its own reverse proxy
-    // Therefore, all paths must "point" to the same index.html origin.
-    cfnDist.addPropertyOverride('DistributionConfig.CustomErrorResponses', [ {
-      ErrorCode: 403,
-      ResponseCode: 200,
-      ResponsePagePath: `/${REDIRECT_PATH_WEBSITE}`,
-    }]);
-
   }
 
-  public getDistributionId(): string {
-    return this.distribution.distributionId;
-  }
+  private createEdgeFunctionForViewerRequest = () => {
+    const { context: { STACK_ID, ACCOUNT, TAGS: { Landscape }, REGION }, scope } = this.cloudfront;
+    let edgeFunction:Function|experimental.EdgeFunction;
+    if(REGION == 'us-east-1') {
+      /**
+       * Create the Lambda@Edge viewer response function.
+       * It can be bundled as normal because the stack is in the correct region.
+       */
+      edgeFunction = new NodejsFunction(this.cloudfront, 'edge-function-viewer-response', {
+        runtime: Runtime.NODEJS_18_X,
+        entry: 'lib/lambda/functions/cloudfront/ViewerRequest.ts',
+        functionName: `${STACK_ID}-${Landscape}-bucket-origin-viewer-request-at-edge`,
+      });    
+    }
+    else {
+      /**
+       * Create the Lambda@Edge origin request function.
+       * It must be created in us-east-1, which, since this stack is NOT being
+       * created in us-east-1, requires the experimental EdgeFunction and a prebundled code asset.
+       * SEE: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-at-edge-function-restrictions.html
+       */
+      const { EDGE_VIEWER_REQUEST_CODE_FILE:outfile } = CloudfrontConstruct;
+      edgeFunction = new experimental.EdgeFunction(scope, 'BucketOriginViewerRequestFunction', {
+        runtime: Runtime.NODEJS_18_X,
+        handler: 'index.handler',
+        code: Code.fromAsset(path.join(__dirname, `../${path.dirname(outfile)}`)),
+        functionName: `${STACK_ID}-${Landscape}-bucket-origin-viewer-request-at-edge`
+      });
+    }
 
-  public getDistributionDomainName(): string {
-    return this.distribution.domainName;
+    edgeFunction.addToRolePolicy(new PolicyStatement({
+      actions: ['ssm:GetParameter'],
+      resources: [
+        `arn:aws:ssm:${REGION}:${ACCOUNT}:parameter/ett/${Landscape}/*`
+      ],
+    }));
+
+    this.edgeLambdas.push({
+      eventType: LambdaEdgeEventType.VIEWER_REQUEST,
+      functionVersion: edgeFunction.currentVersion
+    })
   }
 }
 
-/**
- * Create the Lambda@Edge viewer response function.
- * It can be bundled as normal because the stack is in the correct region.
- */
-const createSameRegionEdgeFunction = (stack:CloudfrontConstruct, context:IContext):NodejsFunction => {
-  const { STACK_ID, TAGS: { Landscape } } = context;
-  const ftn = new NodejsFunction(stack, 'edge-function-viewer-response', {
-    runtime: Runtime.NODEJS_18_X,
-    entry: 'lib/lambda/functions/cloudfront/ViewerRequest.ts',
-    functionName: `${STACK_ID}-${Landscape}-bucket-origin-viewer-request-at-edge`,
-  });
-  return ftn;
-};
 
-/**
- * Create the Lambda@Edge origin request function.
- * It must be created in us-east-1, which, since this stack is NOT being
- * created in us-east-1, requires the experimental EdgeFunction and a prebundled code asset.
- * SEE: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-at-edge-function-restrictions.html
- * 
- * @param scope 
- * @param context 
- * @returns 
- */
-const createCrossRegionEdgeFunction = (scope:CloudfrontConstruct, context:IContext):experimental.EdgeFunction => {
-  const { STACK_ID, TAGS: { Landscape } } = context;
-  const { EDGE_VIEWER_REQUEST_CODE_FILE:outfile } = CloudfrontConstruct;
-  const ftn = new experimental.EdgeFunction(scope, 'BucketOriginViewerRequestFunction', {
-    runtime: Runtime.NODEJS_18_X,
-    handler: 'index.handler',
-    code: Code.fromAsset(path.join(__dirname, `../${path.dirname(outfile)}`)),
-    functionName: `${STACK_ID}-${Landscape}-bucket-origin-viewer-request-at-edge`
-  });
-  return ftn;
-}
 
-export const createEdgeFunctionForViewerRequest = (scope:CloudfrontConstruct, context:IContext, callback:(lambda:EdgeLambda) => void) => {
-  const { REGION } = context;
-  let edgeFunction:NodejsFunction|experimental.EdgeFunction;
-  if(REGION == 'us-east-1') {
-    edgeFunction = createSameRegionEdgeFunction(scope, context);
-  }
-  else {
-    edgeFunction = createCrossRegionEdgeFunction(scope, context);
-  }
-
-  callback({
-    eventType: LambdaEdgeEventType.VIEWER_REQUEST,
-    functionVersion: edgeFunction.currentVersion
-  });
-}
