@@ -10,7 +10,7 @@ export type ExhibitFormRequestEmailParms = {
   consenterEmail:string;
   entity_id:string;
   linkUri:string;
-  constraint: 'CURRENT' | 'OTHER' | 'BOTH'
+  constraint: 'current' | 'other' | 'both'
 }
 
 export class ExhibitFormRequestEmail {
@@ -52,7 +52,7 @@ export class ExhibitFormRequestEmail {
       message: `Thankyou ${consenterFullName} for registering with the Ethical Tranparency Tool.<br>` +
         `${entity_name} is requesting you take the next step and fill out a prior contacts or "exhibit" form.<br>` +
         `Follow the link provided below to log in to your ETT account and to access the form:` + 
-        `<p>${linkUri}/consenter/exhibits/${constraint}/index.htm</p>`,
+        `<p>${linkUri}/consenting/add-exhibit-form/${constraint}/index.htm</p>`,
       from: `noreply@${context.ETT_DOMAIN}`,
       attachments: []
     } as EmailParms);  
@@ -88,7 +88,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
       consenterEmail, 
       entity_id, 
       linkUri:`https://${cloudfrontDomain}/bootstrap`, 
-      constraint:"BOTH" 
+      constraint:"both" 
     } as ExhibitFormRequestEmailParms).send();
 
     console.log('Email sent!');

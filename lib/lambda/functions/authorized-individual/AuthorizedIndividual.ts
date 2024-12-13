@@ -313,7 +313,7 @@ export const sendExhibitFormRequest = async (parms:SendExhibitFormRequestParms):
   }
 
   switch(constraint) {
-    case 'CURRENT': case 'OTHER': case 'BOTH':
+    case 'current': case 'other': case 'both':
       const sent = await new ExhibitFormRequestEmail({ 
         consenterEmail, 
         entity_id, 

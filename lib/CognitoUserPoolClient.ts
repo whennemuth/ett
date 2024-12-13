@@ -48,9 +48,9 @@ export class EttUserPoolClient extends UserPoolClient {
       ] as string[];
 
       if(role == Roles.CONSENTING_PERSON) {
-        urls.push(`${callbackUrlRoot}/consenter/exhibits/CURRENT/${rootObject}?action=${Actions.login}&selected_role=${role}`);        
-        urls.push(`${callbackUrlRoot}/consenter/exhibits/OTHER/${rootObject}?action=${Actions.login}&selected_role=${role}`);        
-        urls.push(`${callbackUrlRoot}/consenter/exhibits/BOTH/${rootObject}?action=${Actions.login}&selected_role=${role}`);
+        urls.push(`${callbackUrlRoot}/consenting/add-exhibit-form/current/${rootObject}?action=${Actions.login}&selected_role=${role}`);        
+        urls.push(`${callbackUrlRoot}/consenting/add-exhibit-form/other/${rootObject}?action=${Actions.login}&selected_role=${role}`);        
+        urls.push(`${callbackUrlRoot}/consenting/add-exhibit-form/both/${rootObject}?action=${Actions.login}&selected_role=${role}`);
       }
       else {
         urls.push(`${urls[1]}&task=amend`);
@@ -76,9 +76,9 @@ export class EttUserPoolClient extends UserPoolClient {
       ] as string[];
 
       if(role == Roles.CONSENTING_PERSON) {
-        urls.push(`${callbackUrlRoot}/consenter/exhibits/CURRENT/${rootObject}?action=${Actions.logout}`);
-        urls.push(`${callbackUrlRoot}/consenter/exhibits/OTHER/${rootObject}?action=${Actions.logout}`);
-        urls.push(`${callbackUrlRoot}/consenter/exhibits/BOTH/${rootObject}?action=${Actions.logout}`);
+        urls.push(`${callbackUrlRoot}/consenting/add-exhibit-form/current/${rootObject}?action=${Actions.logout}`);
+        urls.push(`${callbackUrlRoot}/consenting/add-exhibit-form/other/${rootObject}?action=${Actions.logout}`);
+        urls.push(`${callbackUrlRoot}/consenting/add-exhibit-form/both/${rootObject}?action=${Actions.logout}`);
       }
 
       return urls;

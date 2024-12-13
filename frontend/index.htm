@@ -1017,15 +1017,15 @@
                   <div id="divAffiliateConstraint" style="overflow: auto; border-top:1px solid #cccccc; padding-top:15px;">
                     <form id="formAffiliateConstraint" name="formAffiliateConstraint">
                       <label class="containerRDO">Current Employer(s) only
-                        <input type="radio" name="affiliateConstraint" value="CURRENT">
+                        <input type="radio" name="affiliateConstraint" value="current">
                         <span class="checkmark"></span>
                       </label>
                       <label class="containerRDO">Other affiliates & Prior Employer(s)
-                        <input type="radio" name="affiliateConstraint" value="OTHER">
+                        <input type="radio" name="affiliateConstraint" value="other">
                         <span class="checkmark"></span>
                       </label>
                       <label class="containerRDO">Both - Any of the above
-                        <input type="radio" name="affiliateConstraint" value="BOTH" checked="checked">
+                        <input type="radio" name="affiliateConstraint" value="both" checked="checked">
                         <span class="checkmark"></span>
                       </label>
                     </form>
@@ -1738,7 +1738,7 @@
     let RefreshJwtCookie;
 
     const getSelectedRole = () => {
-      if(document.location.pathname.startsWith('/bootstrap/consenter/exhibits/')) {
+      if(document.location.pathname.startsWith('/bootstrap/consenting/add-exhibit-form/')) {
         return 'CONSENTING_PERSON';
       }
       let role = new URL(document.location.href).searchParams.get('selected_role');
@@ -1768,7 +1768,7 @@
 
     const ExhibitsPath = () => {
       const isMatch = () => {
-        const exhibits = document.location.pathname.startsWith('/bootstrap/consenter/exhibits/');
+        const exhibits = document.location.pathname.startsWith('/bootstrap/consenting/add-exhibit-form/');
         return selected_role == 'CONSENTING_PERSON' && exhibits;
       }
       const getRedirectUri = () => {
@@ -2502,16 +2502,16 @@
               document.getElementById('consenter-exhibit-compose-link').click();
               const affiliateTypes = document.querySelector('select[name=org-type]').options;
               switch(exhibitsPath.getType()) {
-                case 'CURRENT':
+                case 'current':
                   affiliateTypes.namedItem('header').remove();
                   affiliateTypes.namedItem('ACADEMIC').remove();
                   affiliateTypes.namedItem('EMPLOYER_PRIOR').remove();
                   affiliateTypes.namedItem('OTHER').remove();
                   break;
-                case 'OTHER':
+                case 'other':
                   affiliateTypes.namedItem('EMPLOYER').remove();
                   break;
-                case 'BOTH': default:
+                case 'both': default:
                   break;
               }
             }
