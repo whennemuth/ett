@@ -79,9 +79,11 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
     else if(entity_name_lower) {
       return await _queryName(readParms) as Entity[]
     }
+    else if(active) {
+      return await _queryActive(active, readParms) as Entity[];
+    }
     else {
-      const _active = active ?? YN.Yes;
-      return await _queryActive(_active, readParms) as Entity[];
+      return await _queryAll(readParms) as Entity[];
     }
   }
 
@@ -109,6 +111,19 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
     return await loadEntity(retval.Item, convertDates ?? true) as Entity;
   }
 
+  /**
+   * Query for all items regardless of activity status
+   * @param readParms 
+   * @returns 
+   */
+  const _queryAll = async (readParms?:ReadParms):Promise<Entity[]> => {
+    const all = [] as Entity[];
+    const active = await _queryActive(YN.Yes);
+    all.push(...active);
+    const inactive = await _queryActive(YN.No);
+    all.push(...inactive);
+    return all;
+  }
 
   /**
    * Query for items by their activity status
