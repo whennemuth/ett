@@ -1012,9 +1012,14 @@
                           <tr>
                             <td>Entity</td>
                             <td>
-                              <select id="lbxSysAdminEntities2" class="form-control">
-                                <option><-- Select One --></option>
-                              </select>
+                              <div id="sysAdminEntityDropdown" class="dropdown">
+                                <b>Select One:</b>&nbsp;                          
+                                <button id="sysAdminEntityDropdownButton" class="btn btn-primary btn-lg dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                  Organizations/Entities
+                                </button>
+                                <div id="sysAdminEntityDropdownList" class="dropdown-menu" aria-labelledby="sysAdminEntityDropdownButton">
+                                </div>                          
+                              </div>
                             </td>
                           </tr>
                         </tr>
@@ -2372,6 +2377,65 @@
       }
     }
 
+    /**
+     * Call the sysadmin api endpoint for a listing of entities (both active and inactive)
+     */
+    const fetchSysAdminEntityList = async () => {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      const entityList = [];
+      try {
+        const outgoingPayload = { task: 'get-entity-list', parameters: {} };
+        const response = await fetch(apiUri('SYS_ADMIN'), {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify(outgoingPayload)
+          }
+        });
+
+        const package = await response.json();
+        const { message, payload: { ok, entities=[] } } = package;
+        if(ok) {
+          // Populate the picklist with the fetched entity data
+          entityList.push(...entities);
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+      finally {
+        return entityList;
+      }
+    }
+
+    /**
+     * Populate the entity picklist of the sysadmin shortcuts tab from fetched entity data
+     */
+    const populateSysAdminEntityList = async () => {
+      const lbx = document.querySelector(`#sysAdminEntityDropdownList`);
+      lbx.innerHTML = '';
+      const entities = await fetchSysAdminEntityList();
+      if(entities.length > 0) {
+        entities.forEach(entity => {
+          const { entity_id, entity_name } = entity;
+          const a = document.createElement("a");
+          a.id = entity_id;
+          a.name = entity_name;
+          a.className = 'dropdown-item';
+          a.href = '#';
+          a.innerText = entity_name;
+          lbx.appendChild(a);
+        });
+      }
+    }
+
     const sendDisclosureRequest = async () => {
       const msg = document.getElementById('apiResponse');
       msg.innerHtml = '';
@@ -2691,12 +2755,12 @@
       }
     }
 
-    const populateEntityLists = () => {
-      populateEntityList('requestingEntityDropdownList');
-      populateEntityList('requestingEntityDropdownList2');
+    const populateConsenterEntityLists = () => {
+      populateConsenterEntityList('requestingEntityDropdownList');
+      populateConsenterEntityList('requestingEntityDropdownList2');
     }
 
-    const populateEntityList = (listId) => {
+    const populateConsenterEntityList = (listId) => {
       const { consenter: { exhibit_forms=[] }, entities } = consenterInfo;
       if( entities.length == 0) {
         return;
@@ -2720,7 +2784,7 @@
           a.innerHTML = `${entity_name} <span style="font-style:italic">(Saved)</span>`;
         }
         else {
-          // No exhbit form has yet been saved for this entity
+          // No exhibit form has yet been saved for this entity
           a.innerText = entity_name;
         }
         lbx.appendChild(a);
@@ -2752,7 +2816,7 @@
       document.getElementById('consenter-correct-fullname').innerHTML = fullName;
       document.getElementById('consenter-correct-email').innerHTML = email;
       document.getElementById('consenter-correct-phone').innerHTML = phone_number;
-      populateEntityLists();
+      populateConsenterEntityLists();
       return consenterInfo;
     }
 
@@ -3325,7 +3389,7 @@
       const payload = getExhibitFormPayload();
       await sendExhibitFormPayload('save-exhibit-form', payload, () => {
         alert('Exhibit form saved.');
-        populateEntityLists();
+        populateConsenterEntityLists();
       });
     }
 
@@ -3337,7 +3401,7 @@
       const payload = getExhibitFormPayload();
       await sendExhibitFormPayload('send-exhibit-form', payload, () => {
         alert('Exhibit form submitted.');
-        populateEntityLists();
+        populateConsenterEntityLists();
       });
     }
 
@@ -4814,6 +4878,7 @@
             case 'SYS_ADMIN':
               document.getElementById('app-section-SYS_ADMIN').style.display = 'inline';
               document.getElementsByName('rdoSysAdminInvite')[1].click();
+              await populateSysAdminEntityList();
               break;
 
             case 'RE_ADMIN':
