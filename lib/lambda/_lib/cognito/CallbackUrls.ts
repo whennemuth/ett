@@ -63,7 +63,8 @@ export class CallbackUrlFactory {
    * @returns The callback urls expected by a cognito app client
    */
   public getCallbackUrls = ():string[] => {
-    const { role, clone, pathNameUtils, extendedPathUrl } = this;
+    const { TEMP_HOST } = CallbackUrlFactory;
+    const { role, clone, pathNameUtils, extendedPathUrl, token } = this;
     const urls = [] as string[];
     const path = pathNameUtils(clone());
     let url:URL;
@@ -112,14 +113,15 @@ export class CallbackUrlFactory {
       addEntityInviteCallback('other');
     }
 
-    return urls;
+    return token ? urls.map(url => url.replace(TEMP_HOST, token)) : urls;
   }
 
   /**
    * @returns The logout urls expected by a cognito app client
    */
   public getLogoutUrls = ():string[] => {
-    const { role, clone, pathNameUtils, extendedPathUrl } = this;
+    const { TEMP_HOST } = CallbackUrlFactory;
+    const { role, clone, pathNameUtils, extendedPathUrl, token } = this;
     const urls = [] as string[];
     const path = pathNameUtils(clone());
     let url:URL;
@@ -148,7 +150,7 @@ export class CallbackUrlFactory {
       addEntityInviteCallback('other');
     }
 
-    return urls;
+    return token ? urls.map(url => url.replace(TEMP_HOST, token)) : urls;
   }
 }
 
