@@ -200,7 +200,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
       const task = ReAdminTasks.INVITE_USER;
       const email = 'sysadmin1@warhen.work';
       const context:IContext = await require('../../../../contexts/context.json');
-      const { STACK_ID, REGION, TAGS: { Landscape } } = context;
+      const { STACK_ID, REGION, TAGS: { Landscape }, REDIRECT_PATH_BOOTSTRAP, REDIRECT_PATH_WEBSITE } = context;
       const prefix = `${STACK_ID}-${Landscape}`;
       
       process.env.USERPOOL_NAME = `${prefix}-cognito-userpool`; 
@@ -233,8 +233,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
       }
 
       process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
-      process.env.REDIRECT_URI = `${cloudfrontDomain}/bootstrap/index.htm`;
-      // process.env.REDIRECT_URI = `${cloudfrontDomain}/index.html`;
+      process.env.REDIRECT_URI = `https://${cloudfrontDomain}/${REDIRECT_PATH_BOOTSTRAP}`;
+      // process.env.REDIRECT_URI = `https://${cloudfrontDomain}/${REDIRECT_PATH_WEBSITE}`;
 
       const payload = {
         task, parameters: {

@@ -638,12 +638,12 @@ export const EntityLookupTests = {
     // entity object and that entity object having been appended the two other users of the entity.
     const expectedUserInfo1 = Object.assign({}, daffyduck1) as any;
     expectedUserInfo1.entity = {
-      entity_id: 'warnerbros', entity_name: 'Warner Bros.', active: YN.Yes,
+      entity_id: 'warnerbros', entity_name: 'Warner Bros.', active: YN.Yes, totalUserCount: 3,
       users: [ Object.assign({}, porkypig), Object.assign({}, bugsbunny) ]
     };
     const expectedUserInfo2 = Object.assign({}, daffyduck2) as any;
     expectedUserInfo2.entity = {
-      entity_id: 'cartoonville', entity_name: 'Cartoon Villiage', active: YN.Yes,
+      entity_id: 'cartoonville', entity_name: 'Cartoon Villiage', active: YN.Yes, totalUserCount: 3,
       users: [ Object.assign({}, yosemitesam), Object.assign({}, foghornLeghorn) ]
     };
     delete expectedUserInfo1.entity_id;

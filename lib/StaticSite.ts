@@ -50,7 +50,7 @@ export abstract class StaticSiteConstruct extends Construct {
    * @param parms 
    * @returns A parameter object comprising all values client apps need to authenticate and talk with the backend.
    */
-  public buildSiteParmObject = (parms: StaticSiteConstructParms, redirectPath:string):any => {
+  public static buildSiteParmObject = (parms: StaticSiteConstructParms, redirectPath:string):any => {
     let jsonObj = {
       COGNITO_DOMAIN: parms.cognitoDomain,
       USER_POOL_REGION: parms.cognitoUserpoolRegion,

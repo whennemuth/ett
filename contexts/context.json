@@ -4,6 +4,8 @@
   "ACCOUNT": "037860335094",
   "REGION": "us-east-2",
   "ETT_DOMAIN": "warhen.work",
+  "REDIRECT_PATH_BOOTSTRAP": "bootstrap/index.htm",
+  "REDIRECT_PATH_WEBSITE": "index.html",
   "CONFIG": {
     "useDatabase": true,
     "configs": [
@@ -72,6 +74,6 @@
   "TAGS": {
     "Service": "client",
     "Function": "ett",
-    "Landscape": "dev"
+    "Landscape": "warren"
   }
 }

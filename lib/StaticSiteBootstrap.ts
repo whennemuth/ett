@@ -22,9 +22,10 @@ export class StaticSiteBootstrapConstruct extends StaticSiteConstruct {
   }
 
   customize(): void {
-    const { context: { ACCOUNT, TAGS: { Landscape:landscape }, STACK_ID }, constructId, parms, buildSiteParmObject } = this;
+    const { context: { ACCOUNT, TAGS: { Landscape:landscape }, STACK_ID, REDIRECT_PATH_BOOTSTRAP }, constructId, parms } = this;
+    const { buildSiteParmObject } = StaticSiteBootstrapConstruct;
     const functionName = `${STACK_ID}-${landscape}-${constructId.toLowerCase()}-injection-function`;
-    const staticParms = JSON.stringify(buildSiteParmObject(parms as StaticSiteConstructParms, 'bootstrap/index.htm'), null, 2);
+    const staticParms = JSON.stringify(buildSiteParmObject(parms as StaticSiteConstructParms, REDIRECT_PATH_BOOTSTRAP), null, 2);
     const conversionFunction = new AbstractFunction(this, 'TextConverterFunction', {
       functionName,
       description: 'Function for modifying content being loaded into the static website bucket so that \

@@ -16,12 +16,15 @@ import { StaticSiteConstructParms } from '../lib/StaticSite';
 import { StaticSiteBootstrapConstruct } from '../lib/StaticSiteBootstrap';
 import { StaticSiteWebsiteConstruct } from '../lib/StaticSiteWebsite';
 import { Roles } from '../lib/lambda/_lib/dao/entity';
+import { ViewerRequestParametersConstruct } from '../lib/lambda/functions/cloudfront/ViewerRequestParameters';
 
 const context:IContext = <IContext>ctx;
 
 const app = new App();
 app.node.setContext('stack-parms', context);
-const { STACK_ID, ACCOUNT:account, REGION:region, TAGS: { Function, Landscape, Service }, SCENARIO:scenario } = context;
+const { 
+  STACK_ID, ACCOUNT:account, REGION:region, TAGS: { Function, Landscape, Service }, SCENARIO:scenario, REDIRECT_PATH_WEBSITE
+} = context;
 const stackName = `${STACK_ID}-${Landscape}`;
 
 const stackProps: StackProps = {
@@ -106,7 +109,7 @@ const buildAll = () => {
     userPoolName: cognito.getUserPoolName(),  
     userPoolDomain: cognito.getUserPoolDomain(),  
     cloudfrontDomain: cloudfront.getDistributionDomainName(),
-    redirectPath: 'index.html',
+    redirectPath: REDIRECT_PATH_WEBSITE,
     landscape: Landscape,
     exhibitFormsBucket: exhibitFormsBucket,
     databaseExhibitFormPurgeLambdaArn: delayedExecutionLambdas.databaseExhibitFormPurgeLambda.functionArn,
@@ -137,6 +140,15 @@ const buildAll = () => {
       ]
     } as StaticSiteConstructParms
   };
+
+  const parameters = new ViewerRequestParametersConstruct(
+    cloudfront, 'ViewerRequestParameters', 
+    { 
+      bootstrap: getStaticSiteParameters(bootstrapBucket), 
+      website: getStaticSiteParameters(websiteBucket),
+      context 
+    }
+  );
   
   // Set up the event, lambda and associated policies for modification of html files as they are uploaded 
   // to the bootstrap bucket and ensure that static html content is uploaded to it.

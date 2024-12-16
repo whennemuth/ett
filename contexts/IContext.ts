@@ -8,6 +8,8 @@ export interface IContext {
   ETT_DOMAIN?: string;
   CLOUDFRONT_DOMAIN?: string;
   CLOUDFRONT_CERTIFICATE?: string;
+  REDIRECT_PATH_WEBSITE:string;
+  REDIRECT_PATH_BOOTSTRAP:string;
   CONFIG: CONFIG;
   TAGS:     Tags;
 }
