@@ -1,8 +1,8 @@
 import { Duration } from "aws-cdk-lib";
 import { OAuthScope, UserPool, UserPoolClient, UserPoolClientIdentityProvider, UserPoolClientProps } from "aws-cdk-lib/aws-cognito";
-import { Role, Roles } from './lambda/_lib/dao/entity';
-import { Actions } from "./role/AbstractRole";
 import { IContext } from "../contexts/IContext";
+import { CallbackUrlFactory } from "./lambda/_lib/cognito/CallbackUrls";
+import { Role } from './lambda/_lib/dao/entity';
 
 export interface EttUserPoolClientProps { callbackDomainName:string, role:Role, customScopes?:OAuthScope[] }
 
@@ -31,64 +31,15 @@ export class EttUserPoolClient extends UserPoolClient {
       scopes = scopes.concat(customScopes);
     }
 
-    /**
-     * Get urls to the app location that cognito will "callback" or redirect to upon successful signin.
-     */
-    const getCallbackUrls = (rootPath:string): string[] => {
-      let callbackUrlRoot = `https://${callbackDomainName}`;
-      const subfolder = rootPath.substring(0, rootPath.lastIndexOf('/'));
-      const rootObject = rootPath.substring(rootPath.lastIndexOf('/')+1);
-      if(subfolder) {
-        callbackUrlRoot = `${callbackUrlRoot}/${subfolder}`;
-      }
-      const urls = [
-        `${callbackUrlRoot}/${rootObject}`,
-        `${callbackUrlRoot}/${rootObject}?action=${Actions.login}&selected_role=${role}`,
-        `${callbackUrlRoot}/${rootObject}?action=${Actions.post_signup}&selected_role=${role}`,
-      ] as string[];
+    let factory = new CallbackUrlFactory(callbackDomainName, REDIRECT_PATH_BOOTSTRAP, role);
+    // Urls to the app location that cognito will "callback" or redirect to upon successful signin.
+    const callbackUrls = factory.getCallbackUrls();
+    // Urls to the app location that cognito will redirect to upon successful signout
+    const logoutUrls = factory.getLogoutUrls();
 
-      if(role == Roles.CONSENTING_PERSON) {
-        urls.push(`${callbackUrlRoot}/consenting/add-exhibit-form/current/${rootObject}?action=${Actions.login}&selected_role=${role}`);        
-        urls.push(`${callbackUrlRoot}/consenting/add-exhibit-form/other/${rootObject}?action=${Actions.login}&selected_role=${role}`);        
-        urls.push(`${callbackUrlRoot}/consenting/add-exhibit-form/both/${rootObject}?action=${Actions.login}&selected_role=${role}`);
-      }
-      else {
-        urls.push(`${urls[1]}&task=amend`);
-        urls.push(`${urls[2]}&task=amend`);
-      }
-
-      return urls;
-    }
-
-    /**
-     * Get urls to the app location that cognito will redirect to upon successful signout.
-     */
-    const getLogoutUrls = (rootPath:string): string[] => {
-      let callbackUrlRoot = `https://${callbackDomainName}`;
-      const subfolder = rootPath.substring(0, rootPath.lastIndexOf('/'));
-      const rootObject = rootPath.substring(rootPath.lastIndexOf('/')+1);
-      if(subfolder) {
-        callbackUrlRoot = `${callbackUrlRoot}/${subfolder}`;
-      }
-
-      const urls = [
-        `${callbackUrlRoot}/${rootObject}?action=${Actions.logout}`,
-      ] as string[];
-
-      if(role == Roles.CONSENTING_PERSON) {
-        urls.push(`${callbackUrlRoot}/consenting/add-exhibit-form/current/${rootObject}?action=${Actions.logout}`);
-        urls.push(`${callbackUrlRoot}/consenting/add-exhibit-form/other/${rootObject}?action=${Actions.logout}`);
-        urls.push(`${callbackUrlRoot}/consenting/add-exhibit-form/both/${rootObject}?action=${Actions.logout}`);
-      }
-
-      return urls;
-    }
-
-    const callbackUrls = getCallbackUrls(REDIRECT_PATH_BOOTSTRAP);
-    callbackUrls.push(...getCallbackUrls(REDIRECT_PATH_WEBSITE));
-
-    const logoutUrls = getLogoutUrls(REDIRECT_PATH_BOOTSTRAP);
-    logoutUrls.push(...getLogoutUrls(REDIRECT_PATH_WEBSITE));
+    factory = new CallbackUrlFactory(callbackDomainName, REDIRECT_PATH_WEBSITE, role);
+    callbackUrls.push(...factory.getCallbackUrls());
+    logoutUrls.push(...factory.getLogoutUrls())
 
     const client = new EttUserPoolClient(userPool, id, {
       userPool,
