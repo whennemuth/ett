@@ -5,7 +5,7 @@
   "REGION": "us-east-2",
   "ETT_DOMAIN": "warhen.work",
   "REDIRECT_PATH_BOOTSTRAP": "bootstrap/index.htm",
-  "REDIRECT_PATH_WEBSITE": "index.html",
+  "REDIRECT_PATH_WEBSITE": "/",
   "CONFIG": {
     "useDatabase": true,
     "configs": [
