@@ -1,4 +1,5 @@
 import { IContext } from "../../../../contexts/IContext";
+import * as ctx from '../../../../contexts/context.json';
 import { Actions } from "../../../role/AbstractRole";
 import { Role, Roles } from "../dao/entity";
 
@@ -10,11 +11,25 @@ import { Role, Roles } from "../dao/entity";
  * Else it is for something like a react app using routes, with more focus on parameters being path elements.
  */
 export class CallbackUrlFactory {
+  private context:IContext;
   private rootUrl:URL
   private role:Role;
+  private token:string;
+
+  private static TEMP_HOST: string = 'temphost.com';
 
   constructor(host:string, pathname:string, role:Role) {
+    this.context = <IContext>ctx;
     this.role = role;
+    if(host.startsWith("${Token")) {
+      // These callback urls are being constructed during creation by the CDK of the cloudformation template.
+      // This means that the host is actually a token "placeholder" for the domain name of a clouformation 
+      // distribution that has not been created yet. This token cannot be fed to the URL constructor because it
+      // will be seen as having illegal characters. Therefore, a temp value will be used while the URL object is
+      // involved, replaced with the token at the last moment when the urls are converted to strings and returned.
+      this.token = host;
+      host = CallbackUrlFactory.TEMP_HOST;
+    }
     this.rootUrl = new URL(host.startsWith('http') ? host : `https://${host}`);
     if(pathname && pathname != '/') {
       this.rootUrl.pathname = pathname;
@@ -60,43 +75,67 @@ export class CallbackUrlFactory {
   }
 
   /**
+   * Add the provided callback/logout url to the provided array.
+   * Includes an additional localhost version of the url if indicated, and avoids duplicates.
+   * @param urls 
+   * @param url 
+   */
+  private addUrl = (urls:string[], url:string) => {
+    const { pathNameUtils, context: { LOCALHOST, TAGS: { Landscape }}} = this;
+    const push = (url:string) => {
+      if( ! urls.includes(url)) {
+        urls.push(url);
+      }
+    }
+    push(url);
+    const bootstrap = pathNameUtils(new URL(url)).endsWithFile();
+    if( ! Landscape.startsWith('prod') && LOCALHOST && ! bootstrap) {
+      const mainUrl = new URL(url);
+      const localUrl = new URL(LOCALHOST);
+      localUrl.pathname = mainUrl.pathname;
+      localUrl.search = mainUrl.search
+      push(localUrl.href);
+    }
+  }
+
+
+  /**
    * @returns The callback urls expected by a cognito app client
    */
   public getCallbackUrls = ():string[] => {
     const { TEMP_HOST } = CallbackUrlFactory;
-    const { role, clone, pathNameUtils, extendedPathUrl, token } = this;
+    const { role, clone, pathNameUtils, extendedPathUrl, token, addUrl} = this;
     const urls = [] as string[];
     const path = pathNameUtils(clone());
     let url:URL;
 
-    url = clone();
-    urls.push(url.href);
-    if(url.pathname.endsWith('/')) {
-      urls.push(url.href.substring(0, url.href.length-1))
-    }
-
     if(path.endsWithFile()) {
+      addUrl(urls, clone().href);
+
       url = clone();
       url.searchParams.set('action', Actions.login);
       url.searchParams.set('selected_role', role);
-      urls.push(url.href);
+      addUrl(urls, url.href);
       if(role != Roles.CONSENTING_PERSON) {
         url.searchParams.set('task', 'amend');
-        urls.push(url.href);
+        addUrl(urls, url.href);
       }
       
       url = clone();
       url.searchParams.set('action', Actions.post_signup);
       url.searchParams.set('selected_role', role);
-      urls.push(url.href);      
+      addUrl(urls, url.href);      
       if(role != Roles.CONSENTING_PERSON) {
         url.searchParams.set('task', 'amend');
-        urls.push(url.href);
+        addUrl(urls, url.href);
       }
     }
     else {
-      url = extendedPathUrl('/amend-entity');
-      urls.push(url.href);
+      addUrl(urls, extendedPathUrl('/sysadmin').href);
+      addUrl(urls, extendedPathUrl('/entity').href);
+      addUrl(urls, extendedPathUrl('/auth-ind').href);
+      addUrl(urls, extendedPathUrl('/consenting').href);
+      addUrl(urls, extendedPathUrl('/amend-entity').href);
     }
 
     if(role == Roles.CONSENTING_PERSON) {
@@ -106,7 +145,7 @@ export class CallbackUrlFactory {
           url.searchParams.set('action', Actions.login);
           url.searchParams.set('selected_role', role);
         }
-        urls.push(url.href);
+        addUrl(urls, url.href);
       }
       addEntityInviteCallback('both');
       addEntityInviteCallback('current');
@@ -121,7 +160,7 @@ export class CallbackUrlFactory {
    */
   public getLogoutUrls = ():string[] => {
     const { TEMP_HOST } = CallbackUrlFactory;
-    const { role, clone, pathNameUtils, extendedPathUrl, token } = this;
+    const { role, clone, pathNameUtils, extendedPathUrl, token, addUrl } = this;
     const urls = [] as string[];
     const path = pathNameUtils(clone());
     let url:URL;
@@ -129,21 +168,17 @@ export class CallbackUrlFactory {
     url = clone();
     if(path.endsWithFile()) {
       url.searchParams.set('action', Actions.logout);
-      urls.push(url.href);
+      addUrl(urls, url.href);
     }
     else {
-      urls.push(url.href);
-      if(url.pathname.endsWith('/')) {
-        urls.push(url.href.substring(0, url.href.length-1));
-      }
-      urls.push(extendedPathUrl('/logout').href);
+      addUrl(urls, extendedPathUrl('/logout').href);
     }
     
     if(role == Roles.CONSENTING_PERSON && path.endsWithFile()) {
       const addEntityInviteCallback = (exhibitType:'current'|'other'|'both') => {
         url = extendedPathUrl(`/consenting/add-exhibit-form/${exhibitType}`);
         url.searchParams.set('action', Actions.logout);
-        urls.push(url.href);
+        addUrl(urls, url.href);
       }
       addEntityInviteCallback('both');
       addEntityInviteCallback('current');

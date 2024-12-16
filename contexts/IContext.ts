@@ -5,11 +5,13 @@ export interface IContext {
   STACK_ID: string;
   ACCOUNT:  string;
   REGION:   string;
+  LOCALHOST?: string;
   ETT_DOMAIN?: string;
   CLOUDFRONT_DOMAIN?: string;
   CLOUDFRONT_CERTIFICATE?: string;
   REDIRECT_PATH_WEBSITE:string;
   REDIRECT_PATH_BOOTSTRAP:string;
+  DEFAULT_ROOT_OBJECT:string;
   CONFIG: CONFIG;
   TAGS:     Tags;
 }
