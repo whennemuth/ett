@@ -94,7 +94,7 @@ describe('Registration signup link', () => {
     expect(link).toEqual(expectedLink);
 
     const registrationUri = 'https://mydomain/path/to/something';
-    expectedLink = registrationUri;
+    expectedLink = `${registrationUri}?entity_id=${entity_id}`;
     link = await signupLink.getRegistrationLink({ entity_id, registrationUri });
     expect(link).toEqual(expectedLink);
   })

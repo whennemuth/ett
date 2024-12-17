@@ -211,8 +211,8 @@ export class UserInvitation {
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/invitation/Invitation.ts')) {
 
-  const inviterEmail = 'asp.au.edu@warhen.work';
-  const inviteeEmail = 'auth1.au.edu@warhen.work';
+  const inviterEmail = 'asp1.random.edu@warhen.work';
+  const inviteeEmail = 'auth1.random.edu@warhen.work';
   const role = Roles.RE_AUTH_IND;
 
   (async () => {
@@ -243,7 +243,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/invi
 
     // Get the link to put in the invitation email
     const entity_id = inviters[0].entity_id;
-    const registrationUri = 'https"//' + cloudfrontDomain + '/bootstrap/index.htm';
+    // const registrationUri = 'https://' + cloudfrontDomain + '/bootstrap/index.htm';
+    const registrationUri = 'https://' + cloudfrontDomain + '/entity/register';
     const link = await new SignupLink().getRegistrationLink({ entity_id, registrationUri });
     
     // Get the entity
