@@ -8,7 +8,7 @@ import { StaticSiteConstruct, StaticSiteConstructParms } from "./StaticSite";
 /**
  * This construct is for an s3 bucket that is to host the single page app html file and related
  * artifacts. This bucket will be empty when the stack is deployed, and it is intended that an 
- * independent author will drop their app into this bucket, with the main file being named index.html.
+ * independent author will drop their app into this bucket.
  */
 export class StaticSiteWebsiteConstruct extends StaticSiteConstruct {
 

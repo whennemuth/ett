@@ -100,7 +100,10 @@ export class SignupLink {
           link = `${link}?action=${Actions.register_entity}`;
           if(entity_id) {
             link = `${link}&entity_id=${entity_id}`
-          }    
+          } 
+        }
+        else if(entity_id) {
+          link = `${link}?entity_id=${entity_id}`
         }
       }
       else {
