@@ -131,11 +131,18 @@ export class CallbackUrlFactory {
       }
     }
     else {
-      addUrl(urls, extendedPathUrl('/sysadmin').href);
-      addUrl(urls, extendedPathUrl('/entity').href);
-      addUrl(urls, extendedPathUrl('/auth-ind').href);
-      addUrl(urls, extendedPathUrl('/consenting').href);
-      addUrl(urls, extendedPathUrl('/amend-entity').href);
+      const addCallbackRoute = (path:string) => {
+        addUrl(urls, extendedPathUrl(path).href);
+        url = extendedPathUrl(path);
+        url.searchParams.set('action', Actions.post_signup);
+        addUrl(urls, url.href);
+      }
+
+      addCallbackRoute('/sysadmin');
+      addCallbackRoute('/entity');
+      addCallbackRoute('/auth-ind');
+      addCallbackRoute('/consenting');
+      addCallbackRoute('/amend-entity');
     }
 
     if(role == Roles.CONSENTING_PERSON) {
