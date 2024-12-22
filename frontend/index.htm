@@ -218,6 +218,16 @@
         padding: 10px;
       }
 
+      .divSysAdminOption2 {
+        float:left; 
+        clear:both; 
+        text-align:left; 
+        font-weight:bold; 
+        font-size:16px;
+        vertical-align: middle;
+        padding: 10px;
+      }
+
       h3 {
         text-align: center;
         margin-bottom: 20px;
@@ -338,6 +348,32 @@
       div.bdp-block input, div.bdp-block div {
         width:70px;
         display:inline-table;      
+      }
+
+      table.sysAdminShortcuts th, table.sysAdminShortcuts td {
+        border: 1px solid #cccccc;
+        border-collapse: collapse;
+      }
+      table.sysAdminShortcuts tr.open th, table.sysAdminShortcuts tr.open td {
+        border-style:none;
+      }
+      table.sysAdminShortcuts td:nth-child(1) {
+        text-align: right;
+      }
+      table.sysAdminShortcuts th {
+        font-size: 18px;
+        text-align: center;
+      }
+      table.sysAdminShortcuts hr {
+        margin-top:10px;
+        margin-bottom: 10px;
+      } 
+      table.sysAdminShortcuts td input {
+        font-size: 18px;
+      }
+      table.sysAdminShortcuts table th, table.sysAdminShortcuts table td {
+        border-style:none;
+        text-align: center;
       }
 
       #authNotReady {
@@ -838,7 +874,10 @@
                 <li class="nav-item">
                   <a class="nav-link" id="sys-admin-db-tab" data-toggle="tab" href="#sys-admin-db" role="tab" aria-controls="sys-admin-db" aria-selected="false">Database</a>
                 </li>
-                <li class="nav-item"></li>
+                <li class="nav-item">
+                  <a class="nav-link" id="sys-admin-shortcuts-tab" data-toggle="tab" href="#sys-admin-shortcuts" role="tab" aria-controls="sys-admin-shortcuts" aria-selected="false">Shortcuts</a>
+                </li>
+                <li class="nav-item">
                   <a class="nav-link" id="sys-clean-sheet-tab" data-toggle="tab" href="#sys-admin-clean-sheet" role="tab" aria-controls="sys-admin-clean-sheet" aria-selected="false">Clean Sheet of Paper</a>
                 </li>
               </ul>
@@ -907,6 +946,85 @@
                       <div class="dbTableLabel">Consenters</div>
                       <button class="btn btn-primary btn" type="button" onclick="refreshDbTable('consenters')">Load/Refresh</button>
                       <div id="db-table-consenters" style="margin-top:10px;"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="tab-pane fade" id="sys-admin-shortcuts" role="tabpanel" aria-labelledby="sys-admin-shortcuts-tab">
+                  <h3 class="display-7 fw-bold" style="text-align:center; margin-bottom: 20px;">Shortcuts</h3>
+                  <div style="overflow:auto;">
+                    <div class="divSysAdminOption2">
+
+                      <table class="sysAdminShortcuts">
+                        <tr class="open">
+                          <th colspan="3">Setup a new Entity</th>
+                        </tr>
+                        <tr>
+                          <td>Entity Name</td>
+                          <td colspan="2"><input id="txtShortcutEntityName" type="text" class="form-control" value="The School of Hard Knocks"></td>
+                        </tr>
+                        <tr>
+                          <td>Representatives</td>
+                          <td colspan="3">
+                            <table class="sysAdminShortcuts">
+                              <tr>
+                                <td>Role</td>
+                                <td>Email</td>
+                                <td>Fullname</td>
+                                <td>Phone</td>
+                                <td>Title</td>
+                              </tr>
+                              <tr>
+                                <td>ASP</td>
+                                <td><input id="txtShortcutAspEmail" type="text" class="form-control" value="asp1.random.edu@warhen.work"></td>
+                                <td><input id="txtShortcutAspFullname" type="text" class="form-control" value="Elvis Presley"></td>
+                                <td><input id="txtShortcutAspPhone" type="text" class="form-control" value="+5083339999"></td>
+                                <td><input id="txtShortcutAspTitle" type="text" class="form-control" value="Entertainer"></td>
+                              </tr>
+                              <tr>
+                                <td>AI (1)</td>
+                                <td><input id="txtShortcutAuth1Email" type="text" class="form-control" value="auth1.random.edu@warhen.work"></td>
+                                <td><input id="txtShortcutAuth1Fullname" type="text" class="form-control" value="Sherlock Holmes"></td>
+                                <td><input id="txtShortcutAuth1Phone" type="text" class="form-control" value="+6172334567"></td>
+                                <td><input id="txtShortcutAuth1Title" type="text" class="form-control" value="Detective"></td>
+                              </tr>
+                              <tr>
+                                <td>AI (2)</td>
+                                <td><input id="txtShortcutAuth2Email" type="text" class="form-control" value="auth2.random.edu@warhen.work"></td>
+                                <td><input id="txtShortcutAuth2Fullname" type="text" class="form-control" value="Fred Flintstone"></td>
+                                <td><input id="txtShortcutAuth2Phone" type="text" class="form-control" value="+7812227777"></td>
+                                <td><input id="txtShortcutAuth2Title" type="text" class="form-control" value="Quarry Foreman"></td>
+                              </tr>
+                            </table>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="align-items: end;" colspan="3">
+                            <button id="btnShortcutsCreateEntity" class="btn btn-success" style="width:200px;">CREATE & STAFF ENTITY</button> 
+                          </td>
+                        </tr>
+                        <tr>
+                          <td colspan="3" style="border-style:none;">&nbsp;</td>
+                        </tr>
+                        <tr class="open">
+                          <th colspan="3">Tear down an entity</th>
+                        </tr>
+                        <tr>
+                          <td>Entity</td>
+                          <td>
+                            <div id="sysAdminEntityDropdown" class="dropdown">
+                              <b>Select One:</b>&nbsp;                          
+                              <button id="sysAdminEntityDropdownButton" class="btn btn-primary btn-lg dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                Organizations/Entities
+                              </button>
+                              <div id="sysAdminEntityDropdownList" class="dropdown-menu" aria-labelledby="sysAdminEntityDropdownButton">
+                              </div>                          
+                            </div>
+                          </td>
+                          <td style="align-items: end; text-align:right;">
+                            <button id="btnShortcutsRemoveEntity" class="btn btn-danger" style="width:200px;">TEAR DOWN ENTITY</button> 
+                          </td>
+                        </tr>
+                      </table>
                     </div>
                   </div>
                 </div>
@@ -2255,6 +2373,154 @@
       }
     }
 
+    /**
+     * Call the sysadmin api endpoint for a listing of entities (both active and inactive)
+     */
+    const fetchSysAdminEntityList = async () => {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      const entityList = [];
+      try {
+        const outgoingPayload = { task: 'get-entity-list', parameters: {} };
+        const response = await fetch(apiUri('SYS_ADMIN'), {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify(outgoingPayload)
+          }
+        });
+
+        const package = await response.json();
+        const { message, payload: { ok, entities=[] } } = package;
+        if(ok) {
+          // Populate the picklist with the fetched entity data
+          entityList.push(...entities);
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+      finally {
+        return entityList;
+      }
+    }
+
+    /**
+     * Populate the entity picklist of the sysadmin shortcuts tab from fetched entity data
+     */
+    const populateSysAdminEntityList = async () => {
+      const lbx = document.querySelector(`#sysAdminEntityDropdownList`);
+      lbx.innerHTML = '';
+      const entities = await fetchSysAdminEntityList();
+      if(entities.length > 0) {
+        entities.forEach(entity => {
+          const { entity_id, entity_name } = entity;
+          const a = document.createElement("a");
+          a.id = entity_id;
+          a.name = entity_name;
+          a.className = 'dropdown-item';
+          a.href = '#';
+          a.innerText = entity_name;
+          lbx.appendChild(a);
+        });
+      }
+    }
+
+    const sendSysAdminEntitySetupRequest = async () => {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+
+        const outgoingPayload = { task: 'shortcut-entity-setup', parameters: { 
+          entityName: document.getElementById('txtShortcutEntityName').value, 
+          asp: {
+            email: document.getElementById('txtShortcutAspEmail').value,
+            fullname: document.getElementById('txtShortcutAspFullname').value,
+            phone_number: document.getElementById('txtShortcutAspPhone').value,
+            title: document.getElementById('txtShortcutAspTitle').value
+          }, 
+          ais: [
+            {
+              email: document.getElementById('txtShortcutAuth1Email').value,
+              fullname: document.getElementById('txtShortcutAuth1Fullname').value,
+              phone_number: document.getElementById('txtShortcutAuth1Phone').value,
+              title: document.getElementById('txtShortcutAuth1Title').value
+            },
+            {
+              email: document.getElementById('txtShortcutAuth2Email').value,
+              fullname: document.getElementById('txtShortcutAuth2Fullname').value,
+              phone_number: document.getElementById('txtShortcutAuth2Phone').value,
+              title: document.getElementById('txtShortcutAuth2Title').value
+            }
+          ] 
+        }};
+
+        const response = await fetch(apiUri('SYS_ADMIN'), {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify(outgoingPayload)
+          }
+        });
+
+        const package = await response.json();
+        const { message, payload: { ok } } = package;
+        if(ok) {
+          alert('Entity setup successful');
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
+    const sendSysAdminEntityTeardownRequest = async () => {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      if( ! selectedEntity) {
+        alert('Entity selection required');
+        return;
+      }
+      const parameters = selectedEntity;
+      try {
+        const outgoingPayload = { task: 'shortcut-entity-teardown', parameters };
+        const response = await fetch(apiUri('SYS_ADMIN'), {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify(outgoingPayload)
+          }
+        });
+
+        const package = await response.json();
+        const { message, payload: { ok } } = package;
+        if(ok) {
+          alert('Entity teardown successful');
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
     const sendDisclosureRequest = async () => {
       const msg = document.getElementById('apiResponse');
       msg.innerHtml = '';
@@ -2574,12 +2840,12 @@
       }
     }
 
-    const populateEntityLists = () => {
-      populateEntityList('requestingEntityDropdownList');
-      populateEntityList('requestingEntityDropdownList2');
+    const populateConsenterEntityLists = () => {
+      populateConsenterEntityList('requestingEntityDropdownList');
+      populateConsenterEntityList('requestingEntityDropdownList2');
     }
 
-    const populateEntityList = (listId) => {
+    const populateConsenterEntityList = (listId) => {
       const { consenter: { exhibit_forms=[] }, entities } = consenterInfo;
       if( entities.length == 0) {
         return;
@@ -2603,7 +2869,7 @@
           a.innerHTML = `${entity_name} <span style="font-style:italic">(Saved)</span>`;
         }
         else {
-          // No exhbit form has yet been saved for this entity
+          // No exhibit form has yet been saved for this entity
           a.innerText = entity_name;
         }
         lbx.appendChild(a);
@@ -2635,7 +2901,7 @@
       document.getElementById('consenter-correct-fullname').innerHTML = fullName;
       document.getElementById('consenter-correct-email').innerHTML = email;
       document.getElementById('consenter-correct-phone').innerHTML = phone_number;
-      populateEntityLists();
+      populateConsenterEntityLists();
       return consenterInfo;
     }
 
@@ -3208,7 +3474,7 @@
       const payload = getExhibitFormPayload();
       await sendExhibitFormPayload('save-exhibit-form', payload, () => {
         alert('Exhibit form saved.');
-        populateEntityLists();
+        populateConsenterEntityLists();
       });
     }
 
@@ -3220,7 +3486,7 @@
       const payload = getExhibitFormPayload();
       await sendExhibitFormPayload('send-exhibit-form', payload, () => {
         alert('Exhibit form submitted.');
-        populateEntityLists();
+        populateConsenterEntityLists();
       });
     }
 
@@ -4624,6 +4890,24 @@
         });
       });
 
+      // Add behavior to selection activity on the entity picklist for sysadmin shortcuts tab
+      $('#sysAdminEntityDropdownButton').on('hide.bs.dropdown', function () {
+        const { srcElement:a } = event;
+        if(a.tagName == 'A' && a.name && a.id) {
+          const button = document.getElementById('sysAdminEntityDropdownButton');
+          button.innerText = a.name;
+          selectedEntity = { entity_id: a.id };
+        }
+      });
+
+      $('#btnShortcutsCreateEntity').on('click', async () => {
+        await sendSysAdminEntitySetupRequest();
+      });      
+
+      $('#btnShortcutsRemoveEntity').on('click', async () => {
+        await sendSysAdminEntityTeardownRequest();
+      });
+
       // Add behavior to selection activity on the consenter picklist for exhibit form requests
       $('#txtConsenterFilter').on('hide.bs.dropdown', function () {
         const a = event.srcElement.parentElement;
@@ -4697,6 +4981,7 @@
             case 'SYS_ADMIN':
               document.getElementById('app-section-SYS_ADMIN').style.display = 'inline';
               document.getElementsByName('rdoSysAdminInvite')[1].click();
+              await populateSysAdminEntityList();
               break;
 
             case 'RE_ADMIN':

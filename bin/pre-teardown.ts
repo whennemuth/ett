@@ -7,6 +7,8 @@ const cloudfront = new CloudFrontClient({ region: "us-east-1" }); // CloudFront 
 
 const lambda = new LambdaClient({ region: "us-east-1" });
 
+const SECOND = 1000; const MINUTE = SECOND * 60;
+
 /**
  * Disassociate Lambda@Edge functions from the distribution's behaviors.
  */
@@ -84,32 +86,48 @@ const waitForDeployment = async (distributionId:string): Promise<void> => {
  * Wait until all Lambda@Edge functions are fully deleted.
  */
 const waitForLambdaEdgeDeletion = async (lambdaArn:string): Promise<void> => {
-  console.log("Waiting for Lambda@Edge functions to be fully deleted...");
+  log({ mainArn: lambdaArn }, `Waiting for Lambda@Edge functions to be fully deleted...`);
+
+  const deriveBaseArnFromReplicatedArn = (replicatedArn?:string): string => {
+    if( ! replicatedArn) return '';
+    const arnParts = replicatedArn.split(':');
+    const replicatedName = arnParts[6];
+    const baseName = replicatedName.substring(replicatedName.indexOf('.')+1);
+    arnParts[6] = baseName;
+    return arnParts.join(':');
+  }
 
   while (true) {
     // List all Lambda functions
-    const command = new ListFunctionsCommand({});
+    const command = new ListFunctionsCommand({
+      MasterRegion: 'us-east-1', FunctionVersion: 'ALL'
+    });
     const response = await lambda.send(command);
 
     // Check for any remaining Lambda@Edge functions
-    const replicatedFunctions = response.Functions?.filter((fn) =>
-      fn.FunctionArn?.startsWith(lambdaArn)
-    );
+    const replicatedFunctions = response.Functions?.filter((fn) => {
+      const baseArn = deriveBaseArnFromReplicatedArn(fn.FunctionArn);
+      return lambdaArn.startsWith(baseArn);
+    });
 
-    if (!replicatedFunctions || replicatedFunctions.length === 0) {
-      console.log("All Lambda@Edge functions have been deleted.");
+    if ( ! replicatedFunctions || replicatedFunctions.length === 0) {
+      log(`All Lambda@Edge replicated functions have been deleted for ${lambdaArn}`);    
       break;
     }
 
-    console.log(
-      `Still waiting for the following Lambda@Edge functions to be deleted:\n${replicatedFunctions
+    log(
+      `Still waiting for the following Lambda@Edge replicated functions to be deleted:\n${replicatedFunctions
         .map((fn) => fn.FunctionArn)
         .join("\n")}`
     );
 
-    // Wait 30 seconds before checking again
-    await new Promise((resolve) => setTimeout(resolve, 30000));
+    log('Waiting 10 seconds before trying again...');
+
+    // Wait 10 seconds before checking again
+    await new Promise((resolve) => setTimeout(resolve, 10000));
   }
+
+  // await waitMoreMinutes(2);
 };
 
 const waitForLambdaEdgeDeletions = async (lambdaArns:string[]): Promise<void> => {
@@ -119,7 +137,32 @@ const waitForLambdaEdgeDeletions = async (lambdaArns:string[]): Promise<void> =>
 }
 
 /**
+ * Ostensibly, related services - possibly cloudfront or cloudformation - are not immediately
+ * notified that the replicated functions have been purged, as if a polling cycle needs to run
+ * its next interval. Therefore, an extra wait needs to be applied here, else the same error is hit.
+ */
+const waitMoreMinutes = async (waitForMinutes:number) => {
+  let waitfor = waitForMinutes * MINUTE;
+  let checkback = 10 * SECOND;
+  log(`Waiting another ${waitForMinutes} minutes to allow cloudfront time to "catch up" with the new replicated function inventory...`);
+  while(true) {
+    if(waitfor <= 0) {
+      break;
+    }
+    const remainMinutes = Math.floor(waitfor/MINUTE);
+    const remainSeconds = (waitfor % MINUTE)/SECOND
+    log(`Time remaining: ${remainMinutes} minutes, ${remainSeconds} seconds`);
+    await new Promise((resolve) => setTimeout(resolve, checkback));
+    waitfor -= (checkback);
+  }
+}
+
+/**
  * Main function to handle the teardown process.
+ * Run this if deleting a stack so that the Lambda@edge functions are disassociated from their 
+ * corresponding cloudfront behaviors. Once disassociating is complete, this process will continue
+ * by polling the lambda service until it can be established that cloudfront has "cleaned up" by
+ * removing the replicated functions now that they are orphaned through being disassociated.
  */
 const main = async () => {
   try {
@@ -149,4 +192,3 @@ const main = async () => {
 (async () => {
   await main();
 })();
-
