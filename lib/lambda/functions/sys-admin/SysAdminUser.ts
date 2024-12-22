@@ -5,9 +5,11 @@ import { wipeClean } from '../../_lib/BlankSheetOfPaper';
 import { Configurations } from '../../_lib/config/Config';
 import { DAOEntity, DAOFactory } from '../../_lib/dao/dao';
 import { ENTITY_WAITING_ROOM, EntityCrud } from '../../_lib/dao/dao-entity';
-import { Config, ConfigNames, Entity, EntityFields, Role, Roles, YN } from '../../_lib/dao/entity';
+import { Config, ConfigNames, Entity, EntityFields, Role, Roles, User, YN } from '../../_lib/dao/entity';
+import { EntityToAutomate } from '../../_lib/EntityAutomation';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
 import { debugLog, error, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
+import { EntityToDemolish } from '../authorized-individual/Demolition';
 import { Task as ReAdminTasks, createEntity, createEntityAndInviteUsers, deactivateEntity, inviteUser, inviteUsers, lookupEntity, updateEntity } from '../re-admin/ReAdminUser';
 import { DynamoDbTableOutput } from './DynamoDbTableOutput';
 import { HtmlTableView } from './view/HtmlTableView';
@@ -20,6 +22,8 @@ export enum Task {
   SET_APP_CONFIG = 'set-app-config',
   CLEAN_SHEET_OF_PAPER = 'clean-sheet',
   GET_ENTITY_LIST = 'get-entity-list',
+  SHORTCUT_ENTITY_SETUP = 'shortcut-entity-setup',
+  SHORTCUT_ENTITY_TEARDOWN = 'shortcut-entity-teardown'
 }
 
 /**
@@ -90,6 +94,10 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           return await cleanSheet();
         case Task.GET_ENTITY_LIST:
           return await getEntityList();
+        case Task.SHORTCUT_ENTITY_SETUP:
+          return await entitySetup(parameters);
+        case Task.SHORTCUT_ENTITY_TEARDOWN:
+          return await entityTeardown(parameters);
       } 
     }
   }
@@ -201,6 +209,51 @@ export const getEntityList = async ():Promise<LambdaProxyIntegrationResponse> =>
   return okResponse('Ok', { entities });
 }
 
+/**
+ * Create and staff an entity
+ * @param parms 
+ * @returns 
+ */
+export const entitySetup = async (parms:any):Promise<LambdaProxyIntegrationResponse> => {
+  const { entityName, asp, ais } = parms;
+  
+  let entity = new EntityToAutomate(entityName);
+  if(asp && asp.email) {
+    entity = entity.addAsp(asp as User);
+    if(ais && ais.length > 0 && ais[0].email) {
+      entity = entity.addAI(ais[0] as User);
+    }
+    if(ais && ais.length > 1 && ais[1].email) {
+      entity = entity.addAI(ais[1] as User);
+    }
+  }
+
+  await entity.setup();
+
+  return okResponse('Ok');
+}
+
+/**
+ * Teardown and entity.
+ * @param parms 
+ * @returns 
+ */
+export const entityTeardown = async (parms:any):Promise<LambdaProxyIntegrationResponse> => {
+  const { entity_id } = parms;
+  try {
+    const demolishable = new EntityToDemolish(entity_id);
+    await demolishable.demolish();
+    return okResponse('Ok');
+  }
+  catch(e:any) {
+    log(e);
+    return errorResponse(`Internal server error: ${e.message}`);
+  }
+}
+
+
+
+
 
 /**
  * RUN MANUALLY: Modify the task, landscape, email & role as needed.
@@ -211,8 +264,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
   (async () => {
 
     try {
-      // const task = ReAdminTasks.INVITE_USER as ReAdminTasks | Task;
-      const task = Task.GET_ENTITY_LIST as ReAdminTasks | Task;
+      const task = ReAdminTasks.INVITE_USER as ReAdminTasks | Task;
+      // const task = Task.GET_ENTITY_LIST as ReAdminTasks | Task;
       let payload: IncomingPayload;
       let _event: any;
       let retval: LambdaProxyIntegrationResponse;
@@ -238,6 +291,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
             log('No body returned');
           }
           break;
+        case Task.SHORTCUT_ENTITY_SETUP: break;
+        case Task.SHORTCUT_ENTITY_TEARDOWN: break;
         case ReAdminTasks.CREATE_ENTITY: break;
         case ReAdminTasks.CREATE_ENTITY_INVITE: break;
         case ReAdminTasks.UPDATE_ENTITY: break;

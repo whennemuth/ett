@@ -956,15 +956,15 @@
 
                       <table class="sysAdminShortcuts">
                         <tr class="open">
-                          <th colspan="2">Setup a new Entity</th>
+                          <th colspan="3">Setup a new Entity</th>
                         </tr>
                         <tr>
                           <td>Entity Name</td>
-                          <td><input id="txtShortcutEntityName" type="text" class="form-control" value="The School of Hard Knocks"></td>
+                          <td colspan="2"><input id="txtShortcutEntityName" type="text" class="form-control" value="The School of Hard Knocks"></td>
                         </tr>
                         <tr>
                           <td>Representatives</td>
-                          <td>
+                          <td colspan="3">
                             <table class="sysAdminShortcuts">
                               <tr>
                                 <td>Role</td>
@@ -998,34 +998,30 @@
                           </td>
                         </tr>
                         <tr>
-                          <td style="align-items: end;" colspan="2">
-                            <button id="btnShortcutsCreateEntity" class="btn btn-primary">CREATE & STAFF ENTITY</button> 
+                          <td style="align-items: end;" colspan="3">
+                            <button id="btnShortcutsCreateEntity" class="btn btn-success" style="width:200px;">CREATE & STAFF ENTITY</button> 
                           </td>
                         </tr>
                         <tr>
-                          <td colspan="2" style="border-style:none;">&nbsp;</td>
+                          <td colspan="3" style="border-style:none;">&nbsp;</td>
                         </tr>
                         <tr class="open">
-                          <th colspan="2">Tear down an entity</th>
+                          <th colspan="3">Tear down an entity</th>
                         </tr>
                         <tr>
-                          <tr>
-                            <td>Entity</td>
-                            <td>
-                              <div id="sysAdminEntityDropdown" class="dropdown">
-                                <b>Select One:</b>&nbsp;                          
-                                <button id="sysAdminEntityDropdownButton" class="btn btn-primary btn-lg dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                  Organizations/Entities
-                                </button>
-                                <div id="sysAdminEntityDropdownList" class="dropdown-menu" aria-labelledby="sysAdminEntityDropdownButton">
-                                </div>                          
-                              </div>
-                            </td>
-                          </tr>
-                        </tr>
-                        <tr>
-                          <td style="align-items: end;" colspan="2">
-                            <button id="btnShortcutsRemoveEntity" class="btn btn-primary">TEAR DOWN ENTITY</button> 
+                          <td>Entity</td>
+                          <td>
+                            <div id="sysAdminEntityDropdown" class="dropdown">
+                              <b>Select One:</b>&nbsp;                          
+                              <button id="sysAdminEntityDropdownButton" class="btn btn-primary btn-lg dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                Organizations/Entities
+                              </button>
+                              <div id="sysAdminEntityDropdownList" class="dropdown-menu" aria-labelledby="sysAdminEntityDropdownButton">
+                              </div>                          
+                            </div>
+                          </td>
+                          <td style="align-items: end; text-align:right;">
+                            <button id="btnShortcutsRemoveEntity" class="btn btn-danger" style="width:200px;">TEAR DOWN ENTITY</button> 
                           </td>
                         </tr>
                       </table>
@@ -2433,6 +2429,95 @@
           a.innerText = entity_name;
           lbx.appendChild(a);
         });
+      }
+    }
+
+    const sendSysAdminEntitySetupRequest = async () => {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+
+        const outgoingPayload = { task: 'shortcut-entity-setup', parameters: { 
+          entityName: document.getElementById('txtShortcutEntityName').value, 
+          asp: {
+            email: document.getElementById('txtShortcutAspEmail').value,
+            fullname: document.getElementById('txtShortcutAspFullname').value,
+            phone_number: document.getElementById('txtShortcutAspPhone').value,
+            title: document.getElementById('txtShortcutAspTitle').value
+          }, 
+          ais: [
+            {
+              email: document.getElementById('txtShortcutAuth1Email').value,
+              fullname: document.getElementById('txtShortcutAuth1Fullname').value,
+              phone_number: document.getElementById('txtShortcutAuth1Phone').value,
+              title: document.getElementById('txtShortcutAuth1Title').value
+            },
+            {
+              email: document.getElementById('txtShortcutAuth2Email').value,
+              fullname: document.getElementById('txtShortcutAuth2Fullname').value,
+              phone_number: document.getElementById('txtShortcutAuth2Phone').value,
+              title: document.getElementById('txtShortcutAuth2Title').value
+            }
+          ] 
+        }};
+
+        const response = await fetch(apiUri('SYS_ADMIN'), {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify(outgoingPayload)
+          }
+        });
+
+        const package = await response.json();
+        const { message, payload: { ok } } = package;
+        if(ok) {
+          alert('Entity setup successful');
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
+    const sendSysAdminEntityTeardownRequest = async () => {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      if( ! selectedEntity) {
+        alert('Entity selection required');
+        return;
+      }
+      const parameters = selectedEntity;
+      try {
+        const outgoingPayload = { task: 'shortcut-entity-teardown', parameters };
+        const response = await fetch(apiUri('SYS_ADMIN'), {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify(outgoingPayload)
+          }
+        });
+
+        const package = await response.json();
+        const { message, payload: { ok } } = package;
+        if(ok) {
+          alert('Entity teardown successful');
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
       }
     }
 
@@ -4803,6 +4888,24 @@
           }
           toggleExhibitCorrectionByEntity(_event)
         });
+      });
+
+      // Add behavior to selection activity on the entity picklist for sysadmin shortcuts tab
+      $('#sysAdminEntityDropdownButton').on('hide.bs.dropdown', function () {
+        const { srcElement:a } = event;
+        if(a.tagName == 'A' && a.name && a.id) {
+          const button = document.getElementById('sysAdminEntityDropdownButton');
+          button.innerText = a.name;
+          selectedEntity = { entity_id: a.id };
+        }
+      });
+
+      $('#btnShortcutsCreateEntity').on('click', async () => {
+        await sendSysAdminEntitySetupRequest();
+      });      
+
+      $('#btnShortcutsRemoveEntity').on('click', async () => {
+        await sendSysAdminEntityTeardownRequest();
       });
 
       // Add behavior to selection activity on the consenter picklist for exhibit form requests

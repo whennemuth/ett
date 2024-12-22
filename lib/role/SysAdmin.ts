@@ -9,6 +9,7 @@ import { Roles } from '../lambda/_lib/dao/entity';
 import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
 import { Configurations } from "../lambda/_lib/config/Config";
 import { ExhibitFormsBucketEnvironmentVariableName } from "../lambda/functions/consenting-person/BucketItemMetadata";
+import { Duration } from "aws-cdk-lib";
 
 export class SysAdminApi extends AbstractRole {
   private api: AbstractRoleApi;
@@ -62,13 +63,14 @@ export class LambdaFunction extends AbstractFunction {
     const { ACCOUNT, CONFIG, REGION, TAGS: { Landscape:landscape }, STACK_ID } = context;
     const config = new Configurations(CONFIG);
     const { userPool, userPoolName, userPoolDomain, cloudfrontDomain, redirectPath, exhibitFormsBucket } = parms;
-    const { userPoolArn } = userPool;
+    const { userPoolArn, userPoolId } = userPool;
     const redirectUri = `https://${(cloudfrontDomain + '/' + redirectPath).replace('//', '/')}`;
     const prefix = `${STACK_ID}-${landscape}`;
 
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
       memorySize: 1024,
+      timeout: Duration.seconds(15),
       entry: 'lib/lambda/functions/sys-admin/SysAdminUser.ts',
       // handler: 'handler',
       functionName: `${prefix}-${Roles.SYS_ADMIN}-user`,
@@ -102,7 +104,12 @@ export class LambdaFunction extends AbstractFunction {
                 effect: Effect.ALLOW
               }),
               new PolicyStatement({
-                actions: [  'cognito-idp:AdminGet*', 'cognito-idp:AdminDeleteUser' ],
+                actions: [  
+                  'cognito-idp:AdminGet*', 
+                  'cognito-idp:AdminCreateUser',
+                  'cognito-idp:AdminDeleteUser', 
+                  'cognito-idp:AdminSetUserPassword' 
+                ],
                 resources: [ userPoolArn ],
                 effect: Effect.ALLOW
               })
@@ -122,6 +129,7 @@ export class LambdaFunction extends AbstractFunction {
         REGION,
         PREFIX: prefix,
         [Configurations.ENV_VAR_NAME]: config.getJson(),
+        USERPOOL_ID: userPoolId,
         USERPOOL_NAME: userPoolName,
         COGNITO_DOMAIN: userPoolDomain,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
