@@ -1,3 +1,4 @@
+import { QueryCommandInput } from '@aws-sdk/client-dynamodb';
 import { ConfigCrud } from './dao-config';
 import { ConsenterCrud } from './dao-consenter';
 import { EntityCrud } from './dao-entity';
@@ -15,7 +16,8 @@ type Baseline = {
   test():Promise<any>;
 }
 export type ReadParms = {
-  convertDates:boolean
+  convertDates:boolean,
+  filterExpressions?: Array<(input: QueryCommandInput) => void>;
 };
 export type DAOUser = Baseline & { 
   read(parms?:ReadParms):Promise<(User|null)|User[]>, 

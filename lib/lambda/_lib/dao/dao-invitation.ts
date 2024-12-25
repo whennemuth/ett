@@ -3,9 +3,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { DAOInvitation, ReadParms } from './dao';
 import { convertFromApiObject } from './db-object-builder';
 import { invitationUpdate } from './db-update-builder.invitation';
-import { Invitation, InvitationFields } from './entity';
+import { Invitation, InvitationFields, Role, Roles } from './entity';
 import { DynamoDbConstruct, IndexBaseNames, TableBaseNames } from '../../../DynamoDb';
 import { debugLog, log } from '../../Utils';
+import { FilterExpression } from './filter';
+import { ENTITY_WAITING_ROOM } from './dao-entity';
 
 /**
  * Basic CRUD operations for the invitations table.
@@ -114,6 +116,7 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
     let vals = {} as any;
     let cdns = '';
     let index = INVITATIONS_EMAIL;
+    const { convertDates, filterExpressions } = (readParms ?? {});
 
     // Build QueryCommandInput fields
     if(email) {
@@ -139,11 +142,12 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
       KeyConditionExpression: cdns
     } as QueryCommandInput;
 
+    (filterExpressions ?? []).forEach(expression => expression(params))
+
     // Run the query
     command = new QueryCommand(params);
     const retval = await sendCommand(command);
     const invitations = [] as Invitation[];
-    const { convertDates } = (readParms ?? {});
     for(const item in retval.Items) {
       invitations.push(await loadInvitation(retval.Items[item], convertDates ?? true));
     }
@@ -238,4 +242,47 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
   }
 
   return { create, read, update, Delete, deleteEntity, code, dryRun, test, } as DAOInvitation;
+}
+
+export const RoleEqualsFilterExpression = (role:Role): ((input: QueryCommandInput) => void) => {
+  return new FilterExpression(InvitationFields.role, role).equalsMutator();
+}
+
+export const EntityNotEqualsFilterExpression = (entityId:string): ((input: QueryCommandInput) => void) => {
+  return new FilterExpression(InvitationFields.entity_id, entityId).notEqualsMutator();
+}
+
+
+
+
+/**
+ * RUN MANUALLY
+ */
+const { argv:args } = process;
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/dao/dao-invitation.ts')) {
+
+  const task = 'read-entity' as 'create' | 'update' | 'read-email' | 'read-entity' | 'delete';
+
+  (async () => {
+    switch(task) {
+      case 'create':
+      case 'update':
+      case 'read-email':
+        const invitation = await InvitationCrud({ email: 'asp1.random.edu@warhen.work' } as Invitation).read();
+        log(invitation, 'Retrieved invitation');
+        break;
+      case 'read-entity':
+        const invitations = await InvitationCrud({ 
+          entity_id: '2c0c4086-1bc0-4876-b7db-ed4244b16a6b' 
+        } as Invitation).read({
+          filterExpressions: [
+            RoleEqualsFilterExpression(Roles.RE_ADMIN),
+            EntityNotEqualsFilterExpression(ENTITY_WAITING_ROOM)
+          ]
+        } as ReadParms);
+        log(invitations, 'Retrieved invitations');
+        break;
+      case 'delete':
+    }
+  })();
 }
