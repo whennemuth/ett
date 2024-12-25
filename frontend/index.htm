@@ -1094,7 +1094,10 @@
                   </div>                  
                 </div>
                 <div class="tab-pane fade" id="re-admin-misc" role="tabpanel" aria-labelledby="re-admin-misc-link">
-                  <h3 class="display-7 fw-bold" style="text-align:center; margin-bottom: 20px;">Something else can go here, not sure what</h3>
+                  <h3 class="display-7 fw-bold" style="text-align:center; margin-bottom: 20px;">Miscellaneous</h3>
+                  <div id="divPendingInvitationsAsp">
+
+                  </div>
                 </div>
               </div>
             </div>
@@ -1211,9 +1214,9 @@
                         <td>
                           <button id="btnAmendEntityName" class="btn btn-primary" type="button">Amend</button>
                         </td>
-                      </tr>
-                      
+                      </tr>                     
                     </table>
+                    <div id="divPendingInvitationsAi" style="margin-top:70px;"></div>
                   </div>
                 </div>                
               </div>
@@ -4137,6 +4140,64 @@
     }
 
     /**
+     * Populate a display for Asps or Authorized individuals listing out the users
+     * who have been invited to register with the entity who have not yet done so.
+     */
+    const populatePendingInvitations = () => {
+      const parentDiv = document.getElementById(
+        'divPendingInvitations' + (selected_role == 'RE_ADMIN' ? 'Asp': 'Ai')
+      );
+      const { entity: { pendingInvitations=[] }} = userContext;
+      const titleDiv = document.createElement('div');
+      titleDiv.style.overflow = 'auto';
+      titleDiv.style.float = 'left';
+      titleDiv.style.clear = 'both';
+      titleDiv.style.margin = '4px';
+      titleDiv.style.padding = '6px';
+      titleDiv.style.fontSize = '18px';
+      titleDiv.style.fontWeight = 'bold';
+      titleDiv.style.marginBottom = '8px';
+      titleDiv.innerText = 'Pending Invitations';
+      parentDiv.appendChild(titleDiv);
+      if(pendingInvitations.length == 0) {
+        pendingInvitations.push({ invitations: 'None pending'});
+      }
+      
+      pendingInvitations.forEach(invitation => {
+        const div = document.createElement('div');
+        div.style.overflow = 'auto';
+        div.style.float = 'left';
+        div.style.clear = 'both';
+        div.style.margin = '4px';
+        div.style.padding = '6px';
+        div.style.borderStyle = 'solid';
+        div.style.borderWidth = '1px';
+        div.style.borderColor = '#cccccc';
+        parentDiv.appendChild(div);
+        Object.keys(invitation).forEach(key => {
+          const fldname = document.createElement('div');
+          fldname.style.float = 'left';
+          fldname.style.clear = 'both';
+          fldname.style.fontSize = '16px';
+          fldname.style.textAlign = 'right';
+          fldname.style.fontWeight = 'bold';
+          fldname.style.width = '150px';
+          fldname.style.margin = '2px';
+          fldname.innerText = `${key}:`;
+          div.appendChild(fldname);
+
+          const fldval = document.createElement('div');
+          fldval.style.float = 'left';
+          fldval.style.fontSize = '16px';
+          fldval.style.margin = '2px';
+          fldval.style.marginLeft = '6px';
+          fldval.innerText = invitation[key];
+          div.appendChild(fldval);
+        })
+      })
+    }
+
+    /**
      * Create line items for representatives portion of the amend entity tab so that the current
      * user can select and replace any of the existing users of the entity.
      */
@@ -4986,6 +5047,7 @@
 
             case 'RE_ADMIN':
               await setUserContext();
+              populatePendingInvitations();
               const noEntityYet = () => { 
                 const { entity } = userContext;
                 const { entity_id, entity_name } = (entity ?? {});
@@ -5012,6 +5074,7 @@
 
             case 'RE_AUTH_IND':
               await setUserContext();
+              populatePendingInvitations();
               const { entity } = userContext;
               const { users=[], entity_name, totalUserCount } = (entity ?? {});
               const validUsers = users.filter(u => { return u.active == 'Y'; });

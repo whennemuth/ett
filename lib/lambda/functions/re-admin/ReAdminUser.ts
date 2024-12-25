@@ -5,6 +5,7 @@ import { lookupEmail, lookupUserPoolId } from '../../_lib/cognito/Lookup';
 import { Configurations } from '../../_lib/config/Config';
 import { DAOEntity, DAOFactory, DAOUser } from '../../_lib/dao/dao';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
+import { InvitationCrud } from '../../_lib/dao/dao-invitation';
 import { ConfigNames, Entity, Invitation, Role, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
 import { UserInvitation } from '../../_lib/invitation/Invitation';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
@@ -114,7 +115,26 @@ export const lookupEntity = async (email:string, role:Role):Promise<LambdaProxyI
     return await dao.read() as Entity;
   }
 
-  // 1) Get the user specified by the email.
+  // Should return all pending invitations
+  const pendingInvitationCache = {} as any;
+  const getPendingInvitations = async (entity_id:string):Promise<Invitation[]> => {
+    if(pendingInvitationCache[entity_id]) {
+      return pendingInvitationCache[entity_id];
+    }
+    let invitations = await InvitationCrud({ entity_id } as Invitation).read() ?? [];
+    if( ! (invitations instanceof Array)) {
+      invitations = [ invitations ];
+    }
+    pendingInvitationCache[entity_id] = invitations.filter(invitation => {
+      // Pending invitations will be those that have not had their emails set yet.
+      return invitation.email == invitation.code;
+    });
+    return pendingInvitationCache[entity_id];
+  }
+  
+
+  // 1) Get the user specified by the email. Almost never will this return more than
+  // one entry, unless this user is a rep at more than one entity - should be RARE!
   const users = await getUser();
 
   // 2) Gather all the information about the entity and the other users in it.
@@ -132,6 +152,7 @@ export const lookupEntity = async (email:string, role:Role):Promise<LambdaProxyI
       delete retval.entity_id;
       return retval;
     });
+    usr.entity.pendingInvitations = await getPendingInvitations(usr.entity.entity_id);
     usr.entity.totalUserCount = totalUserCount;
     userinfo.push(usr);
   }
@@ -526,7 +547,7 @@ export const createEntityAndInviteUsers = async (parameters:any, callerSub?:stri
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/re-admin/ReAdminUser.ts')) {
 
-  const task = Task.INVITE_USERS as Task;
+  const task = Task.LOOKUP_USER_CONTEXT as Task;
   const { DisclosureRequestReminder, HandleStaleEntityVacancy } = DelayedExecutions;
 
   (async () => {
@@ -562,12 +583,13 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     let _event = {};
 
     switch(task) {
+      case Task.LOOKUP_USER_CONTEXT:
       case Task.INVITE_USER:
         payload = {
           task,
           parameters: {
-            email: 'asp.ssu.edu@warhen.work',
-            role: Roles.RE_AUTH_IND,
+            email: 'asp1.random.edu@warhen.work',
+            role: Roles.RE_ADMIN,
           }
         } as IncomingPayload;
         _event = {
