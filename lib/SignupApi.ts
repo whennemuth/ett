@@ -110,6 +110,8 @@ export class SignupApiConstruct extends Construct {
     // Create the rest api
     const api = new LambdaRestApi(this, `${basename}LambdaRestApi`, {
       deployOptions: {
+        throttlingRateLimit: 1,
+        throttlingBurstLimit: 5,
         description: `API ${description}`,
         stageName: stageName
       },
@@ -169,6 +171,8 @@ export class SignupApiConstruct extends Construct {
     // Create the rest api
     const api = new LambdaRestApi(this, `${basename}LambdaRestApi`, {
       deployOptions: {
+        throttlingRateLimit: 1,
+        throttlingBurstLimit: 5,
         description: `API ${description}`,
         stageName
       },

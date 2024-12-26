@@ -99,6 +99,8 @@ export class AbstractRoleApi extends Construct {
       restApiName: `${STACK_ID}-${stageName}-${role}-rest-api`,
       deployOptions: { 
         stageName,
+        throttlingRateLimit: 2,
+        throttlingBurstLimit: 10,
         accessLogDestination: new LogGroupLogDestination(log_group),
         accessLogFormat: AccessLogFormat.clf(),
         loggingLevel: MethodLoggingLevel.INFO,
