@@ -4405,7 +4405,13 @@
             'Content-Type': 'application/json',
             [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({ 
               task: 'send-exhibit-form-request', 
-              parameters: { consenterEmail:selectedConsenter, entity_id, constraint, linkUri:redirectUri() } 
+              parameters: { 
+                consenterEmail:selectedConsenter, 
+                entity_id, 
+                constraint, 
+                linkUri:redirectUri(),
+                filename: 'index.htm'
+              } 
             })
           }
         });

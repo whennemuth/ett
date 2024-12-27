@@ -10,7 +10,8 @@ export type ExhibitFormRequestEmailParms = {
   consenterEmail:string;
   entity_id:string;
   linkUri:string;
-  constraint: 'current' | 'other' | 'both'
+  constraint: 'current' | 'other' | 'both';
+  filename?: string
 }
 
 export class ExhibitFormRequestEmail {
@@ -21,8 +22,8 @@ export class ExhibitFormRequestEmail {
   }
 
   public send = async ():Promise<boolean> => {
-    let { parms: { consenterEmail, entity_id, linkUri, constraint }} = this;
-    if( ! linkUri.endsWith('/')) {
+    let { parms: { consenterEmail, entity_id, linkUri, constraint, filename }} = this;
+    if((linkUri ?? '').endsWith('/')) {
       linkUri = linkUri.substring(0, linkUri.length -1); // Clip off trailing '/'
     }
 
@@ -46,13 +47,17 @@ export class ExhibitFormRequestEmail {
     }
   
     const context:IContext = <IContext>ctx;
+    let link = `${linkUri}/consenting/add-exhibit-form/${constraint}`;
+    if(filename) {
+      link = link + '/' + filename;
+    }
     return sendEmail({
       subject: `ETT Exhibit Form Request`,
       to: [ consenterEmail ],
       message: `Thankyou ${consenterFullName} for registering with the Ethical Tranparency Tool.<br>` +
         `${entity_name} is requesting you take the next step and fill out a prior contacts or "exhibit" form.<br>` +
         `Follow the link provided below to log in to your ETT account and to access the form:` + 
-        `<p>${linkUri}/consenting/add-exhibit-form/${constraint}/index.htm</p>`,
+        `<p>${link}</p>`,
       from: `noreply@${context.ETT_DOMAIN}`,
       attachments: []
     } as EmailParms);  
@@ -69,7 +74,7 @@ const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/authorized-individual/ExhibitFormRequestEmail.ts')) {
 
   const consenterEmail = 'cp1@warhen.work';
-  const entity_id = '3ef70b3e-456b-42e8-86b0-d8fbd0066628';
+  const entity_id = '2c0c4086-1bc0-4876-b7db-ed4244b16a6b';
 
   (async() => {
     // 1) Get context variables
@@ -87,7 +92,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     await new ExhibitFormRequestEmail({ 
       consenterEmail, 
       entity_id, 
-      linkUri:`https://${cloudfrontDomain}/bootstrap`, 
+      linkUri:`https://${cloudfrontDomain}`, 
       constraint:"both" 
     } as ExhibitFormRequestEmailParms).send();
 
