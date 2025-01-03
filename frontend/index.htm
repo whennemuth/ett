@@ -1124,8 +1124,8 @@
               <div id="authNotReady">
                 <p>
                   <span id="disclosureRequestEntityName">The organization</span> is not yet fully registered.<br>
-                  Features on this screen have been disabled pending arrival of another representative.<br>
-                  Please revisit later.
+                  Some tabs and features have been disabled pending arrival of another representative.<br>
+                  Please revisit later for full functionality.
                 </p>
               </div>
 
@@ -3845,21 +3845,54 @@
      */
     const setUserContext = async () => {
       if(localTesting()) {
-        const asp = { email:'kong@skull.island.com', fullname:'King Kong', title:'Head Honcho', role:'RE_ADMIN', active:'Y' };
-        const ai1 = { email:'mary@disney.com', fullname:'Mary Poppins', title:'Nannie', role:'RE_AUTH_IND', active:'Y'};
-        const ai2 = { email:'mickey@disney.com', fullname:'Mickey Mouse', title:'Entertainer', role:'RE_AUTH_IND', active:'Y'};
         const entity_id = 'abc123';
         const entity_name = 'The Hughs Corporation';
+        const asp = { 
+          user: { email:'kong@skull.island.com', fullname:'King Kong', title:'Head Honcho', role:'RE_ADMIN', active:'Y' },
+          invitation: { code:'abc123', entity_id, role:'RE_ADMIN', entity_name, email:'abc123', sent_timestamp: '2024-12-23T20:25:23.092Z' }
+        };
+        const ai1 = { 
+          user: { email:'mary@disney.com', fullname:'Mary Poppins', title:'Nannie', role:'RE_AUTH_IND', active:'Y' },
+          invitation: { code:'def456', entity_id, role:'RE_AUTH_IND', entity_name, email:'def456', sent_timestamp: '2024-12-24T20:25:23.092Z' }
+        };
+        const ai2 = { 
+          user: { email:'mickey@disney.com', fullname:'Mickey Mouse', title:'Entertainer', role:'RE_AUTH_IND', active:'Y' },
+          invitation: { code:'ghi789', entity_id, role:'RE_AUTH_IND', entity_name, email:'ghi789', sent_timestamp: '2024-12-24T20:25:23.438Z' }
+        }
+
+        // let users = [ asp.user ];
+        // let users = [ ai1.user ];
+        let users = [ asp.user, ai1.user ];
+        // let users = [ asp.user, ai1.user, ai2.user ];
+        const pendingInvitations = [];
+        if( ! users.find(u => u.email.startsWith('kong'))) {
+          pendingInvitations.push(asp.invitation)
+        }
+        if( ! users.find(u => u.email.startsWith('mary'))) {
+          pendingInvitations.push(ai1.invitation)
+        }
+        if( ! users.find(u => u.email.startsWith('mickey'))) {
+          pendingInvitations.push(ai2.invitation)
+        }
+
         if(selected_role == 'RE_ADMIN') {
+          users = users.filter(u => u.role != 'RE_ADMIN');
+          const { fullname, email, title, role } = asp.user;
           userContext = {
-            fullname: asp.fullname, email: asp.email, title: asp.title, role: asp.role,          
-            entity: { entity_id, entity_name, users: [ ai1, ai2 ]}
+            fullname, email, title, role,          
+            entity: { entity_id, entity_name, users, pendingInvitations, totalUserCount:users.length+1 }
           }
         }
         else {
+          let thisAi = 'mary';
+          if( ! users.find(u => u.email.startsWith('mary'))) {
+            thisAi = 'mickey';
+          }
+          users = users.filter(u => u.email.startsWith(thisAi) == false);
+          const { fullname, email, title, role } = ai1.user;
           userContext = {
-            fullname:ai1.fullname, email: ai1.email, title: ai1.title, role: ai1.role,           
-            entity: { entity_id, entity_name, users: [ asp, ai2 ], totalUserCount:3}
+            fullname, email, title, role,           
+            entity: { entity_id, entity_name, users, pendingInvitations, totalUserCount:users.length+1 }
           }
         }
         return;
@@ -4176,6 +4209,9 @@
         div.style.borderColor = '#cccccc';
         parentDiv.appendChild(div);
         Object.keys(invitation).forEach(key => {
+          if(key == 'email' && invitation.email == invitation.code) {
+            return;
+          }
           const fldname = document.createElement('div');
           fldname.style.float = 'left';
           fldname.style.clear = 'both';
@@ -4283,7 +4319,7 @@
           input.className = 'form-control';
           input.placeholder = `enter email address of invitee to replace ${fullname} here . . .`;
           if(incompleteRegistration()) {
-            input.disabled = true;
+            // input.disabled = true;
           }
           td.appendChild(input);          
         }         
@@ -4300,7 +4336,7 @@
           });
         });
         if(incompleteRegistration()) {
-          button.disabled = true;
+          // button.disabled = true;
         }
         td.appendChild(button);
       })
@@ -4714,10 +4750,13 @@
       };
       this.getUser = function() {
         if(localTesting()) {
-          const { entity: { users }} = userContext; 
-          const idx = selected_role == 'RE_ADMIN' ? 0 : 1;
+          let { entity: { users }, fullName, title, role, email } = userContext;
+          if(users.length == 0) {
+            return { name:fullName, email, getDisplayName: () => fullName || email };
+          }
+          const idx = selected_role == 'RE_ADMIN' ? 0 : users.length - 1;
           const name = users[idx].fullname;
-          const email = users[idx].email;
+          email = users[idx].email;
           return { name, email, getDisplayName: () => name || email };
          }
         const decodedToken = this.getDecodedToken();
@@ -5093,6 +5132,7 @@
                 if(entity_name) {
                   document.getElementById('disclosureRequestEntityName').innerText = entity_name;
                 }
+                // Disable all controls
                 document.querySelectorAll(`#disclosureRequest table`).forEach(d => d.style.color = '#cccccc');
                 document.querySelectorAll(`#disclosureRequest input`).forEach(i => i.disabled = true);
                 document.querySelectorAll(`#disclosureRequest button`).forEach(b => b.disabled = true);
@@ -5102,6 +5142,13 @@
                 document.querySelectorAll(`#authIndContent button`).forEach(b => b.disabled = true);
                 document.querySelectorAll(`#amendEntity button`).forEach(b => b.disabled = true);
                 document.querySelectorAll(`#amendEntity input`).forEach(i => i.disabled = true);
+
+                // Re-enable the controls for the amend entity tab
+                document.querySelector(`#auth-amend-entity`).style.color = ''
+                document.querySelectorAll(`#auth-amend-entity input`).forEach(i => i.disabled = false);
+                document.querySelectorAll(`#auth-amend-entity button`).forEach(b => b.disabled = false);
+                document.querySelectorAll(`#auth-amend-entity div`).forEach(d => d.style.color = '');
+                document.querySelectorAll(`#auth-amend-entity label`).forEach(l => l.style.color = '');
               }
               const checkConsenterListing = async () => {
                 const exhibitsTabFocus = document.getElementById('auth-request-exhibits').className.includes('show');
