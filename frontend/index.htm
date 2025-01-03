@@ -1911,8 +1911,9 @@
     /**
      * Get the uri that cognito is to redirect to after successful signin
      */
-    const redirectUri = () => {
-      if(exhibitsPath.isMatch()) {
+    const redirectUri = (parms={}) => {
+      const { landingPage } = parms;
+      if( ! landingPage && exhibitsPath.isMatch()) {
         return exhibitsPath.getRedirectUri();
       }
       return STATIC_PARAMETERS.ROLES[selected_role].REDIRECT_URI;
@@ -3802,7 +3803,7 @@
     function signOut() {
       const params = {
         client_id: clientId(),
-        logout_uri: encodeURIComponent(`${redirectUri()}?action=logout`)
+        logout_uri: encodeURIComponent(`${redirectUri({ landingPage:true })}?action=logout`)
       };
       const queryString = Object.keys(params).map(key => `${key}=${params[key]}`).join('&');
       const signOutUrl = `https://${STATIC_PARAMETERS.COGNITO_DOMAIN}/logout?${queryString}`;
@@ -5197,7 +5198,9 @@
           if(exhibitsPath.isMatch()) {
             href = exhibitsPath.getOriginAndPath();
           }
-          href = `${href}/index.htm`; 
+          if( ! href.endsWith('/index.htm')) {
+            href = `${href}/index.htm`; 
+          }
 
           // Add back the task querystring parameter if it was originally present.
           const queryParams = new URLSearchParams(window.location.search);
