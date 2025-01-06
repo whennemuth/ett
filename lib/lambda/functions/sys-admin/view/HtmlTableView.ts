@@ -11,6 +11,10 @@ export class HtmlTableView extends AbstractTableView {
     this.joinVal = "\n";
   }
 
+  protected getInstance(a?:any[]): AbstractTableView {
+    return new HtmlTableView(a);
+  }
+
   protected renderTable = (content:string): string => {
     const { joinVal:jv } = this;
     // const styles = {
@@ -19,11 +23,16 @@ export class HtmlTableView extends AbstractTableView {
     // }
     // const style = Object.entries(styles).map(entry => `${entry[0]}:${entry[1]};`).join('');
 
-    const style = `<style>
-      table.dbTable, table.dbTable th, table.dbTable td {
+    const style = `<style id='dbTableStyles'>
+      table.dbTable {
+        border-collapse: collapse;
+        font-size: 12px;
+        font-family: helvetica;      
+      }
+      table.dbTable th, table.dbTable td {
         border: 1px solid black;
         border-collapse: collapse;
-        font-size: 10px;
+        font-size: 12px;
         font-family: helvetica;
       }
       table.dbTable th {
@@ -39,15 +48,20 @@ export class HtmlTableView extends AbstractTableView {
         border-right: 1px solid black;
       }
       table.dbTable td, th {
-        padding: 2px;
+        padding: 4px;
+      }
+      pre.dbTable {
+        color: black;
+        background-color: white;
+        font-size: 16px;
       }
       pre.dbTable:hover {
         cursor: pointer;
-        font-weight: bold;  
+        font-weight: bold;
       }
     </style>
-    <script>
-      function showHide() {
+    <script id='dbTableScripts'>
+      function showHideDbTable() {
         const { children } = event.srcElement.parentElement;
         const hiding = children[0].innerText.includes('+');  
         children[0].innerText = hiding ? '-{...}' : '+{...}';
@@ -57,10 +71,10 @@ export class HtmlTableView extends AbstractTableView {
     `;
 
     if(this.offset == 0) {
-      return `${style}${jv}<table class='dbtable'>${jv}${content}${jv}</table>`;
+      return `${style}${jv}<table class='dbTable'>${jv}${content}${jv}</table>`;
     }
     else {
-      return `${jv}<pre  class='dbtable' onclick='showHide();'>+{...}</pre><table style='display:none;' class='dbtable'>${jv}${content}${jv}</table>`;
+      return `${jv}<pre class='dbTable' onclick='showHideDbTable();'>+{...}</pre><table style='display:none;' class='dbTable'>${jv}${content}${jv}</table>`;
     }  
   }
 
@@ -103,6 +117,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
       {
         dessert: 'ice cream',
         fruit: 'orange',
+        drinks: [ { name: 'water' }, { name: 'soda' }, { name: 'coffee' } ],
+        other: [ 'one', 'two', 'three' ]
       }
     ] as any[];
   } 

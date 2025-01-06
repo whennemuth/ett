@@ -11,6 +11,7 @@ export abstract class AbstractTableView implements View {
   protected joinVal = "";
   protected offset:number = 0;
   
+  protected abstract getInstance(a?:any[]):AbstractTableView
   protected abstract renderTable(content:string):string
   protected abstract renderRow(content:string):string
   protected abstract renderCell(content:string|null):string
@@ -27,7 +28,7 @@ export abstract class AbstractTableView implements View {
       const obj = a[i];
       for (const key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
-          header.add(key)          
+          header.add(key);
         }
       }
     }
@@ -39,7 +40,7 @@ export abstract class AbstractTableView implements View {
    */
   public render = (_a?:any[]): string => {
     this.a = _a ?? (this.a ?? []);
-    const { buildHeader, render, renderTable, renderRow, renderCell, renderHeaderCell, a, header, joinVal } = this;
+    const { getInstance, buildHeader, render, renderTable, renderRow, renderCell, renderHeaderCell, a, header, joinVal } = this;
 
     buildHeader();
 
@@ -48,9 +49,12 @@ export abstract class AbstractTableView implements View {
 
     // Render the header row
     for(const key of header) {
+      if(key === 'SKIP_HEADER') continue;
       renderedCells.push(renderHeaderCell(key));
     }
-    renderedRows.push(renderRow(renderedCells.join(joinVal)));
+    if(renderedCells.length > 0) {
+      renderedRows.push(renderRow(renderedCells.join(joinVal)));
+    }
 
     // Render the remaining rows
     for(let i=0; i<a.length; i++) {
@@ -60,14 +64,19 @@ export abstract class AbstractTableView implements View {
         const fldval = obj[key];
         if(typeof fldval === 'object') {
           let content = null;
-          this.offset++;
+          let renderable = null;
           if(fldval instanceof Array) {
-            content = render(fldval);
+            renderable = fldval.map(item => {
+              let childKey = (item instanceof Object) ? key : 'SKIP_HEADER';
+              return { [childKey]: item };
+            });
           }
           else {
-            content = render([fldval]);
+            renderable = [fldval];
           }
-          this.offset--;
+          const nestedView = getInstance(renderable);
+          nestedView.offset = this.offset+1;
+          content = nestedView.render();
           renderedCells.push(renderCell(content));
         }
         else {

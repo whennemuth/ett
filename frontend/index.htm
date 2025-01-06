@@ -3581,7 +3581,40 @@
         const { message, payload } = package;
         if(payload.ok) {
           const { html } = payload;
-          document.getElementById(`db-table-${tableName}`).innerHTML = html;
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = html;
+
+          // Append styles
+          const styles = tempDiv.querySelectorAll('style');
+          styles.forEach(style => {
+            const uniqueId = style.getAttribute('id');
+            if (!document.querySelector(`style[id="${uniqueId}"]`)) {
+              document.head.appendChild(style);
+            }
+          });
+
+          // Append scripts
+          const scripts = tempDiv.querySelectorAll('script');
+          scripts.forEach(script => {
+            const uniqueId = script.getAttribute('id');
+            if (!document.querySelector(`script[id="${uniqueId}"]`)) {
+              const newScript = document.createElement('script');
+              newScript.textContent = script.textContent;
+              newScript.setAttribute('id', uniqueId);
+              document.body.appendChild(newScript);
+            }
+          });
+
+          // Clear the target div
+          const tableDiv = document.getElementById(`db-table-${tableName}`);
+          while (tableDiv.firstChild) {
+            tableDiv.removeChild(tableDiv.firstChild);
+          }
+
+          // Append the new content as a node
+          Array.from(tempDiv.childNodes).forEach(node => {
+            tableDiv.appendChild(node);
+          });
         }
         else {
           msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
