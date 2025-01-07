@@ -164,6 +164,10 @@ const buildAll = () => {
     value: `https://${cloudfront.getDistributionDomainName()}`,
     description: 'The domain name of the Cloudfront Distribution, such as d111111abcdef8.cloudfront.net.'
   });
+  new CfnOutput(stack, 'CloudFrontURLBootstap', {
+    value: `https://${cloudfront.getDistributionDomainName()}/bootstrap/index.htm`,
+    description: 'The domain name of the Cloudfront Distribution, such as d111111abcdef8.cloudfront.net.'
+  });
   new CfnOutput(stack, 'UserPoolProviderUrl', {
     value: cognito.getUserPool().userPoolProviderUrl,
     description: 'User pool provider URL'
