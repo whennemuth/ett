@@ -6,7 +6,7 @@ import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { Configurations } from "../../_lib/config/Config";
 import { DAOConsenter, DAOFactory, DAOUser } from "../../_lib/dao/dao";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
-import { ConfigNames, Consenter, Entity, Roles, User, YN } from "../../_lib/dao/entity";
+import { ConfigNames, Consenter, Entity, Role, Roles, User, YN } from "../../_lib/dao/entity";
 import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
@@ -15,12 +15,13 @@ import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureF
 import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
 import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
 import { DisclosureRequestReminderLambdaParms } from "../delayed-execution/SendDisclosureRequestReminder";
-import { lookupEntity } from "../re-admin/ReAdminUser";
+import { inviteUser, lookupEntity } from "../re-admin/ReAdminUser";
 import { DemolitionRecord, EntityToDemolish } from "./Demolition";
 import { DisclosureEmailParms, DisclosureRequestEmail } from "./DisclosureRequestEmail";
 import { ExhibitFormRequestEmail } from "./ExhibitFormRequestEmail";
 import { EntityToCorrect } from "./correction/EntityCorrection";
 import { Personnel } from "./correction/EntityPersonnel";
+import { SignupLink } from "../../_lib/invitation/SignupLink";
 
 export enum Task {
   LOOKUP_USER_CONTEXT = 'lookup-user-context',
@@ -30,6 +31,7 @@ export enum Task {
   GET_CONSENTERS = 'get-consenter-list',
   AMEND_ENTITY_NAME = 'amend-entity-name',  
   AMEND_ENTITY_USER = 'amend-entity-user',  
+  INVITE_USER = 'invite-user',
   PING = 'ping'
 };
 
@@ -87,7 +89,14 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
 
         case Task.AMEND_ENTITY_USER:
           return await amendEntityUser(parameters);
-      
+
+        case Task.INVITE_USER:
+           var { email, entity_id, role, registrationUri } = parameters;
+           var user = { email, entity_id, role } as User;
+           return await inviteUser(user, Roles.RE_AUTH_IND, async (entity_id:string, role?:Role) => {
+             return await new SignupLink().getRegistrationLink({ entity_id, registrationUri });
+           }, callerSub);          
+          
         case Task.PING:
           return okResponse('Ping!', parameters);
       } 
@@ -431,7 +440,7 @@ export const sendDisclosureRequest = async (consenterEmail:string, entity_id:str
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/authorized-individual/AuthorizedIndividual.ts')) {
 
-  const task:Task = Task.GET_CONSENTERS;
+  const task:Task = Task.INVITE_USER;
   const { DisclosureRequestReminder, HandleStaleEntityVacancy } = DelayedExecutions;
 
   (async () => {
@@ -512,6 +521,17 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         _event.headers[AbstractRoleApi.ETTPayloadHeader] = JSON.stringify({ task, parameters: {
           fragment
         }} as IncomingPayload);
+        break;
+
+      case Task.INVITE_USER:
+        _event.headers[AbstractRoleApi.ETTPayloadHeader] = JSON.stringify({
+          task:"invite-user",
+          parameters:{
+            entity_id:"2c0c4086-1bc0-4876-b7db-ed4244b16a6b",
+            email:"asp1.random.edu@warhen.work",
+            role:"RE_AUTH_IND",
+            registrationUri:`https://${cloudfrontDomain}/bootstrap/index.htm`
+        }});
         break;
 
       case Task.PING:

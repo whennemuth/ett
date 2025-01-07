@@ -2062,8 +2062,7 @@
     }
 
     /**
-     * Lookup the invitation with an api call. The invitation will also contain information as whether or not
-     * the user has acknowledged privacy policy or registered already. Reflect the findings in the current screen.
+     * Lookup the invitation with an api call. Reflect the findings in the current screen.
      */
     const fetchRegistrationScreenInfo = async (invitationCode) => {
       const msg = document.getElementById('apiResponse');
@@ -2096,12 +2095,14 @@
           return payload;
         }
         else {
-          msg.innerHTML = message;
+          msg.innerHTML = `<pre>${message}</pre>`;
+          alert(message);
+          return null;
         }
       }
       catch(e) {
         msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
-        return { invitation: { role: selected_role }}; // Should work for localhost testing
+        return null;
       }
     }
 
@@ -3957,7 +3958,7 @@
         const { message, payload } = package;
         if(payload.ok) {
           userContext = payload.user;
-          setName(role, IDJwtCookie.getUser());
+          setName(AccessJwtCookie.getRole(), IDJwtCookie.getUser());
           return userContext;
         }
         else {
@@ -4015,43 +4016,62 @@
     /**
      * Invite a user
      */
-    function invite(role, email, apiUri) {
-      const msg = document.getElementById('apiResponse');
-      msg.innerHTML = '';
+    const inviteUser = async (role, email, apiUri, callback) => {
       if( ! email) {
         alert("No email was entered");
         return;
       }
-      const payload = {
-        task: 'invite-user',
-        parameters: { email, role, registrationUri:redirectUri() }
+      if( ! role) {
+        alert("No role was selected");
+        return;
       }
-      fetch(apiUri, {
-        method: 'GET',
-        mode: "cors",
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
-          'Content-Type': 'application/json',
-          [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify(payload)
+      const msg = document.getElementById('apiResponse');
+      const { entity: { entity_id }} = userContext;
+      msg.innerHTML = '';
+
+      try {
+        const outgoingPayload = {
+          task: 'invite-user',
+          parameters: { email, entity_id, role, registrationUri:redirectUri() }
         }
-      })
-      .then(response => response.json())
-      .then((package) => {
+
+        document.body.style.cursor = 'progress';
+        const response = await fetch(apiUri, {
+          method: 'GET',
+          mode: "cors",
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify(outgoingPayload)
+          }
+        });
+
+        const package = await response.json();
+        document.body.style.cursor = 'default';  
         const { message, payload } = package;
         if(payload.ok) {
           alert('Invitation sent!');
           msg.innerHTML = 'Invitation sent!';
+          if(callback) {
+            await callback(payload);
+          }
         }
         else {
           msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
         }
-      })
-      .catch((e) => {
+      }
+      catch(e) {
         msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
-      });      
+      }
+      finally {
+        document.body.style.cursor = 'default';
+      }
     }
 
+    /**
+     * Invite both AI users at once.
+     */
     const inviteUsers = async (createEntity=false) => {
       const msg = document.getElementById('apiResponse');
       msg.innerHTML = '';
@@ -4218,6 +4238,7 @@
       const parentDiv = document.getElementById(
         'divPendingInvitations' + (selected_role == 'RE_ADMIN' ? 'Asp': 'Ai')
       );
+      parentDiv.innerHTML = '';
       const { entity: { pendingInvitations=[] }} = userContext;
       const titleDiv = document.createElement('div');
       titleDiv.style.overflow = 'auto';
@@ -4278,14 +4299,15 @@
     const populateAmendableUsers = () => {
       const tbl = document.getElementById('tblAmendEntity');
       const { entity } = userContext;
-      const { users:_users=[], totalUserCount } = (entity ?? {});
+      const { users:_users=[], totalUserCount, pendingInvitations } = (entity ?? {});
       const validUsers = _users.filter(u => { return u.active == 'Y'; });
       const incompleteRegistration = () => totalUserCount < 3
-      const underStaffed = () => validUsers < 2
 
+      // Clear the table of all but the header row
       while(tbl.rows.length > 2){ 
         tbl.deleteRow(tbl.rows.length-1); 
       };
+
       let { email:_email, fullname:_fullname, title:_title, role:_role, entity: { 
         entity_name, entity_id, users,  
       }} = userContext;
@@ -4302,12 +4324,34 @@
         });
       });
 
-      const { name, email } = IDJwtCookie.getUser();
+      // Add the current user to the list of users to be amended
       users.push({ fullname:_fullname, email:_email, title:_title, role:_role });
 
+      let invitedAsps = pendingInvitations.filter(i => i.role == 'RE_ADMIN').length;
+      invitedAsps = invitedAsps > 1 ? 1 : invitedAsps;
+      let invitedAis = pendingInvitations.filter(i => i.role == 'RE_AUTH_IND').length;
+      invitedAis = invitedAis > 2 ? 2 : invitedAis;
+      let userCount = 0;
+      
+      // Add a vacancy for each role that is not filled and has no pending invitation.
+      while(true) {
+        const aspCount = users.filter(u => u.role == 'RE_ADMIN').length;
+        if((aspCount + invitedAsps) < 1) {
+          users.push({ fullname:'VACANCY', role:'RE_ADMIN' });
+          continue;
+        }
+        const aiCount = users.filter(u => u.role == 'RE_AUTH_IND').length;
+        if((aiCount + invitedAis) < 2) {
+          users.push({ fullname:'VACANCY', role:'RE_AUTH_IND' });
+          continue;
+        }
+        break;
+      }
+
       users.forEach(user => {
-        const { fullname, email, title, role} = user;
+        const { fullname, email, title, role } = user;
         const myself = email == _email;
+        const roleName = role == 'RE_ADMIN' ? 'Administrative Support Person' : 'Authorized Individual';
 
         let tr = tbl.insertRow();
         let td = document.createElement('th');
@@ -4324,29 +4368,35 @@
         td.style.fontWeight = 'bold';
         td.style.textAlign = 'right';
         td = tr.insertCell();
-        td.innerText = role == 'RE_ADMIN' ? 'Administrative Support Person' : 'Authorized Individual';
+        td.innerText = roleName;
 
-        tr = tbl.insertRow();
-        td = tr.insertCell();
-        td.innerText = 'Email';
-        td.style.fontWeight = 'bold';
-        td.style.textAlign = 'right';
-        td = tr.insertCell();
-        td.innerText = email;
+        if(email) {
+          tr = tbl.insertRow();
+          td = tr.insertCell();
+          td.innerText = 'Email';
+          td.style.fontWeight = 'bold';
+          td.style.textAlign = 'right';
+          td = tr.insertCell();
+          td.innerText = email;         
+        }
 
-        tr = tbl.insertRow();
-        td = tr.insertCell();
-        td.innerText = 'Title';
-        td.style.fontWeight = 'bold';
-        td.style.textAlign = 'right';
-        td = tr.insertCell();
-        td.innerText = title;
+        if(title) {
+          tr = tbl.insertRow();
+          td = tr.insertCell();
+          td.innerText = 'Title';
+          td.style.fontWeight = 'bold';
+          td.style.textAlign = 'right';
+          td = tr.insertCell();
+          td.innerText = title;
+        }
 
         tr = tbl.insertRow();
         td = tr.insertCell();
         td.innerHTML = myself ?
           "Remove me from the entity <span style='font-style:italic;'>(one of the remaining reps will invite my replacement)</span>" :
-          "Remove from the entity <span style='font-style:italic;'>(and optionally invite a replacement)</span>";
+          email ? 
+            "Remove from the entity <span style='font-style:italic;'>(and optionally invite a replacement)</span>":
+            "Invite a user to fill this role";
         td.colSpan = myself ? 2 : 3;
         if( ! myself) {
           tr = tbl.insertRow();
@@ -4354,24 +4404,36 @@
           td.colSpan = 2;
           let input = document.createElement('input');
           input.className = 'form-control';
-          input.placeholder = `enter email address of invitee to replace ${fullname} here . . .`;
+          input.placeholder = email ? 
+            `enter email address of invitee to replace ${fullname} here . . .` :
+            `enter email address of invitee to fill the ${roleName} role here . . .`;
           if(incompleteRegistration()) {
             // input.disabled = true;
           }
-          td.appendChild(input);          
+          td.appendChild(input);         
         }         
 
         td = tr.insertCell();
         let button = document.createElement('button');
-        let txt = document.createTextNode('Amend');
+        let txt = document.createTextNode(email ? 'Amend' : 'Invite');
         button.appendChild(txt);
         button.className = 'btn btn-primary';
-        button.addEventListener('click', async() => {
-          const invitee = (event.srcElement.parentElement.parentElement.querySelector('.form-control') ?? {}).value;
-          sendEntityAmendmentRequest({
-            task:'amend-entity-user', email, myself, invitee
+        if(email) {
+          button.addEventListener('click', async() => {
+            const invitee = (event.srcElement.parentElement.parentElement.querySelector('.form-control') ?? {}).value;
+            sendEntityAmendmentRequest({
+              task:'amend-entity-user', email, myself, invitee
+            });
           });
-        });
+        }
+        else {
+          button.addEventListener('click', async() => {
+            const inviteeEmail = (event.srcElement.parentElement.parentElement.querySelector('.form-control') ?? {}).value;
+            sendEntityAmendmentRequest({
+              task:'invite-user', invitee: { email:inviteeEmail, role}
+            });
+          });
+        }
         if(incompleteRegistration()) {
           // button.disabled = true;
         }
@@ -4414,6 +4476,27 @@
           const registrationUri = redirectUri();
           parameters = { entity_id, replacerEmail, replaceableEmail, replacementEmail, registrationUri }
           break;
+        case 'invite-user':
+          const { invitee: { email:inviteeEmail, role:inviteeRole }} = parms;
+          const { email:inviterEmail } = IDJwtCookie.getUser();
+          if( ! inviteeEmail) {
+            alert('Please enter an email address for the invitee');
+            return;
+          }
+          const roleName = inviteeRole == 'RE_ADMIN' ? 'Administrative Support Person' : 'Authorized Individual';
+          confirmMsg = `Invite ${inviteeEmail} to join ${entity_name} as a ${roleName}?`;
+          if( ! confirm(confirmMsg)) {
+            return;
+          }
+          await inviteUser(inviteeRole, inviteeEmail, apiUri(role), async (returnedPayload) => {
+            if(returnedPayload.ok) {
+              await setUserContext();
+              populateAmendableUsers();
+              populatePendingInvitations();
+            }
+          });
+
+          return;
         default:
           alert(`Invalid/missing task: ${task ?? 'missing'}`);
           return;
@@ -4445,6 +4528,7 @@
         if(payload.ok) {
           await setUserContext();
           populateAmendableUsers();
+          populatePendingInvitations();
           alert('Update complete!');
         }
         else {
@@ -4920,7 +5004,7 @@
       document.getElementById('btnSysAdminInvite').addEventListener('click', () => {
         const role = $("input[name='rdoSysAdminInvite']:checked").val();
         const email = $('#txtSysAdminEmailToInvite').val();
-        invite(role, email, apiUri('SYS_ADMIN'));
+        inviteUser(role, email, apiUri('SYS_ADMIN'));
       });      
       document.getElementsByName('rdoSysAdminInvite').forEach(rdo => {
         rdo.addEventListener('click', () => {

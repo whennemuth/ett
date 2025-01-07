@@ -104,8 +104,9 @@ export const lookupEntity = async (email:string, role:Role):Promise<LambdaProxyI
   const getOtherUsers = async (entity_id:string):Promise<User[]> => {
     const dao = DAOFactory.getInstance({ DAOType:'user', Payload: { entity_id }});
     let users = await dao.read() as User[];
+    users = users.filter(user => user.active == YN.Yes);
     totalUserCount = users.length; 
-    users = users.filter(user => user.active == YN.Yes && user.email != email);
+    users = users.filter(user => user.email != email);
     return users;
   }
 
