@@ -19,7 +19,8 @@
     "teardown": "npm run pre-teardown && npm run main-teardown",
     "synth": "cdk synth --all 2>&1 | tee cdk.out/ett.template.yaml",
     "clearcache": "sh bin/clearcache.sh",
-    "publish": "sh bin/publish.sh"
+    "publish": "sh bin/publish.sh",
+    "load-bucket": "ts-node bin/load-bucket.ts"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.352.0",
