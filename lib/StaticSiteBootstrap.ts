@@ -93,7 +93,8 @@ export class StaticSiteBootstrapConstruct extends StaticSiteConstruct {
     const deployment = new BucketDeployment(this, 'BootstrapBucketContentDeployment', {
       destinationBucket: this.getBucket(),      
       sources: [
-        Source.asset(path.resolve(__dirname, `../frontend`))
+        Source.asset(path.resolve(__dirname, `../frontend/bootstrap`)),
+        Source.asset(path.resolve(__dirname, `../frontend/images`)),
       ],
     });
 

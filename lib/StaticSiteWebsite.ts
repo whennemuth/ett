@@ -1,9 +1,13 @@
+import { Function, Runtime, Code } from 'aws-cdk-lib/aws-lambda';
+import { Provider } from 'aws-cdk-lib/custom-resources';
 import { RemovalPolicy } from "aws-cdk-lib";
 import { Effect, PolicyStatement, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { BlockPublicAccess, Bucket } from "aws-cdk-lib/aws-s3";
 import { BucketDeployment, Source } from "aws-cdk-lib/aws-s3-deployment";
 import { Construct } from "constructs";
 import { StaticSiteConstruct, StaticSiteConstructParms } from "./StaticSite";
+import path = require("node:path");
+import { CfnCondition, Fn, CfnResource, CustomResource } from 'aws-cdk-lib/core';
 
 /**
  * This construct is for an s3 bucket that is to host the single page app html file and related
@@ -61,22 +65,39 @@ export class StaticSiteWebsiteConstruct extends StaticSiteConstruct {
     return this.bucket;
   }
 
+  /**
+   * Perform a bucket deployment of the website images.
+   * This is a one-time operation for stack creation that will not be repeated on stack updates because
+   * any content added to the bucket later would be removed because bucket deployments operate to replicate
+   * the source to the destination, which may require removing files at the target bucket that are not in the
+   * source directory or zip file.
+   * @param dependOn 
+   */
   public setBucketDeployment(dependOn?: Construct[]): void {
-    const { parms, context: { REDIRECT_PATH_WEBSITE } } = this;
-    const { buildSiteParmObject } = StaticSiteWebsiteConstruct;
+    const bucket = this.getBucket();
+
+    const isStackCreation = new CfnCondition(this, 'IsStackCreation', {
+      expression: Fn.conditionEquals(Fn.ref('AWS::StackId'), ''),
+    });
+
     const deployment = new BucketDeployment(this, 'WebsiteBucketContentDeployment', {
-      destinationBucket: this.getBucket(),      
+      destinationBucket: bucket,
       sources: [
-        Source.jsonData('SiteParameters.json', buildSiteParmObject(parms, REDIRECT_PATH_WEBSITE))
+        Source.asset(path.resolve(__dirname, `../frontend/bootstrap`)),
+        Source.asset(path.resolve(__dirname, `../frontend/images`)),
       ],
     });
 
-    if(dependOn) {
+    deployment.node.addDependency(bucket);
+
+    if (dependOn) {
       dependOn.forEach(d => {
         deployment.node.addDependency(d);
-      })
+      });
     }
-    deployment.node.addDependency(this.getBucket())
-  }
 
+    // Conditionally create the deployment based on stack creation
+    const cfnDeployment = deployment.node.findChild('CustomResource').node.defaultChild as CfnResource;
+    cfnDeployment.cfnOptions.condition = isStackCreation;
+  }
 }
