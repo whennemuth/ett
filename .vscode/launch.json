@@ -15,6 +15,14 @@
       "name": "Run current file",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
+      "args": [ "${file}" ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug current file",
+      "skipFiles": [ "<node_internals>/**" ],
+      "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
       "args": [
         "${file}",
         "${file}"
@@ -29,7 +37,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Run current file as jest test",
+      "name": "Debug current file as jest test",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
         "--runTestsByPath", 
@@ -43,7 +51,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Run current file as jest test (silently)",
+      "name": "Debug current file as jest test (silently)",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": [ 
         "--runTestsByPath", 
