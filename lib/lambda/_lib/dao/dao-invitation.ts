@@ -180,7 +180,7 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
     const input = {
       TableName,
       Key: { 
-         [InvitationFields.entity_id]: { S: entity_id, },
+         [InvitationFields.code]: { S: _code, },
       },
     } as DeleteItemCommandInput;
     command = new DeleteItemCommand(input);
