@@ -173,7 +173,7 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
   /**
    * Delete an invitation from the dynamodb table.
    */
-  const Delete = async ():Promise<DeleteItemCommandOutput> => {
+  const Delete = async (reportDeleted?:boolean):Promise<DeleteItemCommandOutput> => {
     if( ! _code) {
       throwMissingError('delete', InvitationFields.code);
     }
@@ -183,6 +183,9 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
          [InvitationFields.code]: { S: _code, },
       },
     } as DeleteItemCommandInput;
+    if(reportDeleted) {
+      input.ReturnValues = 'ALL_OLD';
+    }
     command = new DeleteItemCommand(input);
     return await sendCommand(command);
   }
