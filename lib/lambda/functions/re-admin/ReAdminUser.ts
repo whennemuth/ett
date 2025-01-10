@@ -20,6 +20,7 @@ export enum Task {
   LOOKUP_USER_CONTEXT = 'lookup-user-context',
   INVITE_USERS = 'invite-users',
   INVITE_USER = 'invite-user',
+  RETRACT_INVITATION = 'retract-invitation',
   PING = 'ping'
 }
 
@@ -70,6 +71,8 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           return await inviteUsers(parameters, callerSub);
         case Task.CREATE_ENTITY_INVITE:
           return await createEntityAndInviteUsers(parameters, callerSub);
+        case Task.RETRACT_INVITATION:
+          return await retractInvitation(parameters.code);
         case Task.PING:
           return okResponse('Ping!', parameters)
       } 
@@ -538,6 +541,16 @@ export const createEntityAndInviteUsers = async (parameters:any, callerSub?:stri
   else {
     return errorResponse('ID of newly created entity not available'); 
   }
+}
+
+/**
+ * Retract an invitation by deleting it from the database.
+ * @param code 
+ * @returns 
+ */
+export const retractInvitation = async (code:string):Promise<LambdaProxyIntegrationResponse> => {
+  await UserInvitation.retractInvitation(code);
+  return okResponse('Ok');
 }
 
 
