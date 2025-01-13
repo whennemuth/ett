@@ -1064,13 +1064,10 @@
                 <li class="nav-item">
                   <a class="nav-link active" id="re-admin-entity-link" data-toggle="tab" href="#re-admin-entity" role="tab" aria-controls="re-admin-entity" aria-selected="true">Entity/Organization</a>
                 </li>
-                <li class="nav-item">
-                  <a class="nav-link" id="re-admin-misc-link" data-toggle="tab" href="#re-admin-misc" role="tab" aria-controls="re-admin-misc" aria-selected="false">Miscellaneous</a>
-                </li>
               </ul>
               <div class="tab-content" id="reAdminContent">
                 <div class="tab-pane fade show active" id="re-admin-entity" role="tabpanel" aria-labelledby="re-admin-entity-link">
-                  <div id="divCreateEntity">
+                  <div id="divCreateEntity" style="margin-top: 40px; overflow:auto;">
                     <h5 class="display-7 fw-bold" style="text-align:center; margin-top:20px;">Invite authorized individuals</h5>
                     <div id="divReAdminEntityName" class="divSysAdminOption" style="text-align: right;">
                       Entity Name:
@@ -1090,14 +1087,9 @@
                     </div>                
                     <div class="divSysAdminOption">
                       <button id="btnReAdminInvite" class="btn btn-primary btn-lg" type="button">Create and Invite</button>
-                    </div> 
+                    </div>
+                    <div id="divPendingInvitations" style="margin-top:40px;"></div>
                   </div>                  
-                </div>
-                <div class="tab-pane fade" id="re-admin-misc" role="tabpanel" aria-labelledby="re-admin-misc-link">
-                  <h3 class="display-7 fw-bold" style="text-align:center; margin-bottom: 20px;">Miscellaneous</h3>
-                  <div id="divPendingInvitationsAsp">
-
-                  </div>
                 </div>
               </div>
             </div>
@@ -1190,17 +1182,17 @@
                 <div class="tab-pane fade" id="auth-amend-entity" role="tabpanel" aria-labelledby="auth-amend-entity-tab">
                   <div id="amendEntity" style="margin-top: 40px; overflow:auto;">
                     <div>
-                      You can amend <span id="spanAmendEntityCurrentName1" style="font-weight:bold;"></span> by modifying its name, or removing any 
+                      You can amend <span name="spanAmendEntityCurrentName" style="font-weight:bold;"></span> by modifying its name, or removing any 
                       of its representatives, ncluding yourself. For removals, you can simply click the "Amend" button 
                       adjacent to the corresponding individual. If you do this, you can continue normal operation for 
-                      30 days with the vacancy, but <span id="spanAmendEntityCurrentName2" style="font-weight:bold;"></span> will be terminated in 
+                      30 days with the vacancy, but <span name="spanAmendEntityCurrentName" style="font-weight:bold;"></span> will be terminated in 
                       the ETT system if no replacement registers by then. Optionally, you can also type the email address 
                       of an individual you intend as a replacement, and that person will be issued an email that invites 
-                      them to register with <span id="spanAmendEntityCurrentName3" style="font-weight:bold;"></span> with a special link. 
+                      them to register with <span name="spanAmendEntityCurrentName" style="font-weight:bold;"></span> with a special link. 
                       The same 30 day deadline applies. 
                     </div>
                     <div id="divCancelAmendment" style="margin-top:20px; display:none;">
-                      You are amending <span id="spanAmendEntityCurrentName4" style="font-weight:bold;"></span> as a
+                      You are amending <span name="spanAmendEntityCurrentName" style="font-weight:bold;"></span> as a
                       final step of your own registration <button id="btnCancelAmendment" class="btn btn-primary" type="button">Cancel Amendment</button>
                     </div>
                     <table id="tblAmendEntity" class="amendEntity" style="margin-top:30px;">
@@ -1216,7 +1208,7 @@
                         </td>
                       </tr>                     
                     </table>
-                    <div id="divPendingInvitationsAi" style="margin-top:70px;"></div>
+                    <div id="divPendingInvitations" style="margin-top:70px;"></div>
                   </div>
                 </div>                
               </div>
@@ -1872,6 +1864,8 @@
     }
 
     let selected_role = getSelectedRole();
+
+    let dashboard;
 
     let userContext = {};
 
@@ -4163,6 +4157,49 @@
     }
 
     /**
+     * Retract an invitation
+     */
+    const retractInvitation = async (code) => {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+        const { entity: { entity_id }} = userContext;
+        const outgoingPayload = {
+          task: 'retract-invitation',
+          parameters: { code }
+        }
+
+        document.body.style.cursor = 'progress';
+        const role = AccessJwtCookie.getRole().name;
+        const response = await fetch(apiUri(role), {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify(outgoingPayload)
+          }
+        });
+
+        const package = await response.json();
+        document.body.style.cursor = 'default';
+        const { message, payload } = package;
+        if(payload.ok) {
+          alert('Invitation retracted');
+          await setUserContext();
+          populatePendingInvitations();
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
+    /**
      * Populate the picklist that is available for authorized individuals to select from when
      * choosing a consenting individual to whom they want to prompt via email for exhibit forms.
      */
@@ -4235,9 +4272,7 @@
      * who have been invited to register with the entity who have not yet done so.
      */
     const populatePendingInvitations = () => {
-      const parentDiv = document.getElementById(
-        'divPendingInvitations' + (selected_role == 'RE_ADMIN' ? 'Asp': 'Ai')
-      );
+      const parentDiv = dashboard.querySelector('#divPendingInvitations');
       parentDiv.innerHTML = '';
       const { entity: { pendingInvitations=[] }} = userContext;
       const titleDiv = document.createElement('div');
@@ -4251,11 +4286,12 @@
       titleDiv.style.marginBottom = '8px';
       titleDiv.innerText = 'Pending Invitations';
       parentDiv.appendChild(titleDiv);
+      let invitationCount = pendingInvitations.length;
       if(pendingInvitations.length == 0) {
         pendingInvitations.push({ invitations: 'None pending'});
       }
-      
-      pendingInvitations.forEach(invitation => {
+
+      const getInvitionDiv = () => {
         const div = document.createElement('div');
         div.style.overflow = 'auto';
         div.style.float = 'left';
@@ -4266,30 +4302,72 @@
         div.style.borderWidth = '1px';
         div.style.borderColor = '#cccccc';
         parentDiv.appendChild(div);
+        return div;
+      }
+
+      const getInvitationFieldNameDiv = (key, parentDiv) => {
+        const fldname = document.createElement('div');
+        fldname.style.float = 'left';
+        fldname.style.clear = 'both';
+        fldname.style.fontSize = '16px';
+        fldname.style.textAlign = 'right';
+        fldname.style.fontWeight = 'bold';
+        fldname.style.width = '150px';
+        fldname.style.margin = '2px';
+        fldname.innerHTML = key == '&nbsp;' ? key : `${key}:`;
+        parentDiv.appendChild(fldname);
+        return fldname;
+      }
+
+      const getInvitationFieldValueDiv = (value, parentDiv) => {
+        const fldval = document.createElement('div');
+        fldval.style.float = 'left';
+        fldval.style.fontSize = '16px';
+        fldval.style.margin = '2px';
+        fldval.style.marginLeft = '6px';
+        fldval.innerHTML = value;
+        parentDiv.appendChild(fldval);
+        return fldval;
+      }
+      
+      pendingInvitations.forEach(invitation => {
+        const div = getInvitionDiv();
         Object.keys(invitation).forEach(key => {
           if(key == 'email' && invitation.email == invitation.code) {
             return;
           }
-          const fldname = document.createElement('div');
-          fldname.style.float = 'left';
-          fldname.style.clear = 'both';
-          fldname.style.fontSize = '16px';
-          fldname.style.textAlign = 'right';
-          fldname.style.fontWeight = 'bold';
-          fldname.style.width = '150px';
-          fldname.style.margin = '2px';
-          fldname.innerText = `${key}:`;
-          div.appendChild(fldname);
+          if(key == 'entity_id' || key == 'entity_name') {
+            return; // No need to show this
+          }
+          const fldname = getInvitationFieldNameDiv(key, div);
+          let value = invitation[key];
+          if(key == 'role') {
+            if(value == 'RE_ADMIN') {
+              value = 'Administrative Support Person';
+            }
+            else if(value == 'RE_AUTH_IND') {
+              value = 'Authorized Individual';
+            }
+          }
+          const fldval = getInvitationFieldValueDiv(value, div);
+        });
 
-          const fldval = document.createElement('div');
-          fldval.style.float = 'left';
-          fldval.style.fontSize = '16px';
-          fldval.style.margin = '2px';
-          fldval.style.marginLeft = '6px';
-          fldval.innerText = invitation[key];
-          div.appendChild(fldval);
-        })
-      })
+        if(invitationCount > 0) {
+          // Add a button to retract the invitation
+          const fldname = getInvitationFieldNameDiv('&nbsp;', div);
+          const fldval = getInvitationFieldValueDiv('', div);
+          const retractButton = document.createElement('button');
+
+          txt = document.createTextNode('Retract Invitation');
+          retractButton.appendChild(txt);
+          retractButton.className = 'btn btn-primary btn-sm';
+          retractButton.addEventListener('click', async() => {
+            retractInvitation(invitation.code);
+          });
+          fldval.style.float = 'right';
+          fldval.appendChild(retractButton);
+        }
+      });
     }
 
     /**
@@ -4297,7 +4375,8 @@
      * user can select and replace any of the existing users of the entity.
      */
     const populateAmendableUsers = () => {
-      const tbl = document.getElementById('tblAmendEntity');
+      const div = dashboard.querySelector('#amendEntity');
+      const tbl = div.querySelector('#tblAmendEntity');
       const { entity } = userContext;
       const { users:_users=[], totalUserCount, pendingInvitations } = (entity ?? {});
       const validUsers = _users.filter(u => { return u.active == 'Y'; });
@@ -4311,13 +4390,13 @@
       let { email:_email, fullname:_fullname, title:_title, role:_role, entity: { 
         entity_name, entity_id, users,  
       }} = userContext;
-      document.getElementById('tdAmendEntityCurrentName').innerText = entity_name;
-      document.getElementById('spanAmendEntityCurrentName1').innerText = entity_name;
-      document.getElementById('spanAmendEntityCurrentName2').innerText = entity_name;
-      document.getElementById('spanAmendEntityCurrentName3').innerText = entity_name;
-      document.getElementById('spanAmendEntityCurrentName4').innerText = entity_name;
 
-      document.getElementById('btnAmendEntityName').addEventListener('click', async() => {
+      tbl.querySelector('#tdAmendEntityCurrentName').innerText = entity_name;
+      tbl.querySelectorAll('[name="spanAmendEntityCurrentName"]').forEach(td => {
+        td.innerText = entity_name;
+      });
+
+      tbl.querySelector('#btnAmendEntityName').addEventListener('click', async() => {
         const newEntityName = event.srcElement.parentElement.parentElement.querySelector('.form-control').value;
         sendEntityAmendmentRequest({
           task:'amend-entity-name', newEntityName
@@ -4950,6 +5029,8 @@
 
       selected_role = getSelectedRole();
 
+      dashboard = document.getElementById(`app-section-${selected_role}`);
+
       // Get querystring parameters
       const queryParams = new URLSearchParams(window.location.search);
       const action = queryParams.get('action');
@@ -5204,10 +5285,11 @@
       const checkAuth = async () => {
         const showAppForRole = async () => {
           showSection('app');
+          dashboard.style.display = 'inline';
+
           switch(selected_role) {
                 
             case 'SYS_ADMIN':
-              document.getElementById('app-section-SYS_ADMIN').style.display = 'inline';
               document.getElementsByName('rdoSysAdminInvite')[1].click();
               await populateSysAdminEntityList();
               break;
@@ -5236,7 +5318,6 @@
                 }
               });
               $('#txtReAdminEntityName').val(userContext.entity.entity_name);
-              document.getElementById('app-section-RE_ADMIN').style.display = 'inline';
               break;
 
             case 'RE_AUTH_IND':
@@ -5246,31 +5327,32 @@
               const { users=[], entity_name, totalUserCount } = (entity ?? {});
               const validUsers = users.filter(u => { return u.active == 'Y'; });
               const incompleteRegistration = () => totalUserCount < 3
-              document.getElementById('app-section-RE_AUTH_IND').style.display = 'inline';
 
               if(incompleteRegistration()) {
-                document.getElementById('authNotReady').style.display = 'inline';
+                dashboard.querySelector('#authNotReady').style.display = 'inline';
                 if(entity_name) {
-                  document.getElementById('disclosureRequestEntityName').innerText = entity_name;
+                  dashboard.querySelector('#disclosureRequestEntityName').innerText = entity_name;
                 }
+
                 // Disable all controls
-                document.querySelectorAll(`#disclosureRequest table`).forEach(d => d.style.color = '#cccccc');
-                document.querySelectorAll(`#disclosureRequest input`).forEach(i => i.disabled = true);
-                document.querySelectorAll(`#disclosureRequest button`).forEach(b => b.disabled = true);
-                document.querySelectorAll(`#authIndContent input`).forEach(i => i.disabled = true);
-                document.querySelectorAll(`#authIndContent div`).forEach(d => d.style.color = '#cccccc');
-                document.querySelectorAll(`#authIndContent label`).forEach(l => l.style.color = '#cccccc');
-                document.querySelectorAll(`#authIndContent button`).forEach(b => b.disabled = true);
-                document.querySelectorAll(`#amendEntity button`).forEach(b => b.disabled = true);
-                document.querySelectorAll(`#amendEntity input`).forEach(i => i.disabled = true);
+                dashboard.querySelectorAll(`#disclosureRequest table`).forEach(d => d.style.color = '#cccccc');
+                dashboard.querySelectorAll(`#disclosureRequest input`).forEach(i => i.disabled = true);
+                dashboard.querySelectorAll(`#disclosureRequest button`).forEach(b => b.disabled = true);
+                dashboard.querySelectorAll(`#authIndContent input`).forEach(i => i.disabled = true);
+                dashboard.querySelectorAll(`#authIndContent div`).forEach(d => d.style.color = '#cccccc');
+                dashboard.querySelectorAll(`#authIndContent label`).forEach(l => l.style.color = '#cccccc');
+                dashboard.querySelectorAll(`#authIndContent button`).forEach(b => b.disabled = true);
+                dashboard.querySelectorAll(`#amendEntity button`).forEach(b => b.disabled = true);
+                dashboard.querySelectorAll(`#amendEntity input`).forEach(i => i.disabled = true);
 
                 // Re-enable the controls for the amend entity tab
-                document.querySelector(`#auth-amend-entity`).style.color = ''
-                document.querySelectorAll(`#auth-amend-entity input`).forEach(i => i.disabled = false);
-                document.querySelectorAll(`#auth-amend-entity button`).forEach(b => b.disabled = false);
-                document.querySelectorAll(`#auth-amend-entity div`).forEach(d => d.style.color = '');
-                document.querySelectorAll(`#auth-amend-entity label`).forEach(l => l.style.color = '');
+                dashboard.querySelector(`#auth-amend-entity`).style.color = ''
+                dashboard.querySelectorAll(`#auth-amend-entity input`).forEach(i => i.disabled = false);
+                dashboard.querySelectorAll(`#auth-amend-entity button`).forEach(b => b.disabled = false);
+                dashboard.querySelectorAll(`#auth-amend-entity div`).forEach(d => d.style.color = '');
+                dashboard.querySelectorAll(`#auth-amend-entity label`).forEach(l => l.style.color = '');
               }
+
               const checkConsenterListing = async () => {
                 const exhibitsTabFocus = document.getElementById('auth-request-exhibits').className.includes('show');
                 if(exhibitsTabFocus) {
@@ -5280,19 +5362,20 @@
                   }
                 }
               }
+
               await checkConsenterListing();
-              document.getElementById('auth-request-exhibits-tab').addEventListener('show.bs.tab', async event => {
+              dashboard.querySelector('#auth-request-exhibits-tab').addEventListener('show.bs.tab', async event => {
                 await checkConsenterListing();
               });
 
               if(task == 'amend') {
-                const amendTab = document.querySelector('#auth-amend-entity-tab');
+                const amendTab = dashboard.querySelector('#auth-amend-entity-tab');
                 const tab = new bootstrap.Tab(amendTab);
                 tab.show();
-                document.getElementById('auth-request-exhibits-tab').style.display = 'none';
-                document.getElementById('auth-request-disclosures-tab').style.display = 'none';
-                document.getElementById('divCancelAmendment').style.display = 'block';
-                document.getElementById('btnCancelAmendment').addEventListener('click', () => {
+                dashboard.querySelector('#auth-request-exhibits-tab').style.display = 'none';
+                dashboard.querySelector('#auth-request-disclosures-tab').style.display = 'none';
+                dashboard.querySelector('#divCancelAmendment').style.display = 'block';
+                dashboard.querySelector('#btnCancelAmendment').addEventListener('click', () => {
                   document.location.href = document.location.href.replace(/\&?task\=amend/, '');
                 });
               }
@@ -5301,8 +5384,6 @@
               break;
             
             case 'CONSENTING_PERSON':
-              document.getElementById('app-section-CONSENTING_PERSON').style.display = 'inline';
-              
               if(localTesting()) {
                 consenterInfo = getDummyConsenter();
                 setConsenter();
