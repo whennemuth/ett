@@ -15,7 +15,7 @@ import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureF
 import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
 import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
 import { DisclosureRequestReminderLambdaParms } from "../delayed-execution/SendDisclosureRequestReminder";
-import { inviteUser, lookupEntity } from "../re-admin/ReAdminUser";
+import { inviteUser, lookupEntity, retractInvitation } from "../re-admin/ReAdminUser";
 import { DemolitionRecord, EntityToDemolish } from "./Demolition";
 import { DisclosureEmailParms, DisclosureRequestEmail } from "./DisclosureRequestEmail";
 import { ExhibitFormRequestEmail } from "./ExhibitFormRequestEmail";
@@ -32,6 +32,7 @@ export enum Task {
   AMEND_ENTITY_NAME = 'amend-entity-name',  
   AMEND_ENTITY_USER = 'amend-entity-user',  
   INVITE_USER = 'invite-user',
+  RETRACT_INVITATION = 'retract-invitation',
   PING = 'ping'
 };
 
@@ -95,7 +96,10 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
            var user = { email, entity_id, role } as User;
            return await inviteUser(user, Roles.RE_AUTH_IND, async (entity_id:string, role?:Role) => {
              return await new SignupLink().getRegistrationLink({ entity_id, registrationUri });
-           }, callerSub);          
+           }, callerSub);
+           
+        case Task.RETRACT_INVITATION:
+          return await retractInvitation(parameters.code);
           
         case Task.PING:
           return okResponse('Ping!', parameters);

@@ -7,6 +7,8 @@ import { error, log, lookupCloudfrontDomain } from '../../Utils';
 import { IContext } from '../../../../contexts/IContext';
 import { UserCrud } from '../dao/dao-user';
 import { SignupLink } from './SignupLink';
+import { DeleteItemCommandOutput } from '@aws-sdk/client-dynamodb';
+import { InvitationCrud } from '../dao/dao-invitation';
 
 /**
  * An invitation email is one sent with a link in it to the ETT privacy policy acknowledgement webpage as the
@@ -193,6 +195,21 @@ export class UserInvitation {
     }
   }
 
+  public static retractInvitation = async (code:string):Promise<void> => {
+    let failMessage = '';
+    const dao = InvitationCrud({ code } as Invitation);
+    const output = await dao.Delete(true) as DeleteItemCommandOutput;
+    if((output.$metadata.httpStatusCode ?? 0) < 200 || (output.$metadata.httpStatusCode ?? 0) > 299) {
+      failMessage = `HTTP status code: ${(output.$metadata.httpStatusCode ?? 0)}`;
+      throw new Error(failMessage);
+    }
+    if( ! output.Attributes || ! output.Attributes.code) {
+      failMessage = 'No invitation found';
+      throw new Error(failMessage);
+    }
+    log(code, `Invitation retraction failed`);    
+  }
+
   public get code():string {
     return this._code;
   }
@@ -214,11 +231,24 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/invi
   const inviterEmail = 'asp1.random.edu@warhen.work';
   const inviteeEmail = 'auth1.random.edu@warhen.work';
   const role = Roles.RE_AUTH_IND;
+  const task = 'send' as 'send' | 'retract';
 
   (async () => {
     // Get context variables
     const context:IContext = await require('../../../../contexts/context.json');
     const { REGION, TAGS: { Landscape }} = context;
+
+    if(task == 'retract') {
+      const code = '384d1ee1-0e9a-48b1-a38b-5164b44aa868';
+      try {
+        await UserInvitation.retractInvitation(code);
+        log(code, 'Invitation retracted');
+      }
+      catch(e:any) {
+        error(e, 'Invitation retraction failed');
+      }
+      return;
+    }
 
     // Get the cloudfront domain
     const cloudfrontDomain = await lookupCloudfrontDomain(Landscape);
