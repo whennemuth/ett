@@ -140,19 +140,3 @@ describe('ReAdminUser lambda trigger: createEntity', () => {
     await CreateEntityTests.missingEntity(handler, mockEvent, Task.CREATE_ENTITY);
   })
 });
-
-describe('ReAdminUser lambda trigger: createEntityAndInviteUsers', () => {
-
-  it('Should return 400 if the entity is missing or incomplete', async () => {
-    await CreateAndInviteTests.missingEntity(handler, mockEvent, Task.CREATE_ENTITY_INVITE);
-  });
-  it('Should return 400 if either of the authorized individuals is missing/incomplete', async () => {
-    await CreateAndInviteTests.missingAuthInd(handler, mockEvent, Task.CREATE_ENTITY_INVITE);
-  });
-  it('Should return 400 if the two authorized individuals have the same email', async () => {
-    await CreateAndInviteTests.duplicateEmails(handler, mockEvent, Task.CREATE_ENTITY_INVITE);
-  });
-  it('Should behave as expected if no invalid parameters', async () => {
-    await CreateAndInviteTests.successful(handler, mockEvent, Task.CREATE_ENTITY_INVITE);
-  })
-});

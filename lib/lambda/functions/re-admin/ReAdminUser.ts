@@ -14,7 +14,6 @@ import { ExhibitFormsBucketEnvironmentVariableName } from '../consenting-person/
 
 export enum Task {
   CREATE_ENTITY = 'create-entity',
-  CREATE_ENTITY_INVITE = 'create-entity-invite',
   UPDATE_ENTITY = 'update-entity',
   DEACTIVATE_ENTITY = 'deactivate-entity',
   LOOKUP_USER_CONTEXT = 'lookup-user-context',
@@ -69,8 +68,6 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           }, callerSub);
         case Task.INVITE_USERS:
           return await inviteUsers(parameters, callerSub);
-        case Task.CREATE_ENTITY_INVITE:
-          return await createEntityAndInviteUsers(parameters, callerSub);
         case Task.RETRACT_INVITATION:
           return await retractInvitation(parameters.code);
         case Task.PING:
@@ -502,48 +499,6 @@ export const inviteUsers = async (parameters:any, callerSub?:string):Promise<Lam
   return response;
 }
 
-/**
- * Create the entity and invite both authorized individuals in one shot.
- * @param parameters 
- * @param callerSub 
- * @returns 
- */
-export const createEntityAndInviteUsers = async (parameters:any, callerSub?:string):Promise<LambdaProxyIntegrationResponse> =>  {
-  const { entity } = parameters;
-  const { entity_name, description } = (entity ?? {}) as Entity;
-
-  if( ! entity_name) {
-    return invalidResponse('Cannot proceed with unspecified entity');
-  }
-
-  if( ! description) {
-    entity.description = entity_name;
-  }
-
-  const result = getInvitedUsersValidationResult(parameters, callerSub);
-  if(result?.statusCode == 400) return result;
-
-  const response1 = await createEntity( entity, { sub:callerSub, role:Roles.RE_ADMIN } as User ) as LambdaProxyIntegrationResponse;
-
-  if( ! isOk(response1)) {
-    return response1;
-  }
-
-  if(response1.body) {
-    var output = JSON.parse(response1.body);
-    const { entity_id } = output.payload;
-    parameters.entity.entity_id = entity_id;
-
-    const response2 = await inviteUsers(parameters, callerSub);
-    if( ! isOk(response2)) {
-      return mergeResponses([ response1, response2 ]);
-    }
-    return response2
-  }
-  else {
-    return errorResponse('ID of newly created entity not available'); 
-  }
-}
 
 /**
  * Retract an invitation by deleting it from the database.
@@ -623,7 +578,6 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         } as any;
         break;
       case Task.INVITE_USERS: // entity will be ignored if included
-      case Task.CREATE_ENTITY_INVITE:
         payload = {
           task,
           parameters: {

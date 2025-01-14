@@ -10,7 +10,7 @@ import { EntityToAutomate } from '../../_lib/EntityAutomation';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
 import { debugLog, error, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
 import { EntityToDemolish } from '../authorized-individual/Demolition';
-import { Task as ReAdminTasks, createEntity, createEntityAndInviteUsers, deactivateEntity, inviteUser, inviteUsers, lookupEntity, updateEntity, retractInvitation } from '../re-admin/ReAdminUser';
+import { Task as ReAdminTasks, createEntity, deactivateEntity, inviteUser, inviteUsers, lookupEntity, updateEntity, retractInvitation } from '../re-admin/ReAdminUser';
 import { DynamoDbTableOutput } from './DynamoDbTableOutput';
 import { HtmlTableView } from './view/HtmlTableView';
 
@@ -76,8 +76,6 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           });
         case ReAdminTasks.INVITE_USERS:
           return await inviteUsers(parameters);
-        case ReAdminTasks.CREATE_ENTITY_INVITE:
-          return await createEntityAndInviteUsers(parameters);
         case ReAdminTasks.RETRACT_INVITATION:
           return await retractInvitation(parameters.code);
         case ReAdminTasks.PING:
@@ -296,7 +294,6 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         case Task.SHORTCUT_ENTITY_SETUP: break;
         case Task.SHORTCUT_ENTITY_TEARDOWN: break;
         case ReAdminTasks.CREATE_ENTITY: break;
-        case ReAdminTasks.CREATE_ENTITY_INVITE: break;
         case ReAdminTasks.UPDATE_ENTITY: break;
         case ReAdminTasks.DEACTIVATE_ENTITY: break;
         case ReAdminTasks.LOOKUP_USER_CONTEXT: break;

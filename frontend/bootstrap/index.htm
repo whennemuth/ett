@@ -1097,7 +1097,7 @@
                       <input id="txtReAdminEmailToInvite2" type="text" class="form-control" style="width:fit-content; display:inline-block;">
                     </div>                
                     <div class="divSysAdminOption">
-                      <button id="btnReAdminInvite" class="btn btn-primary btn-lg" type="button">Create and Invite</button>
+                      <button id="btnReAdminInvite" class="btn btn-primary btn-lg" type="button">Invite</button>
                     </div>
                     <div id="divPendingInvitations" style="margin-top:40px;"></div>
                   </div>                  
@@ -4136,22 +4136,7 @@
           outgoingPayload.parameters.invitations.invitee2 = { email: email2, role:'RE_AUTH_IND' };
         }
 
-        let successMessage;
-        if(createEntity) {
-          if( ! entity_name) {
-            alert('Required entry: Entity name');
-            return;
-          } 
-          outgoingPayload.task = 'create-entity-invite';
-          const entity_name = $('#txtReAdminEntityName').val();
-          const description = entity_name;
-          outgoingPayload.parameters.entity = { entity_name, description };
-          successMessage = 'Entity created and users invited';
-        }
-        else {
-          outgoingPayload.parameters.entity = userContext?.entity || {};
-          successMessage = 'Users invited';
-        }
+        outgoingPayload.parameters.entity = userContext?.entity || {};
 
         document.body.style.cursor = 'progress';
         const response = await fetch(apiUri(role), {
@@ -4171,7 +4156,7 @@
         if(payload.ok) {
           userContext = payload.user;
           document.getElementById('btnReAdminEntityUpdate').style.display = 'inline';
-          alert(successMessage);
+          alert('Users Invited');
           populatePendingInvitations();
         }
         else {
@@ -4181,13 +4166,6 @@
       catch(e) {
         msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
       }
-    }
-
-    /**
-     * Combines createEntity and invite (twice) as a consolidated RE_ADMIN task
-     */
-    const createEntityAndInviteUsers = async () => {
-      await inviteUsers(true);
     }
 
     /**
@@ -5340,21 +5318,9 @@
               break;
 
             case 'RE_ADMIN':
-              const noEntityYet = () => ! entity_id || entity_id == '__UNASSIGNED__';
               const inviteButton = document.getElementById('btnReAdminInvite');
-              if(noEntityYet()) {
-                $('#btnReAdminEntityUpdate').hide();
-              }
-              else {
-                $('#btnReAdminInvite').html('Invite');
-              }
               document.getElementById('btnReAdminInvite').addEventListener('click', async () => {
-                if(noEntityYet()) {
-                  await createEntityAndInviteUsers();
-                }
-                else {
-                  await inviteUsers();
-                }
+                await inviteUsers();
               });
               $('#txtReAdminEntityName').val(userContext.entity.entity_name);
 
