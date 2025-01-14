@@ -8,3 +8,4 @@ notes.txt
 .cdk.staging
 cdk.out
 .env
+debug.env
