@@ -1064,7 +1064,18 @@
                 <li class="nav-item">
                   <a class="nav-link active" id="re-admin-entity-link" data-toggle="tab" href="#re-admin-entity" role="tab" aria-controls="re-admin-entity" aria-selected="true">Entity/Organization</a>
                 </li>
+                <li class="nav-item">
+                  <a class="nav-link" id="asp-request-disclosures-tab" data-toggle="tab" href="#asp-request-disclosures" role="tab" aria-controls="asp-request-disclosures-link" aria-selected="true">Request Disclosure Forms</a>
+                </li>
               </ul>
+
+              <div id="authNotReady">
+                <p>
+                  <span id="disclosureRequestEntityName">The organization</span> is not yet fully registered.<br>
+                  Some tabs and features have been disabled pending arrival of authorized individual(s).
+                </p>
+              </div>
+
               <div class="tab-content" id="reAdminContent">
                 <div class="tab-pane fade show active" id="re-admin-entity" role="tabpanel" aria-labelledby="re-admin-entity-link">
                   <div id="divCreateEntity" style="margin-top: 40px; overflow:auto;">
@@ -1090,6 +1101,30 @@
                     </div>
                     <div id="divPendingInvitations" style="margin-top:40px;"></div>
                   </div>                  
+                </div>
+                <div class="tab-pane fade" id="asp-request-disclosures" role="tabpanel" aria-labelledby="asp-request-disclosures-tab">
+                  <div id="disclosureRequest" style="margin-top: 40px;">
+                    <table class="disclosureRequest" style="width:fit-content; margin: 0 auto;">
+                      <tr>
+                        <th colspan="3">Make a disclosure request<br><hr></th>
+                      </tr>
+                      <tr>
+                        <td style="text-align: right;">Consenting individual email</td>
+                        <td colspan="2">
+                          <input id="disclosureRequestConsenterEmail" type="text" class="form-control">
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="text-align: right;">Affiliate of the consenting individual email</td>
+                        <td>
+                          <input id="disclosureRequestAffiliateEmail" type="text" class="form-control">
+                        </td>
+                        <td>
+                          <button id="btnSendDisclosureRequest" class="btn btn-primary btn-lg" type="button">Send <i class="bi-send-check"></i></button>
+                        </td>
+                      </tr>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2523,13 +2558,13 @@
     const sendDisclosureRequest = async () => {
       const msg = document.getElementById('apiResponse');
       msg.innerHtml = '';
-      const affiliateEmail = document.getElementById('disclosureRequestAffiliateEmail').value;
+      const affiliateEmail = dashboard.querySelector('#disclosureRequestAffiliateEmail').value;
       if( ! affiliateEmail) {
         msg.innerHTML = '<pre>Affiliate email address required!</pre>';
         return;
       }
 
-      const consenterEmail = document.getElementById('disclosureRequestConsenterEmail').value;
+      const consenterEmail = dashboard.querySelector('#disclosureRequestConsenterEmail').value;
       if( ! consenterEmail) {
         msg.innerHTML = '<pre>Consenting individual email address required!</pre>';
         return;
@@ -5079,9 +5114,9 @@
       document.getElementById('btnCleanSheet').addEventListener('click', async () => {
         await cleanSheet();
       });
-      document.getElementById('btnSendDisclosureRequest').addEventListener('click', async () => {
+      document.querySelectorAll('#btnSendDisclosureRequest').forEach(element => element.addEventListener('click', async () => {
         await sendDisclosureRequest();
-      });
+      }));
       document.getElementById('btnSysAdminInvite').addEventListener('click', () => {
         const role = $("input[name='rdoSysAdminInvite']:checked").val();
         const email = $('#txtSysAdminEmailToInvite').val();
@@ -5287,6 +5322,16 @@
           showSection('app');
           dashboard.style.display = 'inline';
 
+          // RE_ADMIN & RE_AUTH_IND
+          if(selected_role == 'RE_ADMIN' || selected_role == 'RE_AUTH_IND') {
+            await setUserContext();
+            populatePendingInvitations();
+          }
+          const { entity } = userContext || {};
+          const { users=[], entity_id, entity_name, totalUserCount } = (entity ?? {});
+          const validUsers = users.filter(u => { return u.active == 'Y'; });
+          const incompleteRegistration = () => totalUserCount < 3
+
           switch(selected_role) {
                 
             case 'SYS_ADMIN':
@@ -5295,13 +5340,7 @@
               break;
 
             case 'RE_ADMIN':
-              await setUserContext();
-              populatePendingInvitations();
-              const noEntityYet = () => { 
-                const { entity } = userContext;
-                const { entity_id, entity_name } = (entity ?? {});
-                return ! entity_id || entity_id == '__UNASSIGNED__'; 
-              };
+              const noEntityYet = () => ! entity_id || entity_id == '__UNASSIGNED__';
               const inviteButton = document.getElementById('btnReAdminInvite');
               if(noEntityYet()) {
                 $('#btnReAdminEntityUpdate').hide();
@@ -5318,16 +5357,20 @@
                 }
               });
               $('#txtReAdminEntityName').val(userContext.entity.entity_name);
+
+              if(incompleteRegistration()) {
+                dashboard.querySelector('#authNotReady').style.display = 'inline';
+                if(entity_name) {
+                  dashboard.querySelector('#disclosureRequestEntityName').innerText = entity_name;
+                }
+                // Disable all controls on the disclosure request tab
+                dashboard.querySelectorAll(`#disclosureRequest table`).forEach(d => d.style.color = '#cccccc');
+                dashboard.querySelectorAll(`#disclosureRequest input`).forEach(i => i.disabled = true);
+                dashboard.querySelectorAll(`#disclosureRequest button`).forEach(b => b.disabled = true);
+              }
               break;
 
             case 'RE_AUTH_IND':
-              await setUserContext();
-              populatePendingInvitations();
-              const { entity } = userContext;
-              const { users=[], entity_name, totalUserCount } = (entity ?? {});
-              const validUsers = users.filter(u => { return u.active == 'Y'; });
-              const incompleteRegistration = () => totalUserCount < 3
-
               if(incompleteRegistration()) {
                 dashboard.querySelector('#authNotReady').style.display = 'inline';
                 if(entity_name) {
