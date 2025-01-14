@@ -4286,10 +4286,6 @@
       titleDiv.style.marginBottom = '8px';
       titleDiv.innerText = 'Pending Invitations';
       parentDiv.appendChild(titleDiv);
-      let invitationCount = pendingInvitations.length;
-      if(pendingInvitations.length == 0) {
-        pendingInvitations.push({ invitations: 'None pending'});
-      }
 
       const getInvitionDiv = () => {
         const div = document.createElement('div');
@@ -4329,6 +4325,13 @@
         parentDiv.appendChild(fldval);
         return fldval;
       }
+
+      if(pendingInvitations.length == 0) {
+        const div = getInvitionDiv();
+        const fldname = getInvitationFieldNameDiv('Invitations', div);
+        const fldval = getInvitationFieldValueDiv('None Pending', div);
+        return;
+      }
       
       pendingInvitations.forEach(invitation => {
         const div = getInvitionDiv();
@@ -4352,21 +4355,19 @@
           const fldval = getInvitationFieldValueDiv(value, div);
         });
 
-        if(invitationCount > 0) {
-          // Add a button to retract the invitation
-          const fldname = getInvitationFieldNameDiv('&nbsp;', div);
-          const fldval = getInvitationFieldValueDiv('', div);
-          const retractButton = document.createElement('button');
+        // Add a button to retract the invitation
+        const fldname = getInvitationFieldNameDiv('&nbsp;', div);
+        const fldval = getInvitationFieldValueDiv('', div);
+        const retractButton = document.createElement('button');
 
-          txt = document.createTextNode('Retract Invitation');
-          retractButton.appendChild(txt);
-          retractButton.className = 'btn btn-primary btn-sm';
-          retractButton.addEventListener('click', async() => {
-            retractInvitation(invitation.code);
-          });
-          fldval.style.float = 'right';
-          fldval.appendChild(retractButton);
-        }
+        txt = document.createTextNode('Retract Invitation');
+        retractButton.appendChild(txt);
+        retractButton.className = 'btn btn-primary btn-sm';
+        retractButton.addEventListener('click', async() => {
+          retractInvitation(invitation.code);
+        });
+        fldval.style.float = 'right';
+        fldval.appendChild(retractButton);
       });
     }
 
