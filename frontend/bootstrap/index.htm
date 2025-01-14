@@ -4091,9 +4091,7 @@
             entity: { },
             registrationUri:redirectUri(),
             invitations: {
-              from: {
-                email, role
-              },
+              inviter: { email, role },
               invitee1: { email: email1, role:'RE_AUTH_IND' }
             }
           }
@@ -4139,6 +4137,7 @@
           userContext = payload.user;
           document.getElementById('btnReAdminEntityUpdate').style.display = 'inline';
           alert(successMessage);
+          populatePendingInvitations();
         }
         else {
           msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;

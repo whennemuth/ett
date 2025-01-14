@@ -474,24 +474,26 @@ const getInvitedUsersValidationResult = (parameters:any, callerSub?:string):Lamb
 export const inviteUsers = async (parameters:any, callerSub?:string):Promise<LambdaProxyIntegrationResponse> =>  {
   const { entity, invitations, registrationUri } = parameters;
   const { entity_id } = (entity ?? {}) as Entity;
+  const { email:email0, role:role0 } = invitations?.inviter || {};
   const { email:email1, role:role1 } = invitations?.invitee1 || {};
   const { email:email2, role:role2 } = invitations?.invitee2 || {};
 
   const result = getInvitedUsersValidationResult(parameters, callerSub);
   if(result?.statusCode == 400) return result;
 
-  const user1 = { email:email1, role:role1, entity_id } as User
-  const user2 = { email:email2, role:role2, entity_id } as User
+  const inviter = { email:email0, role:role0, entity_id } as User;
+  const invitee1 = { email:email1, role:role1, entity_id } as User;
+  const invitee2 = { email:email2, role:role2, entity_id } as User;
 
-  const response1 = await inviteUser(user1, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
+  const response1 = await inviteUser(invitee1, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
     return await new SignupLink().getRegistrationLink({ entity_id, registrationUri });
   }, callerSub);
 
-  const response2 = await inviteUser(user2, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
+  const response2 = await inviteUser(invitee2, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
     return await new SignupLink().getRegistrationLink({ entity_id, registrationUri });
   }, callerSub);
 
-  let response = await lookupEntity(email1, role1);
+  let response = await lookupEntity(inviter.email, inviter.role);
 
   if( ! isOk(response1) || ! isOk(response2)) {
     response = mergeResponses([ response1, response2, response ]);
@@ -561,7 +563,7 @@ export const retractInvitation = async (code:string):Promise<LambdaProxyIntegrat
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/re-admin/ReAdminUser.ts')) {
 
-  const task = Task.LOOKUP_USER_CONTEXT as Task;
+  const task = Task.INVITE_USERS as Task;
   const { DisclosureRequestReminder, HandleStaleEntityVacancy } = DelayedExecutions;
 
   (async () => {
@@ -629,6 +631,10 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
               name: 'Somewhere State University'
             },
             invitations: {
+              inviter: {
+                email: 'asp1.ssu.edu@warhen.work',
+                role: Roles.RE_ADMIN
+              },
               invitee1: {
                 email: 'auth1.ssu.edu@warhen.work',
                 role: Roles.RE_AUTH_IND
@@ -647,8 +653,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
           requestContext: {
             authorizer: {
               claims: {
-                username: '014b3590-5021-7023-e057-97a4ceab432e',
-                sub: '014b3590-5021-7023-e057-97a4ceab432e'
+                username: '718b15f0-7011-7001-2c69-41dda37a90ee',
+                sub: '718b15f0-7011-7001-2c69-41dda37a90ee'
               }
             }
           }
