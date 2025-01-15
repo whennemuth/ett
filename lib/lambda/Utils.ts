@@ -254,13 +254,13 @@ export const lookupPendingInvitations = async (entity_id?:string|null):Promise<I
   if( ! entity_id) {
     return [] as Invitation[];
   }
-  const dao = DAOFactory.getInstance({
-    DAOType: 'invitation',
-    Payload: { entity_id } as Invitation
-  }) as DAOInvitation;
-  const invitations = await dao.read() as Invitation[];
-  // Return those invitations that have not been retracted and have not yet registered
-  return invitations.filter(i => ( ! i.retracted_timestamp ) && ( ! i.registered_timestamp ) )
+  const dao = DAOFactory.getInstance({ DAOType:'invitation', Payload: { entity_id }});
+  let invitations = await dao.read() as Invitation[];
+  if( ! (invitations instanceof Array)) {
+    invitations = [ invitations ];
+  }
+// Pending invitations will be those that have not had their emails set yet.
+  return invitations.filter(i => i.email == i.code) ?? [];
 }
 
 export const lookupDistributionSummary = async (landscape:string):Promise<DistributionSummary|undefined> => {

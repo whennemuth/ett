@@ -122,14 +122,8 @@ export const lookupEntity = async (email:string, role:Role):Promise<LambdaProxyI
     if(pendingInvitationCache[entity_id]) {
       return pendingInvitationCache[entity_id];
     }
-    let invitations = await InvitationCrud({ entity_id } as Invitation).read() ?? [];
-    if( ! (invitations instanceof Array)) {
-      invitations = [ invitations ];
-    }
-    pendingInvitationCache[entity_id] = invitations.filter(invitation => {
-      // Pending invitations will be those that have not had their emails set yet.
-      return invitation.email == invitation.code;
-    });
+    let invitations = await lookupPendingInvitations(entity_id) as Invitation[];
+    pendingInvitationCache[entity_id] = invitations;
     return pendingInvitationCache[entity_id];
   }
   

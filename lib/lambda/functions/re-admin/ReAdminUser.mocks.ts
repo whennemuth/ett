@@ -639,11 +639,13 @@ export const EntityLookupTests = {
     const expectedUserInfo1 = Object.assign({}, daffyduck1) as any;
     expectedUserInfo1.entity = {
       entity_id: 'warnerbros', entity_name: 'Warner Bros.', active: YN.Yes, totalUserCount: 3,
+      pendingInvitations: [],
       users: [ Object.assign({}, porkypig), Object.assign({}, bugsbunny) ]
     };
     const expectedUserInfo2 = Object.assign({}, daffyduck2) as any;
     expectedUserInfo2.entity = {
       entity_id: 'cartoonville', entity_name: 'Cartoon Villiage', active: YN.Yes, totalUserCount: 3,
+      pendingInvitations: [],
       users: [ Object.assign({}, yosemitesam), Object.assign({}, foghornLeghorn) ]
     };
     delete expectedUserInfo1.entity_id;
