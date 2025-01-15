@@ -446,13 +446,9 @@ const getInvitedUsersValidationResult = (parameters:any, callerSub?:string):Lamb
   const { entity, invitations } = parameters;
   const { entity_name } = (entity ?? {}) as Entity;
   const { email:email1, role:role1 } = invitations?.invitee1 || {};
-  const { email:email2, role:role2 } = invitations?.invitee2 || {};
+  let { email:email2='', role:role2 } = invitations?.invitee2 || {};
   if( ! email1 || ! role1) {
     return invalidResponse(`Cannot create entity ${entity_name} since invitee1 is missing/incomplete`);
-  }
-
-  if( ! email2 || ! role2) {
-    return invalidResponse(`Cannot create entity ${entity_name} since invitee2 is missing/incomplete`);
   }
 
   if( (email1 as string).toLowerCase() == (email2 as string).toLowerCase()) {
@@ -480,20 +476,29 @@ export const inviteUsers = async (parameters:any, callerSub?:string):Promise<Lam
 
   const inviter = { email:email0, role:role0, entity_id } as User;
   const invitee1 = { email:email1, role:role1, entity_id } as User;
-  const invitee2 = { email:email2, role:role2, entity_id } as User;
+  const responses = [] as LambdaProxyIntegrationResponse[];
 
   const response1 = await inviteUser(invitee1, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
     return await new SignupLink().getRegistrationLink({ entity_id, registrationUri });
   }, callerSub);
+  responses.push(response1);
 
-  const response2 = await inviteUser(invitee2, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
-    return await new SignupLink().getRegistrationLink({ entity_id, registrationUri });
-  }, callerSub);
+  if( email2 && role2) {
+    const invitee2 = { email:email2, role:role2, entity_id } as User;
+    const response2 = await inviteUser(invitee2, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
+      return await new SignupLink().getRegistrationLink({ entity_id, registrationUri });
+    }, callerSub);
+    responses.push(response2);
+  }
+
+  const invalidResponse = responses.find(response => ! isOk(response));
 
   let response = await lookupEntity(inviter.email, inviter.role);
+  responses.push(response);
 
-  if( ! isOk(response1) || ! isOk(response2)) {
-    response = mergeResponses([ response1, response2, response ]);
+  // Bundle the invalid responses into the overall response if there are any.
+  if(invalidResponse) {
+    response = mergeResponses(responses);
   }
 
   return response;

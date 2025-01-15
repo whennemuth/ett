@@ -4110,8 +4110,13 @@
         const email1 = $('#txtReAdminEmailToInvite1').val();
         const email2 = $('#txtReAdminEmailToInvite2').val();
 
+        if(email2 && ! email1) {
+          email1 = email2;
+          email2 = null;
+        }
+
         if( ! email1) {
-          alert('Required entry: Authorized Individual 1 email address');
+          alert('Required entry: 1 or more authorized individual email addresses');
           return;
         }
         if( ! email2) {
