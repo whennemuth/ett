@@ -1099,7 +1099,8 @@
                     <div class="divSysAdminOption">
                       <button id="btnReAdminInvite" class="btn btn-primary btn-lg" type="button">Invite</button>
                     </div>
-                    <div id="divPendingInvitations" style="margin-top:40px;"></div>
+                    <div id="divRegisteredUsers" style="margin-top: 40px;"></div>
+                    <div id="divPendingInvitations" style="padding-top:50px; float:left; clear:both;"></div>
                   </div>                  
                 </div>
                 <div class="tab-pane fade" id="asp-request-disclosures" role="tabpanel" aria-labelledby="asp-request-disclosures-tab">
@@ -1243,7 +1244,7 @@
                         </td>
                       </tr>                     
                     </table>
-                    <div id="divPendingInvitations" style="margin-top:70px;"></div>
+                     <div id="divPendingInvitations" style="margin-top:70px;"></div>
                   </div>
                 </div>                
               </div>
@@ -4161,7 +4162,7 @@
         if(payload.ok) {
           userContext = payload.user;
           document.getElementById('btnReAdminEntityUpdate').style.display = 'inline';
-          populatePendingInvitations();
+          populateRegistrationInfoCards();
         }
         else {
           msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
@@ -4203,7 +4204,7 @@
         const { message, payload } = package;
         if(payload.ok) {
           await setUserContext();
-          populatePendingInvitations();
+          populateRegistrationInfoCards();
         }
         else {
           msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
@@ -4282,27 +4283,25 @@
       }
     }
 
-    /**
-     * Populate a display for Asps or Authorized individuals listing out the users
-     * who have been invited to register with the entity who have not yet done so.
-     */
-    const populatePendingInvitations = () => {
-      const parentDiv = dashboard.querySelector('#divPendingInvitations');
-      parentDiv.innerHTML = '';
-      const { entity: { pendingInvitations=[] }} = userContext;
-      const titleDiv = document.createElement('div');
-      titleDiv.style.overflow = 'auto';
-      titleDiv.style.float = 'left';
-      titleDiv.style.clear = 'both';
-      titleDiv.style.margin = '4px';
-      titleDiv.style.padding = '6px';
-      titleDiv.style.fontSize = '18px';
-      titleDiv.style.fontWeight = 'bold';
-      titleDiv.style.marginBottom = '8px';
-      titleDiv.innerText = 'Pending Invitations';
-      parentDiv.appendChild(titleDiv);
+    const getUserDisplayBuilder = (outerDivId) => {
+      const outerDiv = dashboard.querySelector(`#${outerDivId}`);
+      outerDiv.innerHTML = '';
 
-      const getInvitionDiv = () => {
+      const setTitle = (title) => {
+        const titleDiv = document.createElement('div');
+        titleDiv.style.overflow = 'auto';
+        titleDiv.style.float = 'left';
+        titleDiv.style.clear = 'both';
+        titleDiv.style.margin = '4px';
+        titleDiv.style.padding = '6px';
+        titleDiv.style.fontSize = '18px';
+        titleDiv.style.fontWeight = 'bold';
+        titleDiv.style.marginBottom = '8px';
+        titleDiv.innerText = title;
+        outerDiv.appendChild(titleDiv);
+      }
+
+      const getCardDiv = () => {
         const div = document.createElement('div');
         div.style.overflow = 'auto';
         div.style.float = 'left';
@@ -4312,11 +4311,11 @@
         div.style.borderStyle = 'solid';
         div.style.borderWidth = '1px';
         div.style.borderColor = '#cccccc';
-        parentDiv.appendChild(div);
+        outerDiv.appendChild(div);
         return div;
       }
 
-      const getInvitationFieldNameDiv = (key, parentDiv) => {
+      const getFieldNameDiv = (key, parentDiv) => {
         const fldname = document.createElement('div');
         fldname.style.float = 'left';
         fldname.style.clear = 'both';
@@ -4330,7 +4329,7 @@
         return fldname;
       }
 
-      const getInvitationFieldValueDiv = (value, parentDiv) => {
+      const getFieldValueDiv = (value, parentDiv) => {
         const fldval = document.createElement('div');
         fldval.style.float = 'left';
         fldval.style.fontSize = '16px';
@@ -4341,14 +4340,67 @@
         return fldval;
       }
 
+      const getRoleDescription = (role) => {
+        if(role == 'RE_ADMIN') {
+          return 'Administrative Support Person';
+        }
+        else if(role == 'RE_AUTH_IND') {
+          return 'Authorized Individual';
+        }
+        return role;
+      }
+
+      return { setTitle, getCardDiv, getFieldNameDiv, getFieldValueDiv, getRoleDescription };
+    }
+
+    const populateRegisteredUsers = () => {
+      const builder = getUserDisplayBuilder('divRegisteredUsers');
+      const { setTitle, getCardDiv, getFieldNameDiv, getFieldValueDiv, getRoleDescription } = builder;
+
+      setTitle('Registered Users');
+
+      const { entity: { users=[] }} = userContext;
+      if(users.length == 0) {
+        const div = getCardDiv();
+        const fldname = getFieldNameDiv('Users', div);
+        const fldval = getFieldValueDiv('None', div);
+      }
+
+      users.forEach(user => {
+        const div = getCardDiv();
+        Object.keys(user).forEach(key => {
+          if(key == 'entity_id' || key == 'entity_name' || key == 'active' || key == 'sub') {
+            return; // No need to show these
+          }
+          const fldname = getFieldNameDiv(key, div);
+          let value = user[key];
+          if(key == 'role') {
+            value = getRoleDescription(value);
+          }
+          const fldval = getFieldValueDiv(value, div);
+        });
+      });
+    }
+
+    /**
+     * Populate a display for Asps or Authorized individuals listing out the users
+     * who have been invited to register with the entity who have not yet done so.
+     */
+    const populatePendingInvitations = () => {
+      const builder = getUserDisplayBuilder('divPendingInvitations');
+      const { setTitle, getCardDiv, getFieldNameDiv, getFieldValueDiv, getRoleDescription } = builder;
+
+      setTitle('Pending Invitations');
+
+      const { entity: { pendingInvitations=[] }} = userContext;
       if(pendingInvitations.length == 0) {
-        const div = getInvitionDiv();
-        const fldname = getInvitationFieldNameDiv('Invitations', div);
-        const fldval = getInvitationFieldValueDiv('None Pending', div);
+        const div = getCardDiv();
+        const fldname = getFieldNameDiv('Invitations', div);
+        const fldval = getFieldValueDiv('None Pending', div);
       }
       
       pendingInvitations.forEach(invitation => {
-        const div = getInvitionDiv();
+        const div = getCardDiv();
         Object.keys(invitation).forEach(key => {
           if(key == 'email' && invitation.email == invitation.code) {
             return;
@@ -4356,22 +4408,17 @@
           if(key == 'entity_id' || key == 'entity_name') {
             return; // No need to show this
           }
-          const fldname = getInvitationFieldNameDiv(key, div);
+          const fldname = getFieldNameDiv(key, div);
           let value = invitation[key];
           if(key == 'role') {
-            if(value == 'RE_ADMIN') {
-              value = 'Administrative Support Person';
-            }
-            else if(value == 'RE_AUTH_IND') {
-              value = 'Authorized Individual';
-            }
+            value = getRoleDescription(value);
           }
-          const fldval = getInvitationFieldValueDiv(value, div);
+          const fldval = getFieldValueDiv(value, div);
         });
 
         // Add a button to retract the invitation
-        const fldname = getInvitationFieldNameDiv('&nbsp;', div);
-        const fldval = getInvitationFieldValueDiv('', div);
+        const fldname = getFieldNameDiv('&nbsp;', div);
+        const fldval = getFieldValueDiv('', div);
         const retractButton = document.createElement('button');
 
         txt = document.createTextNode('Retract Invitation');
@@ -4383,10 +4430,14 @@
         fldval.style.float = 'right';
         fldval.appendChild(retractButton);
       });
+    }
 
+    const populateRegistrationInfoCards = () => {
+      populatePendingInvitations();
       if(selected_role == 'RE_ADMIN') {
+        populateRegisteredUsers();
         adjustInvitationFields();
-      }        
+      }
     }
 
     /**
@@ -4624,7 +4675,7 @@
             if(returnedPayload.ok) {
               await setUserContext();
               populateAmendableUsers();
-              populatePendingInvitations();
+              populateRegistrationInfoCards();
             }
           });
 
@@ -4660,7 +4711,7 @@
         if(payload.ok) {
           await setUserContext();
           populateAmendableUsers();
-          populatePendingInvitations();
+          populateRegistrationInfoCards();
           alert('Update complete!');
         }
         else {
@@ -5343,7 +5394,7 @@
           // RE_ADMIN & RE_AUTH_IND
           if(selected_role == 'RE_ADMIN' || selected_role == 'RE_AUTH_IND') {
             await setUserContext();
-            populatePendingInvitations();
+            populateRegistrationInfoCards();
           }
           const { entity } = userContext || {};
           const { users=[], entity_id, entity_name, totalUserCount } = (entity ?? {});
