@@ -64,7 +64,7 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           var { email, entity_id, role, registrationUri } = parameters;
           var user = { email, entity_id, role } as User;
           return await inviteUser(user, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
-            return await new SignupLink().getRegistrationLink({ entity_id, registrationUri });
+            return await new SignupLink().getRegistrationLink({ email, entity_id, registrationUri });
           }, callerSub);
         case Task.INVITE_USERS:
           return await inviteUsers(parameters, callerSub);
@@ -479,14 +479,14 @@ export const inviteUsers = async (parameters:any, callerSub?:string):Promise<Lam
   const responses = [] as LambdaProxyIntegrationResponse[];
 
   const response1 = await inviteUser(invitee1, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
-    return await new SignupLink().getRegistrationLink({ entity_id, registrationUri });
+    return await new SignupLink().getRegistrationLink({ email:email1, entity_id, registrationUri });
   }, callerSub);
   responses.push(response1);
 
   if( email2 && role2) {
     const invitee2 = { email:email2, role:role2, entity_id } as User;
     const response2 = await inviteUser(invitee2, Roles.RE_ADMIN, async (entity_id:string, role?:Role) => {
-      return await new SignupLink().getRegistrationLink({ entity_id, registrationUri });
+      return await new SignupLink().getRegistrationLink({ email:email2, entity_id, registrationUri });
     }, callerSub);
     responses.push(response2);
   }

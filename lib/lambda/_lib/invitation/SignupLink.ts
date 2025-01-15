@@ -9,6 +9,7 @@ export type SignupLinkParms = {
 }
 
 export type RegistrationLinkParms = {
+  email?:string,
   entity_id?:string,
   registrationUri?:string
 }
@@ -90,7 +91,7 @@ export class SignupLink {
   }
 
   public getRegistrationLink = async (parms:RegistrationLinkParms):Promise<string|undefined> => {
-    let { entity_id, registrationUri } = parms;
+    let { email, entity_id, registrationUri } = parms;
     return new Promise((resolve, reject) => {
       let link:string;
       if(registrationUri) {
@@ -100,10 +101,19 @@ export class SignupLink {
           link = `${link}?action=${Actions.register_entity}`;
           if(entity_id) {
             link = `${link}&entity_id=${entity_id}`
-          } 
+          }
+          if(email) {
+            link = `${link}&email=${email}`
+          }
         }
-        else if(entity_id) {
-          link = `${link}?entity_id=${entity_id}`
+        else {
+           if(entity_id) {
+            link = `${link}?entity_id=${entity_id}`
+          }
+          if(email) {
+            let delimeter = link.includes('?') ? '&' : '?';
+            link = `${link}${delimeter}email=${email}`
+          }
         }
       }
       else {

@@ -56,9 +56,10 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
     }
     else {
       log(`Performing task: ${task}`);
+      const { email } = parameters;
       switch(task as ReAdminTasks|Task) {
         case ReAdminTasks.LOOKUP_USER_CONTEXT:
-          const { email, role } = parameters;
+          const { role } = parameters;
           return await lookupEntity(email, role);
         case ReAdminTasks.CREATE_ENTITY:
           return await createEntity(parameters);
@@ -72,7 +73,7 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
             if(role == Roles.SYS_ADMIN) {
               return await new SignupLink().getCognitoLinkForRole(role, registrationUri);
             }
-            return await new SignupLink().getRegistrationLink({ entity_id, registrationUri });
+            return await new SignupLink().getRegistrationLink({ email, entity_id, registrationUri });
           });
         case ReAdminTasks.INVITE_USERS:
           return await inviteUsers(parameters);

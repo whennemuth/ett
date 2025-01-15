@@ -95,7 +95,7 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
            var { email, entity_id, role, registrationUri } = parameters;
            var user = { email, entity_id, role } as User;
            return await inviteUser(user, Roles.RE_AUTH_IND, async (entity_id:string, role?:Role) => {
-             return await new SignupLink().getRegistrationLink({ entity_id, registrationUri });
+             return await new SignupLink().getRegistrationLink({ email, entity_id, registrationUri });
            }, callerSub);
            
         case Task.RETRACT_INVITATION:

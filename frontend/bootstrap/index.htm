@@ -2204,6 +2204,9 @@
               html = invEntityName;
             }
             else {
+              if(userfld == 'email') {
+                html = (new URLSearchParams(window.location.search)).get('email') || html;
+              }              
               html = `<input type="text" class="form-control" id="txt${basename}${index}" value="${html}">`
             }                  
           }

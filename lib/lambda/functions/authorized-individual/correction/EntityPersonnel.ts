@@ -211,7 +211,7 @@ export class Personnel {
         throw new Error(`Cannot invite ${replacementEmail} - unable to determine role of inviter`);
       }
       const linkGenerator = async (entity_id:string, role?:Role) => {
-        return await new SignupLink().getRegistrationLink({ entity_id, registrationUri });
+        return await new SignupLink().getRegistrationLink({ email:invitee.email, entity_id, registrationUri });
       };
       if(dryrun) {
         const link = await linkGenerator(entity_id);

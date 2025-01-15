@@ -275,7 +275,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/invi
     const entity_id = inviters[0].entity_id;
     // const registrationUri = 'https://' + cloudfrontDomain + '/bootstrap/index.htm';
     const registrationUri = 'https://' + cloudfrontDomain + '/entity/register';
-    const link = await new SignupLink().getRegistrationLink({ entity_id, registrationUri });
+    const link = await new SignupLink().getRegistrationLink({ email:inviteeEmail, entity_id, registrationUri });
     
     // Get the entity
     const entity = await EntityCrud({ entity_id } as Entity).read() as Entity;

@@ -80,6 +80,12 @@ describe('Registration signup link', () => {
     registrationUri = 'https://mydomain/bootstrap/path/to/something';
     expectedLink = `${registrationUri}?action=${Actions.register_entity}&entity_id=${entity_id}`;
     link = await signupLink.getRegistrationLink({ entity_id, registrationUri });
+    expect(link).toEqual(expectedLink);
+
+    let email = 'invitee@gmail.com';
+    expectedLink = `${registrationUri}?action=${Actions.register_entity}&entity_id=${entity_id}&email=${email}`;
+    link = await signupLink.getRegistrationLink({ entity_id, registrationUri, email });
+    expect(link).toEqual(expectedLink);
   });
 
 
@@ -96,6 +102,11 @@ describe('Registration signup link', () => {
     const registrationUri = 'https://mydomain/path/to/something';
     expectedLink = `${registrationUri}?entity_id=${entity_id}`;
     link = await signupLink.getRegistrationLink({ entity_id, registrationUri });
+    expect(link).toEqual(expectedLink);
+
+    let email = 'invitee@gmail.com';
+    expectedLink = `${registrationUri}?entity_id=${entity_id}&email=${email}`;
+    link = await signupLink.getRegistrationLink({ entity_id, registrationUri, email });
     expect(link).toEqual(expectedLink);
   })
 
