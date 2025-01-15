@@ -4056,7 +4056,7 @@
         return;
       }
       const msg = document.getElementById('apiResponse');
-      const { entity: { entity_id }} = userContext && { entity: {}};
+      const { entity: { entity_id }} = userContext || { entity: {}};
       msg.innerHTML = '';
 
       try {
