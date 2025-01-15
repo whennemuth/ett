@@ -1085,14 +1085,14 @@
                       <input id="txtReAdminEntityName" type="text" class="form-control" style="width:fit-content; display:inline-block;">
                       <button id="btnReAdminEntityUpdate" class="btn btn-primary" type="button">Update</button>
                     </div>
-                    <div id="divReAdminEmailToInvite" class="divSysAdminOption" style="text-align: right;">
+                    <div id="divReAdminEmailToInvite1" class="divSysAdminOption" style="text-align: right;">
                       <div style="padding: 20px;">
                         Authorized Individual Invitee Email Addresses
                       </div>                
                       Email 1:
                       <input id="txtReAdminEmailToInvite1" type="text" class="form-control" style="width:fit-content; display:inline-block;">
                     </div>                
-                    <div id="divReAdminEmailToInvite" class="divSysAdminOption" style="text-align: right;">
+                    <div id="divReAdminEmailToInvite2" class="divSysAdminOption" style="text-align: right;">
                       Email 2:
                       <input id="txtReAdminEmailToInvite2" type="text" class="form-control" style="width:fit-content; display:inline-block;">
                     </div>                
@@ -4161,7 +4161,6 @@
         if(payload.ok) {
           userContext = payload.user;
           document.getElementById('btnReAdminEntityUpdate').style.display = 'inline';
-          alert('Users Invited');
           populatePendingInvitations();
         }
         else {
@@ -4203,7 +4202,6 @@
         document.body.style.cursor = 'default';
         const { message, payload } = package;
         if(payload.ok) {
-          alert('Invitation retracted');
           await setUserContext();
           populatePendingInvitations();
         }
@@ -4347,7 +4345,6 @@
         const div = getInvitionDiv();
         const fldname = getInvitationFieldNameDiv('Invitations', div);
         const fldval = getInvitationFieldValueDiv('None Pending', div);
-        return;
       }
       
       pendingInvitations.forEach(invitation => {
@@ -4386,6 +4383,44 @@
         fldval.style.float = 'right';
         fldval.appendChild(retractButton);
       });
+
+      if(selected_role == 'RE_ADMIN') {
+        adjustInvitationFields();
+      }        
+    }
+
+    /**
+     * Disable/enable the fields that allow the ASP to invite users to the entity such that the ASP
+     * can only invite AIs that there are "room" for.
+     */
+    const adjustInvitationFields = () => {
+      const { entity: { users, pendingInvitations } } = userContext;
+      const aisRegistered = users.filter(u => u.role == 'RE_AUTH_IND').length;
+      const aisInvited = pendingInvitations.filter(i => i.role == 'RE_AUTH_IND').length;
+      const aisTotal = aisRegistered + aisInvited;
+      const toggleEnabled = (selector, enabled) => {
+        const div = dashboard.querySelector(selector);
+        div.style.color = enabled ? '' : '#cccccc';
+        div.querySelectorAll('input').forEach(i => i.disabled = ! enabled);
+        div.querySelectorAll('input').forEach(i => i.style.color = enabled ? '' : '#cccccc');
+        if( ! enabled) div.querySelectorAll('input').forEach(i => i.value = '');
+      }
+      
+      if(aisTotal == 0) {
+        toggleEnabled('#divReAdminEmailToInvite1', true);
+        toggleEnabled('#divReAdminEmailToInvite2', true);
+        dashboard.querySelector('#btnReAdminInvite').disabled = false;
+      }
+      else if(aisTotal == 1) {
+        toggleEnabled('#divReAdminEmailToInvite1', true);
+        toggleEnabled('#divReAdminEmailToInvite2', false);
+        dashboard.querySelector('#btnReAdminInvite').disabled = false;
+      }
+      else {
+        toggleEnabled('#divReAdminEmailToInvite1', false);
+        toggleEnabled('#divReAdminEmailToInvite2', false);
+        dashboard.querySelector('#btnReAdminInvite').disabled = true;
+      }
     }
 
     /**
