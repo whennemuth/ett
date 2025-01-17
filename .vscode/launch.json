@@ -15,7 +15,8 @@
       "name": "Run current file",
       "skipFiles": [ "<node_internals>/**" ],
       "runtimeArgs": ["-r", "${workspaceFolder}/node_modules/ts-node/register/transpile-only"],
-      "args": [ "${file}" ]
+      "args": [ "${file}" ],
+      "envFile": "${workspaceFolder}/.env"
     },
     {
       "type": "node",
@@ -33,6 +34,7 @@
         "LANDSCAPE": "dev",
         "DEBUG": "true"
       }, 
+      "envFile": "${workspaceFolder}/debug.env"
     },
     {
       "type": "node",
