@@ -13,8 +13,8 @@ import { DisclosureItemsParms } from "../consenting-person/BucketItem";
 import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureForm";
 import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
 import { BucketItemMetadata } from "../consenting-person/BucketItemMetadata";
-import { test_data as test_exhibit_data } from '../consenting-person/ExhibitEmail';
-import { bugsbunny, daffyduck, yosemitesam } from "./MockObjects";
+import { test_data } from '../consenting-person/ExhibitEmail';
+import { abrahamlincoln, alberteinstein, bingcrosby, elvispresley } from "./MockObjects";
 import { log } from '../../Utils';
 
 
@@ -70,7 +70,7 @@ export class BasicDisclosureRequest {
     this.exhibitData = exhibitData;
   }
 
-  public send = async (emailAddress:string):Promise<boolean> => { 
+  public send = async (affiliateEmail:string):Promise<boolean> => { 
     const { 
       exhibitData, data, data: { 
         consenter, 
@@ -81,12 +81,11 @@ export class BasicDisclosureRequest {
     } = this;
 
     // Email attachments
-    const affiliateEmail = representatives[0].email;  
-    const singleExhibitForm = new ExhibitFormSingle(new ExhibitForm(exhibitData), consenter, emailAddress);
+    const singleExhibitForm = new ExhibitFormSingle(new ExhibitForm(exhibitData), consenter, affiliateEmail);
     const disclosureForm = new DisclosureForm(data);
 
     return send({ 
-      consenterEmail, emailType:'request', disclosureForm, singleExhibitForm, affiliateEmail, entity_name, correctionForms: []
+      consenter, consenterEmail, emailType:'request', disclosureForm, singleExhibitForm, affiliateEmail, entity_name, correctionForms: []
     });
   }
 }
@@ -146,7 +145,8 @@ const grabFromBucketAndSend = async (parms:DisclosureEmailParms):Promise<boolean
 }
 
 type EmailParameters = {
-  consenterEmail:string, 
+  consenterEmail:string,
+  consenter?:Consenter, 
   emailType?:string, 
   disclosureForm:IPdfForm, 
   singleExhibitForm:IPdfForm, 
@@ -160,12 +160,18 @@ type EmailParameters = {
  * @returns 
  */
 const send = async (parms:EmailParameters):Promise<boolean> => {
-  const { consenterEmail, emailType, entity_name, affiliateEmail, disclosureForm, singleExhibitForm, correctionForms } = parms;
+  let { consenterEmail, consenter, emailType, entity_name, affiliateEmail, disclosureForm, singleExhibitForm, correctionForms } = parms;
 
-  // Get the consenter
-  const consenterDao = DAOFactory.getInstance({ DAOType: 'consenter', Payload: { email: consenterEmail} as Consenter});
-  const consenter = await consenterDao.read() as Consenter;
-  const { firstname, middlename, lastname } = consenter;
+  if( ! consenter) {
+    // Lookup the consenter in the database
+    const consenterDao = DAOFactory.getInstance({ DAOType: 'consenter', Payload: { email: consenterEmail} as Consenter});
+    const consenter = await consenterDao.read() as Consenter;
+    if( ! consenter) {
+      console.error(`Cannot send disclosure ${emailType} email: Consenter not found`);
+      return false;
+    }
+  }
+  const { firstname, middlename, lastname } = consenter ?? {};
   const { fullName } = PdfForm;
   const consenterFullName = fullName(firstname, middlename, lastname);
   const context:IContext = <IContext>ctx;
@@ -182,7 +188,7 @@ const send = async (parms:EmailParameters):Promise<boolean> => {
       description: 'exhibit-form-single.pdf'
     },
     {
-      pdf: new ConsentForm({ consenter, entityName:entity_name }),
+      pdf: new ConsentForm({ consenter: consenter as Consenter, entityName: entity_name }),
       name: 'consent-form.pdf',
       description: 'consent-form.pdf'
     }
@@ -214,23 +220,31 @@ const send = async (parms:EmailParameters):Promise<boolean> => {
  */
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/authorized-individual/DisclosureRequestEmail.ts')) {
-  const email = process.env.PDF_RECIPIENT_EMAIL;
   
-  if( ! email) {
+  // Make this an actual email address that SES will reach.
+  const affiliateEmail = process.env.PDF_RECIPIENT_EMAIL;
+  
+  if( ! affiliateEmail) {
     log('Email environment variable is missing. Put PDF_RECIPIENT_EMAIL=[email] in .env in ${workspaceFolder}');
     process.exit(1);
   }
 
   const test_disclosure_data = {
     consenter: { 
-      email: 'foghorn@warnerbros.com', phone_number: '617-222-4444', active: YN.Yes,
-      firstname: 'Foghorn', middlename: 'F', lastname: 'Leghorn', consented_timestamp: [ new Date().toISOString() ]
+      email: 'cp1@warhen.work', phone_number: '617-222-4444', active: YN.Yes,
+      firstname: 'Richard', middlename: 'F', lastname: 'Nixon', consented_timestamp: [ new Date().toISOString() ]
     },
-    disclosingEntity: { name: 'Boston University', representatives: [ daffyduck, yosemitesam ] },
-    requestingEntity: { name: 'Northeastern University', authorizedIndividuals: [ bugsbunny ] }
+    disclosingEntity: { name: 'Boston University', representatives: [ alberteinstein, elvispresley ] },
+    requestingEntity: { name: 'Northeastern University', authorizedIndividuals: [ abrahamlincoln, bingcrosby ] }
   } as DisclosureFormData;
 
-  new BasicDisclosureRequest(test_disclosure_data, test_exhibit_data).send(email)
+  const test_exhibit_data = Object.assign({}, test_data) ?? {};
+  // Make sure email address to send to matches one of the affiliates in the exhibit form test data, so validation will pass.
+  if(test_exhibit_data.affiliates && test_exhibit_data.affiliates.length > 0) {
+    test_exhibit_data.affiliates[0].email = affiliateEmail;
+  }
+
+  new BasicDisclosureRequest(test_disclosure_data, test_exhibit_data).send(affiliateEmail)
     .then(success => {
       log(success ? 'Succeeded' : 'Failed');
     })
