@@ -898,17 +898,18 @@
                       <div class="divSysAdminOption">
                         An Authorized Individual:&nbsp;
                         <input type="radio" name="rdoSysAdminInvite" value="RE_AUTH_IND">
+                        <div id="sysAdminEntityDropdown" class="dropdown">
+                          <button id="sysAdminEntityDropdownButton1" class="btn btn-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            Organizations/Entities
+                          </button>
+                          <div id="sysAdminEntityDropdownList" class="dropdown-menu" aria-labelledby="sysAdminEntityDropdownButton1">
+                          </div>                          
+                        </div>
                       </div>
                     </div>
                     <div id="divSysAdminEmailToInvite" class="divSysAdminOption" style="text-align: right;">
                       Email Address:
                       <input id="txtSysAdminEmailToInvite" type="text" class="form-control" style="width:fit-content; display:inline-block;">
-                    </div>                
-                    <div id="divSysAdminEntities" class="divSysAdminOption" style="text-align: right;">
-                      Entity:
-                      <select id="lbxSysAdminEntities" class="form-control" style="width:fit-content; display:inline-block;">
-                        <option><-- Select One --></option>
-                      </select>
                     </div>                
                     <div class="divSysAdminOption">
                       <button id="btnSysAdminInvite" class="btn btn-primary btn-lg" type="button">Invite</button>
@@ -1013,10 +1014,10 @@
                           <td>
                             <div id="sysAdminEntityDropdown" class="dropdown">
                               <b>Select One:</b>&nbsp;                          
-                              <button id="sysAdminEntityDropdownButton" class="btn btn-primary btn-lg dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                              <button id="sysAdminEntityDropdownButton2" class="btn btn-primary btn-lg dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                 Organizations/Entities
                               </button>
-                              <div id="sysAdminEntityDropdownList" class="dropdown-menu" aria-labelledby="sysAdminEntityDropdownButton">
+                              <div id="sysAdminEntityDropdownList" class="dropdown-menu" aria-labelledby="sysAdminEntityDropdownButton2">
                               </div>                          
                             </div>
                           </td>
@@ -1915,6 +1916,10 @@
 
     let selectedEntityForExhibitUpdate;
 
+    let selectedEntityForSysAdminTeardown;
+
+    let selectedEntityForSysAdminInvite;
+
     let selectedConsenter;
 
     const ExhibitsPath = () => {
@@ -2452,22 +2457,26 @@
     /**
      * Populate the entity picklist of the sysadmin shortcuts tab from fetched entity data
      */
-    const populateSysAdminEntityList = async () => {
-      const lbx = document.querySelector(`#sysAdminEntityDropdownList`);
-      lbx.innerHTML = '';
-      const entities = await fetchSysAdminEntityList();
-      if(entities.length > 0) {
-        entities.forEach(entity => {
-          const { entity_id, entity_name } = entity;
-          const a = document.createElement("a");
-          a.id = entity_id;
-          a.name = entity_name;
-          a.className = 'dropdown-item';
-          a.href = '#';
-          a.innerText = entity_name;
-          lbx.appendChild(a);
-        });
-      }
+    const populateSysAdminEntityDropdownLists = async () => {
+      const entities = [];
+      if( ! localTesting()) {     
+        entities.push(...await fetchSysAdminEntityList());
+      } 
+      document.querySelectorAll(`#sysAdminEntityDropdownList`).forEach(lbx => {
+        lbx.innerHTML = '';
+        if(entities.length > 0) {
+          entities.forEach(entity => {
+            const { entity_id, entity_name } = entity;
+            const a = document.createElement("a");
+            a.id = entity_id;
+            a.name = entity_name;
+            a.className = 'dropdown-item';
+            a.href = '#';
+            a.innerText = entity_name;
+            lbx.appendChild(a);
+          });
+        }
+      });
     }
 
     const sendSysAdminEntitySetupRequest = async () => {
@@ -2527,11 +2536,11 @@
     const sendSysAdminEntityTeardownRequest = async () => {
       const msg = document.getElementById('apiResponse');
       msg.innerHTML = '';
-      if( ! selectedEntity) {
+      if( ! selectedEntityForSysAdminTeardown) {
         alert('Entity selection required');
         return;
       }
-      const parameters = selectedEntity;
+      const parameters = selectedEntityForSysAdminTeardown;
       try {
         const outgoingPayload = { task: 'shortcut-entity-teardown', parameters };
         const response = await fetch(apiUri('SYS_ADMIN'), {
@@ -4049,7 +4058,8 @@
     /**
      * Invite a user
      */
-    const inviteUser = async (role, email, apiUri, callback) => {
+    const inviteUser = async (parms) => {
+      let { entity_id, role, email, apiUri, callback } = parms
       if( ! email) {
         alert("No email was entered");
         return;
@@ -4058,8 +4068,14 @@
         alert("No role was selected");
         return;
       }
+
       const msg = document.getElementById('apiResponse');
-      const { entity: { entity_id }} = userContext || { entity: {}};
+      // If entity_id was not provided as a parameter, get it from the userContext (if not SYS_ADMIN)
+      if( ! entity_id) {
+        const { entity: { entity_id:entityId } = {} } = userContext ?? { entity: {}};
+        entity_id = entityId;
+      }
+      
       msg.innerHTML = '';
 
       try {
@@ -4674,13 +4690,13 @@
           if( ! confirm(confirmMsg)) {
             return;
           }
-          await inviteUser(inviteeRole, inviteeEmail, apiUri(role), async (returnedPayload) => {
+          await inviteUser( { role:inviteeRole, email:inviteeEmail, apiUri:apiUri(role), callback:async (returnedPayload) => {
             if(returnedPayload.ok) {
               await setUserContext();
               populateAmendableUsers();
               populateRegistrationInfoCards();
             }
-          });
+          }});
 
           return;
         default:
@@ -5191,19 +5207,26 @@
       }));
       document.getElementById('btnSysAdminInvite').addEventListener('click', () => {
         const role = $("input[name='rdoSysAdminInvite']:checked").val();
-        const email = $('#txtSysAdminEmailToInvite').val();
-        inviteUser(role, email, apiUri('SYS_ADMIN'));
+        let entity_id;
+        if(role == 'RE_AUTH_IND') {
+          if( ! selectedEntityForSysAdminInvite) {
+            alert('Please select an organization/entity');
+            return;
+          }
+          entity_id = selectedEntityForSysAdminInvite?.entity_id;
+        }
+        const parentDiv = document.querySelector('#sys-admin-invitation');
+        const email = parentDiv.querySelector('#txtSysAdminEmailToInvite').value;
+
+        inviteUser({ entity_id, role, email, apiUri:apiUri('SYS_ADMIN') });
       });      
       document.getElementsByName('rdoSysAdminInvite').forEach(rdo => {
         rdo.addEventListener('click', () => {
-          const val = event.srcElement.value;
-          const entities = document.getElementById('divSysAdminEntities');
+          const val = event.srcElement.value; // SYS_ADMIN, RE_ADMIN or RE_AUTH_IND
           const email = document.getElementById('divSysAdminEmailToInvite');
-          entities.style.display = 'none';
           email.style.display = 'none';
           if( ! val) return;
           email.style.display = 'inline-block';
-          if( val == 'RE_AUTH_IND') entities.style.display = 'inline-block';
         })
       });
       document.getElementById('btnAcknowledgeConsenterSubmit').addEventListener('click', () => {
@@ -5306,13 +5329,23 @@
         });
       });
 
-      // Add behavior to selection activity on the entity picklist for sysadmin shortcuts tab
-      $('#sysAdminEntityDropdownButton').on('hide.bs.dropdown', function () {
+      // Add behavior to selection activity on the entity picklist for sysadmin invitations tab
+      $('#sysAdminEntityDropdownButton1').on('hide.bs.dropdown', function () {
         const { srcElement:a } = event;
         if(a.tagName == 'A' && a.name && a.id) {
-          const button = document.getElementById('sysAdminEntityDropdownButton');
+          const button = document.getElementById('sysAdminEntityDropdownButton1');
           button.innerText = a.name;
-          selectedEntity = { entity_id: a.id };
+          selectedEntityForSysAdminInvite = { entity_id:a.id, entity_name:a.name };
+        }
+      });
+
+      // Add behavior to selection activity on the entity picklist for sysadmin shortcuts tab
+      $('#sysAdminEntityDropdownButton2').on('hide.bs.dropdown', function () {
+        const { srcElement:a } = event;
+        if(a.tagName == 'A' && a.name && a.id) {
+          const button = document.getElementById('sysAdminEntityDropdownButton2');
+          button.innerText = a.name;
+          selectedEntityForSysAdminTeardown = { entity_id:a.id, entity_name:a.name };
         }
       });
 
@@ -5408,7 +5441,7 @@
                 
             case 'SYS_ADMIN':
               document.getElementsByName('rdoSysAdminInvite')[1].click();
-              await populateSysAdminEntityList();
+              await populateSysAdminEntityDropdownLists();
               break;
 
             case 'RE_ADMIN':
