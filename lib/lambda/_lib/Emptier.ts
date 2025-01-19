@@ -66,6 +66,12 @@ export type EmptyDynamoDbTableParms = {
   TableName:string, partitionKey:string, sortKey?:string, dryRun?:boolean, region?:string
 }
 
+export type EmptyDynamoDbScanParms = {
+  projectedFieldNames?:string,
+  // Not filtering results using ScanCommandInput.FilterExpression because that is harder to implement generically.  
+  filterFunction?:(item:Record<string, AttributeValue>) => boolean
+}
+
 /**
  * Simple dynamodb table emptier.
  */
@@ -84,11 +90,29 @@ export class DynamoDbTableToEmpty {
 
   /**
    * Empty an entire dynamodb table
-   * @param ProjectionExpression If not specified, the initial scan will return all fields of every item.
+   * @param projectedFieldNames A comma-delimited list of fields to include in the scan made of items to delete.
    * @returns 
    */
-  public empty = async (projectionExpression?:string):Promise<Record<string, AttributeValue>[]> => {
+  public empty = async (projectedFieldNames?:string) => {
+    return this.removeItems({ projectedFieldNames});
+  }
+
+  /**
+   * Remove from a dynamodb table all items that meet the criteria specified in the parms object.
+   * @param parms 
+   * @returns 
+   */
+  public prune = async (parms:EmptyDynamoDbScanParms) => {
+    return this.removeItems(parms);
+  }
+
+  /**
+   * Remove items from a dynamodb table - either all items or a subset of items defined by an optional filter function.
+   * @returns 
+   */
+  private removeItems = async (parms:EmptyDynamoDbScanParms):Promise<Record<string, AttributeValue>[]> => {
     const { TableName, partitionKey, sortKey, region, dryRun } = this.parms;
+    const { projectedFieldNames, filterFunction } = parms;
     const { getAliasedProjectionExpression, getExpressionAttributeNames } = this;
     const client = new DynamoDBClient({ region });
     const docClient = DynamoDBDocumentClient.from(client);
@@ -97,9 +121,9 @@ export class DynamoDbTableToEmpty {
     do {
       // 1) Scan the table to retrieve all items
       const scanParams = { TableName, ExclusiveStartKey: lastEvaluatedKey } as ScanCommandInput;
-      if(projectionExpression) {
-        scanParams.ExpressionAttributeNames = getExpressionAttributeNames(projectionExpression);
-        scanParams.ProjectionExpression = getAliasedProjectionExpression(projectionExpression);
+      if(projectedFieldNames) {
+        scanParams.ExpressionAttributeNames = getExpressionAttributeNames(projectedFieldNames);
+        scanParams.ProjectionExpression = getAliasedProjectionExpression(projectedFieldNames);
       }
       const scanResult = await docClient.send(new ScanCommand(scanParams)) as ScanCommandOutput;
       const items = scanResult.Items || [];
@@ -107,7 +131,10 @@ export class DynamoDbTableToEmpty {
 
       // 2) Batch delete items (up to 25 at a time)
       while (items.length > 0) {
-        const batch = items.splice(0, 25);
+        let batch = items.splice(0, 25);
+        if(filterFunction) {
+          batch = batch.filter(filterFunction);
+        }
         deletedItems.push(...batch);
         const deleteRequests = batch.map(item => {
           const Key = { [partitionKey]: item[partitionKey] };
