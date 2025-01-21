@@ -583,62 +583,17 @@
           <div id="register-entity-section" class="container-fluid py-5" style="display: none">
             <h3 class="display-7 fw-bold">Entity Registration Form</h3>
             <p class="text-justify fs-4" style="text-align:justify;">
-              <table id='tblEntityName'>
-                <tr>
-                  <td class='tdHeading' colspan=1 style="padding-right:50px;">Name of organization</td>
-                  <td id="tdEntityName" colspan=3 style="width:100%"></td>
-                </tr>
-                <tr><td class='tdSpacing' colspan=4>&nbsp;</td></tr>
-              </table>
-              <table id="tblReAdmin">
-                <tr><td class='trHeading' colspan=4>Administrative support professional<sup>1</sup></td></tr>
-                <tr>
-                  <td id='tdReAdminNameLabel' class='tdHeading'>Name</td>
-                  <td id='tdReAdminName' class='tdEntry'></td>
-                  <td id='tdReAdminTitleLabel' class='tdHeading'>Title</td>
-                  <td id='tdReAdminTitle' class='tdEntry'></td>
-                </tr>
-                <tr>
-                  <td id='tdReAdminPhoneLabel' class='tdHeading'>Phone</td>
-                  <td id='tdReAdminPhone' class='tdEntry'></td>
-                  <td id='tdReAdminEmailLabel' class='tdHeading'>Email</td>
-                  <td id='tdReAdminEmail' class='tdEntry'></td>
-                </tr>
-                <tr><td class='tdSpacing' colspan=4>&nbsp;</td></tr>
-              </table>
-              <table id="tblAuthInd1">
-                <tr><td class='trHeading' colspan=4>Authorized Individual 1<sup>2</sup></td></tr>
-                <tr>
-                  <td id='tdAuthIndName1Label' class='tdHeading'>Name</td>
-                  <td id='tdAuthIndName1' class='tdEntry'></td>
-                  <td id='tdAuthIndTitle1Label' class='tdHeading'>Title</td>
-                  <td id="tdAuthIndTitle1" class='tdEntry'></td>
-                </tr>
-                <tr>
-                  <td id='tdAuthIndPhone1Label' class='tdHeading'>Phone</td>
-                  <td id='tdAuthIndPhone1' class='tdEntry'></td>
-                  <td id='tdAuthIndEmail1Label' class='tdHeading'>Email</td>
-                  <td id='tdAuthIndEmail1' class='tdEntry'></td>
-                </tr>
-                <tr><td class='tdSpacing' colspan=4>&nbsp;</td></tr>
-              </table>
-              <table id="tblAuthInd2">
-                <tr><td class='trHeading'colspan=4 class='tdHeading'>Authorized Individual 2<sup>3</sup></td></tr>
-                <tr>
-                  <td id='tdAuthIndName2Label' class='tdHeading'>Name</td>
-                  <td id='tdAuthIndName2' class='tdEntry'></td>
-                  <td id='tdAuthIndTitle2Label' class='tdHeading'>Title</td>
-                  <td id="tdAuthIndTitle2" class='tdEntry'></td>
-                </tr>
-                <tr>
-                  <td id='tdAuthIndPhone2Label' class='tdHeading'>Phone</td>
-                  <td id='tdAuthIndPhone2' class='tdEntry'></td>
-                  <td id='tdAuthIndEmail2Label' class='tdHeading'>Email</td>
-                  <td id='tdAuthIndEmail2' class='tdEntry'></td>
-                </tr>
-                <tr><td class='tdSpacing' colspan=4>&nbsp;</td></tr>
-              </table>
+              <div>
+                <table id='tblEntityName'>
+                  <tr>
+                    <td class='tdHeading' colspan=1 style="padding-right:50px;">Name of organization</td>
+                    <td id="tdEntityName" colspan=3 style="width:100%"></td>
+                  </tr>
+                  <tr><td class='tdSpacing' colspan=4>&nbsp;</td></tr>
+                </table>
+              </div>
             </p>
+
             <div style="padding-left:20px; display:flex; justify-content: center; text-align:justify; font-style: italic;">
               Registering to use ETT also means that in your official and personal capacities you have read and agree to the ETT Privacy Policy 
               [link] and consent to inclusion of your organization’s name, with or without its Authorized Individuals’ names and contact information 
@@ -2142,148 +2097,197 @@
     }
 
     /**
-     * This function is triggered after a fetch for invitation data..
-     * If the invitation shows a register-entity timestamp, then enable buttons to goto cognito login.
+     * Returns a set of builder functions for the register entity screen fields.
      */
-    function showRegisterEntityScreen(payload) {
+    const getRegisterScreenBuilder = (invitation, parentElement) => {
+      const { email:invEmail, role:invRole, code } = invitation ?? {};
+
+      const insertTextbox = (id, value, parentTd) => {
+        const textbox = document.createElement('input');
+        textbox.type = 'text';
+        textbox.id = id;
+        textbox.className = 'form-control';
+        if(value) textbox.value = value;
+        parentTd.appendChild(textbox);
+      }
+
+      const createUserTable = (user, index, isInvitee) => {
+        const { email, role, fullname, title, phone_number } = user ?? {};
+        const table = document.createElement('table');
+        table.id = role == 'RE_ADMIN' ? 'tblReAdmin' : `tblAuthInd${index-1}`;
+
+        let tr;
+
+        // Add a header row to indicate the user role.
+        const addHeaderRow = () => {
+          const aspDesc = 'Administrative support professional';
+          const aiDesc = 'Authorized Individual';
+          const userDesc = role == 'RE_ADMIN' ? aspDesc : `${aiDesc} ${index-1}`;
+          const tr = document.createElement('tr');
+          table.appendChild(tr);
+          const td = document.createElement('td');
+          td.innerHTML = `${userDesc}<sup>${index}</sup>`;
+          td.className = 'trHeading';
+          td.colSpan = 4;
+          tr.appendChild(td);
+        }
+
+        // Add a row for spacing
+        const addSpacerRow = () => {
+          const tr = document.createElement('tr');
+          table.appendChild(tr);
+          const td = document.createElement('td');
+          td.innerHTML = '&nbsp;';
+          td.className = 'tdSpacing';
+          td.colSpan = 4;
+          tr.appendChild(td);
+        }
+
+        // Add a cell to display the field name.
+        const addFieldNameCell = (html) => {
+          const td = document.createElement('td');
+          tr.appendChild(td);
+          if(isInvitee() && /phone/i.test(html)) {
+            td.innerHTML = phone_number ? html : '&nbsp;';
+          }
+          else {
+            td.innerHTML = html;
+          }
+          td.className = 'tdHeading';
+          return td;
+        }
+
+        // Add a cell to display the field value or a textbox to edit it.
+        const addFieldValueCell = (id, value) => {
+          const td = document.createElement('td');
+          tr.appendChild(td);
+          td.className = 'tdEntry';
+          const isPhone = () => /phone/i.test(id);
+          const isEmail = () => /email/i.test(id);
+
+          if(isInvitee()) {
+            if(isPhone()) {
+              td.innerHTML = value || '&nbsp;';
+            }
+            else if(isEmail()) {
+              if(value) {
+                td.innerHTML = value;
+              }
+              else {
+                const qsEmail = (new URLSearchParams(window.location.search)).get('email') || '';
+                insertTextbox(`txt${id}`, qsEmail, td);
+              }
+            }
+            else if(value) {
+              td.innerHTML = value;
+            }
+            else {
+              insertTextbox(`txt${id}`, '', td);
+            }
+          }
+          else {
+            td.innerHTML = value || '&nbsp;';
+          }
+          return td;
+        }
+
+        // Add row to display the fullname and title fields
+        const addFirstFieldSetRow = () => {
+          tr = document.createElement('tr');
+          table.appendChild(tr);
+          addFieldNameCell('Full Name');
+          addFieldValueCell('Fullname', fullname);
+          addFieldNameCell('Title');
+          addFieldValueCell('Title', title);
+        }
+
+        // Add row to display the phone and email fields
+        const addSecondFieldSetRow = () => {
+          tr = document.createElement('tr');
+          table.appendChild(tr);
+          addFieldNameCell('Phone');
+          addFieldValueCell('Phone', phone_number);
+          addFieldNameCell('Email');
+          addFieldValueCell('Email', email);
+        }
+
+        // Add a table to display the user fields.
+        addHeaderRow();
+        addFirstFieldSetRow();
+        addSecondFieldSetRow();
+        addSpacerRow();
+
+        if( ! parentElement) {
+          parentElement = document.getElementById('tblEntityName').closest('div');
+        }
+        parentElement.appendChild(table);
+        return table;
+      }
+
+      return { insertTextbox, createUserTable };
+    }
+
+    /**
+     * This function is triggered after a fetch for invitation data to render the entity registration screen.
+     */
+    const showRegisterEntityScreen = (payload) => {
       const msg = document.getElementById('apiResponse');
       msg.innerHTML = '';
       try {
-        const { invitation:_invitation, users, entity } = payload ?? {};
-        invitation = _invitation;
-        const { registered_timestamp, email:invEmail, role, entity_name:invEntityName } = invitation ?? {};
-        if(role) {
-          selected_role = role;
-        }
+        const { entity, users=[], invitation } = payload;
+        const { entity_name } = entity ?? {};
+        const { registered_timestamp, role:invRole, email:invEmail, code } = invitation ?? {};
+        const alreadyRegistered = () => invEmail != code;
+        if(invRole) selected_role = invRole;
         const txtSign = document.getElementById('txtEntityRepSig');
         const chk = document.getElementById('chkRegisterEntity');
         const btnSubmit1 = document.getElementById('btnRegisterEntitySubmit');
         const btnSubmit2 = document.getElementById('btnRegisterEntitySubmitAmend');
         const divTerminateEntity = document.getElementById('divTerminateEntity');
 
-        if(selected_role == 'RE_ADMIN') {
-          divTerminateEntity.style.display = 'none';
-          document.getElementById('register-tooltip-1').style.display = 'none';
-        }
-        else {
-          divTerminateEntity.style.display = 'inline';
-        }
-        if(registered_timestamp) {
-          msg.innerHTML = `You registered at ${registered_timestamp}`;
-          chk.checked = true;
-          txtSign.disabled = true;
-          btnSubmit1.disabled = true;
-          btnSubmit2.disabled = true;
-        }
-        else {
-          chk.checked = false;
-          txtSign.value = '';
-          txtSign.disabled = true;
-          btnSubmit1.disabled = true;
-          btnSubmit2.disabled = true;
-        }
+        // Handle the display of buttons and fields at the bottom of the registration form.
+        divTerminateEntity.style.display = selected_role == 'RE_ADMIN' ? 'none' : 'inline';
+        if(selected_role == 'RE_ADMIN') divTerminateEntity.style.display = 'none';
+        if(selected_role == 'RE_ADMIN') document.getElementById('register-tooltip-1').style.display = 'none';
+        if(registered_timestamp) msg.innerHTML = `You registered at ${registered_timestamp}`;
+        chk.checked = registered_timestamp ? true : false;
+        txtSign.disabled = true;
+        btnSubmit1.disabled = true;
+        btnSubmit2.disabled = true;
 
-        const sameUser = user =>  invEmail == user.email;
-        const setField = (user, userfld, basename, index) => {
-          let html = user[userfld] || '';
-          if(userfld == 'entity_name') {
-            index = '';
-          }
-          if( ! user.hasAccount()) {
-            switch(userfld) {
-              case 'email':
-                html = '';
-                break;
-              case 'entity_name':
-                html = '';
-                break;
-            }
-          }
-          if(sameUser(user)) { 
-            if(userfld == 'phone_number') {
-              document.getElementById(`td${basename}${index}`).innerHTML = html;
-              document.getElementById(`td${basename}${index}Label`).innerHTML = '';
-            }
-            else if(userfld == 'entity_name' && entity && invEntityName) {
-              document.getElementById(`td${basename}${index}`).innerHTML = invEntityName;
-              html = invEntityName;
-            }
-            else {
-              if(userfld == 'email') {
-                html = (new URLSearchParams(window.location.search)).get('email') || html;
-              }              
-              html = `<input type="text" class="form-control" id="txt${basename}${index}" value="${html}">`
-            }                  
-          }
-          const td = document.getElementById(`td${basename}${index}`);
-          if(td) {
-            td.innerHTML = html;
-          }
-        }
-        const setFields = (user, basename, index) => {
-          setField(user, 'entity_name', `EntityName`, index||'');
-          setField(user, 'fullname', `${basename}Name`, index||'');
-          setField(user, 'title', `${basename}Title`, index||'');
-          setField(user, 'phone_number', `${basename}Phone`, index||'');
-          setField(user, 'email', `${basename}Email`, index||'');
-          if(user.role == 'RE_AUTH_IND') {
-            document.getElementById('tblAuthInd2').style.display = 'inline';
-          }
-        }
-        
-        document.getElementById(`tblAuthInd1`).style.display = 'none';
-        document.getElementById(`tblAuthInd2`).style.display = 'none';
+        // Get the builder functions for the register entity screen fields
+        const tdEntityName = document.getElementById('tdEntityName');
+        // const { insertTextbox, createUserTable } = getRegisterScreenBuilder(invitation);
+        const parentElement = tdEntityName.closest('div');
+        const { insertTextbox, createUserTable } = getRegisterScreenBuilder(invitation, parentElement);
 
+        // Handle the display of the entity name field if indicated, else assume entity acknowledgement is indicated. 
         if(entity) {
-          document.getElementById('tblEntityName').style.display = 'inline';
-          document.getElementById('tdEntityName').innerHTML = entity.entity_name;
-          document.getElementById('tblAuthInd1').style.display = 'inline'; 
-          let authIndCounter = 0;
-          let aspCounter = 0;
-          if(users && users.length > 0) {
-            users.forEach((user) => {
-              user.hasAccount = () => true;
-              user.entity_name = entity.entity_name;
-              switch(user.role) {
-                case 'RE_ADMIN':
-                  setFields(user, 'ReAdmin');
-                  aspCounter++;
-                  break;
-                case 'RE_AUTH_IND':
-                  setFields(user, 'AuthInd', ++authIndCounter);
-                  break;
-              }
-            });
-          }
-          if(authIndCounter < 2) {
-            if( users.find(user =>  user.email == invitation.email )) {
-              document.getElementById(`tblAuthInd${authIndCounter+1}`).style.display = 'none';
-            }
-            else {
-              let { entity_name, email, code, fullname, title, phone_number } = invitation;
-              setFields({
-                entity_name, email, fullname, title, phone_number, hasAccount: () => email != code
-              }, 'AuthInd', authIndCounter+1);
-            }
-          }
-          if(aspCounter == 0) {
-            let { entity_name, email, code, fullname, title, phone_number } = invitation;
-            setFields({
-              entity_name, email, fullname, title, phone_number, hasAccount: () => email != code
-            }, 'ReAdmin');
-          }
+          tdEntityName.innerHTML = entity_name;
         }
-        else if(role == 'RE_ADMIN') {
-          // document.getElementById('tblEntityName').style.display = 'none';
-          let { entity_name, email, code, fullname, title, phone_number } = invitation;
-          setFields({
-            entity_name, email, fullname, title, phone_number, hasAccount: () => email != code
-          }, 'ReAdmin');
+        else if(invRole == 'RE_ADMIN') {
+          insertTextbox('txtEntityName', entity_name, tdEntityName);
         }
         else {
           showSection('acknowledge-entity');
           return;
         }
+        
+        // Render the asp table first...
+        const asp = users.find(user => user.role == 'RE_ADMIN') ?? { role:'RE_ADMIN' };
+        let isInvitee = () => users.length == 0 || (users.length == 1 && invRole == 'RE_ADMIN' && alreadyRegistered());
+        createUserTable(asp, 1, isInvitee);
+        if(isInvitee()) return;
+
+        // Render the first auth ind table...
+        const authInd1 = users.find(user => user.role == 'RE_AUTH_IND') ?? { role:'RE_AUTH_IND' };
+        isInvitee = () => users.length == 1 || (users.length == 2 && invRole == 'RE_AUTH_IND' && alreadyRegistered());
+        createUserTable(authInd1, 2, isInvitee);
+        if(isInvitee()) return;
+
+        // Render the 2nd auth ind table...
+        const authInd2 = users.length > 2 ? users.find(u => u.role == 'RE_AUTH_IND' && u.email != authInd1.email) : { role:'RE_AUTH_IND' };
+        createUserTable(authInd2, 3, () => true);
       }
       catch(e) {
         msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
@@ -2294,47 +2298,45 @@
     }
 
     /**
-     * Submit entity registration and if successful, navigate to the cognito hosted UI.
+     * Submit to the registration api endpoint the registration details of the invitee.
      */
-    function registerEntity(invitationCode, amend) {
+    const registerEntity = async (invitationCode, amend) => {
       const msg = document.getElementById('apiResponse');
       msg.innerHtml = '';
-      const uri = `${STATIC_PARAMETERS.REGISTER_ENTITY_API_URI}/register/${invitationCode}`;
-      const basename = selected_role == 'RE_ADMIN' ? 'ReAdmin' : 'AuthInd';
-      const getAuthIndIndex = () => $(`#txt${basename}Email1`).length == 1 ? '1' : '2';
-      const index = selected_role == 'RE_ADMIN' ? '' : getAuthIndIndex();
-      const formdata = {
-        email: $(`#txt${basename}Email${index}`).val(),
-        fullname: $(`#txt${basename}Name${index}`).val(),
-        title: $(`#txt${basename}Title${index}`).val()
-      }
-      if(selected_role == 'RE_ADMIN') {
-        formdata.entity_name = $('#txtEntityName').val();
-      }
-      const querystring = Object.keys(formdata).map(key => `${encodeURIComponent(key)}=${encodeURIComponent(formdata[key])}`).join('&');
+      try {
+        const uri = `${STATIC_PARAMETERS.REGISTER_ENTITY_API_URI}/register/${invitationCode}`;
+        const parentDiv = document.getElementById('tblEntityName').closest('div');
+        const formdata = {
+          email: parentDiv.querySelector('#txtEmail').value,
+          fullname: parentDiv.querySelector('#txtFullname').value,
+          title: parentDiv.querySelector('#txtTitle').value,
+        }
+        if(selected_role == 'RE_ADMIN') {
+          formdata.entity_name = parentDiv.querySelector('#txtEntityName').value;
+        }
+        const querystring = Object.keys(formdata).map(key => `${encodeURIComponent(key)}=${encodeURIComponent(formdata[key])}`).join('&');
 
-      fetch(`${uri}?${querystring}`, {
-        method: 'GET',
-        credentials: 'omit',
-        mode: 'cors',
-      })
-      .then(response => response.json())
-      .then((json) => {
-        const { message, payload } = json;
+        document.body.style.cursor = 'progress';
+        const response = await fetch(`${uri}?${querystring}`, {
+          method: 'GET',
+          credentials: 'omit',
+          mode: 'cors',
+        });
+
+        const package = await response.json();
+        document.body.style.cursor = 'default';
+        const { message, payload } = package;
         if(payload.ok) {
-          let email = $('input[type="text"]').filter(function() {
-              return /^txt[^\d]+Email\d*$/.test(this.id);
-          })[0];
-          email = email ? email.value : '';
+          const { email } = formdata;
           signUp(email, amend);
         }
         else {
-          msg.innerHTML = `<pre>${message}</pre>`;
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
         }
-      })
-      .catch((e) => {
-        msg.innerHTML = `<pre>${e.message}</pre>`;
-      }); 
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
     }
 
     /**
