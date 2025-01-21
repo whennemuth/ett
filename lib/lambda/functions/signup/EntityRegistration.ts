@@ -55,6 +55,10 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
 
       // Return a list of users who have already gone through the registration process for the entity and exist in the users table.
       case Task.LOOKUP_ENTITY:
+        if(entity_id == ENTITY_WAITING_ROOM) {
+          // Must be an RE_ADMIN who has not registered yet (no entity created yet).
+          return okResponse('Ok', { entity:null, users:[], invitation });
+        }
         const dao = DAOFactory.getInstance({
           DAOType: "user",
           Payload: { entity_id } as User
