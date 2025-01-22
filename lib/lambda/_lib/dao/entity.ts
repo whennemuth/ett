@@ -21,9 +21,22 @@ export enum UserFields {
   fullname = 'fullname',
   title = 'title',
   phone_number = 'phone_number',
+  delegate = 'delegate',
   create_timestamp = 'create_timestamp',
   update_timestamp = 'update_timestamp',
   active = 'active'
+};
+export enum DelegateFields {
+  fullname = 'fullname',
+  email = 'email',
+  title = 'title',
+  phone_number = 'phone_number'
+};
+export type Delegate = {
+  fullname: string,
+  email: string,
+  title?: string,
+  phone_number?: string
 };
 export type User = {
   email: string,
@@ -33,6 +46,7 @@ export type User = {
   fullname?: string,
   title?: string,
   phone_number?: string,
+  delegate?:Delegate,
   create_timestamp?: string,
   update_timestamp?: string,
   active?: Y_or_N
@@ -128,6 +142,7 @@ export enum InvitationFields {
   message_id = 'message_id',
   fullname = 'fullname',
   title = 'title',
+  delegate = 'delegate',
   registered_timestamp = 'registered_timestamp',
   retracted_timestamp = 'retracted_timestamp',
 }
@@ -141,6 +156,7 @@ export type Invitation = {
   fullname?: string,
   title?: string,
   entity_name?: string,
+  delegate?: Delegate,
   registered_timestamp?: string,
   retracted_timestamp?: string,
 }

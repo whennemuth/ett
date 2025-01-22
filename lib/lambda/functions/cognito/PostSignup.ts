@@ -280,7 +280,7 @@ export const handler = async (_event:any) => {
 const addUserToDatabase = async (event:PostSignupEventType, role:Role, invitation:Invitation):Promise<User|undefined> => {
   const { sub, email, phone_number } = event.request.userAttributes;
 
-  let { entity_id, fullname, title } = invitation;
+  let { entity_id, fullname, title, delegate } = invitation;
 
   const user = {
     [UserFields.email]: email,
@@ -289,7 +289,8 @@ const addUserToDatabase = async (event:PostSignupEventType, role:Role, invitatio
     [UserFields.title]: title,
     [UserFields.phone_number]: phone_number,
     [UserFields.sub]: sub,
-    [UserFields.role]: role
+    [UserFields.role]: role,
+    [UserFields.delegate]: delegate
   } as User;
 
   const daoUser = DAOFactory.getInstance({ DAOType: 'user', Payload: user }) as DAOUser;

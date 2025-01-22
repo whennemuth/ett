@@ -81,7 +81,9 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         if( ! event.queryStringParameters) {
           return invalidResponse('Bad Request: Missing querystring parameters');
         }
-        let { email, fullname, title, entity_name } = event.queryStringParameters;
+        let { 
+          email, fullname, title, entity_name, delegate_fullname, delegate_email, delegate_title, delegate_phone 
+        } = event.queryStringParameters;
 
         if( ! email) {
           return invalidResponse('Bad Request: Missing email querystring parameter');
@@ -92,7 +94,22 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         if( ! entity_name && (role == Roles.RE_ADMIN || role == Roles.SYS_ADMIN) ) {
            return invalidResponse('Bad Request: Missing entity_name querystring parameter');
         }
-
+        let delegate = undefined;
+        if(role == Roles.RE_AUTH_IND) {
+          if( delegate_fullname && ! delegate_email ) { 
+            return invalidResponse('Bad Request: delegate_fullname cannot be missing delegate_email querystring parameter');
+          }
+          if( delegate_email && ! delegate_fullname ) { 
+            return invalidResponse('Bad Request: delegate_email cannot be missing delegate_fullname querystring parameter');
+          }
+          delegate = { fullname: delegate_fullname, email: delegate_email, title: delegate_title, phone_number: delegate_phone };
+        }
+        else {
+          if(delegate_email || delegate_fullname || delegate_title || delegate_phone) {
+            return invalidResponse('Bad Request: Delegate information is not allowed for this role');
+          }
+        }
+        
         email = decodeURIComponent(email);
         fullname = decodeURIComponent(fullname);        
         if(entity_name) {
@@ -111,7 +128,7 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
             return invalidResponse(`Bad Request: The specified name: "${entity_name}", is already in use.`)
           }
         }
-        if( await registration.registerUser({ email, fullname, title, entity_name } as Invitation)) {
+        if( await registration.registerUser({ email, fullname, title, entity_name, delegate } as Invitation)) {
           return okResponse(`Ok: Registration completed for ${code}`);
         }
 

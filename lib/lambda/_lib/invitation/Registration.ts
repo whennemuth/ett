@@ -48,6 +48,7 @@ export class Registration {
         [InvitationFields.fullname]: invitation.fullname,
         [InvitationFields.title]: invitation.title,
         [InvitationFields.entity_name]: invitation.entity_name,
+        [InvitationFields.delegate]: invitation.delegate
       } as Invitation}) as DAOInvitation;
 
       const output = await dao.update();
