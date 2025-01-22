@@ -611,17 +611,13 @@
             <hr style="margin-bottom: 30px;">
             <div style="font-style: italic;">
               <p>
-                <sup>1</sup>Administrative Support Professional who assists and directly works with one or both of the Authorized Individuals, 
-                is accustomed to maintaining confidential and sensitive information, and can administratively support the Registered Entity’s 
-                use of ETT, including submitting requests for disclosures when directed by an Authorized Individual.                
+                <sup>1</sup>Administrative Support Professional who assists and directly works with one or both of the Authorized Individuals, is accustomed to maintaining confidential and sensitive information, and can administratively support the Registered Entity’s use of ETT, including submitting requests for disclosures when directed by an Authorized Individual                
               </p>                
               <p>
-                <sup>2</sup>Person in a senior role that is accustomed to managing confidential and sensitive information, who will directly receive the 
-                completed Disclosure Form information on behalf of the Requesting Registered Entity and will decide who at the Registered 
-                Entity needs the information.                
+                <sup>2</sup>Person in a senior role that is accustomed to managing confidential and sensitive information, who will make Disclosure Requests and directly receive the completed Disclosure Form information on behalf of the Requesting Registered Entity and will decide who at the Registered Entity needs the information                
               </p>                
               <p>
-                <sup>3</sup>Ibid.                
+                <sup>3</sup>These are the contacts who will respond to Disclosure Requests from another ETT-Registered Entity when your organization is disclosing its findings of misconduct against a person who is being considered by the other ETT-Registered Entity. You may input “same as [specify Authorized Individuals or Administrative Support Professional]” it these individuals will fulfill the Disclosure Response Contact role too                
               </p>                
             </div>
             <div style="justify-content: center; border-style:solid; padding:10px; padding-right:25px;">
@@ -2112,7 +2108,7 @@
       }
 
       const createUserTable = (user, index, isInvitee) => {
-        const { email, role, fullname, title, phone_number } = user ?? {};
+        const { email, role, fullname, title, phone_number, delegate } = user ?? {};
         const table = document.createElement('table');
         table.id = role == 'RE_ADMIN' ? 'tblReAdmin' : `tblAuthInd${index-1}`;
 
@@ -2126,7 +2122,8 @@
           const tr = document.createElement('tr');
           table.appendChild(tr);
           const td = document.createElement('td');
-          td.innerHTML = `${userDesc}<sup>${index}</sup>`;
+          const sup = role == 'RE_ADMIN' ? '1' : '2';
+          td.innerHTML = `${userDesc}<sup>${sup}</sup>`;
           td.className = 'trHeading';
           td.colSpan = 4;
           tr.appendChild(td);
@@ -2211,10 +2208,95 @@
           addFieldValueCell('Email', email);
         }
 
+        const addDelegateRow = () => {
+          const { fullname, email, phone_number, title } = delegate ?? {};
+          tr = document.createElement('tr');
+          table.appendChild(tr);
+          addFieldNameCell('Delegate<sup>3</sup>');
+          const td = document.createElement('td');
+          tr.appendChild(td);
+          td.className = 'tdEntry';
+          td.colSpan = 3;
+          if( ! delegate &&  ! isInvitee()) {
+            td.innerHTML = 'No delegate'
+            return;
+          }
+
+          const addDelegateField = (label, value) => {
+            const buildLabel = () => {
+              const pair = `${label}: ${value}`;
+              td.innerHTML = td.innerHTML ? `${td.innerHTML}&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;${pair}` : pair;
+            }
+            if(isInvitee()) {
+              if(value) {
+                buildLabel();
+                return;
+              }
+              const textbox = document.createElement('input');
+              textbox.type = 'text';
+              textbox.id = `txtDelegate${label}`;
+              textbox.className = 'form-control';
+              textbox.placeholder = /(title)|(phone)/i.test(label) ? `${label} (optional)` : label;
+              textbox.style.width = '180px';
+              textbox.style.float = 'left';
+              td.appendChild(textbox);
+              return;
+            }
+            buildLabel();
+          }
+
+          const addDelegateFields = () => {
+            addDelegateField('Fullname', fullname);
+            addDelegateField('Email', email);
+            addDelegateField('Title', title);
+            addDelegateField('Phone', phone_number);
+          }
+
+          const addDelegateCheckbox = () => {
+            const div = document.createElement('div');
+            div.style.float = 'left';
+            div.innerHTML = 'Add';
+            div.style.marginTop = '4px';
+            div.style.textAlign = 'right';
+            div.style.width = '60px';
+            td.appendChild(div);
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = 'chkDelegate';
+            checkbox.style.float = 'left';
+            checkbox.style.margin = '10px 4px'
+            checkbox.label = 'Not me';
+            td.appendChild(checkbox);
+            checkbox.addEventListener('change', (e) => {
+              if(e.target.checked) {
+                div.innerHTML = 'Remove';
+                addDelegateFields();
+              }
+              else {
+                div.innerHTML = 'Add';
+                const flds = td.querySelectorAll('input[type="text"]');
+                flds.forEach(fld => {
+                  td.removeChild(fld);
+                });
+              }
+            });
+          }
+
+          if(isInvitee() && !email) {
+            addDelegateCheckbox();
+          }
+          else {
+            addDelegateFields();
+          }
+        }
+
         // Add a table to display the user fields.
         addHeaderRow();
         addFirstFieldSetRow();
         addSecondFieldSetRow();
+        if(role == 'RE_AUTH_IND') {
+          addDelegateRow();
+        }
         addSpacerRow();
 
         if( ! parentElement) {
@@ -2257,9 +2339,7 @@
 
         // Get the builder functions for the register entity screen fields
         const tdEntityName = document.getElementById('tdEntityName');
-        // const { insertTextbox, createUserTable } = getRegisterScreenBuilder(invitation);
-        const parentElement = tdEntityName.closest('div');
-        const { insertTextbox, createUserTable } = getRegisterScreenBuilder(invitation, parentElement);
+        const { insertTextbox, createUserTable } = getRegisterScreenBuilder(invitation);
 
         // Handle the display of the entity name field if indicated, else assume entity acknowledgement is indicated. 
         if(entity) {
@@ -2313,6 +2393,23 @@
         }
         if(selected_role == 'RE_ADMIN') {
           formdata.entity_name = parentDiv.querySelector('#txtEntityName').value;
+        }
+        else {
+          const chkDelegate = parentDiv.querySelector('#chkDelegate') ?? { checked: false };
+          if(chkDelegate.checked) {
+            formdata.delegate_email = parentDiv.querySelector('#txtDelegateEmail').value;
+            formdata.delegate_fullname = parentDiv.querySelector('#txtDelegateFullname').value;
+            formdata.delegate_title = parentDiv.querySelector('#txtDelegateTitle').value;
+            formdata.delegate_phone = parentDiv.querySelector('#txtDelegatePhone').value;
+            if( ! formdata.delegate_fullname) {
+              alert('Delegate fullname is required');
+              return;
+            }
+            if( ! formdata.delegate_email) {
+              alert('Delegate email is required');
+              return;
+            }
+          }
         }
         const querystring = Object.keys(formdata).map(key => `${encodeURIComponent(key)}=${encodeURIComponent(formdata[key])}`).join('&');
 
@@ -5571,8 +5668,78 @@
 
         case 'register-entity':
           let payload = { invitation: { role: selected_role }};
-          if( ! localTesting()) {
-            payload = await fetchRegistrationScreenInfo(invitationCode); 
+          if(localTesting()) {
+            payload = {
+              "entity": {
+                "active": "Y",
+                "entity_id": "7d7f004a-a2b4-4d7e-a971-a866dbd9d75f",
+                "create_timestamp": "2025-01-21T19:09:56.517Z",
+                "entity_name": "The School of Rock",
+                "entity_name_lower": "the school of rock",
+                "description": "The School of Rock",
+                "update_timestamp": "2025-01-21T19:09:56.517Z"
+              },
+              "users": [
+                {
+                  "active": "Y",
+                  "entity_id": "7d7f004a-a2b4-4d7e-a971-a866dbd9d75f",
+                  "role": "RE_ADMIN",
+                  "create_timestamp": "2025-01-21T19:09:56.549Z",
+                  "phone_number": "+1234567890",
+                  "email": "asp2.random.edu@warhen.work",
+                  "fullname": "Daffy Duck",
+                  "sub": "b1bb5540-6011-7084-5afb-0d416928ec4d",
+                  "title": "Duck",
+                  "update_timestamp": "2025-01-21T19:09:56.549Z"
+                },
+                {
+                  "active": "Y",
+                  "entity_id": "7d7f004a-a2b4-4d7e-a971-a866dbd9d75f",
+                  "role": "RE_AUTH_IND",
+                  "create_timestamp": "2025-01-21T19:11:07.084Z",
+                  "phone_number": "+1234567890",
+                  "email": "auth3.random.edu@warhen.work",
+                  "fullname": "Sherlock Holmes",
+                  "sub": "515b9580-1041-706c-b2a4-1392dc8c2aa3",
+                  "title": "Detective",
+                  "update_timestamp": "2025-01-21T19:11:07.084Z",
+                  "delegate": {
+                    "fullname": "Donald Duck",
+                    "title": "Bird",
+                    "email": "donald@disney.com",
+                    "phone_number": "+1234567890"
+                  }
+                },
+                // {
+                //   "active": "Y",
+                //   "entity_id": "7d7f004a-a2b4-4d7e-a971-a866dbd9d75f",
+                //   "role": "RE_AUTH_IND",
+                //   "create_timestamp": "2025-01-21T19:12:05.718Z",
+                //   "phone_number": "+1234567890",
+                //   "email": "auth4.random.edu@warhen.work",
+                //   "fullname": "Abraham Lincoln",
+                //   "sub": "d12bd520-7061-7096-f895-a74af980b3b1",
+                //   "title": "President",
+                //   "update_timestamp": "2025-01-21T19:12:05.718Z"
+                // }
+              ],
+              "invitation": {
+                "code": "cfef243b-af25-4085-8839-dc60f0187d3d",
+                "entity_id": "7d7f004a-a2b4-4d7e-a971-a866dbd9d75f",
+                "role": "RE_ADMIN",
+                "entity_name": "The School of Rock",
+                "registered_timestamp": "2025-01-21T19:09:29.487Z",
+                "message_id": "010f01948a441744-edfc9159-6511-4770-a2da-444c7bc21d52-000000",
+                "email": "asp2.random.edu@warhen.work",
+                "fullname": "Daffy Duck",
+                "sent_timestamp": "2025-01-21T19:08:25.860Z",
+                "title": "Duck"
+              },
+              "ok": true
+            }
+          }
+          else {
+            payload = await fetchRegistrationScreenInfo(invitationCode);
           }
           if(payload) {
             showRegisterEntityScreen(payload);
