@@ -135,6 +135,9 @@ export class DynamoDbTableToEmpty {
         if(filterFunction) {
           batch = batch.filter(filterFunction);
         }
+        if(batch.length == 0) {
+          continue;
+        }
         deletedItems.push(...batch);
         const deleteRequests = batch.map(item => {
           const Key = { [partitionKey]: item[partitionKey] };
