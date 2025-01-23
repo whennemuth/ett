@@ -180,6 +180,8 @@ export class DisclosureFormPage1 extends PdfForm implements IPdfForm {
   private drawAuthorizedIndividual = async (number:string, authInd:User) => {
     let size = 10;
     const { page, page: { basePage, bodyWidth }, font, _return } = this;
+    const { delegate } = authInd;
+    const rep = delegate ?? authInd;
 
     await new Rectangle({
       text: `Authorized Individual #${number}`,
@@ -207,7 +209,7 @@ export class DisclosureFormPage1 extends PdfForm implements IPdfForm {
     basePage.moveRight(fldNameWidth); 
 
     await new Rectangle({
-      text: authInd.fullname ?? '',
+      text: rep.fullname ?? '',
       page,
       align: Align.left,
       valign: VAlign.middle,
@@ -229,7 +231,7 @@ export class DisclosureFormPage1 extends PdfForm implements IPdfForm {
     basePage.moveRight(fldNameWidth);
 
     await new Rectangle({
-      text: authInd.title!,
+      text: rep.title!,
       page,
       align: Align.left,
       valign: VAlign.middle,
@@ -252,7 +254,7 @@ export class DisclosureFormPage1 extends PdfForm implements IPdfForm {
     basePage.moveRight(fldNameWidth); 
 
     await new Rectangle({
-      text: authInd.phone_number! || '',
+      text: rep.phone_number! || '',
       page,
       align: Align.left,
       valign: VAlign.middle,
@@ -274,7 +276,7 @@ export class DisclosureFormPage1 extends PdfForm implements IPdfForm {
     basePage.moveRight(fldNameWidth);
 
     await new Rectangle({
-      text: authInd.email,
+      text: rep.email,
       page,
       align: Align.left,
       valign: VAlign.middle,
@@ -473,7 +475,7 @@ export class DisclosureFormPage1 extends PdfForm implements IPdfForm {
 
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/DisclosureFormPage1.ts')) {
-
+  
   new DisclosureFormPage1(
     {
       consenter: { 
