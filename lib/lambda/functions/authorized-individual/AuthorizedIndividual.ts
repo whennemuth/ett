@@ -7,6 +7,7 @@ import { Configurations } from "../../_lib/config/Config";
 import { DAOConsenter, DAOFactory, DAOUser } from "../../_lib/dao/dao";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
 import { ConfigNames, Consenter, Entity, Role, Roles, User, YN } from "../../_lib/dao/entity";
+import { SignupLink } from "../../_lib/invitation/SignupLink";
 import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
@@ -16,12 +17,11 @@ import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
 import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
 import { DisclosureRequestReminderLambdaParms } from "../delayed-execution/SendDisclosureRequestReminder";
 import { inviteUser, lookupEntity, retractInvitation } from "../re-admin/ReAdminUser";
-import { DemolitionRecord, EntityToDemolish } from "./Demolition";
-import { DisclosureEmailParms, DisclosureRequestEmail } from "./DisclosureRequestEmail";
-import { ExhibitFormRequestEmail } from "./ExhibitFormRequestEmail";
 import { EntityToCorrect } from "./correction/EntityCorrection";
 import { Personnel } from "./correction/EntityPersonnel";
-import { SignupLink } from "../../_lib/invitation/SignupLink";
+import { DemolitionRecord, EntityToDemolish } from "./Demolition";
+import { DisclosureEmailParms, DisclosureRequestEmail, RecipientListGenerator } from "./DisclosureRequestEmail";
+import { ExhibitFormRequestEmail } from "./ExhibitFormRequestEmail";
 
 export enum Task {
   LOOKUP_USER_CONTEXT = 'lookup-user-context',
@@ -404,7 +404,7 @@ export const sendDisclosureRequest = async (consenterEmail:string, entity_id:str
     }
   }
 
-  // Send the disclosure request
+  // Define the parameters for identifying the disclosure form in the bucket
   const parms = {
     consenterEmail,
     emailType: "request",
@@ -412,7 +412,11 @@ export const sendDisclosureRequest = async (consenterEmail:string, entity_id:str
     s3ObjectKeyForDisclosureForm
   } as DisclosureEmailParms;
 
-  const sent = await new DisclosureRequestEmail(parms).send();
+  // Get the list of recipients for the disclosure request
+  const recipients = await new RecipientListGenerator(parms).generate();
+  
+  // Send the disclosure request
+  const sent = await new DisclosureRequestEmail(parms).send(recipients);
 
   // Bail out if the email failed
   if( ! sent) {
@@ -444,7 +448,7 @@ export const sendDisclosureRequest = async (consenterEmail:string, entity_id:str
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/authorized-individual/AuthorizedIndividual.ts')) {
 
-  const task:Task = Task.INVITE_USER;
+  const task:Task = Task.SEND_DISCLOSURE_REQUEST;
   const { DisclosureRequestReminder, HandleStaleEntityVacancy } = DelayedExecutions;
 
   (async () => {
@@ -514,9 +518,9 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
 
         // Define the payload to go in the event object
         _event.headers[AbstractRoleApi.ETTPayloadHeader] = JSON.stringify({ task, parameters: {
-          consenterEmail: "cp1@warhen.work",
-          entity_id: "3ef70b3e-456b-42e8-86b0-d8fbd0066628",
-          affiliateEmail: "affiliate2@warhen.work"
+          consenterEmail: "cp2@warhen.work",
+          entity_id: "923e4db2-389f-4b30-86d3-9513e4211eaf",
+          affiliateEmail: "affiliate1@warhen.work"
         }} as IncomingPayload);
         break;
 

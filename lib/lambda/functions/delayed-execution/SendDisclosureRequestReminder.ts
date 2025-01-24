@@ -3,7 +3,7 @@ import { DelayedExecutions } from "../../../DelayedExecution";
 import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, error, log } from "../../Utils";
-import { DisclosureEmailParms, DisclosureRequestReminderEmail } from "../authorized-individual/DisclosureRequestEmail";
+import { DisclosureEmailParms, DisclosureRequestReminderEmail, RecipientListGenerator } from "../authorized-individual/DisclosureRequestEmail";
 import { BucketInventory } from "../consenting-person/BucketInventory";
 import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
 import { purgeCorrectionForms, purgeFormFromBucket } from "./PurgeExhibitFormFromBucket";
@@ -21,7 +21,7 @@ export type DisclosureRequestReminderLambdaParms = {
  * @param context 
  * @returns 
  */
-export const handler = async(event:ScheduledLambdaInput, context:any) => {
+export const handler = async (event:ScheduledLambdaInput, context:any) => {
   const { lambdaInput={}, eventBridgeRuleName, targetId } = event;
   const { DISCLOSURE, EXHIBIT } = ItemType;
 
@@ -39,7 +39,11 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
       log('Cancelling disclosure request reminder.');
     }
     else {
-      const sent = await new DisclosureRequestReminderEmail(disclosureEmailParms).send();
+
+      // Get the list of recipients for the disclosure request
+      const recipients = await new RecipientListGenerator(disclosureEmailParms).generate();
+
+      const sent = await new DisclosureRequestReminderEmail(disclosureEmailParms).send(recipients);
 
       if(sent) {
         log(`Disclosure request reminder sent!`);

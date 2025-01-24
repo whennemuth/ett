@@ -1,7 +1,7 @@
 import * as ctx from '../../../../contexts/context.json';
 import { IContext } from "../../../../contexts/IContext";
 import { DAOFactory } from "../../_lib/dao/dao";
-import { Consenter, Entity, ExhibitForm as ExhibitFormData, YN } from "../../_lib/dao/entity";
+import { Consenter, Entity, ExhibitForm as ExhibitFormData, Role, Roles, User, YN } from "../../_lib/dao/entity";
 import { EmailParms, sendEmail } from "../../_lib/EmailWithAttachments";
 import { ConsentForm } from "../../_lib/pdf/ConsentForm";
 import { DisclosureForm, DisclosureFormData } from "../../_lib/pdf/DisclosureForm";
@@ -14,12 +14,17 @@ import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureF
 import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
 import { BucketItemMetadata } from "../consenting-person/BucketItemMetadata";
 import { test_data } from '../consenting-person/ExhibitEmail';
-import { abrahamlincoln, alberteinstein, bingcrosby, elvispresley } from "./MockObjects";
+import { abrahamlincoln, alberteinstein, bingcrosby, bugsbunny, elvispresley } from "./MockObjects";
 import { log } from '../../Utils';
+import { UserCrud } from '../../_lib/dao/dao-user';
 
 
 export type DisclosureEmailParms = DisclosureItemsParms & {
   emailType?: 'request' | 'reminder'
+}
+
+export type Recipients = {
+  to:string[], cc:string[], bcc:string[]
 }
 
 /**
@@ -34,8 +39,8 @@ export class DisclosureRequestEmail {
     this.parms.emailType = "request";   
   }
 
-  public send = async ():Promise<boolean> => {
-    return grabFromBucketAndSend(this.parms)
+  public send = async (recipients:Recipients):Promise<boolean> => {
+    return grabFromBucketAndSend(this.parms, recipients)
   }
 }
 
@@ -51,8 +56,8 @@ export class DisclosureRequestReminderEmail {
     this.parms.emailType = "reminder";   
   }
 
-  public send = async ():Promise<boolean> => {
-    return grabFromBucketAndSend(this.parms)
+  public send = async (recipients:Recipients):Promise<boolean> => {
+    return grabFromBucketAndSend(this.parms, recipients)
   }
 }
 
@@ -70,7 +75,7 @@ export class BasicDisclosureRequest {
     this.exhibitData = exhibitData;
   }
 
-  public send = async (affiliateEmail:string):Promise<boolean> => { 
+  public send = async (recipients:Recipients):Promise<boolean> => { 
     const { 
       exhibitData, data, data: { 
         consenter, 
@@ -81,12 +86,57 @@ export class BasicDisclosureRequest {
     } = this;
 
     // Email attachments
+    const affiliateEmail = recipients.to[0];
     const singleExhibitForm = new ExhibitFormSingle(new ExhibitForm(exhibitData), consenter, affiliateEmail);
     const disclosureForm = new DisclosureForm(data);
 
     return send({ 
-      consenter, consenterEmail, emailType:'request', disclosureForm, singleExhibitForm, affiliateEmail, entity_name, correctionForms: []
+      recipients, consenter, consenterEmail, emailType:'request', disclosureForm, singleExhibitForm, entity_name, correctionForms: []
     });
+  }
+}
+
+export class RecipientListGenerator {
+  private entity_id: string;
+  private affiliateEmail: string | undefined;
+  private emailType: string;
+
+  /**
+   * @param disclosureEmailParms The parameters for identifying the disclosure form in the bucket
+   */
+  constructor(disclosureEmailParms:DisclosureEmailParms) {
+    const { s3ObjectKeyForDisclosureForm, s3ObjectKeyForExhibitForm, emailType } = disclosureEmailParms;
+    const dfMetadata = BucketItemMetadata.fromBucketObjectKey(s3ObjectKeyForDisclosureForm);
+    const efMetadata = BucketItemMetadata.fromBucketObjectKey(s3ObjectKeyForExhibitForm);
+    this.entity_id = dfMetadata?.entityId ?? efMetadata?.entityId;
+    this.affiliateEmail = dfMetadata?.affiliateEmail ?? efMetadata?.affiliateEmail;
+    this.emailType = emailType ?? 'request';
+  }
+
+  public generate = async ():Promise<Recipients> => {
+    const { entity_id, affiliateEmail, emailType } = this;
+    // Get all users for the entity
+    const users = (await UserCrud({ entity_id } as User).read() as User[])
+      .filter(user => user.active == YN.Yes);
+
+    // Construct a recipient list for the disclosure request email
+    const emailMapper = (user:User, role:Role):string|undefined => {
+      if(user.role == role && user.active == YN.Yes) {
+        return user.email;
+      }
+      return undefined;
+    }
+
+    switch(emailType) {
+      case 'reminder':
+        return { to: [ affiliateEmail ] } as Recipients
+      case 'request': default:
+        return {
+          to: [ affiliateEmail ],
+          cc: users.map(user => emailMapper(user, Roles.RE_AUTH_IND)).filter(email => email != undefined),
+          bcc: users.map(user => emailMapper(user, Roles.RE_ADMIN)).filter(email => email != undefined)
+        } as Recipients
+    }
   }
 }
 
@@ -96,7 +146,7 @@ export class BasicDisclosureRequest {
  * @param parms 
  * @returns 
  */
-const grabFromBucketAndSend = async (parms:DisclosureEmailParms):Promise<boolean> => {
+const grabFromBucketAndSend = async (parms:DisclosureEmailParms, recipients:Recipients):Promise<boolean> => {
   const { consenterEmail, s3ObjectKeyForExhibitForm, s3ObjectKeyForDisclosureForm, emailType } = parms;
   log({ 
     consenterEmail, 
@@ -140,18 +190,18 @@ const grabFromBucketAndSend = async (parms:DisclosureEmailParms):Promise<boolean
   const { entity_name} = entity;
 
   return send({ 
-    consenterEmail, emailType, disclosureForm, singleExhibitForm, affiliateEmail, correctionForms, entity_name 
+    recipients, consenterEmail, emailType, disclosureForm, singleExhibitForm, correctionForms, entity_name 
   });
 }
 
 type EmailParameters = {
+  recipients:Recipients,
   consenterEmail:string,
   consenter?:Consenter, 
   emailType?:string, 
   disclosureForm:IPdfForm, 
   singleExhibitForm:IPdfForm, 
   correctionForms:IPdfForm[],
-  affiliateEmail:string, 
   entity_name:string
 }
 /**
@@ -160,7 +210,7 @@ type EmailParameters = {
  * @returns 
  */
 const send = async (parms:EmailParameters):Promise<boolean> => {
-  let { consenterEmail, consenter, emailType, entity_name, affiliateEmail, disclosureForm, singleExhibitForm, correctionForms } = parms;
+  let { recipients, consenterEmail, consenter, emailType, entity_name, disclosureForm, singleExhibitForm, correctionForms } = parms;
 
   if( ! consenter) {
     // Lookup the consenter in the database
@@ -202,13 +252,15 @@ const send = async (parms:EmailParameters):Promise<boolean> => {
     })
   };
 
+  const { to, cc=[], bcc=[] } = recipients;
+
   return sendEmail({
     subject: `ETT Disclosure ${emailType}`,
     from: `noreply@${context.ETT_DOMAIN}`,
     message: `Please find enclosed a disclosure form from ${entity_name}, including a consent form from ` +
       `${consenterFullName} who is the subject of the disclosure and their original exhibit form ` +
       `naming you to disclose.`,
-    to: [ affiliateEmail ],
+    to, cc, bcc,
     attachments
   } as EmailParms);
 }
@@ -244,7 +296,13 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     test_exhibit_data.affiliates[0].email = affiliateEmail;
   }
 
-  new BasicDisclosureRequest(test_disclosure_data, test_exhibit_data).send(affiliateEmail)
+  const recipients = {
+    to: [ affiliateEmail ],
+    cc: [ abrahamlincoln.email, bingcrosby.email ], // 2 ai's
+    bcc: [ bugsbunny.email ] // asp
+  } as Recipients;
+
+  new BasicDisclosureRequest(test_disclosure_data, test_exhibit_data).send(recipients)
     .then(success => {
       log(success ? 'Succeeded' : 'Failed');
     })
