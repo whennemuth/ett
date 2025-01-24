@@ -48,7 +48,9 @@ export class ExhibitFormFull extends PdfForm implements IPdfForm {
 
     await drawIntro();
 
-    await drawAffiliateGroup(AffiliateTypes.EMPLOYER, 'Employers');
+    await drawAffiliateGroup(AffiliateTypes.EMPLOYER, 'Current Employer(s)');
+
+    await drawAffiliateGroup(AffiliateTypes.EMPLOYER_PRIOR, 'Prior Employers');
 
     await drawAffiliateGroup(AffiliateTypes.ACADEMIC, 'Academic / Professional Societies & Organizations');
 
@@ -183,6 +185,14 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/
         email: 'yosemite-sam@cu.edu',
         title: 'Professor animation studies',
         phone_number: '617-444-8888'
+      },
+      {
+        affiliateType: AffiliateTypes.EMPLOYER_PRIOR,
+        email: "affiliate1@warhen.work",
+        org: "My Neighborhood University",
+        fullname: "Mister Rogers",
+        title: "Daytime child television host",
+        phone_number: "0123456789"
       }
     ]
   } as ExhibitFormData);
