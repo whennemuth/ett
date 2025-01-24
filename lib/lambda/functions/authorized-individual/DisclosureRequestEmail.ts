@@ -165,7 +165,7 @@ const send = async (parms:EmailParameters):Promise<boolean> => {
   if( ! consenter) {
     // Lookup the consenter in the database
     const consenterDao = DAOFactory.getInstance({ DAOType: 'consenter', Payload: { email: consenterEmail} as Consenter});
-    const consenter = await consenterDao.read() as Consenter;
+    consenter = await consenterDao.read() as Consenter;
     if( ! consenter) {
       console.error(`Cannot send disclosure ${emailType} email: Consenter not found`);
       return false;
