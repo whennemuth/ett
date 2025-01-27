@@ -84,7 +84,7 @@ const buildAll = () => {
     scope:stack, 
     constructId:'Cognito',
     exhibitFormsBucket: exhibitFormsBucket,
-    handleStaleEntityVacancyLambdaArn: `arn:aws:lambda:${region}:${account}:function:${stackName}-${DelayedExecutions.ExhibitFormDbPurge.coreName}`
+    handleStaleEntityVacancyLambdaArn: `arn:aws:lambda:${region}:${account}:function:${stackName}-${DelayedExecutions.HandleStaleEntityVacancy.coreName}`
   } as CognitoConstructParms);
 
   // Set up the dynamodb table for users.
