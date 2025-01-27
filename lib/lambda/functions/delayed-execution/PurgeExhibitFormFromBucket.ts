@@ -11,6 +11,7 @@ import { TagInspector } from "../consenting-person/BucketItemTag";
 import { ExhibitBucket } from "../consenting-person/BucketItemExhibitForms";
 import { Consenter } from "../../_lib/dao/entity";
 
+export const RulePrefix = 'S3 exhibit form purge';
 
 /**
  * This lambda is triggered by one-time event bridge rules to issue disclosure request email
@@ -174,7 +175,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         callback = async (lambdaArn:string, lambdaInput:DisclosureItemsParms) => {
           const delayedTestExecution = new DelayedLambdaExecution(lambdaArn, lambdaInput);
           const timer = EggTimer.getInstanceSetFor(2, MINUTES); 
-          await delayedTestExecution.startCountdown(timer, `S3 exhibit form purge (TESTING)`);
+          await delayedTestExecution.startCountdown(timer, `${RulePrefix} (TESTING)`);
         };
         await createDelayedExectionToRemoveBucketItem(lambdaInput, callback);
         break;

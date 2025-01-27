@@ -7,6 +7,8 @@ import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { IContext } from "../../../../contexts/IContext";
 import { DelayedExecutions } from "../../../DelayedExecution";
 
+export const RulePrefix = 'Dynamodb exhibit form purge';
+
 /**
  * Exhibit forms are prohibited from being stored in the database for longer than a configured period of time.
  * This lambda is triggered by one-time event bridge rules that are scheduled accordingly and will remove the
@@ -120,7 +122,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         const lambdaInput = { consenterEmail, entity_id };
         const delayedTestExecution = new DelayedLambdaExecution(lambdaArn, lambdaInput);
         const timer = EggTimer.getInstanceSetFor(2, MINUTES);
-        await delayedTestExecution.startCountdown(timer, `Dynamodb exhibit form purge (TESTING)`);
+        await delayedTestExecution.startCountdown(timer, `${RulePrefix} (TESTING)`);
         break;
       default:
         log(`Unknown task "${task}" specified!`);

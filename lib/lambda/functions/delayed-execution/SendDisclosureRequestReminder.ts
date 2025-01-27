@@ -9,6 +9,8 @@ import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName, ItemType
 import { purgeCorrectionForms, purgeFormFromBucket } from "./PurgeExhibitFormFromBucket";
 import { getTestItem } from "./TestBucketItem";
 
+export const RulePrefix = 'Disclosure request reminder';
+
 export type DisclosureRequestReminderLambdaParms = {
   disclosureEmailParms: DisclosureEmailParms,
   purgeForms: boolean,
@@ -228,7 +230,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         callback = async (lambdaArn:string, lambdaInput:DisclosureRequestReminderLambdaParms) => {
           const delayedTestExecution = new DelayedLambdaExecution(lambdaArn, lambdaInput);
           const timer = EggTimer.getInstanceSetFor(2, MINUTES); 
-          await delayedTestExecution.startCountdown(timer, `Disclosure request reminder with s3 cleanup (TESTING)`);
+          await delayedTestExecution.startCountdown(timer, `${RulePrefix} with s3 cleanup (TESTING)`);
         };
         await scheduleDisclosureRequestReminder(lambdaInput!, callback, purgeForms);
         break;

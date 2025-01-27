@@ -7,7 +7,7 @@ import { ConfigNames, Entity, Role, Roles } from "../../../_lib/dao/entity";
 import { DelayedLambdaExecution } from "../../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../../_lib/timer/EggTimer";
 import { lookupCloudfrontDomain } from "../../../Utils";
-import { StaleVacancyLambdaParms } from "../../delayed-execution/HandleStaleEntityVacancy";
+import { RulePrefix, StaleVacancyLambdaParms } from "../../delayed-execution/HandleStaleEntityVacancy";
 import { Personnel } from "./EntityPersonnel";
 
 /**
@@ -110,10 +110,10 @@ export const scheduleStaleEntityVacancyHandler = async (entity:Entity, role:Role
     let waitTime = (await configs.getAppConfig(staleAfter)).getDuration();
     waitTime += 60; // Event bridge seems to trigger early at times by anywhere up to 18 seconds, so tack on an extra minute.
     const timer = EggTimer.getInstanceSetFor(waitTime, PeriodType.SECONDS);
-    await delayedTestExecution.startCountdown(timer, `Stale entity vacancy handler: ${entity_name}`);
+    await delayedTestExecution.startCountdown(timer, `${RulePrefix}: ${entity_name}`);
   }
   else {
-    console.error(`Cannot schedule stale entity vacancy handler: ${envVarName} variable is missing from the environment!`);
+    console.error(`Cannot schedule ${RulePrefix}: ${envVarName} variable is missing from the environment!`);
   }    
 }
 

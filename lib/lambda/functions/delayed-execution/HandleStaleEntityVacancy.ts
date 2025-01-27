@@ -18,6 +18,8 @@ export type StaleVacancyLambdaParms = {
   entity_id: string
 }
 
+export const RulePrefix = 'Stale entity vacancy handler';
+
 /**
  * This lambda is triggered by one-time event bridge rules to check an entity for having a vacancy in one of
  * its roles that has lasted longer than the allowable duration. If an entity is found to be in such a state,
@@ -179,7 +181,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
             callback = async (lambdaArn:string, lambdaInput:StaleVacancyLambdaParms) => {
               const delayedTestExecution = new DelayedLambdaExecution(lambdaArn, lambdaInput);
               const timer = EggTimer.getInstanceSetFor(2, MINUTES); 
-              await delayedTestExecution.startCountdown(timer, `Handle stale entity vacancy (TESTING)`);
+              await delayedTestExecution.startCountdown(timer, `${RulePrefix} (TESTING)`);
             };
             await createDelayedExecutionToHandleStaleVacancy(lambdaInput, callback);
             break;
