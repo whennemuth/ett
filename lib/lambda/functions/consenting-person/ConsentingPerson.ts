@@ -25,7 +25,8 @@ import { ConsentFormEmail } from "./ConsentEmail";
 import { ConsentingPersonToCorrect } from "./correction/Correction";
 import { ExhibitCorrectionEmail } from "./correction/ExhibitCorrectionEmail";
 import { ExhibitEmail, FormTypes } from "./ExhibitEmail";
-import { deleteExhibitForm } from "../delayed-execution/PurgeExhibitFormFromDatabase";
+import { deleteExhibitForm, RulePrefix as DbRulePrefix } from "../delayed-execution/PurgeExhibitFormFromDatabase";
+import { RulePrefix as S3RulePrefix } from "../delayed-execution/PurgeExhibitFormFromBucket"
 import { CognitoStandardAttributes, UserAccount } from "../../_lib/cognito/UserAccount";
 
 export enum Task {
@@ -483,10 +484,10 @@ export const scheduleExhibitFormPurgeFromDatabase = async (newConsenter:Consente
     const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
     const { SECONDS } = PeriodType;
     const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
-    await delayedTestExecution.startCountdown(timer, `Dynamodb exhibit form purge`);
+    await delayedTestExecution.startCountdown(timer, DbRulePrefix);
   }
   else {
-    console.error(`Cannot schedule exhibit form purge from database: ${envVarName} variable is missing from the environment!`);
+    console.error(`Cannot schedule ${DbRulePrefix}: ${envVarName} variable is missing from the environment!`);
   }
 }
 
@@ -659,10 +660,10 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
           const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
           const waitTime = (await configs.getAppConfig(deleteAfter)).getDuration();
           const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
-          await delayedTestExecution.startCountdown(timer, `S3 exhibit form purge (${consenter.email})`);
+          await delayedTestExecution.startCountdown(timer, `${S3RulePrefix} (${consenter.email})`);
         }
         else {
-          console.error(`Cannot schedule ${deleteAfter} bucket item purge: ${envVarName} variable is missing from the environment!`);
+          console.error(`Cannot schedule ${deleteAfter} ${S3RulePrefix}: ${envVarName} variable is missing from the environment!`);
         }
       }
       catch(e) {

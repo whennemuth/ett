@@ -15,7 +15,7 @@ import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, 
 import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureForm";
 import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
 import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
-import { DisclosureRequestReminderLambdaParms } from "../delayed-execution/SendDisclosureRequestReminder";
+import { DisclosureRequestReminderLambdaParms, RulePrefix } from "../delayed-execution/SendDisclosureRequestReminder";
 import { inviteUser, lookupEntity, retractInvitation } from "../re-admin/ReAdminUser";
 import { EntityToCorrect } from "./correction/EntityCorrection";
 import { Personnel } from "./correction/EntityPersonnel";
@@ -397,10 +397,10 @@ export const sendDisclosureRequest = async (consenterEmail:string, entity_id:str
       const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
       const waitTime = (await configs.getAppConfig(configName)).getDuration();
       const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
-      await delayedTestExecution.startCountdown(timer, `Disclosure request: ${configName} (${disclosureEmailParms.consenterEmail})`);
+      await delayedTestExecution.startCountdown(timer, `${RulePrefix}: ${configName} (${disclosureEmailParms.consenterEmail})`);
     }
     else {
-      console.error(`Cannot schedule ${configName} disclosure request reminder: ${envVarName} variable is missing from the environment!`);
+      console.error(`Cannot schedule ${configName} ${RulePrefix}: ${envVarName} variable is missing from the environment!`);
     }
   }
 

@@ -1,3 +1,4 @@
+import { humanReadableFromMilliseconds } from "./DurationConverter";
 
 
 export enum PeriodType {
@@ -66,4 +67,32 @@ export class EggTimer {
   public startTimer = async (run:Function):Promise<void> => {
     await run();
   }
+
+  public static fromCronExpression = (cronExpression:string):Date => {
+    const matches = cronExpression.match(/^cron\((.*)\)$/);
+    if(matches) {
+      cronExpression = matches[1];
+    }
+    const parts = cronExpression.split(' ');
+    if(parts.length != 6) {
+      throw new Error(`Invalid cron expression: ${cronExpression}`);
+    }
+    let [ minutes, hours, dayOfMonth, month, dayOfWeek, year ] = parts;
+    const seconds = '00';
+    if(minutes.length == 1) minutes = `0${minutes}`;  // Ensure two digits
+    if(hours.length == 1) hours = `0${hours}`;  // Ensure two digits
+    if(dayOfMonth.length == 1) dayOfMonth = `0${dayOfMonth}`;  // Ensure two digits
+    if(month.length == 1) month = `0${month}`;  // Ensure two digits
+    const isoDate = `${year}-${month}-${dayOfMonth}T${hours}:${minutes}:${seconds}.000Z`;
+    return new Date(isoDate);
+  }
+}
+
+
+const { argv:args } = process;
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/timer/EggTimer.ts')) {
+  const date = EggTimer.fromCronExpression('cron(35 20 8 2 ? 2025)');
+  console.log(date);
+  const millisecondsRemain = date.getTime() - Date.now();
+  console.log(humanReadableFromMilliseconds(millisecondsRemain));
 }

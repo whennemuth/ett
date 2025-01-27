@@ -19,6 +19,7 @@ import { Roles } from '../lib/lambda/_lib/dao/entity';
 import { ViewerRequestParametersConstruct } from '../lib/lambda/functions/cloudfront/ViewerRequestParameters';
 
 const context:IContext = <IContext>ctx;
+export const StackDescription = 'Ethical transparency tool';
 
 const app = new App();
 app.node.setContext('stack-parms', context);
@@ -29,7 +30,7 @@ const stackName = `${STACK_ID}-${Landscape}`;
 
 const stackProps: StackProps = {
   stackName,
-  description: 'Ethical transparency tool',
+  description: StackDescription,
   env: { account, region },
   tags: { Service, Function, Landscape }
 };
@@ -84,7 +85,7 @@ const buildAll = () => {
     scope:stack, 
     constructId:'Cognito',
     exhibitFormsBucket: exhibitFormsBucket,
-    handleStaleEntityVacancyLambdaArn: `arn:aws:lambda:${region}:${account}:function:${stackName}-${DelayedExecutions.ExhibitFormDbPurge.coreName}`
+    handleStaleEntityVacancyLambdaArn: `arn:aws:lambda:${region}:${account}:function:${stackName}-${DelayedExecutions.HandleStaleEntityVacancy.coreName}`
   } as CognitoConstructParms);
 
   // Set up the dynamodb table for users.
