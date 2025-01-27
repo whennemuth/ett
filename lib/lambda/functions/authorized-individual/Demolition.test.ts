@@ -84,6 +84,17 @@ jest.mock('../consenting-person/BucketItem.ts', () => {
   }
 });
 
+const mockCleanup = jest.fn(async () => {}) as any;
+jest.mock('../../_lib/timer/cleanup/Cleanup.ts', () => {
+  return {
+    Cleanup: jest.fn().mockImplementation(() => {
+      return {
+        cleanup: mockCleanup
+      }
+    })
+  }
+});
+
 
 describe('Demolish an entity from the database', () => {
 
@@ -157,11 +168,18 @@ describe('Demolish an entity from the userpool', () => {
 });
 
 describe('Demolish an entity from everywhere', () => {
-  it('Should not attempt any demolition against the userpool if any of the database demolition fails', async () => {
+
+  it.skip('Should not attempt any demolition against the userpool if any of the database demolition fails', async () => {
+    console.log('Not implemented');
+  });
+
+  it('It should delete from database, userpool, and eventbridge', async () => {
     cognitoMockClient.resetHistory();
 
     const UserPoolId = 'user_pool_ID';
     process.env.USERPOOL_ID = UserPoolId;
+    process.env.REGION = 'us-west-2';
+    process.env.PREFIX = 'ett-dev';
 
     const entityToDemolish = new EntityToDemolish(entity.entity_id);
     await entityToDemolish.demolish();
@@ -184,6 +202,8 @@ describe('Demolish an entity from everywhere', () => {
     expect(cognitoMockClient).toHaveReceivedCommandWith(AdminDeleteUserCommand, {
       UserPoolId, Username: 'yosemitesam_cognito_sub'
     });
+
+    expect(mockCleanup).toHaveBeenCalledTimes(1);
 
     cognitoMockClient.resetHistory();
   });

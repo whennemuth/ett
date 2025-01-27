@@ -11,6 +11,11 @@ import { BucketInventory } from "../consenting-person/BucketInventory";
 import { DeleteObjectsCommandOutput, ObjectIdentifier } from "@aws-sdk/client-s3";
 import { BucketItem } from "../consenting-person/BucketItem";
 import { EntityCrud } from "../../_lib/dao/dao-entity";
+import { Cleanup, CleanupParms } from "../../_lib/timer/cleanup/Cleanup";
+import { FilterForStaleEntityVacancy } from "../../_lib/timer/cleanup/FilterForStaleEntityVacancy";
+import { FilterForPurgeExhibitFormFromBucket } from "../../_lib/timer/cleanup/FilterForPurgeExhibitFormFromBucket";
+import { FilterForPurgeExhibitFormFromDatabase } from "../../_lib/timer/cleanup/FilterForPurgeExhibitFormFromDatabase";
+import { FilterForSendDisclosureRequestReminder } from "../../_lib/timer/cleanup/FilterForSendDisclosureRequestReminder";
 
 const dbclient = new DynamoDBClient({ region: process.env.REGION });
 const cognitoClient = new CognitoIdentityProviderClient({ region: process.env.REGION });
@@ -152,44 +157,70 @@ export class EntityToDemolish {
     console.log("Successful - deleted:", (deleteResult.Deleted ?? []).length, "objects");
   }
 
+  /**
+   * Delete any event bridge rules related to the entity.
+   */
+  public deleteEventBridgeRulesForEntity = async () => {
+    const region = process.env.REGION;
+    if( ! region) throw new Error('REGION environment variable not set');
+    const prefix = process.env.PREFIX;
+    if( ! prefix) throw new Error('PREFIX environment variable not set');
+    const landscape = prefix.split('-')[1];
+    const { entity } = this;
+    if( ! entity) {
+      this._entity = await EntityCrud({ entity_id:this.entityId } as Entity ).read() as Entity;
+    }
+    const { entity: { entity_id } } = this;
+  
+    const cleanupParms = { region, landscape, entity_id } as CleanupParms;
+    const cleanup = new Cleanup(cleanupParms, [ 
+      new FilterForStaleEntityVacancy(region),
+      new FilterForPurgeExhibitFormFromBucket(cleanupParms),
+      new FilterForPurgeExhibitFormFromDatabase(cleanupParms),
+      new FilterForSendDisclosureRequestReminder(cleanupParms)
+    ]);
+
+    await cleanup.cleanup();
+  }
+
+  /**
+   * Demolish everything related to the entity.
+   */
   public demolish = async ():Promise<any> => {
 
     await this.deleteEntityFromDatabase();
 
     await this.deleteEntityFromUserPool();
 
-    if( ! this.purgeBucket) {
+    if(this.purgeBucket) {
+      await this.deleteBucketContentForEntity();
+    }
+    else {
       log(`Demolition of entity ${this.entityId} will NOT affect related exhibit form content in S3`);
-      return;
     }
 
-    await this.deleteBucketContentForEntity();
+    await this.deleteEventBridgeRulesForEntity();
   }
 
+  // Getters and setters
   public get entity(): Entity {
     return this._entity;
   }
-
   public get deletedUsers(): User[] {
     return this._deletedUsers;
   }
-
   public set deletedUsers(users:User[]) {
     this._deletedUsers.push(...users);
   }
-
   public get commandInput(): TransactWriteItemsCommandInput|undefined {
     return this.dynamodbCommandInput;
   }
-
-
   public get demolitionRecord(): DemolitionRecord {
     return {
       databaseCommandInput: this.dynamodbCommandInput,
       deletedUsers: this._deletedUsers,
     } as DemolitionRecord
   }
-
   public set dryRun(_dryRun:boolean) {
     this._dryRun = _dryRun;
   }
