@@ -108,10 +108,17 @@ export class LambdaFunction extends AbstractFunction {
               })
             ]
           }),
-          'EttAuthIndEventBridgePolicy': new PolicyDocument({
+          'EttReAdminEventBridgePolicy': new PolicyDocument({
             statements: [
               new PolicyStatement({
-                actions: [ 'events:PutRule', 'events:PutTargets' ],
+                actions: [ 'events:DeleteRule', 'events:DisableRule', 'events:EnableRule', 'events:PutRule', 'events:PutTargets', 'events:RemoveTargets' ],
+                resources: [
+                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/ett-*`
+                ],
+                effect: Effect.ALLOW
+              }),
+              new PolicyStatement({
+                actions: [ 'events:List*', 'events:Describe*' ],
                 resources: [
                   `arn:aws:events:${REGION}:${ACCOUNT}:rule/*`
                 ],
@@ -127,7 +134,7 @@ export class LambdaFunction extends AbstractFunction {
               })
             ]
           }),
-          'EttAuthIndExhibitFormBucketPolicy': new PolicyDocument({
+          'EttReAdminExhibitFormBucketPolicy': new PolicyDocument({
             statements: [
               new PolicyStatement({
                 actions: [ 's3:*' ],

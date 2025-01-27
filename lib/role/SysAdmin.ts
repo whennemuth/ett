@@ -115,7 +115,7 @@ export class LambdaFunction extends AbstractFunction {
               })
             ]
           }),
-          'EttAuthIndExhibitFormBucketPolicy': new PolicyDocument({
+          'EttSysAdminExhibitFormBucketPolicy': new PolicyDocument({
             statements: [
               new PolicyStatement({
                 actions: [ 's3:*' ],
@@ -123,7 +123,35 @@ export class LambdaFunction extends AbstractFunction {
                 effect: Effect.ALLOW
               })
             ]
-          })        }
+          }),
+          'EttSysAdminCloudformationPolicy': new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'cloudformation:ListStacks' ],
+                resources: [ '*' ],
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
+          'EttSysAdminEventBridgePolicy': new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'events:DeleteRule', 'events:DisableRule', 'events:EnableRule', 'events:PutRule', 'events:PutTargets', 'events:RemoveTargets' ],
+                resources: [
+                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/ett-*`
+                ],
+                effect: Effect.ALLOW
+              }),
+              new PolicyStatement({
+                actions: [ 'events:List*', 'events:Describe*' ],
+                resources: [
+                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/*`
+                ],
+                effect: Effect.ALLOW
+              }),
+            ]
+          }),             
+        }
       }),
       environment: {
         REGION,

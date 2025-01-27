@@ -359,7 +359,7 @@ export class DelayedExecutionLambdas extends Construct {
           [`${functionName}-eventbridge-policy`]: new PolicyDocument({
             statements: [
               new PolicyStatement({
-                actions: [ 'events:DeleteRule', 'events:RemoveTargets' ],
+                actions: [ 'events:*' ],
                 resources: [
                   `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
                 ],
