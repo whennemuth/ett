@@ -52,6 +52,13 @@ export class Cleanup {
     this.cleanupParms.landscape = landscape;
   }
 
+  public setFilters = (filters:Filter[]):void => {
+    this.filters = filters;
+  }
+  public getFilters = ():Filter[] => {
+    return this.filters;
+  }
+
   /**
    * Apply provided filters to the rules for the specific landscape and target and return the resulting subset.
    * @param selectionParms 

@@ -8,8 +8,9 @@ import { lookupUserPoolId } from "./cognito/Lookup";
 import { ENTITY_WAITING_ROOM, EntityCrud } from "./dao/dao-entity";
 import { ConsenterFields, Entity, InvitationFields, Roles, User, YN } from "./dao/entity";
 import { BucketToEmpty, DynamoDbTableToEmpty } from "./Emptier";
-import { log } from "../Utils";
+import { log, error as logError } from "../Utils";
 import { UserCrud } from "./dao/dao-user";
+import { cleanupLandscape, CleanupLandscapeParms } from "./timer/cleanup/CleanupRunner";
 
 /**
  * --------------------------------------------------------
@@ -75,6 +76,9 @@ export const wipeClean = async (dryRun=true) => {
     return;
   }
   await (new BucketToEmpty(bucketName)).empty(dryRun);
+
+  // 8) Remove all orphaned event bridge rules
+  await removeOrphanedEventBridgeRules(REGION, dryRun);
 }
 
 /**
@@ -159,6 +163,28 @@ export const deletePendingInvitations = async (region:string, dryRun:boolean):Pr
   }
 
   console.log(`${deletions.length} pending invitations deleted`);
+}
+
+/**
+ * Remove all orphaned event bridge rules.
+ * @param region 
+ * @param dryrun 
+ * @returns 
+ */
+export const removeOrphanedEventBridgeRules = async (region:string, dryrun:boolean=false):Promise<any> => {
+  const prefix = process.env.PREFIX;
+  if( ! prefix) {
+    console.error('PREFIX environment variable missing!');
+    return;
+  }
+  try {
+    const landscape = prefix.split('-')[1];
+    const parms = { region, landscape, dryrun } as CleanupLandscapeParms;
+    await cleanupLandscape(parms);
+  } 
+  catch(error) {
+    logError(error);
+  }
 }
 
 
