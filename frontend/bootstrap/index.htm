@@ -2956,7 +2956,7 @@
      * Register consent.
      */
     const registerConsent = async () => {
-      const { email } = IDJwtCookie.getUser() ?? {};
+      const { email, phone_number } = IDJwtCookie.getUser() ?? {};
       const getFldVal = fldname => document.getElementById(fldname).value ?? '';
       const parms = { 
         signature:getFldVal('txtConsentSignature'),
@@ -2971,6 +2971,10 @@
       if( ! parms.phone) { alert('Phone number required'); return; }
       if(parms.email != email) { 
         alert(`Your email entry ${parms.email} must match your registration email: ${email}`); 
+        return;
+      }
+      if(parms.phone.replace(/[^\d]/g, '') != phone_number.replace(/[^\d]/g, '')) {
+        alert(`Your phone entry ${parms.phone} must match your registration phone: ${phone_number}`);
         return;
       }
 
