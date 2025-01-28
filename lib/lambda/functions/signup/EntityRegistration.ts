@@ -81,8 +81,11 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         if( ! event.queryStringParameters) {
           return invalidResponse('Bad Request: Missing querystring parameters');
         }
+        // NOTE: entity_id usually won't be set for an ASP as they are creating a new entity by entity_name.
+        // However, if it is set, it is a signal that the entity is already created and the asp is replacing 
+        // a prior ASP asp part of an entity amendment.
         let { 
-          email, fullname, title, entity_name, delegate_fullname, delegate_email, delegate_title, delegate_phone 
+          email, fullname, title, entity_id:entityId, entity_name, delegate_fullname, delegate_email, delegate_title, delegate_phone 
         } = event.queryStringParameters;
 
         if( ! email) {
@@ -91,7 +94,7 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         if( ! fullname) {
           return invalidResponse('Bad Request: Missing fullname querystring parameter');
         }
-        if( ! entity_name && (role == Roles.RE_ADMIN || role == Roles.SYS_ADMIN) ) {
+        if( ! entityId && ! entity_name && (role == Roles.RE_ADMIN || role == Roles.SYS_ADMIN) ) {
            return invalidResponse('Bad Request: Missing entity_name querystring parameter');
         }
         let delegate = undefined;
@@ -123,7 +126,7 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         if(registered_timestamp) {
           return okResponse(`Ok: Already registered at ${registered_timestamp}`);
         }
-        if(role == Roles.RE_ADMIN) {
+        if(role == Roles.RE_ADMIN && ! entityId) {
           if( await registration.entityNameAlreadyInUse(entity_name)) {
             return invalidResponse(`Bad Request: The specified name: "${entity_name}", is already in use.`)
           }
