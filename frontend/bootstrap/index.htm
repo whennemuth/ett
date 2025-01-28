@@ -2107,7 +2107,7 @@
         parentTd.appendChild(textbox);
       }
 
-      const createUserTable = (user, index, isInvitee) => {
+      const createUserTable = (user, index, isNewInvitee) => {
         const { email, role, fullname, title, phone_number, delegate } = user ?? {};
         const table = document.createElement('table');
         table.id = role == 'RE_ADMIN' ? 'tblReAdmin' : `tblAuthInd${index-1}`;
@@ -2144,7 +2144,7 @@
         const addFieldNameCell = (html) => {
           const td = document.createElement('td');
           tr.appendChild(td);
-          if(isInvitee() && /phone/i.test(html)) {
+          if(isNewInvitee() && /phone/i.test(html)) {
             td.innerHTML = phone_number ? html : '&nbsp;';
           }
           else {
@@ -2162,7 +2162,7 @@
           const isPhone = () => /phone/i.test(id);
           const isEmail = () => /email/i.test(id);
 
-          if(isInvitee()) {
+          if(isNewInvitee()) {
             if(isPhone()) {
               td.innerHTML = value || '&nbsp;';
             }
@@ -2217,8 +2217,8 @@
           tr.appendChild(td);
           td.className = 'tdEntry';
           td.colSpan = 3;
-          if( ! delegate &&  ! isInvitee()) {
-            td.innerHTML = 'No delegate'
+          if( ! delegate &&  ! isNewInvitee()) {
+            td.innerHTML = email ? 'No delegate' : '&nbsp;';
             return;
           }
 
@@ -2227,7 +2227,7 @@
               const pair = `${label}: ${value}`;
               td.innerHTML = td.innerHTML ? `${td.innerHTML}&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;${pair}` : pair;
             }
-            if(isInvitee()) {
+            if(isNewInvitee()) {
               if(value) {
                 buildLabel();
                 return;
@@ -2282,7 +2282,7 @@
             });
           }
 
-          if(isInvitee() && !email) {
+          if(isNewInvitee() && !email) {
             addDelegateCheckbox();
           }
           else {
@@ -2352,22 +2352,28 @@
           showSection('acknowledge-entity');
           return;
         }
-        
+
+        // A new invitee is someone for whom textboxes must be displayed for data entry.
+        const isNewInvitee = (user) => {
+          const { email, role } = user ?? {};
+          if(email) return false;
+          return invEmail == code && role == invRole;
+        }
+
         // Render the asp table first...
         const asp = users.find(user => user.role == 'RE_ADMIN') ?? { role:'RE_ADMIN' };
-        let isInvitee = () => users.length == 0 || (users.length == 1 && invRole == 'RE_ADMIN' && alreadyRegistered());
-        createUserTable(asp, 1, isInvitee);
-        if(isInvitee()) return;
+        const newAspInvitee = isNewInvitee(asp);
+        createUserTable(asp, 1, () => newAspInvitee);
 
         // Render the first auth ind table...
         const authInd1 = users.find(user => user.role == 'RE_AUTH_IND') ?? { role:'RE_AUTH_IND' };
-        isInvitee = () => users.length == 1 || (users.length == 2 && invRole == 'RE_AUTH_IND' && alreadyRegistered());
-        createUserTable(authInd1, 2, isInvitee);
-        if(isInvitee()) return;
+        const newAuthInd1Invitee = newAspInvitee ? false : isNewInvitee(authInd1);
+        createUserTable(authInd1, 2, () => newAuthInd1Invitee);
 
         // Render the 2nd auth ind table...
-        const authInd2 = users.length > 2 ? users.find(u => u.role == 'RE_AUTH_IND' && u.email != authInd1.email) : { role:'RE_AUTH_IND' };
-        createUserTable(authInd2, 3, () => true);
+        const authInd2 = users.find(u => u.role == 'RE_AUTH_IND' && u.email != authInd1.email) ?? { role:'RE_AUTH_IND' };
+        const newAuthInd2Invitee = (newAspInvitee || newAuthInd1Invitee) ? false : isNewInvitee(authInd2);
+        createUserTable(authInd2, 3, () => newAuthInd2Invitee);
       }
       catch(e) {
         msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
@@ -2392,7 +2398,13 @@
           title: parentDiv.querySelector('#txtTitle').value,
         }
         if(selected_role == 'RE_ADMIN') {
-          formdata.entity_name = parentDiv.querySelector('#txtEntityName').value;
+          const txtEntity = parentDiv.querySelector('#txtEntityName');
+          if(txtEntity) {
+            formdata.entity_name = txtEntity.value;
+          }
+          else {
+            formdata.entity_id = entityInfo.entity_id;
+          }
         }
         else {
           const chkDelegate = parentDiv.querySelector('#chkDelegate') ?? { checked: false };
