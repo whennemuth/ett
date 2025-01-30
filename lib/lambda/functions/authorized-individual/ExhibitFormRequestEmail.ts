@@ -11,7 +11,6 @@ export type ExhibitFormRequestEmailParms = {
   entity_id:string;
   linkUri:string;
   constraint: 'current' | 'other' | 'both';
-  filename?: string
 }
 
 export class ExhibitFormRequestEmail {
@@ -22,7 +21,7 @@ export class ExhibitFormRequestEmail {
   }
 
   public send = async ():Promise<boolean> => {
-    let { parms: { consenterEmail, entity_id, linkUri, constraint, filename }} = this;
+    let { parms: { consenterEmail, entity_id, linkUri, constraint }} = this;
     if((linkUri ?? '').endsWith('/')) {
       linkUri = linkUri.substring(0, linkUri.length -1); // Clip off trailing '/'
     }
@@ -46,19 +45,18 @@ export class ExhibitFormRequestEmail {
       return false;
     }
   
+    // Get who the email will say it is from
     const context:IContext = <IContext>ctx;
-    let link = `${linkUri}/consenting/add-exhibit-form/${constraint}`;
-    if(filename) {
-      link = link + '/' + filename;
-    }
+    const from = `noreply@${context.ETT_DOMAIN}`;
+    
     return sendEmail({
       subject: `ETT Exhibit Form Request`,
       to: [ consenterEmail ],
       message: `Thankyou ${consenterFullName} for registering with the Ethical Tranparency Tool.<br>` +
         `${entity_name} is requesting you take the next step and fill out a prior contacts or "exhibit" form.<br>` +
         `Follow the link provided below to log in to your ETT account and to access the form:` + 
-        `<p>${link}</p>`,
-      from: `noreply@${context.ETT_DOMAIN}`,
+        `<p>${linkUri}</p>`,
+      from,
       attachments: []
     } as EmailParms);  
   }

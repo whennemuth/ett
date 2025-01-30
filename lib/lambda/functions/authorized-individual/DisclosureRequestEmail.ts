@@ -1,7 +1,7 @@
 import * as ctx from '../../../../contexts/context.json';
 import { IContext } from "../../../../contexts/IContext";
 import { DAOFactory } from "../../_lib/dao/dao";
-import { Consenter, Entity, ExhibitForm as ExhibitFormData, Role, Roles, User, YN } from "../../_lib/dao/entity";
+import { Consenter, Delegate, Entity, ExhibitForm as ExhibitFormData, Role, Roles, User, YN } from "../../_lib/dao/entity";
 import { EmailParms, sendEmail } from "../../_lib/EmailWithAttachments";
 import { ConsentForm } from "../../_lib/pdf/ConsentForm";
 import { DisclosureForm, DisclosureFormData } from "../../_lib/pdf/DisclosureForm";
@@ -122,7 +122,11 @@ export class RecipientListGenerator {
     // Construct a recipient list for the disclosure request email
     const emailMapper = (user:User, role:Role):string|undefined => {
       if(user.role == role && user.active == YN.Yes) {
-        return user.email;
+        const { email, delegate={} as Delegate } = user;
+        if(delegate.email) {
+          return delegate.email;
+        }
+        return email;
       }
       return undefined;
     }

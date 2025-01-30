@@ -41,14 +41,21 @@ export class Registration {
         timestamp = new Date().toISOString();
       }
 
-      const dao = DAOFactory.getInstance({ DAOType: 'invitation', Payload: {
+      const { email, fullname, title, entity_name, delegate } = invitation;
+      const _invitation = {
         code:this.code, 
         [InvitationFields.registered_timestamp]: timestamp,
-        [InvitationFields.email]: invitation.email,
-        [InvitationFields.fullname]: invitation.fullname,
-        [InvitationFields.title]: invitation.title,
-        [InvitationFields.entity_name]: invitation.entity_name,
-      } as Invitation}) as DAOInvitation;
+        [InvitationFields.email]: email,
+        [InvitationFields.fullname]: fullname,
+        [InvitationFields.title]: title,
+        [InvitationFields.delegate]: delegate
+      } as Invitation;
+
+      if(entity_name) {
+        _invitation[InvitationFields.entity_name] = entity_name;
+      }
+      
+      const dao = DAOFactory.getInstance({ DAOType: 'invitation', Payload: _invitation}) as DAOInvitation;
 
       const output = await dao.update();
       return true;

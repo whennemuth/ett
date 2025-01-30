@@ -16,7 +16,13 @@ export const bugsbunny = {
   update_timestamp,
   fullname: 'Bug Bunny',
   phone_number: '+6172224444',
-  title: 'Rabbit'
+  title: 'Rabbit',
+  delegate: {
+    email: 'delegate1@anytown-university.com',
+    fullname: 'Delegate One',
+    phone_number: '+6173335555',
+    title: 'Bugs Bunnys Delegate'
+  }
 } as User;
 export const bugbunny_invitation = {
   code: 'abc123',

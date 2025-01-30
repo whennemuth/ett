@@ -55,6 +55,10 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
 
       // Return a list of users who have already gone through the registration process for the entity and exist in the users table.
       case Task.LOOKUP_ENTITY:
+        if(entity_id == ENTITY_WAITING_ROOM) {
+          // Must be an RE_ADMIN who has not registered yet (no entity created yet).
+          return okResponse('Ok', { entity:null, users:[], invitation });
+        }
         const dao = DAOFactory.getInstance({
           DAOType: "user",
           Payload: { entity_id } as User
@@ -77,7 +81,12 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         if( ! event.queryStringParameters) {
           return invalidResponse('Bad Request: Missing querystring parameters');
         }
-        let { email, fullname, title, entity_name } = event.queryStringParameters;
+        // NOTE: entity_id usually won't be set for an ASP as they are creating a new entity by entity_name.
+        // However, if it is set, it is a signal that the entity is already created and the asp is replacing 
+        // a prior ASP asp part of an entity amendment.
+        let { 
+          email, fullname, title, entity_id:entityId, entity_name, delegate_fullname, delegate_email, delegate_title, delegate_phone 
+        } = event.queryStringParameters;
 
         if( ! email) {
           return invalidResponse('Bad Request: Missing email querystring parameter');
@@ -85,10 +94,25 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         if( ! fullname) {
           return invalidResponse('Bad Request: Missing fullname querystring parameter');
         }
-        if( ! entity_name && (role == Roles.RE_ADMIN || role == Roles.SYS_ADMIN) ) {
+        if( ! entityId && ! entity_name && (role == Roles.RE_ADMIN || role == Roles.SYS_ADMIN) ) {
            return invalidResponse('Bad Request: Missing entity_name querystring parameter');
         }
-
+        let delegate = undefined;
+        if(role == Roles.RE_AUTH_IND) {
+          if( delegate_fullname && ! delegate_email ) { 
+            return invalidResponse('Bad Request: delegate_fullname cannot be missing delegate_email querystring parameter');
+          }
+          if( delegate_email && ! delegate_fullname ) { 
+            return invalidResponse('Bad Request: delegate_email cannot be missing delegate_fullname querystring parameter');
+          }
+          delegate = { fullname: delegate_fullname, email: delegate_email, title: delegate_title, phone_number: delegate_phone };
+        }
+        else {
+          if(delegate_email || delegate_fullname || delegate_title || delegate_phone) {
+            return invalidResponse('Bad Request: Delegate information is not allowed for this role');
+          }
+        }
+        
         email = decodeURIComponent(email);
         fullname = decodeURIComponent(fullname);        
         if(entity_name) {
@@ -102,12 +126,12 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         if(registered_timestamp) {
           return okResponse(`Ok: Already registered at ${registered_timestamp}`);
         }
-        if(role == Roles.RE_ADMIN) {
+        if(role == Roles.RE_ADMIN && ! entityId) {
           if( await registration.entityNameAlreadyInUse(entity_name)) {
             return invalidResponse(`Bad Request: The specified name: "${entity_name}", is already in use.`)
           }
         }
-        if( await registration.registerUser({ email, fullname, title, entity_name } as Invitation)) {
+        if( await registration.registerUser({ email, fullname, title, entity_name, delegate } as Invitation)) {
           return okResponse(`Ok: Registration completed for ${code}`);
         }
 

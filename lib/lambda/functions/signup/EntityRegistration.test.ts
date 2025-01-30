@@ -377,12 +377,12 @@ describe(`Entity Registration lambda trigger: handler ${Task.REGISTER}`, () => {
     });
   });
 
-  it('Should NOT attempt to update if entity_name querystring parameter is missing for RE_ADMIN', async () => {
+  it('Should NOT attempt to update if both entity_name and entity_id querystring parameter is missing for RE_ADMIN', async () => {
     goodCode = code;
     alreadyRegistered = false;
     await invokeAndAssert({
       _handler:handler, code, task: Task.REGISTER,
-      queryStringParameters: { entity_id:bugs.entity_id, email:bugs.email, fullname:bugs.fullname },
+      queryStringParameters: { email:bugs.email, fullname:bugs.fullname, title:bugs.title },
       expectedResponse: {
         statusCode: 400,
         outgoingBody: {
@@ -423,7 +423,7 @@ describe(`Entity Registration lambda trigger: handler ${Task.REGISTER}`, () => {
     await invokeAndAssert({
       _handler:handler, code, task: Task.REGISTER,
       queryStringParameters: { 
-        entity_id:bugs.entity_id, 
+        entity_id:undefined, // Make sure this is undefined
         email:bugs.email, 
         fullname:bugs.fullname, 
         entity_name: goodNonWaitingRoomInvitationPayload.entity_name

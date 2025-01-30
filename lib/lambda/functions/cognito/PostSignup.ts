@@ -280,7 +280,7 @@ export const handler = async (_event:any) => {
 const addUserToDatabase = async (event:PostSignupEventType, role:Role, invitation:Invitation):Promise<User|undefined> => {
   const { sub, email, phone_number } = event.request.userAttributes;
 
-  let { entity_id, fullname, title } = invitation;
+  let { entity_id, fullname, title, delegate } = invitation;
 
   const user = {
     [UserFields.email]: email,
@@ -289,7 +289,8 @@ const addUserToDatabase = async (event:PostSignupEventType, role:Role, invitatio
     [UserFields.title]: title,
     [UserFields.phone_number]: phone_number,
     [UserFields.sub]: sub,
-    [UserFields.role]: role
+    [UserFields.role]: role,
+    [UserFields.delegate]: delegate
   } as User;
 
   const daoUser = DAOFactory.getInstance({ DAOType: 'user', Payload: user }) as DAOUser;
@@ -351,8 +352,16 @@ export const scrapeUserValuesFromInvitations = async (invitationLookup:RoleInvit
     return null;
   }
 
-  // There should be only one result, but multiple results just means a SYS_ADMIN sent a subsequent invitation
-  // to the same person before that person had a chance to register to and setup an account against the first invitation.
+  // There should usually be only one result, but multiple results just means a subsequent invitation was sent
+  // to the same person before that person had a chance to register to and setup an account against the first 
+  // invitation. Or, the corresponding user was removed as part of an entity ammendment, and then invited back
+  // again (there would now be more than one invitation for the same email address).
+
+  // Return the most recent invitation
+  invitations.sort((a, b) => {
+    return new Date(b.sent_timestamp).getTime() - new Date(a.sent_timestamp).getTime();
+  });
+  
   return invitations[0];
 }
 
@@ -364,7 +373,7 @@ export const scrapeUserValuesFromInvitations = async (invitationLookup:RoleInvit
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/cognito/PostSignup.ts')) {
 
-  const task = 'scrape' as 'handler' | 'scrape';
+  const task = 'handler' as 'handler' | 'scrape';
 
   (async () => {
     switch(task) {
@@ -383,21 +392,21 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         const mockEvent = {
           "version": "1",
           "region": "us-east-2",
-          "userPoolId": "us-east-2_FFxJkLmaJ",
-          "userName": "51bbc580-30e1-7065-2eb0-1ac0362e7d60",
+          "userPoolId": "us-east-2_sOpeEXuYJ",
+          "userName": "812be5f0-7061-70a0-1deb-6de1a938431d",
           "callerContext": {
               "awsSdkVersion": "aws-sdk-unknown-unknown",
-              "clientId": "1c74v2fe28ti22gf4fala0ce62"
+              "clientId": "5me7av3klctvios49o3cr6ap1h"
           },
           "triggerSource": "PostConfirmation_ConfirmSignUp",
           "request": {
               "userAttributes": {
-                  "sub": "51bbc580-30e1-7065-2eb0-1ac0362e7d60",
+                  "sub": "812be5f0-7061-70a0-1deb-6de1a938431d",
                   "email_verified": "true",
                   "cognito:user_status": "CONFIRMED",
                   "phone_number_verified": "false",
-                  "phone_number": "+6172224444",
-                  "email": "asp.au.edu@warhen.work"
+                  "phone_number": "+1234567890",
+                  "email": "auth3.random.edu@warhen.work"
               }
           },
           "response": {}

@@ -21,7 +21,7 @@ import { EntityToCorrect } from "./correction/EntityCorrection";
 import { Personnel } from "./correction/EntityPersonnel";
 import { DemolitionRecord, EntityToDemolish } from "./Demolition";
 import { DisclosureEmailParms, DisclosureRequestEmail, RecipientListGenerator } from "./DisclosureRequestEmail";
-import { ExhibitFormRequestEmail } from "./ExhibitFormRequestEmail";
+import { ExhibitFormRequest } from "./ExhibitFormRequest";
 
 export enum Task {
   LOOKUP_USER_CONTEXT = 'lookup-user-context',
@@ -315,35 +315,7 @@ export type SendExhibitFormRequestParms = {
  * @returns 
  */
 export const sendExhibitFormRequest = async (parms:SendExhibitFormRequestParms):Promise<LambdaProxyIntegrationResponse> => {
-  let { consenterEmail, constraint, entity_id, linkUri } = parms;
-
-  if( ! linkUri) {
-    const cloudfrontDomain = process.env.CLOUDFRONT_DOMAIN;
-    if( ! cloudfrontDomain) {
-      return errorResponse('Email failure for exhibit form request: CLOUDFRONT_DOMAIN environment variable not set!');
-    }
-    linkUri = `https://${process.env.CLOUDFRONT_DOMAIN}`
-  }
-
-  switch(constraint) {
-    case 'current': case 'other': case 'both':
-      const sent = await new ExhibitFormRequestEmail({ 
-        consenterEmail, 
-        entity_id, 
-        linkUri, 
-        constraint 
-      }).send();
-
-      // Bail out if the email failed
-      if( ! sent) {
-        return errorResponse(`Email failure for exhibit form request: ${JSON.stringify({ consenterEmail, entity_id }, null, 2)}`);
-      }
-      
-      return okResponse('Ok', {});
-      
-    default:
-      return invalidResponse(`Invalid/missing affiliate constraint parameter: ${constraint}`);
-  }
+  return new ExhibitFormRequest(parms).sendEmail();
 }
 
 /**
