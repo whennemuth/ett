@@ -177,8 +177,17 @@ export class CognitoConstruct extends Construct {
               })
             ]
           }),
-
-
+          'EttPostSignupSesPolicy': new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'ses:Send*', 'ses:Get*' ],
+                resources: [
+                  `arn:aws:ses:${REGION}:${ACCOUNT}:identity/*`
+                ],
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
         }
       }),
       environment

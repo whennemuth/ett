@@ -53,7 +53,7 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
       await dao.create();
     }
   
-    return okResponse(`${email} created`);
+    return okResponse(`${email} registered`);
   }
   catch(e:any) {
     error(e);

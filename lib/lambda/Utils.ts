@@ -103,10 +103,8 @@ export const errorResponse = (message:string, payload?:any): LambdaProxyIntegrat
     payload.error = true;
   }
   const response =  getResponse(message, 500, payload);
-  if(process.env.DEBUG != 'true') {
-    // Log these even if not in "DEBUG" mode
-    log(response);
-  }
+  // Log these even if not in "DEBUG" mode
+  log(response);
   return response;
 }
 

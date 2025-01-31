@@ -1,5 +1,6 @@
 import { CONFIG } from '../../../../contexts/IContext';
-import { debugLog, log } from '../../Utils';
+import { LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
+import { debugLog, error, isOk, log } from '../../Utils';
 import { lookupRole, removeUserFromUserpool } from '../../_lib/cognito/Lookup';
 import { Configurations } from '../../_lib/config/Config';
 import { DAOConsenter, DAOEntity, DAOFactory, DAOUser } from '../../_lib/dao/dao';
@@ -7,6 +8,8 @@ import { ENTITY_WAITING_ROOM, EntityCrud } from '../../_lib/dao/dao-entity';
 import { UserCrud } from '../../_lib/dao/dao-user';
 import { ConfigNames, ConfigTypes, Consenter, ConsenterFields, Entity, Invitation, Role, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
 import { scheduleStaleEntityVacancyHandler } from '../authorized-individual/correction/EntityCorrection';
+import { ConsenterInfo, sendForm, sendRegistration } from '../consenting-person/ConsentingPerson';
+import { IndividualRegistrationFormData, IndividualRegistrationFormEmail } from '../consenting-person/RegistrationEmail';
 import { updateReAdminInvitationWithNewEntity } from '../re-admin/ReAdminUser';
 import { PostSignupEventType } from './PostSignupEventType';
 
@@ -265,6 +268,13 @@ export const handler = async (_event:any) => {
     }
   }
 
+  // Send registration forms
+  switch(role as Roles) {
+    case Roles.CONSENTING_PERSON:
+      await sendConsenterRegistrationForm(person as Consenter);
+      break;
+  }
+
   // Returning the event without change means a "pass" and cognito will carry signup to completion.
   return event;
 }
@@ -365,6 +375,27 @@ export const scrapeUserValuesFromInvitations = async (invitationLookup:RoleInvit
   return invitations[0];
 }
 
+/**
+ * Send the registration form to the consenter as an attachment in an email.
+ * @param consenter 
+ * @param entityName 
+ */
+export const sendConsenterRegistrationForm = async (consenter:Consenter, entityName?:string):Promise<void> => {
+  let sent = false;
+  entityName = entityName ?? 'Any entity registered with ETT';
+  try {
+    const response = await sendRegistration(consenter, entityName) as LambdaProxyIntegrationResponse;
+    if(isOk(response)) {
+      sent = true;
+    }  
+  }
+  catch(e:any) {
+    error(e);
+  }
+  if( ! sent) {
+    log(consenter.email, `Proceeding with cognito account setup, but failed to send registration email.`);
+  }
+}
 
 
 /**

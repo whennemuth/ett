@@ -1,38 +1,43 @@
-import { YN } from "../../_lib/dao/entity";
-import { ConsentForm, ConsentFormData } from "../../_lib/pdf/ConsentForm";
-import { PdfForm } from "../../_lib/pdf/PdfForm";
-import { sendEmail } from "../../_lib/EmailWithAttachments";
 import * as ctx from '../../../../contexts/context.json';
 import { IContext } from "../../../../contexts/IContext";
+import { YN } from "../../_lib/dao/entity";
+import { sendEmail } from "../../_lib/EmailWithAttachments";
+import { ConsentFormData } from "../../_lib/pdf/ConsentForm";
+import { PdfForm } from "../../_lib/pdf/PdfForm";
+import { RegistrationFormIndividual } from "../../_lib/pdf/RegistrationFormIndividual";
+
+export type IndividualRegistrationFormData = ConsentFormData & {
+  loginHref?:string
+}
 
 /**
  * This class represents an email that is issued to a recipient who has requested a copy of a consenters
  * consent form.
  */
-export class ConsentFormEmail {
-  private data:ConsentFormData;
+export class IndividualRegistrationFormEmail {
+  private data:IndividualRegistrationFormData;
 
-  constructor(data:ConsentFormData) {
+  constructor(data:IndividualRegistrationFormData) {
     this.data = data;
   }
 
   public send = async (emailAddress?:string):Promise<boolean> => {
-    const { data: { entityName, consenter, consenter: { email, firstname, middlename, lastname }}} = this;
+    const { data: { consenter, consenter: { email, firstname, middlename, lastname }, loginHref }} = this;
     const { fullName } = PdfForm;
     const consenterFullName = fullName(firstname, middlename, lastname);
     emailAddress = emailAddress ?? email;
     const context:IContext = <IContext>ctx;
 
     return await sendEmail({
-      subject: 'ETT Individual Consent Form',
+      subject: 'ETT Individual Registration Form',
       from: `noreply@${context.ETT_DOMAIN}`, 
-      message: `Please find enclosed a pdf copy of the ETT consent form, for ${consenterFullName}`,
+      message: `Please find enclosed a pdf copy of the ETT registration form, for ${consenterFullName}`,
       to: [ emailAddress ],
       attachments: [
         {
-          pdf: new ConsentForm({ consenter, entityName }),
-          name: 'consent-form.pdf',
-          description: 'consent-form.pdf'
+          pdf: new RegistrationFormIndividual(consenter, loginHref),
+          name: 'registration-form.pdf',
+          description: 'registration-form.pdf'
         }
       ]  
     });
@@ -45,7 +50,7 @@ export class ConsentFormEmail {
  * RUN MANUALLY: Modify email as needed.
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/ConsentEmail.ts')) {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/RegistrationEmail.ts')) {
   const email = process.env.PDF_RECIPIENT_EMAIL;
   
   if( ! email) {
@@ -55,14 +60,17 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
 
   const test_consenter_form_data = {
     entityName: 'Boston University',
+
     consenter: {
       email, active: YN.Yes, consented_timestamp: [ new Date().toISOString() ],
       firstname: 'Bugs', middlename: 'B', lastname: 'Bunny', title: 'Rabbit',
       phone_number: '+617-222-4444', 
-    }
-  } as ConsentFormData;
+      create_timestamp: new Date().toISOString()
+    },
+    loginHref: 'https://www.example.com/login'
+  } as IndividualRegistrationFormData;
 
-  new ConsentFormEmail(test_consenter_form_data).send()
+  new IndividualRegistrationFormEmail(test_consenter_form_data).send()
     .then(success => {
       console.log(success ? 'Succeeded' : 'Failed');
     })
