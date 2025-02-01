@@ -81,15 +81,17 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
   }
 }
 
+export type EntityInfo = Entity & { users:User[], pendingInvitations:Invitation[], totalUserCount:number };
+export type UserInfo = User & { entity:EntityInfo };
 /**
  * Get the users information, including the entity details, as well as the other users in the entity.
  * @param email 
  * @param role 
  * @returns 
  */
-export const lookupEntity = async (email:string, role:Role):Promise<LambdaProxyIntegrationResponse> => {
+export const _lookupEntity = async (email:string, role:Role):Promise<UserInfo> => {
 
-  const userinfo = [ ] as any[];
+  const userinfo = [ ] as UserInfo[];
   let totalUserCount = 0;
 
   // Should return just one user unless the same email has taken the same role at another entity (edge case).
@@ -156,7 +158,18 @@ export const lookupEntity = async (email:string, role:Role):Promise<LambdaProxyI
   let user = {};
   if(userinfo.length == 1) user = userinfo[0];
   if(userinfo.length > 1) user = userinfo;
-  return okResponse('Ok', { user });
+  return user as UserInfo;
+}
+
+/**
+ * Get the users information, including the entity details, as well as the other users in the entity.
+ * @param email 
+ * @param role 
+ * @returns 
+ */
+export const lookupEntity = async (email:string, role:Role):Promise<LambdaProxyIntegrationResponse> => {
+  const userInfo = await _lookupEntity(email, role) as UserInfo;
+  return okResponse('Ok', userInfo);
 }
 
 /**
