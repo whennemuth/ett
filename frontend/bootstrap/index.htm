@@ -3073,7 +3073,7 @@
         signature:getFldVal('txtConsentSignature'),
         fullname:getFldVal('txtConsentFullname'),
         email:getFldVal('txtConsentEmail'),
-        phone:getFldVal('txtConsentPhone'),
+        phone:getFldVal('txtConsentPhone')
       }
 
       if( ! parms.signature) { alert('Signature required'); return; }
@@ -3118,7 +3118,6 @@
      */
     const sendConsent = async () => {
       const { email } = IDJwtCookie.getUser() ?? {};
-      // TODO: Mention of a specific entity in the consent form is in question and needs to be resolved with the client.
       await doConsentTask('send-consent', { email, entityName: 'unknown entity' });
       alert('Consent form sent');
     }
@@ -5785,7 +5784,7 @@
           document.location.href = href;
           break;
 
-        case 'post-signup':
+        case 'post-signup': case 'start-login':
           document.getElementById('btnSignup').style.display = 'none';
           signIn();
           break;

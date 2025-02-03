@@ -13,7 +13,11 @@ import { DelayedExecutions } from './DelayedExecution';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 
 export type CognitoConstructParms = {
-  scope:Construct, constructId:string, exhibitFormsBucket:Bucket, handleStaleEntityVacancyLambdaArn:string
+  scope:Construct, 
+  constructId:string, 
+  exhibitFormsBucket:Bucket, 
+  handleStaleEntityVacancyLambdaArn:string,
+  cloudfrontDomain:string
 }
 export class CognitoConstruct extends Construct {
 
@@ -26,9 +30,10 @@ export class CognitoConstruct extends Construct {
   private exhibitFormsBucket:Bucket;
   private handleStaleEntityVacancyLambdaArn:string;
   private prefix:string;
+  private cloudfrontDomain:string;
 
   constructor(parms:CognitoConstructParms) {
-    const { scope, constructId, exhibitFormsBucket, handleStaleEntityVacancyLambdaArn } = parms;
+    const { scope, constructId, exhibitFormsBucket, handleStaleEntityVacancyLambdaArn, cloudfrontDomain } = parms;
 
     super(scope, constructId);
 
@@ -40,11 +45,16 @@ export class CognitoConstruct extends Construct {
     this.exhibitFormsBucket = exhibitFormsBucket;
     this.handleStaleEntityVacancyLambdaArn = handleStaleEntityVacancyLambdaArn;
     this.userPoolName = `${STACK_ID}-${Landscape}-${this.constructId.toLowerCase()}-userpool`;
+    this.cloudfrontDomain = cloudfrontDomain;
     this.buildResources();
   }
 
   buildResources(): void {
-    const { prefix, context: { REGION, ACCOUNT, CONFIG:config, STACK_ID:stackId }, constructId, landscape, exhibitFormsBucket, handleStaleEntityVacancyLambdaArn } = this;
+    const { 
+      prefix, context: { REGION, ACCOUNT, CONFIG:config, STACK_ID:stackId }, 
+      context: { CONSENTING_PERSON_PATH, RE_ADMIN_PATH, RE_AUTH_IND_PATH },
+      constructId, landscape, exhibitFormsBucket, handleStaleEntityVacancyLambdaArn, cloudfrontDomain
+    } = this;
     const { CONFIG, CONSENTERS, ENTITIES, INVITATIONS, USERS } = TableBaseNames;
     const { getTableName } = DynamoDbConstruct;
 
@@ -177,11 +187,24 @@ export class CognitoConstruct extends Construct {
               })
             ]
           }),
-
-
+          'EttPostSignupSesPolicy': new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'ses:Send*', 'ses:Get*' ],
+                resources: [
+                  `arn:aws:ses:${REGION}:${ACCOUNT}:identity/*`
+                ],
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
         }
       }),
-      environment
+      environment: {
+        ...environment, 
+        CLOUDFRONT_DOMAIN: cloudfrontDomain,
+        CONSENTING_PERSON_PATH, RE_ADMIN_PATH, RE_AUTH_IND_PATH
+      }
     });
 
     const preAuthenticationFunction = new AbstractFunction(this, 'PreAuthenticationFunction', {

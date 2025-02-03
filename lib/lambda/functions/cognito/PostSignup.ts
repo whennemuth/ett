@@ -1,5 +1,6 @@
-import { CONFIG } from '../../../../contexts/IContext';
-import { debugLog, log } from '../../Utils';
+import { CONFIG, IContext } from '../../../../contexts/IContext';
+import { LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
+import { debugLog, error, isOk, log } from '../../Utils';
 import { lookupRole, removeUserFromUserpool } from '../../_lib/cognito/Lookup';
 import { Configurations } from '../../_lib/config/Config';
 import { DAOConsenter, DAOEntity, DAOFactory, DAOUser } from '../../_lib/dao/dao';
@@ -7,7 +8,8 @@ import { ENTITY_WAITING_ROOM, EntityCrud } from '../../_lib/dao/dao-entity';
 import { UserCrud } from '../../_lib/dao/dao-user';
 import { ConfigNames, ConfigTypes, Consenter, ConsenterFields, Entity, Invitation, Role, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
 import { scheduleStaleEntityVacancyHandler } from '../authorized-individual/correction/EntityCorrection';
-import { updateReAdminInvitationWithNewEntity } from '../re-admin/ReAdminUser';
+import { sendRegistration } from '../consenting-person/ConsentingPerson';
+import { sendEntityRegistrationForm, updateReAdminInvitationWithNewEntity } from '../re-admin/ReAdminUser';
 import { PostSignupEventType } from './PostSignupEventType';
 
 /**
@@ -265,6 +267,9 @@ export const handler = async (_event:any) => {
     }
   }
 
+  // Send registration forms
+  await sendRegistrationForm(person!, role!);
+
   // Returning the event without change means a "pass" and cognito will carry signup to completion.
   return event;
 }
@@ -365,6 +370,70 @@ export const scrapeUserValuesFromInvitations = async (invitationLookup:RoleInvit
   return invitations[0];
 }
 
+/**
+ * Send the registration form to the individual signing up as an attachment in an email.
+ * @param consenter 
+ * @param entityName 
+ */
+export const sendRegistrationForm = async (person:User|Consenter, role:Role, entityName?:string):Promise<void> => {
+  let sent = false;
+  let response:LambdaProxyIntegrationResponse;
+  let _email:string = 'Unknown email';
+  try {
+    switch(role) {
+      case Roles.CONSENTING_PERSON:
+        const consenter = person as Consenter;
+        _email = consenter.email;
+        entityName = entityName ?? 'Any entity registered with ETT';
+        response = await sendRegistration(consenter, entityName);
+        break;
+      default:
+        // Either RE_ADMIN or RE_AUTH_IND
+        const { email, role, } = person as User;
+        _email = email;
+        response = await sendEntityRegistrationForm(email, role, getLoginHref(role));
+        break;
+    }
+    if(isOk(response)) {
+      sent = true;
+    }  
+  }
+  catch(e:any) {
+    error(e);
+  }
+  if( ! sent) {
+    log(_email, `Proceeding with cognito account setup, but failed to send registration email.`);
+  }
+}
+
+/**
+ * A login url is built from the cloudfront domain and a path, both of which are found as environment variables.
+ * The path environment variable is named after the role of the user plus "_PATH".
+ * 
+ * TODO: There is currently no way to know if the user/consenter was using the bootstrap app or the 
+ * standard website. So, the loginHref is currently assumed to be the standard website, and the path for the
+ * url nested in any pdf generated for sending out registration forms will NOT refer to a bootstrap endpoint
+ * (even if the bootstrap app was used for registration). Is this limitation worth addressing?
+ * 
+ * WORKAROUND?: Since cognito does not provide a mechanism for passing custom state with the post signup event 
+ * objects, the solution would have to have the registration forms sent by the front end via a separate api 
+ * call after the post signup callback redirect. The signup call to cognito would include the information as
+ * as post-signup redirect querystring details. This, however, might be too convoluted as it would require 
+ * extending the predefined callback urls for the userpool client(s) to include more entries, and more frontend
+ * code to check for evidence of the custom querystring parameters signalling an api call to send forms is
+ * needed. Too much complexity for a simple task - just do it here and for now, or until a 3rd alternative 
+ * presents itself.
+ * 
+ * @param role 
+ * @returns 
+ */
+export const getLoginHref = (role:Role):string => {
+  const { CLOUDFRONT_DOMAIN:domain } = process.env;
+  const pathname = process.env[`${role}_PATH`];
+  const url = new URL(`https://${domain}`);
+  url.pathname = pathname!;
+  return url.href;
+}
 
 
 /**
@@ -387,7 +456,12 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         ]} as CONFIG;
         
         // Set the config as an environment variable
+        const context:IContext = await require('../../../../contexts/context.json');
         process.env[Configurations.ENV_VAR_NAME] = JSON.stringify(configs);
+        const { CONSENTING_PERSON_PATH, RE_ADMIN_PATH, RE_AUTH_IND_PATH } = context;
+        process.env.CONSENTING_PERSON_PATH = CONSENTING_PERSON_PATH;
+        process.env.RE_ADMIN_PATH = RE_ADMIN_PATH;
+        process.env.RE_AUTH_IND_PATH = RE_AUTH_IND_PATH;
 
         const mockEvent = {
           "version": "1",

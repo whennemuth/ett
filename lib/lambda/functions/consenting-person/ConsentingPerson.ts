@@ -28,6 +28,7 @@ import { ExhibitEmail, FormTypes } from "./ExhibitEmail";
 import { deleteExhibitForm, RulePrefix as DbRulePrefix } from "../delayed-execution/PurgeExhibitFormFromDatabase";
 import { RulePrefix as S3RulePrefix } from "../delayed-execution/PurgeExhibitFormFromBucket"
 import { CognitoStandardAttributes, UserAccount } from "../../_lib/cognito/UserAccount";
+import { IndividualRegistrationFormData, IndividualRegistrationFormEmail } from "./RegistrationEmail";
 
 export enum Task {
   SAVE_EXHIBIT_FORM = 'save-exhibit-form',
@@ -270,7 +271,6 @@ export const registerConsent = async (email:string): Promise<LambdaProxyIntegrat
   consenterInfo = JSON.parse(response.body ?? '{}')['payload'] as ConsenterInfo;
   const { consenter } = consenterInfo ?? {};
   if(consenter) {
-    // TODO: Mention of a specific entity in the consent form is in question and needs to be resolved with the client.
     await sendConsent(consenter, 'any entity');
   }
   return response;
@@ -361,14 +361,8 @@ export const correctConsenter = async (parameters:any): Promise<LambdaProxyInteg
   return getConsenterResponse(email, false);
 };
 
-/**
- * Send a pdf copy of the consent form to the consenter
- * @param email 
- * @returns 
- */
-export const sendConsent = async (consenter:Consenter, entityName:string): Promise<LambdaProxyIntegrationResponse> => {
+export const sendForm = async (consenter:Consenter, callback:(consenterInfo:ConsenterInfo) => Promise<void>): Promise<LambdaProxyIntegrationResponse> => {
   const { email } = consenter;
-  log(`Sending consent form to ${email}`);
   let consenterInfo:ConsenterInfo|null;
   if(email && Object.keys(consenter).length == 1) {
     // email was the only piece of information provided about the consenter, so retrieve the rest from the database.
@@ -394,8 +388,44 @@ export const sendConsent = async (consenter:Consenter, entityName:string): Promi
     };
   }
 
-  await new ConsentFormEmail({ consenter:consenterInfo.consenter, entityName } as ConsentFormData).send(email);
+  await callback(consenterInfo);
+
   return okResponse('Ok', consenterInfo);
+}
+
+/**
+ * Send a pdf copy of the consent form to the consenter
+ * @param email 
+ * @returns 
+ */
+export const sendConsent = async (consenter:Consenter, entityName?:string): Promise<LambdaProxyIntegrationResponse> => {
+  const { email } = consenter;
+  entityName = entityName ?? 'Any entity registered with ETT';
+  log(`Sending consent form to ${email}`);
+  return sendForm(consenter, async (consenterInfo:ConsenterInfo) => {
+    await new ConsentFormEmail({ 
+      consenter:consenterInfo.consenter, entityName 
+    } as ConsentFormData).send(email);
+  });
+};
+
+/**
+ * Send a pdf copy of the registration form to the consenter
+ * @param email 
+ * @returns 
+ */
+export const sendRegistration = async (consenterInfo:Consenter, entityName:string, loginHref?:string): Promise<LambdaProxyIntegrationResponse> => {
+  const { email } = consenterInfo;
+  const consenter = await ConsenterCrud(consenterInfo).read() as Consenter;
+  if( ! consenter) {
+    return errorResponse(`Cannot send registration form to ${email}: Consenter not found`);
+  }
+  log(`Sending registration forms to ${email}`);
+  return sendForm(consenter, async (consenterInfo:ConsenterInfo) => {
+    await new IndividualRegistrationFormEmail({ 
+      consenter:consenterInfo.consenter, entityName, loginHref 
+    } as IndividualRegistrationFormData).send(email);
+  });
 };
 
 /**

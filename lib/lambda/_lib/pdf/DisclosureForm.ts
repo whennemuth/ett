@@ -25,7 +25,7 @@ export type DisclosureFormDrawParms = {
   doc:PDFDocument, form:PDFForm, embeddedFonts:EmbeddedFonts
 };
 
-export class DisclosureForm extends PdfForm implements IPdfForm{
+export class DisclosureForm extends PdfForm implements IPdfForm {
   private data:DisclosureFormData;
 
   constructor(data:DisclosureFormData) {
