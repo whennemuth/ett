@@ -13,7 +13,7 @@ export interface IContext {
   REDIRECT_PATH_BOOTSTRAP:string;
   SYS_ADMIN_PATH:string;
   RE_ADMIN_PATH:string;
-  RE_AUTH_IND_PATH:string;,
+  RE_AUTH_IND_PATH:string;
   CONSENTING_PERSON_PATH:string;
   DEFAULT_ROOT_OBJECT:string;
   CONFIG: CONFIG;
