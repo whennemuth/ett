@@ -5,12 +5,12 @@ import { lookupEmail, lookupUserPoolId } from '../../_lib/cognito/Lookup';
 import { Configurations } from '../../_lib/config/Config';
 import { DAOEntity, DAOFactory, DAOUser } from '../../_lib/dao/dao';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
-import { InvitationCrud } from '../../_lib/dao/dao-invitation';
 import { ConfigNames, Entity, Invitation, Role, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
 import { UserInvitation } from '../../_lib/invitation/Invitation';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
 import { debugLog, errorResponse, invalidResponse, isOk, log, lookupCloudfrontDomain, lookupPendingInvitations, lookupSingleActiveEntity, lookupSingleUser, lookupUser, mergeResponses, okResponse } from "../../Utils";
 import { ExhibitFormsBucketEnvironmentVariableName } from '../consenting-person/BucketItemMetadata';
+import { EntityRegistrationEmail } from './RegistrationEmail';
 
 export enum Task {
   CREATE_ENTITY = 'create-entity',
@@ -20,6 +20,7 @@ export enum Task {
   INVITE_USERS = 'invite-users',
   INVITE_USER = 'invite-user',
   RETRACT_INVITATION = 'retract-invitation',
+  SEND_REGISTRATION = 'send-registration',
   PING = 'ping'
 }
 
@@ -70,6 +71,9 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           return await inviteUsers(parameters, callerSub);
         case Task.RETRACT_INVITATION:
           return await retractInvitation(parameters.code);
+        case Task.SEND_REGISTRATION:
+          var { email, role, loginHref } = parameters;
+          return await sendEntityRegistrationForm(email, role, loginHref);
         case Task.PING:
           return okResponse('Ping!', parameters)
       } 
@@ -519,6 +523,27 @@ export const inviteUsers = async (parameters:any, callerSub?:string):Promise<Lam
  */
 export const retractInvitation = async (code:string):Promise<LambdaProxyIntegrationResponse> => {
   await UserInvitation.retractInvitation(code);
+  return okResponse('Ok');
+}
+
+/**
+ * Send an email to the user by their request a copy of their registration form.
+ * @param email 
+ * @param role 
+ * @param loginHref Contains the url that the pdf file includes for directions to the ETT website.
+ * @returns 
+ */
+export const sendEntityRegistrationForm = async (email:string, role:Role, loginHref:string):Promise<LambdaProxyIntegrationResponse> => {
+  const response = await lookupEntity(email, role) as LambdaProxyIntegrationResponse;
+  if( ! isOk(response)) {
+    return response;
+  }
+  if( ! response.body) {
+    return invalidResponse(`No entity found for ${email}`);
+  }
+  const userInfo = await _lookupEntity(email, role) as UserInfo;
+  const regEmail = new EntityRegistrationEmail({ ...userInfo, loginHref });
+  await regEmail.send();
   return okResponse('Ok');
 }
 
