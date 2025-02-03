@@ -173,7 +173,7 @@ export const _lookupEntity = async (email:string, role:Role):Promise<UserInfo> =
  */
 export const lookupEntity = async (email:string, role:Role):Promise<LambdaProxyIntegrationResponse> => {
   const userInfo = await _lookupEntity(email, role) as UserInfo;
-  return okResponse('Ok', userInfo);
+  return okResponse('Ok', { user: userInfo });
 }
 
 /**
