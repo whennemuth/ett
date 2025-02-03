@@ -19,7 +19,7 @@
     "teardown": "npm run pre-teardown && npm run main-teardown",
     "synth": "cdk synth --all 2>&1 | tee cdk.out/ett.template.yaml",
     "trimcache": "sh bin/trim-cache.sh",
-    "clearcache": "rm -rf cdk.out/* && rm -rf cdk.out/cache/*.zip",
+    "clearcache": "rm -rf cdk.out/* && rm -rf cdk.out/.cache/*.zip",
     "publish": "sh bin/publish.sh",
     "load-bucket": "ts-node bin/load-bucket.ts"
   },
