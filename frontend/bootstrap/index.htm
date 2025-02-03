@@ -2224,6 +2224,7 @@
 
           const addDelegateField = (label, value) => {
             const buildLabel = () => {
+              if( ! value) return;
               const pair = `${label}: ${value}`;
               td.innerHTML = td.innerHTML ? `${td.innerHTML}&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;${pair}` : pair;
             }
