@@ -139,7 +139,7 @@ export class RegistrationFormIndividual extends PdfForm implements IPdfForm {
     const created = new Date(Date.parse(create_timestamp));
     await page.drawWrappedText({
       text: `Your registration was digitally signed <i>(having the same effect as a handwritten signature)</i> ` +
-        `and your account created on: <b>${created.toDateString()} ${created.toLocaleTimeString()}.</b>`,
+        `and your account created on: <b>${created.toUTCString()}.</b>`,
       options: { size, font },
       linePad: 4,
     });

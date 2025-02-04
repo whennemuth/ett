@@ -88,7 +88,7 @@ export class RegistrationFormEntityPage1 extends PdfForm implements IPdfForm {
     let signedOn = 'Unknown Date';
     if(create_timestamp) {
       const created = new Date(Date.parse(create_timestamp));
-      signedOn = created.toDateString() + ' ' + created.toLocaleTimeString();
+      signedOn = created.toUTCString();
     }
     await page.drawText(`<b>Entity Registration Form</b> <i>(digitally signed by you: <b>${signedOn}.</b>)</i>`, { size: 10, font }, 12);
     _return(24);

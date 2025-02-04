@@ -188,7 +188,7 @@ export class ConsentFormPage3 extends PdfForm implements IPdfForm {
     });
     const most_recent_consent = getMostRecent(consented_timestamp);
     await drawRectangle({
-      text: most_recent_consent ? new Date(most_recent_consent).toLocaleDateString() : 'unknown',
+      text: most_recent_consent ? new Date(most_recent_consent).toUTCString() : 'unknown',
       page, margins: { left:6, top:6, bottom:0, right:6 },
       align: Align.left, valign: VAlign.middle,
       options: {
