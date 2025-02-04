@@ -1,6 +1,6 @@
 import { CONFIG, IContext } from '../../../../contexts/IContext';
 import { LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
-import { debugLog, error, isOk, log } from '../../Utils';
+import { debugLog, error, isOk, log, okResponse } from '../../Utils';
 import { lookupRole, removeUserFromUserpool } from '../../_lib/cognito/Lookup';
 import { Configurations } from '../../_lib/config/Config';
 import { DAOConsenter, DAOEntity, DAOFactory, DAOUser } from '../../_lib/dao/dao';
@@ -9,7 +9,7 @@ import { UserCrud } from '../../_lib/dao/dao-user';
 import { ConfigNames, ConfigTypes, Consenter, ConsenterFields, Entity, Invitation, Role, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
 import { scheduleStaleEntityVacancyHandler } from '../authorized-individual/correction/EntityCorrection';
 import { sendRegistration } from '../consenting-person/ConsentingPerson';
-import { sendEntityRegistrationForm, updateReAdminInvitationWithNewEntity } from '../re-admin/ReAdminUser';
+import { sendEntityRegistrationForm, updateReAdminInvitationWithNewEntity, UserInfo } from '../re-admin/ReAdminUser';
 import { PostSignupEventType } from './PostSignupEventType';
 
 /**
@@ -391,7 +391,12 @@ export const sendRegistrationForm = async (person:User|Consenter, role:Role, ent
         // Either RE_ADMIN or RE_AUTH_IND
         const { email, role, } = person as User;
         _email = email;
-        response = await sendEntityRegistrationForm(email, role, getLoginHref(role));
+        response = await sendEntityRegistrationForm(
+          email, 
+          role, 
+          getLoginHref(role), 
+          registrationFormEmailPrerequisitesAreMet
+        );
         break;
     }
     if(isOk(response)) {
@@ -433,6 +438,33 @@ export const getLoginHref = (role:Role):string => {
   const url = new URL(`https://${domain}`);
   url.pathname = pathname!;
   return url.href;
+}
+
+/**
+ * Registration forms should only be sent out if userInfo indicates an active RE_ADMIN and 2 active RE_AUTH_INDs
+ * @param userInfo 
+ * @returns 
+ */
+export const registrationFormEmailPrerequisitesAreMet = (userInfo:UserInfo):boolean => {
+  const { role, active, entity: { users } } = userInfo;
+
+  // Tally up the number of active RE_ADMINs
+  let reAdmins = 0;
+  if(role == Roles.RE_ADMIN && active == YN.Yes) {
+    reAdmins++;
+  }
+  let lookupResults = users.filter(u => u.role == Roles.RE_ADMIN && u.active == YN.Yes);
+  reAdmins += lookupResults.length;
+
+  // Tally up the number of active RE_AUTH_INDs
+  let reAuthInds = 0;
+  if(role == Roles.RE_AUTH_IND && active == YN.Yes) {
+    reAuthInds++;
+  }
+  lookupResults = users.filter(u => u.role == Roles.RE_AUTH_IND && u.active == YN.Yes);
+  reAuthInds += lookupResults.length;
+
+  return (reAdmins == 1 && reAuthInds == 2);
 }
 
 

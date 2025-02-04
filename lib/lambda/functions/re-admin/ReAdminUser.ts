@@ -533,7 +533,7 @@ export const retractInvitation = async (code:string):Promise<LambdaProxyIntegrat
  * @param loginHref Contains the url that the pdf file includes for directions to the ETT website.
  * @returns 
  */
-export const sendEntityRegistrationForm = async (email:string, role:Role, loginHref:string):Promise<LambdaProxyIntegrationResponse> => {
+export const sendEntityRegistrationForm = async (email:string, role:Role, loginHref:string, meetsPrequisite?:(userInfo:UserInfo) => boolean):Promise<LambdaProxyIntegrationResponse> => {
   const response = await lookupEntity(email, role) as LambdaProxyIntegrationResponse;
   if( ! isOk(response)) {
     return response;
@@ -542,6 +542,9 @@ export const sendEntityRegistrationForm = async (email:string, role:Role, loginH
     return invalidResponse(`No entity found for ${email}`);
   }
   const userInfo = await _lookupEntity(email, role) as UserInfo;
+  if(meetsPrequisite && ! meetsPrequisite(userInfo)) {
+    return okResponse('Ok');
+  }
   const regEmail = new EntityRegistrationEmail({ ...userInfo, loginHref });
   await regEmail.send();
   return okResponse('Ok');
