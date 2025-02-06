@@ -122,10 +122,6 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
           title = decodeURIComponent(title);
         }
         
-        const { registered_timestamp } = invitation;
-        if(registered_timestamp) {
-          return okResponse(`Ok: Already registered at ${registered_timestamp}`);
-        }
         if(role == Roles.RE_ADMIN && ! entityId) {
           if( await registration.entityNameAlreadyInUse(entity_name)) {
             return invalidResponse(`Bad Request: The specified name: "${entity_name}", is already in use.`)
