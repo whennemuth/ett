@@ -46,7 +46,12 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
     const existingConsenter = await dao.read() as Consenter;
 
     if(existingConsenter) {
-      console.log(`Consenter ${email} already exists, updating`)
+      const { sub } = existingConsenter;
+      if(sub) {
+        // If the consenter record has a cognito sub, then they have already signed up and been establishe as a user in the userpool.
+        return invalidResponse(`Cannot sign up ${email} - this account already exists with ETT. Please login instead.`);
+      }
+      console.log(`Consenter ${email} already exists in database (no cognito account yet), updating...`);
       await dao.update(existingConsenter);
     }
     else {
