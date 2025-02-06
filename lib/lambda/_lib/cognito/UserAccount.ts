@@ -1,4 +1,4 @@
-import { AdminCreateUserCommand, AdminCreateUserCommandOutput, AdminCreateUserRequest, AdminDeleteUserCommand, AdminDeleteUserCommandOutput, AdminDeleteUserRequest, AdminSetUserPasswordCommand, AdminUpdateUserAttributesCommand, AdminUpdateUserAttributesCommandOutput, AdminUpdateUserAttributesRequest, AttributeType, CognitoIdentityProviderClient, UserType } from "@aws-sdk/client-cognito-identity-provider";
+import { AdminCreateUserCommand, AdminCreateUserCommandOutput, AdminCreateUserRequest, AdminDeleteUserCommand, AdminDeleteUserCommandOutput, AdminDeleteUserRequest, AdminGetUserCommand, AdminGetUserCommandOutput, AdminGetUserRequest, AdminGetUserResponse, AdminSetUserPasswordCommand, AdminUpdateUserAttributesCommand, AdminUpdateUserAttributesCommandOutput, AdminUpdateUserAttributesRequest, AttributeType, CognitoIdentityProviderClient, UserType } from "@aws-sdk/client-cognito-identity-provider";
 import { StandardAttributes } from "aws-cdk-lib/aws-cognito";
 import { IContext } from "../../../../contexts/IContext";
 import { debugLog, error, log } from "../../Utils";
@@ -83,6 +83,43 @@ export class UserAccount {
 
     }
     return userAttributes;    
+  }
+
+  public read = async ():Promise<AdminGetUserCommandOutput|void> => {
+    const { UserPoolId, region, getEmail, logError } = this;
+
+    try {
+      const Username = getEmail();
+      const client = new CognitoIdentityProviderClient({ region });
+      const input = {  UserPoolId, Username } as AdminGetUserRequest;
+      const command = new AdminGetUserCommand(input);
+      const response = await client.send(command) as AdminGetUserCommandOutput;
+      debugLog(response);
+      return response;
+    } 
+    catch(e:any) {
+      if( e?.name && e?.name == 'UserNotFoundException') {
+        log(`User ${getEmail()} not found in userpool: ${UserPoolId}`);
+        return;
+      }
+      logError(e as Error);
+    }
+  }
+
+  public isVerified = async (user?:AdminGetUserCommandOutput):Promise<boolean> => {
+    const { logError, read } = this;
+    try {
+      if( ! user) {
+        user = await read() as AdminGetUserCommandOutput;
+      }
+      const emailAttribute = user?.UserAttributes?.find((a:AttributeType) => a.Name == 'email_verified');
+      const phoneAttribute = user?.UserAttributes?.find((a:AttributeType) => a.Name == 'phone_number_verified');
+      return emailAttribute?.Value == 'true' || phoneAttribute?.Value == 'true';
+    } 
+    catch(e) {
+      logError(e as Error);
+      return false;
+    }
   }
 
   /**
@@ -274,7 +311,7 @@ export class UserAccount {
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/cognito/UserAccount.ts')) {
 
-  let task = 'create-password' as 'replace' | 'update' | 'create' | 'create-password';
+  let task = 'is-verified' as 'read'| 'is-verified' | 'replace' | 'update' | 'create' | 'create-password';
 
   (async () => {
 
@@ -294,6 +331,20 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/cogn
     // 4) Execute the update or replacement
     let user:UserAccount;
     switch(task) {
+      case "read":
+        original = { email: { propname:'email', value:'sysadmin1@warhen.work' } };
+        // Make the email address the same so as not to get updated itself.
+        user = await UserAccount.getInstance(original, Roles.SYS_ADMIN);
+        const userDetails = await user.read();
+        log(userDetails, 'User details');
+        break;
+      case "is-verified":
+        original = { email: { propname:'email', value:'bogus@warhen.work' } };
+        // Make the email address the same so as not to get updated itself.
+        user = await UserAccount.getInstance(original, Roles.SYS_ADMIN);
+        const verified = await user.isVerified();
+        console.log(`User is verified: ${verified}`);
+        break;
       case "update":
         original = { email: { propname:'email', value:'cp1@warhen.work' } };
         updated = {
@@ -334,7 +385,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/cogn
     
     // 5) Report the results
     if(user.ok()) {
-      console.log('Update complete.');
+      console.log(`${task} successful`);
     }
     else {
       console.log(user.getMessage());

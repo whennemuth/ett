@@ -1,10 +1,11 @@
 import { IContext } from "../../../../contexts/IContext";
 import { lookupRole, lookupUserPoolClientId, lookupUserPoolId } from "../../_lib/cognito/Lookup";
+import { UserAccount } from "../../_lib/cognito/UserAccount";
 import { Configurations } from "../../_lib/config/Config";
 import { DAOFactory, DAOInvitation } from "../../_lib/dao/dao";
 import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
 import { ConfigName, ConfigNames, Consenter, Invitation, Role, Roles, Validator } from "../../_lib/dao/entity";
-import { debugLog } from "../../Utils";
+import { debugLog, log } from "../../Utils";
 import { PreSignupEventType } from "./PreSignupEventType";
 
 export enum Messages {
@@ -73,7 +74,23 @@ export const handler = async (_event:any) => {
       if( ! consenter) {
         throw new Error(`Error: ${email} does not exist`);
       }
+    }
 
+    // Delete any pre-existing unverified account matches. The user will be issued a new verification email further down.
+    const original = { email: { propname:'email', value:email } };
+    const userAccount = await UserAccount.getInstance(original, Roles.SYS_ADMIN);
+    const accountDetails = await userAccount.read();
+    if(accountDetails) {
+      if((await userAccount.isVerified(accountDetails)) == false) {
+        log(`Detected a pre-existing account for ${email} that has not been verified. 
+          This is probably a result of the user closing the cognito hosted UI verification screen 
+          prematurely and re-trying their registration link later. Deleting the unverified account now ' 
+          to clear the way for it being recreated (Otherwise cognito will return the user a message saying the email already exists).`);
+        await userAccount.Delete();
+      }
+    }
+
+    if(role == Roles.CONSENTING_PERSON) {
       // Consenting persons do not need to be invited to signup, so exit here.
       return event;
     }
@@ -160,7 +177,7 @@ export const handler = async (_event:any) => {
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/cognito/PreSignup.ts')) {
 
-  const role:Role = Roles.SYS_ADMIN;
+  const role:Role = Roles.CONSENTING_PERSON;
 
   (async () => {
     const context:IContext = await require('../../../../contexts/context.json');
@@ -169,7 +186,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     const userPoolId = await lookupUserPoolId(userpoolName, REGION);
     if( ! userPoolId) throw new Error(`No such userpool: ${userpoolName}`);
     const clientId = await lookupUserPoolClientId(userPoolId, role, REGION);
-    const email = 'wrh@bu.edu';
+    const email = 'cp1@warhen.work';
 
     const _event = {
       region:REGION, userPoolId,
@@ -178,6 +195,30 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         userAttributes: { email }
       }
     } as PreSignupEventType;
+
+  //   {
+  //     "version": "1",
+  //     "region": "us-east-2",
+  //     "userPoolId": "us-east-2_sOpeEXuYJ",
+  //     "userName": "f16b9570-8041-7012-dc6d-ca55cbee60e6",
+  //     "callerContext": {
+  //         "awsSdkVersion": "aws-sdk-unknown-unknown",
+  //         "clientId": "53btiltned2e6b9etgg8oum7ok"
+  //     },
+  //     "triggerSource": "PreSignUp_SignUp",
+  //     "request": {
+  //         "userAttributes": {
+  //             "phone_number": "+1234567890",
+  //             "email": "cp1@warhen.work"
+  //         },
+  //         "validationData": null
+  //     },
+  //     "response": {
+  //         "autoConfirmUser": false,
+  //         "autoVerifyEmail": false,
+  //         "autoVerifyPhone": false
+  //     }
+  // }
 
     await handler(_event);
 

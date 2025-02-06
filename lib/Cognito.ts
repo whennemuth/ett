@@ -101,12 +101,19 @@ export class CognitoConstruct extends Construct {
         assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
         description: 'Grants access to write to dynamodb and read from cognito userpool clients',
         inlinePolicies: {
-          'EttCognitoPreSignupListUserPoolClients': new PolicyDocument({
+          'EttCognitoPreSignupListingPolicy': new PolicyDocument({
             statements: [new PolicyStatement({
               actions: [
-                'cognito-idp:ListUserPoolClients'
+                'cognito-idp:List*'
               ],
-              resources: ['*'],
+              resources: [ '*' ],
+              effect: Effect.ALLOW
+            })],
+          }),
+          'EttCognitoPreSignupAdminPolicy': new PolicyDocument({
+            statements: [new PolicyStatement({
+              actions: [ 'cognito-idp:AdminGet*', 'cognito-idp:AdminDeleteUser' ],
+              resources: [ `arn:aws:cognito-idp:${REGION}:${ACCOUNT}:userpool/${REGION}_*` ],
               effect: Effect.ALLOW
             })],
           }),
@@ -118,7 +125,7 @@ export class CognitoConstruct extends Construct {
               resources: dynamodbResources,
               effect: Effect.ALLOW
             })],
-          }),
+          })
         }
       }),
       environment
