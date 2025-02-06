@@ -243,22 +243,21 @@ export class RegistrationFormEntityPage3 extends PdfForm implements IPdfForm {
     const { page, page: { basePage }, font, boldfont, _return, signedDate, loginHref } = this;
 
     _return(16);
-
     await page.drawCenteredText(
-      '<b>[ ] Check here, type your name below, and submit, to digitally sign this Registration Form</b> on behalf of the',
-      { font, size:10, color:red, lineHeight:14 }
-    );
-
-    basePage.moveDown(2);
-    await page.drawCenteredText(
-      'Registered Entity and to agree on its and your behalf to these terms, register, and confirm your authority to do so.',
-      { font, size:10, color:red, lineHeight:14, }
+      `Signed, Dated, and Submitted on: ${signedDate}`,
+      { font:boldfont, size:10, color:red, lineHeight:14, }
     );
 
     basePage.moveDown(8);
     await page.drawCenteredText(
-      `Signed, Dated, and Submitted on: ${signedDate}`,
-      { font:boldfont, size:10, color:red, lineHeight:14, }
+      'This signature confirms your agreement on behalf of yourself and the Registered Entity to these terms',
+      { font, size:10, color:red, lineHeight:14, }
+    );
+
+    basePage.moveDown(2);
+    await page.drawCenteredText(
+      'and your authority to do so.',
+      { font, size:10, color:red, lineHeight:14, }
     );
 
     basePage.moveDown(8);
