@@ -1,5 +1,6 @@
 import { SESv2Client, SendEmailCommand, SendEmailCommandInput, SendEmailResponse } from "@aws-sdk/client-sesv2";
 import { CONFIG, IContext } from "../../../../contexts/IContext";
+import * as ctx from '../../../../contexts/context.json';
 import { DelayedExecutions } from "../../../DelayedExecution";
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
@@ -112,7 +113,7 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
     }
   }
   catch(e:any) {
-    console.error(e);
+    log(e);
     return errorResponse(`Internal server error: ${e.message}`);
   }
 }
@@ -125,45 +126,50 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
  * @returns LambdaProxyIntegrationResponse
  */
 export const demolishEntity = async (entity_id:string, notify:boolean, dryRun?:boolean): Promise<LambdaProxyIntegrationResponse> => {
-  // Bail out if missing the required entity_id parameter
-  if( ! entity_id) {
-    return invalidResponse('Bad Request: Missing entity_id parameter');
-  }
-
-  // Demolish the entity
-  const entityToDemolish = new EntityToDemolish(entity_id);
-  entityToDemolish.dryRun = dryRun||false;
-  await entityToDemolish.demolish() as DemolitionRecord;
-
-  // Bail out if the initial lookup for the entity failed.
-  if( ! entityToDemolish.entity) {
-    return invalidResponse(`Bad Request: Invalid entity_id: ${entity_id}`);
-  }
-  
-  // For every user deleted by the demolish operation, notify them it happened by email.
-  if(notify) {
-    const isEmail = (email:string|undefined) => /@/.test(email||'');
-    const emailAddresses:string[] = entityToDemolish.deletedUsers
-      .map((user:User) => { return isEmail(user.email) ? user.email : ''; })
-      .filter((email:string) => email);
-
-    for(var i=0; i<emailAddresses.length; i++) {
-      var email = emailAddresses[i];
-      try {
-        log(`Sending email to ${email}`);
-        if(dryRun) {
-          continue;
-        }
-        await notifyUserOfDemolition(email, entityToDemolish.entity);
-        log('Email sent');
-      }
-      catch(reason) {
-        log(reason, `Error sending email to ${email}`);
-      }
+  try {
+    // Bail out if missing the required entity_id parameter
+    if( ! entity_id) {
+      return invalidResponse('Bad Request: Missing entity_id parameter');
     }
+
+    // Demolish the entity
+    const entityToDemolish = new EntityToDemolish(entity_id);
+    entityToDemolish.dryRun = dryRun||false;
+    await entityToDemolish.demolish() as DemolitionRecord;
+
+    // Bail out if the initial lookup for the entity failed.
+    if( ! entityToDemolish.entity) {
+      return invalidResponse(`Bad Request: Invalid entity_id: ${entity_id}`);
+    }
+    
+    // For every user deleted by the demolish operation, notify them it happened by email.
+    if(notify) {
+      const isEmail = (email:string|undefined) => /@/.test(email||'');
+      const emailAddresses:string[] = entityToDemolish.deletedUsers
+        .map((user:User) => { return isEmail(user.email) ? user.email : ''; })
+        .filter((email:string) => email);
+
+      for(var i=0; i<emailAddresses.length; i++) {
+        var email = emailAddresses[i];
+        try {
+          log(`Sending email to ${email}`);
+          if(dryRun) {
+            continue;
+          }
+          await notifyUserOfDemolition(email, entityToDemolish.entity);
+          log('Email sent');
+        }
+        catch(reason) {
+          log(reason, `Error sending email to ${email}`);
+        }
+      }
+    }    
+    return okResponse('Ok', entityToDemolish.demolitionRecord);
   }
-  
-  return okResponse('Ok', entityToDemolish.demolitionRecord);
+  catch(e:any) {
+    log(e);
+    return errorResponse(`ETT error: ${e.message}`);
+  }
 }
 
 /**
@@ -174,17 +180,17 @@ export const demolishEntity = async (entity_id:string, notify:boolean, dryRun?:b
 export const notifyUserOfDemolition = async (emailAddress:string, entity:Entity):Promise<void> => {
   log(`Notifying ${emailAddress} that entity ${entity.entity_id}: ${entity.entity_name} was demolished`);
 
-  const FromEmailAddress = await getSysAdminEmail();
-
   const client = new SESv2Client({
     region: process.env.REGION
   });
+
+  const context:IContext = <IContext>ctx;
 
   const command = new SendEmailCommand({
     Destination: {
       ToAddresses: [ emailAddress ],
     },
-    FromEmailAddress,
+    FromEmailAddress: `noreply@${context.ETT_DOMAIN}`,
     Content: {
       Simple: {
         Subject: {
