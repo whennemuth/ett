@@ -10,7 +10,7 @@ import { EntityToAutomate } from '../../_lib/EntityAutomation';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
 import { debugLog, error, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
 import { EntityToDemolish } from '../authorized-individual/Demolition';
-import { Task as ReAdminTasks, createEntity, deactivateEntity, inviteUser, inviteUsers, lookupEntity, updateEntity, retractInvitation } from '../re-admin/ReAdminUser';
+import { Task as ReAdminTasks, createEntity, deactivateEntity, inviteUser, inviteUsers, lookupEntity, updateEntity, retractInvitation, sendEntityRegistrationForm } from '../re-admin/ReAdminUser';
 import { DynamoDbTableOutput } from './DynamoDbTableOutput';
 import { HtmlTableView } from './view/HtmlTableView';
 
@@ -56,10 +56,9 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
     }
     else {
       log(`Performing task: ${task}`);
-      const { email } = parameters;
+      const { email, role, loginHref } = parameters;
       switch(task as ReAdminTasks|Task) {
         case ReAdminTasks.LOOKUP_USER_CONTEXT:
-          const { role } = parameters;
           return await lookupEntity(email, role);
         case ReAdminTasks.CREATE_ENTITY:
           return await createEntity(parameters);
@@ -79,6 +78,8 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           return await inviteUsers(parameters);
         case ReAdminTasks.RETRACT_INVITATION:
           return await retractInvitation(parameters.code);
+        case ReAdminTasks.SEND_REGISTRATION:
+           return await sendEntityRegistrationForm(email, role, loginHref);
         case ReAdminTasks.PING:
           return okResponse('Ping!', parameters);
         case Task.REPLACE_RE_ADMIN:
