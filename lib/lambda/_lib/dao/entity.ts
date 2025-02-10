@@ -70,12 +70,16 @@ export enum ExhibitFormFields {
   sent_timestamp = 'sent_timestamp',
   affiliates = 'affiliates'
 }
+export enum ExhibitFormConstraint {
+  CURRENT = 'current', OTHER = 'other', BOTH = 'both'
+}
 export type ExhibitForm = {
   entity_id: string,
   create_timestamp?: string,
   update_timestamp?: string,
   sent_timestamp?: string,
-  affiliates?: Affiliate[]
+  affiliates?: Affiliate[],
+  constraint?: ExhibitFormConstraint
 };
 export enum ConsenterFields {
   email = 'email',
