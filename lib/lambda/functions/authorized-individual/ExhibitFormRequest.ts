@@ -1,7 +1,11 @@
 import { LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { errorResponse, invalidResponse, okResponse } from "../../Utils";
-import { SendExhibitFormRequestParms } from "./AuthorizedIndividual";
 import { ExhibitFormRequestEmail } from "./ExhibitFormRequestEmail";
+
+
+export type SendExhibitFormRequestParms = {
+  consenterEmail:string, entity_id:string, constraint:string, linkUri?:string
+}
 
 export class ExhibitFormRequest {
   private parms: SendExhibitFormRequestParms;
