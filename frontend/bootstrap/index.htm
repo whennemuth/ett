@@ -375,6 +375,18 @@
         border-style:none;
         text-align: center;
       }
+      table.sysAdminShortcuts td div {
+        font-size: 12px;
+        font-style: italic;
+        float:left;
+        margin-right: 4px;
+      }
+      table.sysAdminShortcuts td div input {
+        font-size: 12px;
+        border-width: 1px;
+        border-style: solid;
+        border-color:#e6e5e5;
+      }
 
       #authNotReady {
         display:none; padding:5px; margin-top:80px; width:100%; 
@@ -940,11 +952,47 @@
                                 <td><input id="txtShortcutAuth1Title" type="text" class="form-control" value="Detective"></td>
                               </tr>
                               <tr>
+                                <td>&nbsp;</td>
+                                <td>Delegate</td>
+                                <td colspan="3">
+                                  <div>Email<br>
+                                    <input id="txtShortcutDelegate1Email" type="text" class="form-control-sm" value="auth3.random.edu@warhen.work">
+                                  </div>                            
+                                  <div>Fullname<br>
+                                    <input id="txtShortcutDelegate1Fullname" type="text" class="form-control-sm" value="Bilbo Baggins">
+                                  </div>                            
+                                  <div>Phone<br>
+                                    <input id="txtShortcutDelegate1Phone" type="text" class="form-control-sm" value="+6179512370">
+                                  </div>                            
+                                  <div>Title<br>
+                                    <input id="txtShortcutDelegate1Title" type="text" class="form-control-sm" value="Ring Bearer">
+                                  </div>                            
+                                </td>
+                              </tr>
+                              <tr>
                                 <td>AI (2)</td>
                                 <td><input id="txtShortcutAuth2Email" type="text" class="form-control" value="auth2.random.edu@warhen.work"></td>
                                 <td><input id="txtShortcutAuth2Fullname" type="text" class="form-control" value="Fred Flintstone"></td>
                                 <td><input id="txtShortcutAuth2Phone" type="text" class="form-control" value="+7812227777"></td>
                                 <td><input id="txtShortcutAuth2Title" type="text" class="form-control" value="Quarry Foreman"></td>
+                              </tr>
+                              <tr>
+                                <td>&nbsp;</td>
+                                <td>Delegate</td>
+                                <td colspan="3">
+                                  <div>Email<br>
+                                    <input id="txtShortcutDelegate2Email" type="text" class="form-control-sm" value="auth4.random.edu@warhen.work">
+                                  </div>                            
+                                  <div>Fullname<br>
+                                    <input id="txtShortcutDelegate2Fullname" type="text" class="form-control-sm" value="Sir Francis Drake">
+                                  </div>                            
+                                  <div>Phone<br>
+                                    <input id="txtShortcutDelegate2Phone" type="text" class="form-control-sm" value="+7819238937">
+                                  </div>                            
+                                  <div>Title<br>
+                                    <input id="txtShortcutDelegate2Title" type="text" class="form-control-sm" value="Royalty">
+                                  </div>                            
+                                </td>
                               </tr>
                             </table>
                           </td>
@@ -2596,29 +2644,55 @@
       msg.innerHTML = '';
       try {
 
-        const outgoingPayload = { task: 'shortcut-entity-setup', parameters: { 
-          entityName: document.getElementById('txtShortcutEntityName').value, 
-          asp: {
-            email: document.getElementById('txtShortcutAspEmail').value,
-            fullname: document.getElementById('txtShortcutAspFullname').value,
-            phone_number: document.getElementById('txtShortcutAspPhone').value,
-            title: document.getElementById('txtShortcutAspTitle').value
-          }, 
-          ais: [
-            {
-              email: document.getElementById('txtShortcutAuth1Email').value,
-              fullname: document.getElementById('txtShortcutAuth1Fullname').value,
-              phone_number: document.getElementById('txtShortcutAuth1Phone').value,
-              title: document.getElementById('txtShortcutAuth1Title').value
-            },
-            {
-              email: document.getElementById('txtShortcutAuth2Email').value,
-              fullname: document.getElementById('txtShortcutAuth2Fullname').value,
-              phone_number: document.getElementById('txtShortcutAuth2Phone').value,
-              title: document.getElementById('txtShortcutAuth2Title').value
-            }
-          ] 
-        }};
+        const getEntry = (entryType, index) => {
+          const prefix = `txtShortcut${entryType}${index}`;
+          const email = document.getElementById(`${prefix}Email`).value;
+          const fullname = document.getElementById(`${prefix}Fullname`).value;
+          const title = document.getElementById(`${prefix}Title`).value;
+          const phone_number = document.getElementById(`${prefix}Phone`).value;
+          return { 
+            email, fullname, title, phone_number, 
+            isComplete: () => email && fullname && title && phone_number,
+            isEmpty: () => !email && !fullname && !title && !phone_number
+          };
+        }
+
+        const entityName = document.getElementById('txtShortcutEntityName').value;
+        if( ! entityName) {
+          alert('Entity name required');
+          return;
+        }
+
+        const asp = getEntry('Asp', '');
+        if( ! asp.isEmpty() && ! asp.isComplete()) {
+          alert('ASP fields are incomplete');
+          return;
+        }
+
+        const ais = [ getEntry('Auth', '1'), getEntry('Auth', '2') ];
+        if(ais.some(ai => !ai.isEmpty() && !ai.isComplete())) {
+          alert('One or both of the authorized individual entries are incomplete');
+          return;
+        }
+
+        const delegates = [ getEntry('Delegate', '1'), getEntry('Delegate', '2') ];
+        if(delegates.some(delegate => !delegate.isEmpty() && !delegate.isComplete())) {
+          alert('One or both of the delegate entries are incomplete');
+          return;
+        }
+
+        const outgoingPayload = { 
+          task: 'shortcut-entity-setup', 
+          parameters: { entityName, asp, ais }
+        };
+
+        if(delegates[0].isComplete()) {
+          outgoingPayload.parameters.ais[0].delegate = delegates[0];
+        }
+
+        if(delegates[1].isComplete()) {
+          outgoingPayload.parameters.ais[1].delegate = delegates[1];
+        }
 
         const response = await fetch(apiUri('SYS_ADMIN'), {
           method: 'GET',

@@ -530,8 +530,8 @@ export const scheduleExhibitFormPurgeFromDatabase = async (newConsenter:Consente
  */
 export const sendExhibitData = async (consenterEmail:string, exhibitForm:ExhibitForm): Promise<LambdaProxyIntegrationResponse> => {
   
-  const emailFailuresForEntityStaff = [] as string[];
-  const emailFailures = () => { return emailFailuresForEntityStaff.length > 0; }
+  const emailSendFailures = [] as string[];
+  const emailFailures = () => { return emailSendFailures.length > 0; }
 
   const bucketItemAddFailures = [] as string[];
   const bucketAddFailures = () => { return bucketItemAddFailures.length > 0; }
@@ -708,12 +708,63 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
    * Send the full exhibit form to each authorized individual and the RE admin.
    */
   const sendFullExhibitFormToEntityStaff = async () => {
-    emailFailuresForEntityStaff.length = 0;
+    emailSendFailures.length = 0;
+    let sent:boolean = false;
     for(let i=0; i<entityReps.length; i++) {
-      var sent:boolean = await new ExhibitEmail(exhibitForm, FormTypes.FULL, entity, consenter).send(entityReps[i].email);
-      if( ! sent) {
-        emailFailuresForEntityStaff.push(entityReps[i].email);
+      try {
+        sent = await new ExhibitEmail(exhibitForm, FormTypes.FULL, entity, consenter).send(entityReps[i].email);
       }
+      catch(e) {
+        error(e);
+      }
+      if( ! sent) {
+        emailSendFailures.push(entityReps[i].email);
+      }
+    }
+  }
+
+  
+  /**
+   * Send the full exhibit form to each authorized individual and the RE admin.
+   */
+  const sendFullExhibitFormToDelegates = async () => {
+    emailSendFailures.length = 0;
+    let sent:boolean = false;
+    for(let i=0; i<entityReps.length; i++) {
+      let delegateEmail:string|undefined;
+      try {
+        if(entityReps[i].role == Roles.RE_ADMIN) {
+          continue;
+        }
+        if( ( ! entityReps[i].delegate) || ( ! entityReps[i].delegate?.email) ) {
+          continue;
+        }
+        const delegateEmail = entityReps[i].delegate!.email;
+        sent = await new ExhibitEmail(exhibitForm, FormTypes.FULL, entity, consenter).send(delegateEmail);
+      }
+      catch(e) {
+        error(e);
+      }
+      if( ! sent) {
+        emailSendFailures.push(delegateEmail ?? 'unknown');
+      }
+    }
+  }
+
+  
+  /**
+   * Send the full exhibit form to the consenting person.
+   */
+  const sendFullExhibitFormToConsenter = async () => {
+    let sent:boolean = false;
+    try {
+      sent = await new ExhibitEmail(exhibitForm, FormTypes.FULL, entity, consenter).send(consenterEmail);
+    }
+    catch(e) {
+      error(e);
+    }
+    if( ! sent) {
+      emailSendFailures.push(consenterEmail);
     }
   }
 
@@ -752,7 +803,7 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
   const getResponse = async (email:string, includeEntityList:boolean=true): Promise<LambdaProxyIntegrationResponse> => {
     if(emailFailures()) {
       const msg = 'Internal server error: ' + INVALID_RESPONSE_MESSAGES.emailFailures.replace('INSERT_EMAIL', consenter.email);
-      const failedEmails = [...emailFailuresForEntityStaff];
+      const failedEmails = [...emailSendFailures];
       const payload = { failedEmails };
       return errorResponse(msg, payload);
     }
@@ -768,6 +819,10 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
     await transferSingleExhibitFormsToBucket();
     
     await sendFullExhibitFormToEntityStaff();
+    
+    await sendFullExhibitFormToDelegates();
+
+    await sendFullExhibitFormToConsenter();
 
     await pruneExhibitFormFromDatabaseRecord();
 

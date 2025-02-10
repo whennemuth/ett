@@ -17,6 +17,7 @@ export type FormType = FormTypes.FULL | FormTypes.SINGLE;
  *      provided by the consenting individual. 
  *   2) An affliate where the email contains a pdf attachment that includes the details of the recipient
  *      only, as excerpted from the full exhibit form.
+ *   3) The consenting person themselves, where the email contains a pdf attachment that includes all affiliates.
  */
 export class ExhibitEmail {
   private data:ExhibitFormData;
