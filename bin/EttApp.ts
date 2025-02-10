@@ -84,7 +84,7 @@ const buildAll = () => {
   const cognito = new CognitoConstruct({
     scope:stack, 
     constructId:'Cognito',
-    exhibitFormsBucket: exhibitFormsBucket,
+    exhibitFormsBucket,
     handleStaleEntityVacancyLambdaArn: `arn:aws:lambda:${region}:${account}:function:${stackName}-${DelayedExecutions.HandleStaleEntityVacancy.coreName}`,
     cloudfrontDomain: cloudfront.getDistributionDomainName(),
   } as CognitoConstructParms);
@@ -95,7 +95,8 @@ const buildAll = () => {
   // Set up the public api register endpoints for "pre-signup" that are called before any cognito signup occurs.
   const signupApi = new SignupApiConstruct(stack, 'SignupApi', {
     cloudfrontDomain: cloudfront.getDistributionDomainName(),
-    userPool:cognito.getUserPool()
+    userPool:cognito.getUserPool(),
+    exhibitFormsBucket
   } as SignupApiConstructParms);
 
   // Create all the delayed execution lambda functions
@@ -113,7 +114,7 @@ const buildAll = () => {
     cloudfrontDomain: cloudfront.getDistributionDomainName(),
     redirectPath: REDIRECT_PATH_WEBSITE,
     landscape: Landscape,
-    exhibitFormsBucket: exhibitFormsBucket,
+    exhibitFormsBucket,
     databaseExhibitFormPurgeLambdaArn: delayedExecutionLambdas.databaseExhibitFormPurgeLambda.functionArn,
     disclosureRequestReminderLambdaArn: delayedExecutionLambdas.disclosureRequestReminderLambda.functionArn,
     bucketExhibitFormPurgeLambdaArn: delayedExecutionLambdas.bucketExhibitFormPurgeLambda.functionArn,

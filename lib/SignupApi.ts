@@ -9,10 +9,14 @@ import { DynamoDbConstruct } from "./DynamoDb";
 import { UserPool } from "aws-cdk-lib/aws-cognito";
 import { AbstractRoleApi, Actions } from "./role/AbstractRole";
 import { Configurations } from "./lambda/_lib/config/Config";
+import { Bucket } from "aws-cdk-lib/aws-s3";
+import { ExhibitFormsBucketEnvironmentVariableName } from "./lambda/functions/consenting-person/BucketItemMetadata";
+import { DelayedExecutions } from "./DelayedExecution";
 
 export type SignupApiConstructParms = {
   userPool: UserPool,
-  cloudfrontDomain: string
+  cloudfrontDomain: string,
+  exhibitFormsBucket: Bucket
 };
 
 /**
@@ -20,7 +24,6 @@ export type SignupApiConstructParms = {
  */
 export class SignupApiConstruct extends Construct {
 
-  private outerScope:Construct;
   private constructId:string;
   private stageName:string;
   private _registerEntityApiUri:string;
@@ -33,7 +36,6 @@ export class SignupApiConstruct extends Construct {
   constructor(scope:Construct, constructId:string, parms:SignupApiConstructParms) {
     super(scope, constructId);
 
-    this.outerScope = scope;
     this.constructId = constructId;
     this.parms = parms;
     this.context = scope.node.getContext('stack-parms');
@@ -49,10 +51,11 @@ export class SignupApiConstruct extends Construct {
    */
   private createRegisterEntityApi = () => {
     const { constructId, context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID }, 
-      parms: { cloudfrontDomain, userPool: { userPoolArn, userPoolId } }, stageName 
+      parms: { cloudfrontDomain, userPool: { userPoolArn, userPoolId }, exhibitFormsBucket }, stageName 
     } = this;
     const basename = `${constructId}RegisterEntity`;
     const description = 'for checking invitation code and registering a new user has signed and registered';
+    const prefix = `${STACK_ID}-${landscape}`;
 
     // Create the lambda function
     this.registerEntityLambda = new class extends AbstractFunction { }(this, basename, {
@@ -72,7 +75,7 @@ export class SignupApiConstruct extends Construct {
         assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
         description: `Grants actions to the entity registration api lambda function to perform the related api tasks.`,
         inlinePolicies: {
-          'EttAuthIndSesPolicy': new PolicyDocument({
+          'EttEntitySignupSesPolicy': new PolicyDocument({
             statements: [
               new PolicyStatement({
                 actions: [ 'ses:Send*', 'ses:Get*' ],
@@ -83,7 +86,7 @@ export class SignupApiConstruct extends Construct {
               })
             ]
           }),
-          'EttAuthIndCognitoPolicy': new PolicyDocument({
+          'EttEntitySignupCognitoPolicy': new PolicyDocument({
             statements: [
               new PolicyStatement({
                 actions: [  'cognito-idp:List*'  ],
@@ -96,6 +99,41 @@ export class SignupApiConstruct extends Construct {
                 effect: Effect.ALLOW
               })
             ]
+          }),
+          'EttEntitySignupEventBridgePolicy': new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'events:DeleteRule', 'events:DisableRule', 'events:RemoveTargets' ],
+                resources: [
+                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/ett-*`
+                ],
+                effect: Effect.ALLOW
+              }),
+              new PolicyStatement({
+                actions: [ 'events:List*', 'events:Describe*' ],
+                resources: [
+                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/*`
+                ],
+                effect: Effect.ALLOW
+              }),
+              new PolicyStatement({
+                actions: [ 'lambda:AddPermission' ],
+                resources: [
+                  `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${prefix}-${DelayedExecutions.DisclosureRequestReminder.coreName}`,
+                  `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${prefix}-${DelayedExecutions.HandleStaleEntityVacancy.coreName}`
+                ],
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
+          'EttEntitySignupExhibitFormBucketPolicy': new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 's3:*' ],
+                resources: [ exhibitFormsBucket.bucketArn, `${exhibitFormsBucket.bucketArn}/*` ],
+                effect: Effect.ALLOW
+              })
+            ]
           })
         }
       }),
@@ -103,6 +141,8 @@ export class SignupApiConstruct extends Construct {
         REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
         USERPOOL_ID: userPoolId,
+        PREFIX: prefix,
+        [ExhibitFormsBucketEnvironmentVariableName]: exhibitFormsBucket.bucketName,
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });
