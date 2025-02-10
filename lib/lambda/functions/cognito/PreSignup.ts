@@ -9,7 +9,12 @@ import { debugLog, log } from "../../Utils";
 import { PreSignupEventType } from "./PreSignupEventType";
 
 export enum Messages {
-  UNINVITED = 'You are not on the invite list for signup as ',
+  UNINVITED = 
+    'You are not on the invite list for signup as ROLE. ' +
+    'This can occur for one of two reasons: ' + 
+      '1) You have not been invited to signup, or ' +
+      '2) The email address you submitted for your registration earlier and the email address ' + 
+         'you submitted for account creation differ (these must be the same)',
   SERVER_ERROR = 'Server error during initial pre-screening process at ',
   ROLE_LOOKUP_FAILURE = 'Cannot determine role',
   ROLE_MISSING = 'PreSignUp_AdminCreateUser did not send role information in event.request.clientMetadata',
@@ -133,7 +138,7 @@ export const handler = async (_event:any) => {
         if(retractedInvitations.length > 0) {
           throw new Error(Messages.RETRACTED + role);
         }
-        throw new Error(Messages.UNINVITED + role);
+        throw new Error(Messages.UNINVITED.replace('ROLE', role));
       default:
         if(role == Roles.RE_ADMIN || role == Roles.RE_AUTH_IND) {
           // Get invitation that was most recently sent for to the user that has not been retracted.
