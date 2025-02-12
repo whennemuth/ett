@@ -1509,49 +1509,7 @@
 
                     <div style="float:left; clear:both; margin-top: 20px; overflow: auto;">
                       <table id="tblPoc" name="tblPoc" class="tblPoc">
-                        <thead>
-                          <tr>
-                            <td colspan="2">Organization</td>
-                            <td colspan="5">Point of Contact</td>
-                          </tr>
-                          <tr>
-                            <td>Name (No acronyms) </td>
-                            <td><span id='exhibit-tooltip-1' data-toggle="tooltip">Type</span></td>
-                            <td>Name (First and Last Name)</td>
-                            <td>Job Title</td>
-                            <td>Email</td>
-                            <td>Phone Number</td>
-                            <td style="width:fit-content; width:1px;">&nbsp;</td>
-                          </tr>
-                        </thead>
-                        <tbody id="tbPoc" name="tbPoc">
-                          <tr id="trPoc" name="trPoc">
-                            <td><input name="org-name" type="text" class="form-control"></td>
-                            <td>
-                              <span id='exhibit-tooltip-1' data-toggle="tooltip">
-                                <select name="org-type" class="form-control" style="min-width: 150px;">
-                                  <option id="header"><- Select One -></option>
-                                  <option id="EMPLOYER" value="EMPLOYER">1) Current Employer(s)</option>
-                                  <option id="EMPLOYER_PRIOR" value="EMPLOYER_PRIOR">2) Prior Employers</option>
-                                  <option id="ACADEMIC" value="ACADEMIC">3) Academic / Professional Societies & Organizations</option>
-                                  <option id="OTHER" value="OTHER">4) Other Affiliated Organizations</option>
-                                </select>
-                              </span>
-                            </td>
-                            <td><input name="poc-name" type="text" class="form-control"></td>
-                            <td><input name="poc-title" type="text" class="form-control"></td>
-                            <td><input name="poc-email" type="text" class="form-control"></td>
-                            <td><input name="poc-phone" type="text" class="form-control"></td>
-                            <td style="width:fit-content;" name="tdAddRemove">
-                              <span id='exhibit-tooltip-2' data-toggle="tooltip">
-                                <button id="btnAddPoc" class="btn btn-primary btn-sm" type="button" style="width:68px;" onclick="changePoc('add')">Add</button>                                
-                              </span>
-                              <span id='exhibit-tooltip-3' data-toggle="tooltip">
-                                <button id="btnRemovePoc" class="btn btn-primary btn-sm" type="button" style="width:68px; margin-top:4px;"  onclick="changePoc('remove')">Remove</button>                                
-                              </span>
-                            </td>
-                          </tr>
-                        </tbody>
+
                       </table>
                       <hr style="width:90%; margin-top:50px; margin-bottom: 50px;" />
                     </div>
@@ -1686,7 +1644,7 @@
                       following entity is one of my <u>Consent Recipients</u> referenced in and covered by my Consent Form:
                     </p>
 
-                    <div style="float:left; clear:both; overflow: auto;;">
+                    <div style="float:left; clear:both; overflow: auto;">
                       <table name="tblPoc" class="tblPoc">
                         <thead>
                           <tr>
@@ -3008,8 +2966,9 @@
                   affiliateTypes.namedItem('OTHER').remove();
                   break;
                 case 'other':
+                  affiliateTypes.namedItem('EMPLOYER_PRIMARY').remove();
                   affiliateTypes.namedItem('EMPLOYER').remove();
-                  break;
+                break;
                 case 'both': default:
                   break;
               }
@@ -3269,12 +3228,16 @@
     function changePoc(task) {
       const { srcElement:button } = event;
       if(task == 'add') {
-        const tbl = button.closest('.tblPoc');
+        let tbl = button.closest('.tblPoc');
         const tr = button.closest('#trPoc');
         const newrow = tbl.insertRow();
         newrow.setAttribute('name', 'trPoc');
         newrow.setAttribute('id', 'trPoc');
         newrow.innerHTML = tr.innerHTML;
+        const addBtn = newrow.querySelector('#btnAddPoc');
+        addBtn.addEventListener('click', () => { changePoc('add'); });
+        const rmvBtn = newrow.querySelector('#btnRemovePoc');
+        rmvBtn.addEventListener('click', () => { changePoc('remove'); });
 
         // Remove red borders of any of the rows child fields if they have them.
         validateAffiliateRow(newrow);
@@ -3415,28 +3378,178 @@
     }
 
     /**
-     * Clear out the entire exhbit form
+     * Blank out the exhibit form table, including header and body, and add a single default row of empty fields.
      */
-    function clearExhibitForm() {
-      const removeButtons = document.querySelectorAll('#btnRemovePoc') ?? [];
-      for(let i=0; i<removeButtons.length; i++) {
-        const tr = removeButtons[i].closest('#trPoc');
-        if(i == 0) {
-          tr.querySelector('input[name="org-name"]').value = '';
-          tr.querySelector('select[name="org-type"]').selectedIndex = 0;
-          tr.querySelector('input[name="poc-name"]').value = '';
-          tr.querySelector('input[name="poc-title"]').value = '';
-          tr.querySelector('input[name="poc-email"]').value = '';
-          tr.querySelector('input[name="poc-phone"]').value = '';
-          continue;
+    const initializeExhibitForm = (tbl, initType) => {
+      tbl.innerHTML = '';
+
+      const createTableHeader = () => {
+        // --------------------------------
+        // Create row 1 of the header
+        // --------------------------------
+        const thead = document.createElement('thead');
+        tbl.appendChild(thead);
+        let tr = document.createElement('tr');
+        thead.appendChild(tr);
+        // Org cell
+        let td = document.createElement('td');
+        td.colSpan = 2;
+        td.innerHTML = 'Organization';
+        tr.appendChild(td);
+        // POC cell
+        td = document.createElement('td');
+        td.colSpan = initType == 'full' ? 5 : 3;
+        td.innerHTML = 'Point of Contact';
+        tr.appendChild(td);
+
+        // --------------------------------
+        // Create the row 2 of the header
+        // --------------------------------
+        tr = document.createElement('tr');
+        thead.appendChild(tr);
+        // Org name cell
+        td = document.createElement('td');
+        td.innerHTML = 'Name <span style="font-style:italic;">(No acronyms)</span>';
+        tr.appendChild(td);
+        // Org type cell
+        td = document.createElement('td');
+        let span = document.createElement('span');
+        span.innerHTML = 'Type';
+        span.id = 'exhibit-tooltip-1';
+        span.setAttribute('data-toggle', 'tooltip');
+        td.appendChild(span);
+        tr.appendChild(td);
+        // POC name cell
+        td = document.createElement('td');
+        td.innerHTML = 'Name <span style="font-style:italic;">(First and Last Name)</span>';
+        tr.appendChild(td);
+        // POC job title cell
+        td = document.createElement('td');
+        td.innerHTML = 'Job Title';
+        tr.appendChild(td);
+        // POC email cell
+        if(initType == 'full') {
+          td = document.createElement('td');
+          td.innerHTML = 'Email';
+          tr.appendChild(td);
         }
-        removeButtons[i].click();
+        // POC phone cell
+        td = document.createElement('td');
+        td.innerHTML = 'Phone Number';
+        tr.appendChild(td);
+        // Add a blank cell to fill out the row
+        if(initType == 'full') {
+          td = document.createElement('td');
+          td.innerHTML = '&nbsp;';
+          td.setAttribute('style', 'width:fit-content; width:1px;');
+          tr.appendChild(td); 
+        }
+
       }
-      document.querySelector('#txtExhibitFullname').value = '';
-      document.querySelector('#txtExhibitEmail').value = '';
-      document.querySelector('#txtExhibitPhone').value = '';
-      document.querySelector('#txtExhibitSignature').value = '';
-      document.querySelector('#spanRequestingEntity').innerText = '[INSERT NAME]';
+
+      const createTableBody = () => {
+        // Create the body element
+        const tbody = document.createElement('tbody');
+        tbody.setAttribute('id', 'tbPoc');
+        tbody.setAttribute('name', 'tbPoc');
+        tbl.appendChild(tbody);
+        
+        // Create the first row of the body
+        let tr = document.createElement('tr');
+        tr.setAttribute('name', 'trPoc');
+        tr.setAttribute('id', 'trPoc');
+        tbody.appendChild(tr);
+
+        // Org name cell
+        let td = document.createElement('td');
+        let input = document.createElement('input');
+        input.setAttribute('name', 'org-name');
+        input.setAttribute('type', 'text');
+        input.setAttribute('class', 'form-control');
+        td.appendChild(input);
+        tr.appendChild(td);
+
+        // Org type cell
+        td = document.createElement('td');
+        let span = document.createElement('span');
+        span.setAttribute('data-toggle', 'tooltip');
+        span.setAttribute('id', 'exhibit-tooltip-1');
+        let select = document.createElement('select');
+        select.setAttribute('name', 'org-type');
+        select.setAttribute('class', 'form-control');
+        select.setAttribute('style', 'min-width: 150px;');
+        span.appendChild(select);
+        [[ 'header', '<- Select One ->' ],
+         [ 'EMPLOYER_PRIMARY', '1) Current Employer - primary' ],
+         [ 'EMPLOYER', '2) Current Employer(s) - other' ],
+         [ 'EMPLOYER_PRIOR', '3) Prior Employers' ],
+         [ 'ACADEMIC', '4) Academic / Professional Societies & Organizations' ],
+         [ 'OTHER', '5) Other Affiliated Organizations' ]
+        ].forEach(([ value, innerHTML ]) => {
+          let option = document.createElement('option');
+          option.value = value;
+          option.innerHTML = innerHTML;
+          select.appendChild(option);
+        });
+        td.appendChild(span);
+        tr.appendChild(td);
+
+        // POC name, title, email, and phone cells
+        [ 'poc-name', 'poc-title', 'poc-email', 'poc-phone' ].forEach(name => {
+          if(initType != 'full' && name == 'poc-email') {
+            return;
+          }
+          td = document.createElement('td');
+          input = document.createElement('input');
+          input.setAttribute('name', name);
+          input.setAttribute('type', 'text');
+          input.setAttribute('class', 'form-control');
+          td.appendChild(input);
+          tr.appendChild(td);
+        });
+
+        if(initType == 'full') {
+          // Add the buttons cell
+          td = document.createElement('td');
+          td.setAttribute('style', 'width:fit-content; width:1px;');
+          td.setAttribute('name', 'tdAddRemove');
+          tr.appendChild(td);
+
+          // Add the add button
+          span = document.createElement('span');
+          span.setAttribute('data-toggle', 'tooltip');
+          span.setAttribute('id', 'exhibit-tooltip-2');
+          let button = document.createElement('button');
+          button.setAttribute('type', 'button');
+          button.setAttribute('class', 'btn btn-primary btn-sm');
+          button.setAttribute('id', 'btnAddPoc');
+          button.setAttribute('style', 'width:68px;');
+          button.setAttribute('task', 'add');
+          button.innerHTML = 'Add';
+          button.addEventListener('click', () => { changePoc('add'); });
+          span.appendChild(button);
+          td.appendChild(span);
+
+          // Add the remove button
+          span = document.createElement('span');
+          span.setAttribute('data-toggle', 'tooltip');
+          span.setAttribute('id', 'exhibit-tooltip-3');
+          button = document.createElement('button');
+          button.setAttribute('type', 'button');
+          button.setAttribute('class', 'btn btn-danger btn-sm');
+          button.setAttribute('id', 'btnRemovePoc');
+          button.setAttribute('style', 'width:68px; margin-top:4px;');
+          button.setAttribute('task', 'remove');
+          button.innerHTML = 'Remove';
+          button.addEventListener('click', () => { changePoc('remove'); });
+          span.appendChild(button);
+          td.appendChild(span);
+        }
+      }
+
+      createTableHeader();
+
+      createTableBody();
     }
 
     function populateExhibitFormSignoffFields() {
@@ -3451,13 +3564,12 @@
      * Fill out the exhibit form with an item from the consenters exhibit_forms collection.
      */
     function populateExhibitForm(substituteConsenterInfo) {
-      const button = document.querySelector('#btnAddPoc');
       // const _consenterInfo = substituteConsenterInfo ?? consenterInfo;
       // var { fullName, consenter: { email, phone_number, exhibit_forms }} = _consenterInfo;
       var { fullName, consenter: { email, phone_number, exhibit_forms }} = consenterInfo;
       exhibit_forms = exhibit_forms ?? [];
 
-      clearExhibitForm();
+      initializeExhibitForm(document.querySelector('#tblPoc'), 'full');
 
       document.querySelector('#spanRequestingEntity').innerText = selectedEntity.entity_name;
 
@@ -3474,6 +3586,7 @@
       const { affiliates } = exhibit_form;
         
       // Repopulate the affiliates table
+      const button = document.querySelector('#btnAddPoc');
       if(affiliates && affiliates.length > 0) {
         while(document.querySelectorAll('input[name="org-name"]').length < affiliates.length) {
           button.click();
@@ -5041,13 +5154,8 @@
               fieldset.className = 'tblPoc';
               fieldset.setAttribute('style', 'float:left; clear:both;');
               fieldset.setAttribute('operation', 'replace');
-              fieldset.innerHTML = document.getElementById('tblPoc').innerHTML;
+              initializeExhibitForm(fieldset, 'single');
               affiliate.appendChild(fieldset);
-              fieldset.rows[0].cells[1].colSpan = 3;
-              fieldset.rows[1].deleteCell(6);
-              fieldset.rows[2].deleteCell(6);
-              fieldset.rows[1].deleteCell(4);
-              fieldset.rows[2].deleteCell(4);
             }
           });
 
@@ -5057,7 +5165,7 @@
               affiliate.removeChild(removeMe);
             }              
           });
-        });
+        }); 
 
         const chkAdd = document.createElement('input');
         chkAdd.className = 'form-check-input';
@@ -5072,7 +5180,7 @@
             const fieldset = document.createElement('table');
             fieldset.className = 'tblPoc';
             fieldset.setAttribute('operation', 'remove');
-            fieldset.innerHTML = document.getElementById('tblPoc').innerHTML;
+            initializeExhibitForm(fieldset, 'full');            
             fieldsetContainer.appendChild(fieldset);
             container.appendChild(fieldsetContainer);
           }
@@ -5459,7 +5567,7 @@
       document.getElementById('txtExhibitPhone').addEventListener('keyup', () => {
         toggleHighlight(event.srcElement);
       });
-      validateAffiliateRow(document.getElementById('trPoc'));
+      // validateAffiliateRow(document.getElementById('trPoc'));
 
       // Add show/hide behavior to the SYS_ADMIN tabstrip
       $('#sysAdmin a').on('click', function (e) {
@@ -5564,6 +5672,10 @@
       $('#btnSendExhibitsRequest').on('click', async () => {
         await sendExhibitFormRequest();
       });
+
+      if(selected_role == 'CONSENTING_PERSON') {
+        initializeExhibitForm(document.querySelector('#tblPoc'), 'full');
+      }
 
       if(selected_role == 'SYS_ADMIN') {
         await buildConfigurationsTable();
