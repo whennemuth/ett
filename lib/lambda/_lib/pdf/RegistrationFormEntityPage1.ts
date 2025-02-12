@@ -90,7 +90,7 @@ export class RegistrationFormEntityPage1 extends PdfForm implements IPdfForm {
       const created = new Date(Date.parse(create_timestamp));
       signedOn = created.toUTCString();
     }
-    await page.drawText(`<b>Entity Registration Form</b> <i>(digitally signed by you: <b>${signedOn}.</b>)</i>`, { size: 10, font }, 12);
+    await page.drawText(`<b>Entity Registration Form</b> <i>(digitally signed: <b>${signedOn}.</b>)</i>`, { size: 10, font }, 12);
     _return(24);
   }
 
