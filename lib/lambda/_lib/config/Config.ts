@@ -4,8 +4,15 @@ import { DAOConfig, DAOFactory } from "../dao/dao";
 import { ConfigBatch } from "../dao/dao-config";
 import { Config, ConfigName, ConfigNames, ConfigType, ConfigTypes } from "../dao/entity";
 
+export enum DurationType {
+  SECOND = 1,
+  MINUTE = 60 * DurationType.SECOND,
+  HOUR = 60 * DurationType.MINUTE,
+  DAY = 24 * DurationType.HOUR,
+}
+
 export type IAppConfig = Config & {
-  getDuration():number
+  getDuration(as?:DurationType):number
 }
 
 /**
@@ -24,9 +31,14 @@ export class AppConfig implements IAppConfig {
     this.description = config.description;
     this.update_timestamp = config.update_timestamp
   }
-  getDuration(): number {
+  
+  getDuration(_type:DurationType=DurationType.SECOND): number {
     const { value, config_type } = this;
-    return config_type == ConfigTypes.DURATION ? parseInt(value) : 0;
+    const parseDuration = (value:string):number => {
+      const seconds = parseInt(value);
+      return seconds/_type;
+    }
+    return config_type == ConfigTypes.DURATION ? parseDuration(value) : 0;
   }
 }
 
