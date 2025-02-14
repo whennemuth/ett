@@ -1,26 +1,22 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { PDFDocument, PDFFont, PDFPage } from 'pdf-lib';
-import { Affiliate, AffiliateType, AffiliateTypes, Consenter, ExhibitForm as ExhibitFormData } from '../dao/entity';
-import { ExhibitForm, blue, white } from './ExhibitForm';
+import { log } from '../../Utils';
+import { AffiliateTypes, FormTypes } from '../dao/entity';
+import { ExhibitForm, SampleExhibitFormParms } from './ExhibitForm';
 import { IPdfForm, PdfForm } from './PdfForm';
 import { Page } from './lib/Page';
-import { Rectangle } from './lib/Rectangle';
-import { Align, Margins, VAlign } from './lib/Utils';
-import { log } from '../../Utils';
 
 /**
  * This class represents an exhibit pdf form that can be dynamically generated around the provided exhibit data.
  */
 export class ExhibitFormFull extends PdfForm implements IPdfForm {
   private baseForm:ExhibitForm
-  private consenter:Consenter;
   private font:PDFFont;
   private boldfont:PDFFont;
 
-  constructor(baseForm:ExhibitForm, consenter:Consenter) {
+  constructor(baseForm:ExhibitForm) {
     super();
     this.baseForm = baseForm;
-    this.consenter = consenter;
     this.page = baseForm.page;
   }
 
@@ -28,11 +24,11 @@ export class ExhibitFormFull extends PdfForm implements IPdfForm {
    * @returns The bytes for the entire pdf form.
    */
   public async getBytes():Promise<Uint8Array> {
-    const { baseForm, drawTitle, drawIntro, drawAffiliateGroup, drawLogo } = this;
+    const { baseForm, drawTitle, drawIntro, drawLogo } = this;
 
     await baseForm.initialize();
 
-    const { doc, embeddedFonts, pageMargins, font, boldfont } = baseForm;
+    const { doc, embeddedFonts, pageMargins, font, boldfont, drawAffiliateGroup } = baseForm;
     
     this.doc = doc;
     this.embeddedFonts = embeddedFonts;
@@ -73,7 +69,7 @@ export class ExhibitFormFull extends PdfForm implements IPdfForm {
    * Draw the introductory language
    */
   private drawIntro = async () => {
-    const { consenter: {firstname, middlename, lastname }, page, boldfont, getFullName } = this;
+    const { baseForm: { consenter: { firstname, middlename, lastname } }, page, boldfont, getFullName } = this;
     const fullname = getFullName(firstname, middlename, lastname);
     const size = 10;
     await page.drawWrappedText(
@@ -98,45 +94,6 @@ export class ExhibitFormFull extends PdfForm implements IPdfForm {
     await page.drawText('Full known Consent Recipient(s) list:', { size, font:boldfont }, 16);
   }
 
-  /**
-   * Draw all affiliates of a specified type
-   * @param affiliateType 
-   * @param title 
-   */
-  private drawAffiliateGroup = async (affiliateType:AffiliateType, title:string) => {
-    const { page, font, boldfont, baseForm: { data, _return, drawAffliate } } = this;
-    let size = 10;
-
-    await new Rectangle({
-      text: title,
-      page,
-      align: Align.center,
-      valign: VAlign.middle,
-      options: { borderWidth:1, borderColor:blue, color:blue, width:page.bodyWidth, height:16 },
-      textOptions: { size, font:boldfont, color: white },
-      margins: { left: 8 } as Margins
-    }).draw();
-    page.basePage.moveDown(16);
-
-    const affiliates = (data.affiliates as Affiliate[]).filter(affiliate => affiliate.affiliateType == affiliateType);
-    for(let i=0; i<affiliates.length; i++) {
-      const a = affiliates[i];
-      await drawAffliate(a, size);
-      _return(4);
-    };
-
-    if(affiliates.length == 0) {
-      await new Rectangle({
-        text: 'None',
-        page,
-        align: Align.center, valign: VAlign.middle,
-        options: { borderWidth:1, borderColor:blue, width:page.bodyWidth, height:16 },
-        textOptions: { size, font }
-      }).draw();
-    }
-    _return(16);
-  }
-
   public async writeToDisk(path:string) {
     writeFile(path, await this.getBytes());
   }
@@ -148,58 +105,15 @@ export class ExhibitFormFull extends PdfForm implements IPdfForm {
   }
 }
 
+
+
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/ExhibitFormFull.ts')) {
 
-  const baseForm = new ExhibitForm({
-    entity_id: 'abc123',
-    affiliates: [
-      { 
-        affiliateType: AffiliateTypes.EMPLOYER,
-        org: 'Warner Bros.', 
-        fullname: 'Foghorn Leghorn', 
-        email: 'foghorn@warnerbros.com',
-        title: 'Lead animation coordinator',
-        phone_number: '617-333-4444'
-      },
-      {
-        affiliateType: AffiliateTypes.ACADEMIC,
-        org: 'Cartoon University',
-        fullname: 'Bugs Bunny',
-        email: 'bugs@cu.edu',
-        title: 'Dean of school of animation',
-        phone_number: '508-222-7777'
-      },
-      {
-        affiliateType: AffiliateTypes.EMPLOYER,
-        org: 'Warner Bros',
-        fullname: 'Daffy Duck',
-        email: 'daffy@warnerbros.com',
-        title: 'Deputy animation coordinator',
-        phone_number: '781-555-7777'
-      },
-      {
-        affiliateType: AffiliateTypes.ACADEMIC,
-        org: 'Cartoon University',
-        fullname: 'Yosemite Sam',
-        email: 'yosemite-sam@cu.edu',
-        title: 'Professor animation studies',
-        phone_number: '617-444-8888'
-      },
-      {
-        affiliateType: AffiliateTypes.EMPLOYER_PRIOR,
-        email: "affiliate1@warhen.work",
-        org: "My Neighborhood University",
-        fullname: "Mister Rogers",
-        title: "Daytime child television host",
-        phone_number: "0123456789"
-      }
-    ]
-  } as ExhibitFormData);
+  process.env.CLOUDFRONT_DOMAIN = 'www.schoolofhardknocks.edu';
+  const baseForm = new ExhibitForm(SampleExhibitFormParms(FormTypes.FULL));
   
-  new ExhibitFormFull(baseForm, { 
-    firstname: 'Porky', middlename: 'P', lastname: 'Pig'
-  } as Consenter).writeToDisk('./lib/lambda/_lib/pdf/outputFull.pdf')
+  new ExhibitFormFull(baseForm).writeToDisk('./lib/lambda/_lib/pdf/outputFull.pdf')
     .then((bytes) => {
       console.log('done');
     })

@@ -58,6 +58,18 @@ export abstract class PdfForm {
     basePage.moveTo(x, y);
   }
 
+  /**
+   * Get the change in position from the marked position.
+   * @param id 
+   * @returns 
+   */
+  public getPositionalChange = (id:string):Position => {
+    const { markedPosition, page } = this;
+    const { x, y } = markedPosition(id);
+    const { basePage } = page;
+    return { x:basePage.getX() - x, y:basePage.getY() - y };
+  }
+
   public getDoc = () => {
     return this.doc;
   }

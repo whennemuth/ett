@@ -1,5 +1,5 @@
 import { LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
-import { ExhibitFormConstraint } from "../../_lib/dao/entity";
+import { ExhibitFormConstraint, ExhibitFormConstraints } from "../../_lib/dao/entity";
 import { errorResponse, invalidResponse, okResponse } from "../../Utils";
 import { ExhibitFormRequestEmail } from "./ExhibitFormRequestEmail";
 
@@ -97,7 +97,7 @@ export class ExhibitFormRequest {
       return errorResponse('Email failure for exhibit form request: Cannot determine link to put in the email!');
     }
   
-    const { BOTH, CURRENT, OTHER } = ExhibitFormConstraint;
+    const { BOTH, CURRENT, OTHER } = ExhibitFormConstraints;
     switch(constraint) {
       case BOTH: case CURRENT: case OTHER:
         const sent = await new ExhibitFormRequestEmail({ 

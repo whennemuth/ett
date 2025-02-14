@@ -80,12 +80,15 @@ export enum ExhibitFormConstraints {
 }
 export type ExhibitFormConstraint = 
   ExhibitFormConstraints.CURRENT | ExhibitFormConstraints.OTHER | ExhibitFormConstraints.BOTH;
+export const enum FormTypes { FULL = 'full', SINGLE = 'single' };
+export type FormType = FormTypes.FULL | FormTypes.SINGLE;
 export type ExhibitForm = {
   entity_id: string,
   create_timestamp?: string,
   update_timestamp?: string,
   sent_timestamp?: string,
   affiliates?: Affiliate[],
+  formType: FormType,
   constraint?: ExhibitFormConstraint
 };
 export enum ConsenterFields {

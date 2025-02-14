@@ -1,5 +1,4 @@
-import { SendExhibitFormRequestParms } from "./AuthorizedIndividual";
-import { ExhibitFormRequest } from "./ExhibitFormRequest";
+import { ExhibitFormRequest, SendExhibitFormRequestParms } from "./ExhibitFormRequest";
 
 const expectedLink = (expected:string) => {
   return { test: (parms:SendExhibitFormRequestParms) => {

@@ -24,11 +24,12 @@ import { TagInspector } from "./BucketItemTag";
 import { ConsentFormEmail } from "./ConsentEmail";
 import { ConsentingPersonToCorrect } from "./correction/Correction";
 import { ExhibitCorrectionEmail } from "./correction/ExhibitCorrectionEmail";
-import { ExhibitEmail, FormTypes } from "./ExhibitEmail";
+import { ExhibitEmail } from "./ExhibitEmail";
 import { deleteExhibitForm, RulePrefix as DbRulePrefix } from "../delayed-execution/PurgeExhibitFormFromDatabase";
 import { RulePrefix as S3RulePrefix } from "../delayed-execution/PurgeExhibitFormFromBucket"
 import { CognitoStandardAttributes, UserAccount } from "../../_lib/cognito/UserAccount";
 import { IndividualRegistrationFormData, IndividualRegistrationFormEmail } from "./RegistrationEmail";
+import { ExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
 
 export enum Task {
   SAVE_EXHIBIT_FORM = 'save-exhibit-form',
@@ -67,6 +68,9 @@ export type ConsenterInfo = {
 export type ExhibitFormCorrection = {
   entity_id:string, updates:Affiliate[], appends:Affiliate[], deletes:string[]
 }
+
+export const consentFormUrl = (consenterEmail:string):string => 
+  `https://${process.env.CLOUDFRONT_DOMAIN}/forms/private/consent?email=${encodeURIComponent(consenterEmail)}`;
 
 /**
  * This function performs all actions a CONSENTING_PERSON can take.
@@ -712,7 +716,12 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
     let sent:boolean = false;
     for(let i=0; i<entityReps.length; i++) {
       try {
-        sent = await new ExhibitEmail(exhibitForm, FormTypes.FULL, entity, consenter).send(entityReps[i].email);
+        sent = await new ExhibitEmail({
+          consenter,
+          entity,
+          consentFormUrl: consentFormUrl(consenterEmail),
+          data: exhibitForm,
+        } as ExhibitFormParms).send(entityReps[i].email);
       }
       catch(e) {
         error(e);
@@ -740,7 +749,12 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
           continue;
         }
         const delegateEmail = entityReps[i].delegate!.email;
-        sent = await new ExhibitEmail(exhibitForm, FormTypes.FULL, entity, consenter).send(delegateEmail);
+        sent = await new ExhibitEmail({
+          consenter,
+          entity,
+          consentFormUrl: consentFormUrl(consenterEmail),
+          data: exhibitForm,
+        } as ExhibitFormParms).send(delegateEmail);
       }
       catch(e) {
         error(e);
@@ -758,7 +772,12 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
   const sendFullExhibitFormToConsenter = async () => {
     let sent:boolean = false;
     try {
-      sent = await new ExhibitEmail(exhibitForm, FormTypes.FULL, entity, consenter).send(consenterEmail);
+      sent = await new ExhibitEmail({
+        consenter,
+        entity,
+        consentFormUrl: consentFormUrl(consenterEmail),
+        data: exhibitForm,
+      } as ExhibitFormParms).send(consenterEmail);
     }
     catch(e) {
       error(e);

@@ -1,15 +1,12 @@
-import { AffiliateTypes, Consenter, Entity, ExhibitForm as ExhibitFormData, YN } from "../../_lib/dao/entity";
-import { ExhibitForm } from "../../_lib/pdf/ExhibitForm";
+import * as ctx from '../../../../contexts/context.json';
+import { IContext } from "../../../../contexts/IContext";
+import { FormTypes } from "../../_lib/dao/entity";
+import { sendEmail } from "../../_lib/EmailWithAttachments";
+import { ExhibitForm, ExhibitFormParms, SampleExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
 import { ExhibitFormFull } from "../../_lib/pdf/ExhibitFormFull";
 import { ExhibitFormSingle } from "../../_lib/pdf/ExhibitFormSingle";
 import { IPdfForm, PdfForm } from "../../_lib/pdf/PdfForm";
-import { sendEmail } from "../../_lib/EmailWithAttachments";
-import * as ctx from '../../../../contexts/context.json';
-import { IContext } from "../../../../contexts/IContext";
 
-
-export const enum FormTypes { FULL = 'full', SINGLE = 'single' };
-export type FormType = FormTypes.FULL | FormTypes.SINGLE;
 
 /**
  * This class represents an email issued by the system on behalf of a consenting individual to either 
@@ -20,25 +17,19 @@ export type FormType = FormTypes.FULL | FormTypes.SINGLE;
  *   3) The consenting person themselves, where the email contains a pdf attachment that includes all affiliates.
  */
 export class ExhibitEmail {
-  private data:ExhibitFormData;
-  private formType:FormType;
-  private entity:Entity;
-  private consenter:Consenter;
+  private parms:ExhibitFormParms;
   private pdf:IPdfForm; 
 
   /**
    * @param data The data to build the exhibit form from.
    * @param formType Full or single
    */
-  constructor(data:ExhibitFormData, formType:FormType, entity:Entity, consenter:Consenter) {
-    this.data = data;
-    this.formType = formType;
-    this.entity = entity;
-    this.consenter = consenter;
+  constructor(parms:ExhibitFormParms) {
+    this.parms = parms;
   }
 
   public send = async (emailAddress:string):Promise<boolean> => {
-    const { data, formType, entity, consenter, consenter: { firstname, middlename, lastname } } = this;
+    const { parms, parms: { data: { formType }, entity, consenter: { firstname, middlename, lastname } } } = this;
     const { fullName } = PdfForm;
     const consenterFullname = fullName(firstname, middlename, lastname);
     const { entity_name } = entity;
@@ -46,7 +37,7 @@ export class ExhibitEmail {
     
     switch(formType) {
       case FormTypes.FULL:
-        this.pdf = new ExhibitFormFull(new ExhibitForm(data), consenter);
+        this.pdf = new ExhibitFormFull(new ExhibitForm(parms));
         return await sendEmail({
           subject: 'ETT Exhibit Form Submission',
           from: `noreply@${context.ETT_DOMAIN}`,
@@ -59,7 +50,7 @@ export class ExhibitEmail {
           }
         });
       case FormTypes.SINGLE:
-        this.pdf = new ExhibitFormSingle(new ExhibitForm(data), consenter, emailAddress);
+        this.pdf = new ExhibitFormSingle(new ExhibitForm(parms));
         return await sendEmail({
           subject: 'ETT Notice of Consent',
           from: `noreply@${context.ETT_DOMAIN}`,
@@ -86,51 +77,6 @@ export class ExhibitEmail {
  */
 const { argv:args } = process;
 
-export const test_entity = {
-  entity_id: 'abc123',
-  description: 'Boston University',
-  entity_name: 'Boston University',
-  active: YN.Yes,
-} as Entity;
-
-export const test_data = {
-  entity_id: 'abc123',
-  affiliates: [
-    { 
-      affiliateType: AffiliateTypes.EMPLOYER,
-      org: 'Warner Bros.', 
-      fullname: 'Foghorn Leghorn', 
-      email: 'foghorn@warnerbros.com',
-      title: 'Lead animation coordinator',
-      phone_number: '617-333-4444'
-    },
-    {
-      affiliateType: AffiliateTypes.ACADEMIC,
-      org: 'Cartoon University',
-      fullname: 'Bugs Bunny',
-      email: 'bugs@cu.edu',
-      title: 'Dean of school of animation',
-      phone_number: '508-222-7777'
-    },
-    {
-      affiliateType: AffiliateTypes.EMPLOYER,
-      org: 'Warner Bros',
-      fullname: 'Daffy Duck',
-      email: 'daffy@warnerbros.com',
-      title: 'Deputy animation coordinator',
-      phone_number: '781-555-7777'
-    },
-    {
-      affiliateType: AffiliateTypes.ACADEMIC,
-      org: 'Cartoon University',
-      fullname: 'Yosemite Sam',
-      email: 'yosemite-sam@cu.edu',
-      title: 'Professor animation studies',
-      phone_number: '617-444-8888'
-    }
-  ]
-} as ExhibitFormData;
-
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/ExhibitEmail.ts')) {
   const email = process.env.PDF_RECIPIENT_EMAIL;
 
@@ -139,9 +85,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     process.exit(1);
   }
 
-  new ExhibitEmail(test_data, FormTypes.FULL, test_entity, { 
-    firstname:'Porky', middlename: 'P', lastname: 'Pig'
-  } as Consenter).send(email)
+  new ExhibitEmail(SampleExhibitFormParms(FormTypes.FULL)).send(email)
     .then(success => {
       console.log(success ? 'Succeeded' : 'Failed');
     })

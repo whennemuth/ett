@@ -1,11 +1,12 @@
 import { S3 } from "@aws-sdk/client-s3";
 import { Affiliate, AffiliateTypes, Consenter, YN } from "../../_lib/dao/entity";
-import { ExhibitForm } from "../../_lib/pdf/ExhibitForm";
+import { ExhibitForm, ExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
 import { ExhibitFormSingle } from "../../_lib/pdf/ExhibitFormSingle";
 import { BucketItem, Tags } from "./BucketItem";
 import { BucketItemMetadata, BucketItemMetadataParms, ItemType } from "./BucketItemMetadata";
 import { log } from "../../Utils";
 import { IContext } from "../../../../contexts/IContext";
+import { consentFormUrl } from "./ConsentingPerson";
 
 /**
  * This class deals with "CRUD" operations against a single exhibit form in the s3 bucket.
@@ -60,10 +61,13 @@ export class BucketExhibitForm {
       }) as Affiliate;
 
       // Create a new single exhibit form pdf file
-      const pdf = new ExhibitFormSingle(new ExhibitForm({
-        entity_id: entityId,
-        affiliates: [ affiliate ]
-      }), consenter, affiliate.email);
+      const parms = {
+        entity: { entity_id: entityId },
+        consenter,
+        data: exhibitForm,
+        consentFormUrl: consentFormUrl(consenterEmail),
+      } as ExhibitFormParms;
+      const pdf = new ExhibitFormSingle(new ExhibitForm(parms));
 
       // Save the new single exhibit form pdf file to the s3 bucket
       const s3 = new S3({ region });
