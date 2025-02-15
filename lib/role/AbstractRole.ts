@@ -26,7 +26,8 @@ export enum Actions {
   logout = 'logout',
   post_signup = 'post-signup',
   register_entity = 'register-entity',
-  register_consenter = 'register-consenter'
+  register_consenter = 'register-consenter',
+  public = 'public',
 };
 
 /**

@@ -17,6 +17,7 @@ import { StaticSiteBootstrapConstruct } from '../lib/StaticSiteBootstrap';
 import { StaticSiteWebsiteConstruct } from '../lib/StaticSiteWebsite';
 import { Roles } from '../lib/lambda/_lib/dao/entity';
 import { ViewerRequestParametersConstruct } from '../lib/lambda/functions/cloudfront/ViewerRequestParameters';
+import { PublicApiConstruct, PublicApiConstructParms } from '../lib/PublicApi';
 
 const context:IContext = <IContext>ctx;
 export const StackDescription = 'Ethical transparency tool';
@@ -125,6 +126,12 @@ const buildAll = () => {
   api.grantPermissionsTo(dynamodb, cognito, exhibitFormsBucket);
   signupApi.grantPermissionsTo(dynamodb);
 
+  // Create the api for the public pdf forms download
+  const publicApi = new PublicApiConstruct(stack, 'PublicApi', {
+    cloudfrontDomain: cloudfront.getDistributionDomainName(),
+    dynamodb
+  } as PublicApiConstructParms);
+
   const getStaticSiteParameters = (bucket:Bucket): StaticSiteConstructParms => {
     return {
       bucket,
@@ -134,6 +141,7 @@ const buildAll = () => {
       cognitoUserpoolRegion: region,
       registerEntityApiUri: signupApi.registerEntityApiUri,
       registerConsenterApiUri: signupApi.registerConsenterApiUri,
+      publicFormDownloadUris: publicApi.publicFormsDownloadApiUris,
       apis: [ 
         api.helloWorldApi.getApi(), 
         api.sysAdminApi.getApi(), 
@@ -194,6 +202,19 @@ const buildAll = () => {
   new CfnOutput(stack, `${Roles.CONSENTING_PERSON}-api-uri`, {
     value: api.consentingPersonApi.getApi().getRestApiUrl(),
     description: 'Consenting person api uri'
+  });
+
+  publicApi.publicFormsDownloadApiUris.forEach((uri) => {
+    const formName = uri.split('/').pop();
+    // Remove hypens from formName and capitalize the first letter of each word.
+    const camelCasedName = (formName ?? '').split('-').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join('');
+
+    const key = `PublicFormDownloadApiUri${camelCasedName}`;
+    new CfnOutput(stack, key, {
+      key,
+      value: uri,
+      description: `Public form download api uri for ${formName}`
+    });
   });
 }
 

@@ -95,6 +95,20 @@ export const okResponse = (message:string, payload?:any): LambdaProxyIntegration
   return getResponse(message, 200, payload);
 }
 
+export const okPdfResponse = (bytes:Uint8Array, filename:string): LambdaProxyIntegrationResponse => {
+  if( ! filename.endsWith('.pdf')) {
+    filename += '.pdf';
+  }
+  const headers = {
+    "Content-Type": "application/pdf",
+    "Content-Disposition": `attachment; filename="${filename}"`
+  }
+  addCorsHeaders(headers);
+  // const body = bytesToBase64(bytes);
+  const body = Buffer.from(bytes).toString("base64");
+  return { isBase64Encoded: true, statusCode:200, headers, body };
+}
+
 export const errorResponse = (message:string, payload?:any): LambdaProxyIntegrationResponse => {
   if( ! payload) {
     payload = { error: true };
