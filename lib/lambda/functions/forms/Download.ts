@@ -1,8 +1,10 @@
 import { PublicApiConstruct } from "../../../PublicApi";
 import { LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
+import { ExhibitFormConstraints, FormTypes } from "../../_lib/dao/entity";
 import { ExhibitForm } from "../../_lib/pdf/ExhibitForm";
 import { ExhibitFormFullCurrent } from "../../_lib/pdf/ExhibitFormFullCurrent";
 import { debugLog, error, errorResponse, invalidResponse, okPdfResponse } from "../../Utils";
+import { consentFormUrl } from "../consenting-person/ConsentingPerson";
 
 export enum FormName {
   REGISTRATION_FORM_ENTITY = 'registration-form-entity',
@@ -32,6 +34,8 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
       return invalidResponse(`Bad Request: invalid form name specified (${Object.values(FormName).join('|')})`);
     }
 
+    let form;
+    let bytes:Uint8Array;
     switch(formName as FormName) {
       case FormName.REGISTRATION_FORM_ENTITY:
         break;
@@ -39,15 +43,23 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         break;
       case FormName.CONSENT_FORM:
         break;
+
       case FormName.EXHIBIT_FORM_CURRENT_FULL:
-        const domain = process.env.CLOUDFRONT_DOMAIN;
-        const consentFormUrl = `https://${domain}/consenting`;
-        const form = new ExhibitFormFullCurrent(new ExhibitForm());
-        form.consentFormUrl = consentFormUrl;
-        const bytes:Uint8Array = await form.getBytes();
+        form = new ExhibitFormFullCurrent(
+          ExhibitForm.getBlankForm(FormTypes.FULL, ExhibitFormConstraints.CURRENT)
+        );
+        form.consentFormUrl = consentFormUrl('[consenter_email]');
+        bytes = await form.getBytes();
         return okPdfResponse(bytes, `${formName}.pdf`);
+
       case FormName.EXHIBIT_FORM_CURRENT_SINGLE:
-        break;
+        form = new ExhibitFormFullCurrent(
+          ExhibitForm.getBlankForm(FormTypes.SINGLE, ExhibitFormConstraints.CURRENT)
+        );
+        form.consentFormUrl = consentFormUrl('[consenter_email]');
+        bytes = await form.getBytes();
+        return okPdfResponse(bytes, `${formName}.pdf`);
+        
       case FormName.EXHIBIT_FORM_OTHER_FULL:
         break;
       case FormName.EXHIBIT_FORM_OTHER_SINGLE:
