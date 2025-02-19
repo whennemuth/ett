@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ENTITY_WAITING_ROOM, EntityCrud } from '../dao/dao-entity';
 import { error, log, lookupCloudfrontDomain } from '../../Utils';
 import { IContext } from '../../../../contexts/IContext';
+import * as ctx from '../../../../contexts/context.json';
 import { UserCrud } from '../dao/dao-user';
 import { SignupLink } from './SignupLink';
 import { DeleteItemCommandOutput } from '@aws-sdk/client-dynamodb';
@@ -88,12 +89,14 @@ export class UserInvitation {
     const client = new SESv2Client({
       region: process.env.REGION
     });
+
+    const context:IContext = <IContext>ctx;
     
     const command = new SendEmailCommand({
       Destination: {
         ToAddresses: [ email ]
       },
-      FromEmailAddress: email,
+      FromEmailAddress: `noreply@${context.ETT_DOMAIN}`,
       Content: {
         Simple: {
           Subject: {
