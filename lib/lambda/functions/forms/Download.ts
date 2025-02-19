@@ -5,6 +5,7 @@ import { ExhibitForm } from "../../_lib/pdf/ExhibitForm";
 import { ExhibitFormFullCurrent } from "../../_lib/pdf/ExhibitFormFullCurrent";
 import { ExhibitFormFullOther } from "../../_lib/pdf/ExhibitFormFullOther";
 import { ExhibitFormSingleCurrent } from "../../_lib/pdf/ExhibitFormSingleCurrent";
+import { ExhibitFormSingleOther } from "../../_lib/pdf/ExhibitFormSingleOther";
 import { IPdfForm } from "../../_lib/pdf/PdfForm";
 import { debugLog, error, errorResponse, invalidResponse, okPdfResponse } from "../../Utils";
 import { consentFormUrl } from "../consenting-person/ConsentingPerson";
@@ -67,9 +68,14 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         );
         (form as ExhibitFormFullOther).consentFormUrl = consentFormUrl('[consenter_email]');
         break;
-        
+
       case FormName.EXHIBIT_FORM_OTHER_SINGLE:
+        form = new ExhibitFormSingleOther(
+          ExhibitForm.getBlankForm(FormTypes.SINGLE, ExhibitFormConstraints.OTHER)
+        );
+        (form as ExhibitFormSingleOther).consentFormUrl = consentFormUrl('[consenter_email]');
         break;
+        
       case FormName.EXHIBIT_FORM_BOTH_FULL:
         break;
       case FormName.EXHIBIT_FORM_BOTH_SINGLE:

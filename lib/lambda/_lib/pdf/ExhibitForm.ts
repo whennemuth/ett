@@ -106,24 +106,29 @@ export class ExhibitForm extends PdfForm {
    * @param size The size of the font to be used.
    */
   public drawAffliate = async (a:Affiliate, size:number) => {
-    const { page, page: { basePage }, font, boldfont, _return, markPosition, 
+    const { 
+      page, page: { basePage }, font, boldfont, _return, markPosition, 
       returnToMarkedPosition: returnToPosition, parms: { data: { formType }}
     } = this;
+    const { EMPLOYER_PRIMARY, EMPLOYER, EMPLOYER_PRIOR, ACADEMIC, OTHER } = AffiliateTypes;
+    const isCurrentSingle = (a:Affiliate) => {
+      return formType == FormTypes.SINGLE && (a.affiliateType == EMPLOYER || a.affiliateType == EMPLOYER_PRIMARY);
+    }
 
     // Draw the organization row
-    let text = 'Organization';
+    let text = 'Organization (no acronyms)';
     let height = 16;
     let margins = { right: 8, top:2 } as Margins;
-    if(formType == FormTypes.SINGLE) {
+    if(isCurrentSingle(a)) {
       text = 'Current Employer or Appointing /';
       height = 26;
       margins.right = 4;
       _return(10);
     }
-    else if(a.affiliateType == AffiliateTypes.EMPLOYER_PRIMARY) {
+    else if(a.affiliateType == EMPLOYER_PRIMARY) {
       text = 'Primary Current Employer';
     }
-    else if(a.affiliateType == AffiliateTypes.EMPLOYER) {
+    else if(a.affiliateType == EMPLOYER) {
       text = 'Other Current Employer /';
       height = 26;
       _return(10);
@@ -140,12 +145,12 @@ export class ExhibitForm extends PdfForm {
       margins
     }).draw();
 
-    if(formType == FormTypes.SINGLE) {
+    if(isCurrentSingle(a)) {
       basePage.drawText('Organization (no acronyms)', { 
         x: basePage.getX() + 28, y: basePage.getY() + 6, size, font: boldfont 
       });
     }
-    else if(a.affiliateType == AffiliateTypes.EMPLOYER) {
+    else if(a.affiliateType == EMPLOYER) {
       basePage.drawText('Appointing Organization', { 
         x: basePage.getX() + 32, y: basePage.getY() + 6, size, font: boldfont 
       });
@@ -212,6 +217,7 @@ export class ExhibitForm extends PdfForm {
    */
   public drawAffiliateGroup = async (affiliateType:AffiliateType, title?:string) => {
     const { page, font, boldfont, data, _return, drawAffliate, markPosition, getPositionalChange } = this;
+    const { EMPLOYER, EMPLOYER_PRIMARY, ACADEMIC, EMPLOYER_PRIOR, OTHER } = AffiliateTypes;
     let size = 9;
 
     if(title) {
@@ -228,10 +234,15 @@ export class ExhibitForm extends PdfForm {
     }
 
     const affiliates = (data.affiliates as Affiliate[]).filter(affiliate => {
-      if(affiliateType == AffiliateTypes.EMPLOYER) {
-        return affiliate.affiliateType == AffiliateTypes.EMPLOYER || affiliate.affiliateType == AffiliateTypes.EMPLOYER_PRIMARY;
+      const { parms: { data: { formType }}} = this;
+      const { affiliateType:affType } = affiliate;
+      if(formType == FormTypes.SINGLE) {
+        return true;
       }
-      return affiliate.affiliateType == affiliateType
+      if(affiliateType == EMPLOYER) {
+        return affType == EMPLOYER || affType == EMPLOYER_PRIMARY;
+      }
+      return affType == affiliateType
     });
 
     // Iterate over each affiliate and draw it. The height of each should be approximately the same.
