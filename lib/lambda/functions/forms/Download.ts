@@ -3,6 +3,9 @@ import { LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { ExhibitFormConstraints, FormTypes } from "../../_lib/dao/entity";
 import { ExhibitForm } from "../../_lib/pdf/ExhibitForm";
 import { ExhibitFormFullCurrent } from "../../_lib/pdf/ExhibitFormFullCurrent";
+import { ExhibitFormFullOther } from "../../_lib/pdf/ExhibitFormFullOther";
+import { ExhibitFormSingleCurrent } from "../../_lib/pdf/ExhibitFormSingleCurrent";
+import { IPdfForm } from "../../_lib/pdf/PdfForm";
 import { debugLog, error, errorResponse, invalidResponse, okPdfResponse } from "../../Utils";
 import { consentFormUrl } from "../consenting-person/ConsentingPerson";
 
@@ -34,7 +37,7 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
       return invalidResponse(`Bad Request: invalid form name specified (${Object.values(FormName).join('|')})`);
     }
 
-    let form;
+    let form: IPdfForm | undefined;
     let bytes:Uint8Array;
     switch(formName as FormName) {
       case FormName.REGISTRATION_FORM_ENTITY:
@@ -48,20 +51,23 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         form = new ExhibitFormFullCurrent(
           ExhibitForm.getBlankForm(FormTypes.FULL, ExhibitFormConstraints.CURRENT)
         );
-        form.consentFormUrl = consentFormUrl('[consenter_email]');
-        bytes = await form.getBytes();
-        return okPdfResponse(bytes, `${formName}.pdf`);
+        (form as ExhibitFormFullCurrent).consentFormUrl = consentFormUrl('[consenter_email]');
+        break;
 
       case FormName.EXHIBIT_FORM_CURRENT_SINGLE:
-        form = new ExhibitFormFullCurrent(
+        form = new ExhibitFormSingleCurrent(
           ExhibitForm.getBlankForm(FormTypes.SINGLE, ExhibitFormConstraints.CURRENT)
         );
-        form.consentFormUrl = consentFormUrl('[consenter_email]');
-        bytes = await form.getBytes();
-        return okPdfResponse(bytes, `${formName}.pdf`);
-        
-      case FormName.EXHIBIT_FORM_OTHER_FULL:
+        (form as ExhibitFormSingleCurrent).consentFormUrl = consentFormUrl('[consenter_email]');
         break;
+
+      case FormName.EXHIBIT_FORM_OTHER_FULL:
+        form = new ExhibitFormFullOther(
+          ExhibitForm.getBlankForm(FormTypes.FULL, ExhibitFormConstraints.OTHER)
+        );
+        (form as ExhibitFormFullOther).consentFormUrl = consentFormUrl('[consenter_email]');
+        break;
+        
       case FormName.EXHIBIT_FORM_OTHER_SINGLE:
         break;
       case FormName.EXHIBIT_FORM_BOTH_FULL:
@@ -70,9 +76,12 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         break;
       case FormName.DISCLOSURE_FORM:
         break;
+      default:
+        return invalidResponse(`Bad Request: form name ${formName} not implemented`);
     }
 
-    return invalidResponse(`Bad Request: form name ${formName} not implemented`);
+    bytes = await (form! as IPdfForm).getBytes();
+    return okPdfResponse(bytes, `${formName}.pdf`);
   }
   catch(e:any) {
     error(e);

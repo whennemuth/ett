@@ -5358,7 +5358,11 @@
       let task = queryParams.get('task');
 
       // Populate form download links
-      const implemented = [ 'exhibit-form-current-full', 'exhibit-form-current-single' ];
+      const implemented = [ 
+        'exhibit-form-current-full', 
+        'exhibit-form-current-single',
+        'exhibit-form-other-full'
+      ];
       const downloads = document.querySelector('#divFormDownloads ul');
       (STATIC_PARAMETERS.PUBLIC_FORM_DOWNLOAD_URIS ?? []).forEach(uri => {
         const li = document.createElement('li');

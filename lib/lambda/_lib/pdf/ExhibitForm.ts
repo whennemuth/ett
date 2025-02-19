@@ -517,6 +517,20 @@ export class ExhibitForm extends PdfForm {
         }
         break;
       case other:
+        switch(formType) {
+          case FormTypes.FULL:
+            parms.data.affiliates = [
+              getBlankAffiliate(EMPLOYER_PRIOR),
+              getBlankAffiliate(ACADEMIC),
+              getBlankAffiliate(OTHER)
+            ];
+            break;
+          case FormTypes.SINGLE:
+            parms.data.affiliates = [
+              getBlankAffiliate(ACADEMIC)
+            ];
+            break;
+        }
       case both:
     }
 
