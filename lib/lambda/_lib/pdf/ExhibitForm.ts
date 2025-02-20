@@ -120,7 +120,7 @@ export class ExhibitForm extends PdfForm {
     let text = 'Organization (no acronyms)';
     let height = 16;
     let margins = { right: 8, top:2 } as Margins;
-    if(isCurrentSingle(a)) {
+    if(isCurrentSingle(a) && constraint != BOTH) {
       text = 'Current Employer or Appointing /';
       height = 26;
       margins.right = 4;
@@ -148,7 +148,7 @@ export class ExhibitForm extends PdfForm {
       margins
     }).draw();
 
-    if(isCurrentSingle(a)) {
+    if(isCurrentSingle(a) && constraint != BOTH) {
       basePage.drawText('Organization (no acronyms)', { 
         x: basePage.getX() + 28, y: basePage.getY() + 6, size, font: boldfont 
       });
@@ -666,6 +666,9 @@ export const SampleExhibitFormParms = (formType:FormType, constraint:ExhibitForm
           break;
       }
   }
+
+  data.constraint = constraint;
+  data.formType = formType;
 
   return { formType:FormTypes.FULL, consenter, entity, data, consentFormUrl: consentFormUrl(email) };
 };

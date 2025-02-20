@@ -5,6 +5,7 @@ import { ExhibitForm } from "../../_lib/pdf/ExhibitForm";
 import { ExhibitFormFullBoth } from "../../_lib/pdf/ExhibitFormFullBoth";
 import { ExhibitFormFullCurrent } from "../../_lib/pdf/ExhibitFormFullCurrent";
 import { ExhibitFormFullOther } from "../../_lib/pdf/ExhibitFormFullOther";
+import { ExhibitFormSingleBoth } from "../../_lib/pdf/ExhibitFormSingleBoth";
 import { ExhibitFormSingleCurrent } from "../../_lib/pdf/ExhibitFormSingleCurrent";
 import { ExhibitFormSingleOther } from "../../_lib/pdf/ExhibitFormSingleOther";
 import { IPdfForm } from "../../_lib/pdf/PdfForm";
@@ -83,9 +84,14 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         );
         (form as ExhibitFormFullBoth).consentFormUrl = consentFormUrl('[consenter_email');
         break;
-        
+
       case FormName.EXHIBIT_FORM_BOTH_SINGLE:
+        form = new ExhibitFormSingleBoth(
+          ExhibitForm.getBlankForm(FormTypes.SINGLE, ExhibitFormConstraints.BOTH)
+        );
+        (form as ExhibitFormSingleBoth).consentFormUrl = consentFormUrl('[consenter_email');
         break;
+        
       case FormName.DISCLOSURE_FORM:
         break;
       default:
