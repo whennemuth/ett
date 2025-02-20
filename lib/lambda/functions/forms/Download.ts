@@ -2,6 +2,7 @@ import { PublicApiConstruct } from "../../../PublicApi";
 import { LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { ExhibitFormConstraints, FormTypes } from "../../_lib/dao/entity";
 import { ExhibitForm } from "../../_lib/pdf/ExhibitForm";
+import { ExhibitFormFullBoth } from "../../_lib/pdf/ExhibitFormFullBoth";
 import { ExhibitFormFullCurrent } from "../../_lib/pdf/ExhibitFormFullCurrent";
 import { ExhibitFormFullOther } from "../../_lib/pdf/ExhibitFormFullOther";
 import { ExhibitFormSingleCurrent } from "../../_lib/pdf/ExhibitFormSingleCurrent";
@@ -77,7 +78,12 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         break;
         
       case FormName.EXHIBIT_FORM_BOTH_FULL:
+        form = new ExhibitFormFullBoth(
+          ExhibitForm.getBlankForm(FormTypes.FULL, ExhibitFormConstraints.BOTH)
+        );
+        (form as ExhibitFormFullBoth).consentFormUrl = consentFormUrl('[consenter_email');
         break;
+        
       case FormName.EXHIBIT_FORM_BOTH_SINGLE:
         break;
       case FormName.DISCLOSURE_FORM:

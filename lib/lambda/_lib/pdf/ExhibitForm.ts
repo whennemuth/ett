@@ -106,9 +106,10 @@ export class ExhibitForm extends PdfForm {
    * @param size The size of the font to be used.
    */
   public drawAffliate = async (a:Affiliate, size:number) => {
+    const { BOTH } = ExhibitFormConstraints;
     const { 
       page, page: { basePage }, font, boldfont, _return, markPosition, 
-      returnToMarkedPosition: returnToPosition, parms: { data: { formType }}
+      returnToMarkedPosition: returnToPosition, parms: { data: { formType, constraint=BOTH } }
     } = this;
     const { EMPLOYER_PRIMARY, EMPLOYER, EMPLOYER_PRIOR, ACADEMIC, OTHER } = AffiliateTypes;
     const isCurrentSingle = (a:Affiliate) => {
@@ -125,13 +126,15 @@ export class ExhibitForm extends PdfForm {
       margins.right = 4;
       _return(10);
     }
-    else if(a.affiliateType == EMPLOYER_PRIMARY) {
-      text = 'Primary Current Employer';
-    }
-    else if(a.affiliateType == EMPLOYER) {
-      text = 'Other Current Employer /';
-      height = 26;
-      _return(10);
+    else if(constraint != BOTH) {
+      if(a.affiliateType == EMPLOYER_PRIMARY) {
+        text = 'Primary Current Employer';
+      }
+      else if(a.affiliateType == EMPLOYER) {
+        text = 'Other Current Employer /';
+        height = 26;
+        _return(10);
+      }
     }
 
     _return();
@@ -150,7 +153,7 @@ export class ExhibitForm extends PdfForm {
         x: basePage.getX() + 28, y: basePage.getY() + 6, size, font: boldfont 
       });
     }
-    else if(a.affiliateType == EMPLOYER) {
+    else if(constraint != BOTH && a.affiliateType == EMPLOYER) {
       basePage.drawText('Appointing Organization', { 
         x: basePage.getX() + 32, y: basePage.getY() + 6, size, font: boldfont 
       });
@@ -216,8 +219,12 @@ export class ExhibitForm extends PdfForm {
    * @param title 
    */
   public drawAffiliateGroup = async (affiliateType:AffiliateType, title?:string) => {
-    const { page, font, boldfont, data, _return, drawAffliate, markPosition, getPositionalChange } = this;
-    const { EMPLOYER, EMPLOYER_PRIMARY, ACADEMIC, EMPLOYER_PRIOR, OTHER } = AffiliateTypes;
+    const { BOTH } = ExhibitFormConstraints;
+    const { 
+      page, font, boldfont, data, data: { constraint=BOTH }, 
+      _return, drawAffliate, markPosition, getPositionalChange 
+    } = this;
+    const { EMPLOYER, EMPLOYER_PRIMARY, EMPLOYER_PRIOR } = AffiliateTypes;
     let size = 9;
 
     if(title) {
@@ -240,7 +247,11 @@ export class ExhibitForm extends PdfForm {
         return true;
       }
       if(affiliateType == EMPLOYER) {
-        return affType == EMPLOYER || affType == EMPLOYER_PRIMARY;
+        const empTypes = [ EMPLOYER, EMPLOYER_PRIMARY ];
+        if(constraint == BOTH) {
+          empTypes.push(EMPLOYER_PRIOR);
+        }
+        return empTypes.includes(affType);
       }
       return affType == affiliateType
     });
@@ -535,6 +546,15 @@ export class ExhibitForm extends PdfForm {
               getBlankAffiliate(ACADEMIC),
               getBlankAffiliate(OTHER)
             ];
+        }
+      case both:
+        switch(formType) {
+          case FormTypes.FULL:
+            parms.data.affiliates = [
+              getBlankAffiliate(EMPLOYER_PRIMARY),
+              getBlankAffiliate(ACADEMIC),
+              getBlankAffiliate(OTHER)
+            ];
             break;
           case FormTypes.SINGLE:
             parms.data.affiliates = [
@@ -542,7 +562,6 @@ export class ExhibitForm extends PdfForm {
             ];
             break;
         }
-      case both:
     }
 
     const form = new ExhibitForm(parms);
@@ -558,12 +577,13 @@ export const SampleExhibitFormParms = (formType:FormType, constraint:ExhibitForm
   const entity_id = '27ba9278-4337-445b-ac5e-a58d3040c7fc';
   const entity = { entity_id, entity_name: 'The School of Hard Knocks' } as Entity;
   const email = 'porky@looneytunes.com';
-  const consenter = { email, firstname: 'Porky', middlename: 'P', lastname: 'Pig' } as Consenter
+  const consenter = { email, firstname: 'Porky', middlename: 'P', lastname: 'Pig', phone_number: '617-823-9051' } as Consenter
   const data = {
     formType: FormTypes.FULL,
     constraint: constraint,
     entity_id: 'abc123',
-    affiliates: [ ]
+    affiliates: [ ],
+    sent_timestamp: new Date().toISOString()
   } as ExhibitFormData;
   
   const employer1 = { 
