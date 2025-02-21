@@ -1,9 +1,11 @@
 import * as ctx from '../../../../contexts/context.json';
 import { IContext } from "../../../../contexts/IContext";
-import { FormTypes } from "../../_lib/dao/entity";
+import { ExhibitFormConstraints, FormTypes } from "../../_lib/dao/entity";
 import { sendEmail } from "../../_lib/EmailWithAttachments";
 import { ExhibitForm, ExhibitFormParms, getSampleAffiliates, SampleExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
-import { ExhibitFormFull } from "../../_lib/pdf/ExhibitFormFull";
+import { ExhibitFormFullBoth } from '../../_lib/pdf/ExhibitFormFullBoth';
+import { ExhibitFormFullCurrent } from '../../_lib/pdf/ExhibitFormFullCurrent';
+import { ExhibitFormFullOther } from '../../_lib/pdf/ExhibitFormFullOther';
 import { ExhibitFormSingle } from "../../_lib/pdf/ExhibitFormSingle";
 import { IPdfForm, PdfForm } from "../../_lib/pdf/PdfForm";
 
@@ -29,15 +31,26 @@ export class ExhibitEmail {
   }
 
   public send = async (emailAddress:string):Promise<boolean> => {
-    const { parms, parms: { data: { formType }, entity, consenter: { firstname, middlename, lastname } } } = this;
+    const { parms, parms: { data: { formType, constraint }, entity, consenter: { firstname, middlename, lastname } } } = this;
     const { fullName } = PdfForm;
     const consenterFullname = fullName(firstname, middlename, lastname);
     const { entity_name } = entity;
     const context:IContext = <IContext>ctx;
+    const { BOTH, CURRENT, OTHER } = ExhibitFormConstraints;
     
     switch(formType) {
       case FormTypes.FULL:
-        this.pdf = new ExhibitFormFull(new ExhibitForm(parms));
+        switch(constraint) {
+          case CURRENT:
+            this.pdf = ExhibitFormFullCurrent.getInstance(parms);
+            break;
+          case OTHER:
+            this.pdf = ExhibitFormFullOther.getInstance(parms);
+            break;
+          case BOTH:
+            this.pdf = ExhibitFormFullBoth.getInstance(parms);
+            break;
+        }
         return await sendEmail({
           subject: 'ETT Exhibit Form Submission',
           from: `noreply@${context.ETT_DOMAIN}`,
@@ -49,6 +62,7 @@ export class ExhibitEmail {
             description: 'exhibit-form-full.pdf'
           }
         });
+
       case FormTypes.SINGLE:
         this.pdf = new ExhibitFormSingle(new ExhibitForm(parms));
         return await sendEmail({
