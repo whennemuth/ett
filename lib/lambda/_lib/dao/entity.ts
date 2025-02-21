@@ -89,7 +89,7 @@ export type ExhibitForm = {
   sent_timestamp?: string,
   affiliates?: Affiliate[],
   formType: FormType,
-  constraint?: ExhibitFormConstraint
+  constraint: ExhibitFormConstraint
 };
 export enum ConsenterFields {
   email = 'email',

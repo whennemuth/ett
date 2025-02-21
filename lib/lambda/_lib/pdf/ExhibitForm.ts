@@ -1,11 +1,11 @@
 import { Color, PDFDocument, PDFFont, PDFPageDrawTextOptions, StandardFonts, rgb } from "pdf-lib";
+import { consentFormUrl } from "../../functions/consenting-person/ConsentingPerson";
 import { Configurations, DurationType } from "../config/Config";
-import { Affiliate, AffiliateType, AffiliateTypes, ConfigNames, Consenter, Entity, ExhibitFormConstraint, ExhibitFormConstraints, ExhibitForm as ExhibitFormData, FormType, FormTypes } from "../dao/entity";
+import { Affiliate, AffiliateType, AffiliateTypes, ConfigNames, Consenter, Entity, ExhibitFormConstraints, ExhibitForm as ExhibitFormData, FormType, FormTypes } from "../dao/entity";
 import { PdfForm } from "./PdfForm";
 import { EmbeddedFonts } from "./lib/EmbeddedFonts";
 import { Rectangle } from "./lib/Rectangle";
 import { Align, Margins, VAlign, rgbPercent } from "./lib/Utils";
-import { consentFormUrl } from "../../functions/consenting-person/ConsentingPerson";
 
 export const blue = rgbPercent(47, 84, 150) as Color;
 export const grey = rgb(.1, .1, .1) as Color;
@@ -569,6 +569,7 @@ export const SampleExhibitFormParms = (affiliates:Affiliate[]):ExhibitFormParms 
   const consenter = { email, firstname: 'Porky', middlename: 'P', lastname: 'Pig', phone_number: '617-823-9051' } as Consenter
   const data = {
     formType: FormTypes.FULL, // Temporary default - may get reassigned
+    constraint: ExhibitFormConstraints.CURRENT,
     entity_id: 'abc123',
     affiliates: [ ],
     sent_timestamp: new Date().toISOString()
