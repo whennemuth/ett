@@ -1,10 +1,8 @@
 import { writeFile } from "node:fs/promises";
 import { PDFFont, PDFPage } from "pdf-lib";
-import { Affiliate, AffiliateTypes, Consenter, Entity, ExhibitForm as ExhibitFormData, FormTypes } from "../dao/entity";
-import { ExhibitForm } from './ExhibitForm';
+import { ExhibitForm, getSampleAffiliates, SampleExhibitFormParms } from './ExhibitForm';
 import { IPdfForm, PdfForm } from './PdfForm';
 import { Page } from "./lib/Page";
-import { consentFormUrl } from "../../functions/consenting-person/ConsentingPerson";
 
 export class ExhibitFormSingle extends PdfForm implements IPdfForm {
   private baseForm:ExhibitForm
@@ -46,7 +44,10 @@ export class ExhibitFormSingle extends PdfForm implements IPdfForm {
 
     await drawIntro();
 
-    await drawAffliate(affiliates[0], 10);
+    await drawAffliate(affiliates[0], 10, [
+      'Current Employer or Appointing /',
+      'Organization (no acronyms)'
+    ]);
 
     const pdfBytes = await doc.save();
     return pdfBytes;
@@ -96,26 +97,9 @@ export class ExhibitFormSingle extends PdfForm implements IPdfForm {
 
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/ExhibitFormSingle.ts')) {
+  
   process.env.CLOUDFRONT_DOMAIN = 'www.schoolofhardknocks.edu';
-  const entity_id = '27ba9278-4337-445b-ac5e-a58d3040c7fc';
-  const entity = { entity_id, entity_name: 'The School of Hard Knocks' } as Entity;
-  const email = 'porky@looneytunes.com';
-  const consenter = { 
-    email, firstname: 'Porky', middlename: 'P', lastname: 'Pig' 
-  } as Consenter
-  const data = {
-    entity_id: 'abc123',
-    formType: FormTypes.SINGLE,
-    affiliates: [{ 
-        affiliateType: AffiliateTypes.EMPLOYER,
-        org: 'Warner Bros.', 
-        fullname: 'Foghorn Leghorn', 
-        email: 'foghorn@warnerbros.com',
-        title: 'Lead animation coordinator',
-        phone_number: '617-333-4444'
-      }] as Affiliate[],
-  } as ExhibitFormData;
-  const baseForm = new ExhibitForm({ consenter, entity, data, consentFormUrl: consentFormUrl(email) });
+  const baseForm = new ExhibitForm(SampleExhibitFormParms([ getSampleAffiliates().employerPrimary ]));
   
   new ExhibitFormSingle(baseForm).writeToDisk('./lib/lambda/_lib/pdf/outputSingle.pdf')
     .then((bytes) => {

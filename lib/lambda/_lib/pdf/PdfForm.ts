@@ -4,7 +4,7 @@ import { Page } from "./lib/Page";
 import { Margins, Position, rgbPercent } from "./lib/Utils";
 import { v4 as uuidv4 } from 'uuid';
 
-export type IPdfForm = { getBytes():Promise<Uint8Array> };
+export type IPdfForm = { getBytes():Promise<Uint8Array>, writeToDisk(path:string):Promise<void> };
 type MarkedPosition = { id:string, position:Position }
 export abstract class PdfForm {
 

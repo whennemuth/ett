@@ -2,11 +2,11 @@ import * as ctx from '../../../../contexts/context.json';
 import { IContext } from "../../../../contexts/IContext";
 import { DAOFactory } from "../../_lib/dao/dao";
 import { UserCrud } from '../../_lib/dao/dao-user';
-import { Consenter, Delegate, Entity, ExhibitForm as ExhibitFormData, FormTypes, Role, Roles, User, YN } from "../../_lib/dao/entity";
+import { Consenter, Delegate, Entity, ExhibitForm as ExhibitFormData, Role, Roles, User, YN } from "../../_lib/dao/entity";
 import { EmailParms, sendEmail } from "../../_lib/EmailWithAttachments";
 import { ConsentForm } from "../../_lib/pdf/ConsentForm";
 import { DisclosureForm, DisclosureFormData } from "../../_lib/pdf/DisclosureForm";
-import { ExhibitForm, ExhibitFormParms, SampleExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
+import { ExhibitForm, ExhibitFormParms, getSampleAffiliates, SampleExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
 import { ExhibitFormSingle } from '../../_lib/pdf/ExhibitFormSingle';
 import { IPdfForm, PdfForm } from "../../_lib/pdf/PdfForm";
 import { log } from '../../Utils';
@@ -178,6 +178,9 @@ const grabFromBucketAndSend = async (parms:DisclosureEmailParms, recipients:Reci
 
   // Get the exhibit form
   const singleExhibitForm = new class implements IPdfForm {
+    writeToDisk(path: string): Promise<void> {
+      throw new Error('Method not implemented.');
+    }
     async getBytes(): Promise<Uint8Array> {
       return new BucketExhibitForm(s3ObjectKeyForExhibitForm).get();
     }
@@ -185,6 +188,9 @@ const grabFromBucketAndSend = async (parms:DisclosureEmailParms, recipients:Reci
 
   // Get the disclosure form
   const disclosureForm = new class implements IPdfForm {
+    writeToDisk(path: string): Promise<void> {
+      throw new Error('Method not implemented.');
+    }
     async getBytes(): Promise<Uint8Array> {
       return new BucketDisclosureForm({ metadata: s3ObjectKeyForDisclosureForm }).get();
     }
@@ -194,6 +200,9 @@ const grabFromBucketAndSend = async (parms:DisclosureEmailParms, recipients:Reci
   const correctionFormsBytes = await BucketCorrectionForm.getAll(consenterEmail, savedDate);
   const correctionForms = correctionFormsBytes.map(bytes => {
     return new class implements IPdfForm {
+      writeToDisk(path: string): Promise<void> {
+        throw new Error('Method not implemented.');
+      }
       async getBytes(): Promise<Uint8Array> {
         return bytes;
       }
@@ -305,9 +314,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     disclosingEntity: { name: 'Boston University', representatives: [ alberteinstein, elvispresley ] },
     requestingEntity: { name: 'Northeastern University', authorizedIndividuals: [ abrahamlincoln, bingcrosby ] }
   } as DisclosureFormData;
-
   
-  const test_data = SampleExhibitFormParms(FormTypes.SINGLE).data;
+  const test_data = SampleExhibitFormParms([ getSampleAffiliates().employerPrimary ]).data;
   const test_exhibit_data = Object.assign({}, test_data) ?? {};
   // Make sure email address to send to matches one of the affiliates in the exhibit form test data, so validation will pass.
   if(test_exhibit_data.affiliates && test_exhibit_data.affiliates.length > 0) {

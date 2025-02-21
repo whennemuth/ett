@@ -1,7 +1,5 @@
 import { PublicApiConstruct } from "../../../PublicApi";
 import { LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
-import { ExhibitFormConstraints, FormTypes } from "../../_lib/dao/entity";
-import { ExhibitForm } from "../../_lib/pdf/ExhibitForm";
 import { ExhibitFormFullBoth } from "../../_lib/pdf/ExhibitFormFullBoth";
 import { ExhibitFormFullCurrent } from "../../_lib/pdf/ExhibitFormFullCurrent";
 import { ExhibitFormFullOther } from "../../_lib/pdf/ExhibitFormFullOther";
@@ -43,57 +41,49 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
     let form: IPdfForm | undefined;
     let bytes:Uint8Array;
     switch(formName as FormName) {
+      
       case FormName.REGISTRATION_FORM_ENTITY:
         break;
+
       case FormName.REGISTRATION_FORM_INDIVIDUAL:
         break;
+
       case FormName.CONSENT_FORM:
         break;
 
       case FormName.EXHIBIT_FORM_CURRENT_FULL:
-        form = new ExhibitFormFullCurrent(
-          ExhibitForm.getBlankForm(FormTypes.FULL, ExhibitFormConstraints.CURRENT)
-        );
+        form = ExhibitFormFullCurrent.getBlankForm();
         (form as ExhibitFormFullCurrent).consentFormUrl = consentFormUrl('[consenter_email]');
         break;
 
       case FormName.EXHIBIT_FORM_CURRENT_SINGLE:
-        form = new ExhibitFormSingleCurrent(
-          ExhibitForm.getBlankForm(FormTypes.SINGLE, ExhibitFormConstraints.CURRENT)
-        );
+        form = ExhibitFormSingleCurrent.getBlankForm();
         (form as ExhibitFormSingleCurrent).consentFormUrl = consentFormUrl('[consenter_email]');
         break;
 
       case FormName.EXHIBIT_FORM_OTHER_FULL:
-        form = new ExhibitFormFullOther(
-          ExhibitForm.getBlankForm(FormTypes.FULL, ExhibitFormConstraints.OTHER)
-        );
+        form = ExhibitFormFullOther.getBlankForm();
         (form as ExhibitFormFullOther).consentFormUrl = consentFormUrl('[consenter_email]');
         break;
 
       case FormName.EXHIBIT_FORM_OTHER_SINGLE:
-        form = new ExhibitFormSingleOther(
-          ExhibitForm.getBlankForm(FormTypes.SINGLE, ExhibitFormConstraints.OTHER)
-        );
+        form = ExhibitFormSingleOther.getBlankForm();
         (form as ExhibitFormSingleOther).consentFormUrl = consentFormUrl('[consenter_email]');
         break;
         
       case FormName.EXHIBIT_FORM_BOTH_FULL:
-        form = new ExhibitFormFullBoth(
-          ExhibitForm.getBlankForm(FormTypes.FULL, ExhibitFormConstraints.BOTH)
-        );
+        form = ExhibitFormFullBoth.getBlankForm();
         (form as ExhibitFormFullBoth).consentFormUrl = consentFormUrl('[consenter_email');
         break;
 
       case FormName.EXHIBIT_FORM_BOTH_SINGLE:
-        form = new ExhibitFormSingleBoth(
-          ExhibitForm.getBlankForm(FormTypes.SINGLE, ExhibitFormConstraints.BOTH)
-        );
+        form = ExhibitFormSingleBoth.getBlankForm();
         (form as ExhibitFormSingleBoth).consentFormUrl = consentFormUrl('[consenter_email');
         break;
-        
+
       case FormName.DISCLOSURE_FORM:
         break;
+
       default:
         return invalidResponse(`Bad Request: form name ${formName} not implemented`);
     }

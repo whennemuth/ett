@@ -1,8 +1,8 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { PDFDocument, PDFFont, PDFPage } from 'pdf-lib';
 import { log } from '../../Utils';
-import { AffiliateTypes, FormTypes } from '../dao/entity';
-import { ExhibitForm, SampleExhibitFormParms } from './ExhibitForm';
+import { AffiliateTypes } from '../dao/entity';
+import { ExhibitForm, getSampleAffiliates, SampleExhibitFormParms } from './ExhibitForm';
 import { IPdfForm, PdfForm } from './PdfForm';
 import { Page } from './lib/Page';
 
@@ -29,6 +29,7 @@ export class ExhibitFormFull extends PdfForm implements IPdfForm {
     await baseForm.initialize();
 
     const { doc, embeddedFonts, pageMargins, font, boldfont, drawAffiliateGroup } = baseForm;
+    const { EMPLOYER, EMPLOYER_PRIOR, ACADEMIC, OTHER } = AffiliateTypes;
     
     this.doc = doc;
     this.embeddedFonts = embeddedFonts;
@@ -44,13 +45,29 @@ export class ExhibitFormFull extends PdfForm implements IPdfForm {
 
     await drawIntro();
 
-    await drawAffiliateGroup(AffiliateTypes.EMPLOYER, 'Current Employer(s)');
+    await drawAffiliateGroup({ 
+      affiliateType: EMPLOYER, 
+      title: 'Current Employer(s)',
+      orgHeaderLines: [ 'Organization (no acronyms)' ]
+    });
 
-    await drawAffiliateGroup(AffiliateTypes.EMPLOYER_PRIOR, 'Prior Employers');
+    await drawAffiliateGroup({ 
+      affiliateType: EMPLOYER_PRIOR, 
+      title: 'Prior Employers',
+      orgHeaderLines: [ 'Organization (no acronyms)' ]
+    });
 
-    await drawAffiliateGroup(AffiliateTypes.ACADEMIC, 'Academic / Professional Societies & Organizations');
+    await drawAffiliateGroup({ 
+      affiliateType: ACADEMIC, 
+      title: 'Academic / Professional Societies & Organizations',
+      orgHeaderLines: [ 'Organization (no acronyms)' ]
+    });
 
-    await drawAffiliateGroup(AffiliateTypes.OTHER, 'Other Affiliated Organizations');
+    await drawAffiliateGroup({ 
+      affiliateType: OTHER, 
+      title: 'Other Affiliated Organizations',
+      orgHeaderLines: [ 'Organization (no acronyms)' ]
+    });
 
     const pdfBytes = await doc.save();
     return pdfBytes;
@@ -111,7 +128,14 @@ const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/ExhibitFormFull.ts')) {
 
   process.env.CLOUDFRONT_DOMAIN = 'www.schoolofhardknocks.edu';
-  const baseForm = new ExhibitForm(SampleExhibitFormParms(FormTypes.FULL));
+  const baseForm = new ExhibitForm(SampleExhibitFormParms([
+    getSampleAffiliates().employerPrimary,
+    getSampleAffiliates().employer1, 
+    getSampleAffiliates().employer2, 
+    getSampleAffiliates().employerPrior, 
+    getSampleAffiliates().academic1,
+    getSampleAffiliates().other
+  ]));
   
   new ExhibitFormFull(baseForm).writeToDisk('./lib/lambda/_lib/pdf/outputFull.pdf')
     .then((bytes) => {

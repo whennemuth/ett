@@ -2,7 +2,7 @@ import * as ctx from '../../../../contexts/context.json';
 import { IContext } from "../../../../contexts/IContext";
 import { FormTypes } from "../../_lib/dao/entity";
 import { sendEmail } from "../../_lib/EmailWithAttachments";
-import { ExhibitForm, ExhibitFormParms, SampleExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
+import { ExhibitForm, ExhibitFormParms, getSampleAffiliates, SampleExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
 import { ExhibitFormFull } from "../../_lib/pdf/ExhibitFormFull";
 import { ExhibitFormSingle } from "../../_lib/pdf/ExhibitFormSingle";
 import { IPdfForm, PdfForm } from "../../_lib/pdf/PdfForm";
@@ -79,13 +79,21 @@ const { argv:args } = process;
 
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/ExhibitEmail.ts')) {
   const email = process.env.PDF_RECIPIENT_EMAIL;
+  process.env.CLOUDFRONT_DOMAIN = 'www.schoolofhardknocks.edu';
 
   if( ! email) {
     console.log('Email environment variable is missing. Put PDF_RECIPIENT_EMAIL=[email] in .env in ${workspaceFolder}');
     process.exit(1);
   }
 
-  new ExhibitEmail(SampleExhibitFormParms(FormTypes.FULL)).send(email)
+  new ExhibitEmail(SampleExhibitFormParms([
+      getSampleAffiliates().employerPrimary,
+      getSampleAffiliates().employer1, 
+      getSampleAffiliates().employer2, 
+      getSampleAffiliates().employerPrior, 
+      getSampleAffiliates().academic1,
+      getSampleAffiliates().other
+    ])).send(email)
     .then(success => {
       console.log(success ? 'Succeeded' : 'Failed');
     })

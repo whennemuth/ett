@@ -4,7 +4,7 @@ import { IContext } from '../../../../contexts/IContext';
 import { log } from '../../Utils';
 import { Configurations } from '../config/Config';
 import { AffiliateTypes, ExhibitFormConstraints, FormTypes } from '../dao/entity';
-import { blue, ExhibitForm, red, SampleExhibitFormParms } from './ExhibitForm';
+import { blue, ExhibitForm, ExhibitFormParms, getSampleAffiliates, red, SampleExhibitFormParms } from './ExhibitForm';
 import { IPdfForm, PdfForm } from './PdfForm';
 import { Page } from './lib/Page';
 import { Align, VAlign } from './lib/Utils';
@@ -16,6 +16,19 @@ export class ExhibitFormFullOther extends PdfForm implements IPdfForm {
   private baseForm:ExhibitForm
   private font:PDFFont;
   private boldfont:PDFFont;
+
+  public static getBlankForm = (): IPdfForm => {
+    const { EMPLOYER_PRIOR, ACADEMIC, OTHER } = AffiliateTypes;
+    return new ExhibitFormFullOther(ExhibitForm.getBlankForm(
+      FormTypes.FULL, [ EMPLOYER_PRIOR, ACADEMIC, OTHER ]
+    ));
+  }
+
+  public static getInstance = (parms:ExhibitFormParms): IPdfForm => {
+    parms.data.constraint = ExhibitFormConstraints.OTHER;
+    parms.data.formType = FormTypes.FULL;
+    return new ExhibitFormFullOther(new ExhibitForm(parms));
+  }
 
   constructor(baseForm:ExhibitForm) {
     super();
@@ -36,6 +49,7 @@ export class ExhibitFormFullOther extends PdfForm implements IPdfForm {
     await baseForm.initialize();
 
     const { doc, embeddedFonts, pageMargins, font, boldfont, drawAffiliateGroup, drawSignature } = baseForm;
+    const { EMPLOYER_PRIOR, ACADEMIC, OTHER } = AffiliateTypes;
     
     this.doc = doc;
     this.embeddedFonts = embeddedFonts;
@@ -51,11 +65,23 @@ export class ExhibitFormFullOther extends PdfForm implements IPdfForm {
 
     await drawIntro();
 
-    await drawAffiliateGroup(AffiliateTypes.EMPLOYER_PRIOR, 'Prior Employers<sup>1</sup>');
+    await drawAffiliateGroup({
+      affiliateType:EMPLOYER_PRIOR, 
+      title: 'Prior Employers<sup>1</sup>',
+      orgHeaderLines: [ 'Organization (no acronyms)' ]
+    });
 
-    await drawAffiliateGroup(AffiliateTypes.ACADEMIC, 'Current and Prior Academic / Professional Societies & Organizations<sup>2</sup>');
+    await drawAffiliateGroup({
+      affiliateType:ACADEMIC, 
+      title: 'Current and Prior Academic / Professional Societies & Organizations<sup>2</sup>',
+      orgHeaderLines: [ 'Organization (no acronyms)' ]
+    });
 
-    await drawAffiliateGroup(AffiliateTypes.OTHER, 'Other Organizations Where You Formerly Had Appointments<sup>3</sup>');
+    await drawAffiliateGroup({
+      affiliateType:OTHER, 
+      title: 'Other Organizations Where You Formerly Had Appointments<sup>3</sup>',
+      orgHeaderLines: [ 'Organization (no acronyms)' ]
+    });
 
     await drawRedBox();
 
@@ -107,7 +133,7 @@ export class ExhibitFormFullOther extends PdfForm implements IPdfForm {
       '<u>Consent Recipients</u> (also called Affiliates) on the date of this Exhibit Form—but NOT <u>my ' +
       'current employers and appointing organizations</u>.  The definitions in the Consent Form also apply ' +
       'to this Exhibit Form.</b> <u>My known Consent Recipient(s)</u> of the types covered by this form are:', 
-      options: { size, font }, linePad: 4, padBottom: 16 
+      options: { size, font }, linePad: 4 
     });
   }
 
@@ -369,23 +395,18 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/
     process.env[Configurations.ENV_VAR_NAME] = JSON.stringify(context.CONFIG);
     process.env.CLOUDFRONT_DOMAIN = 'www.schoolofhardknocks.edu';
 
-    const create = async (baseForm:ExhibitForm) => {
-      const form = new ExhibitFormFullOther(baseForm);
-      await form.writeToDisk('./lib/lambda/_lib/pdf/ExhibitFormFullOther.pdf');
-      console.log(`done`);
-    }
+    const form = testBlankForm ?
+      ExhibitFormFullOther.getBlankForm() :
+      ExhibitFormFullOther.getInstance(SampleExhibitFormParms([
+        getSampleAffiliates().employerPrior, 
+        getSampleAffiliates().academic1, 
+        getSampleAffiliates().academic2, 
+        getSampleAffiliates().other
+      ]));
 
-    // If blank form, just create the blank form and return;
-    if(testBlankForm) {
-      await create(ExhibitForm.getBlankForm(FormTypes.FULL, ExhibitFormConstraints.OTHER));
-      return;
-    }
+    await form.writeToDisk('./lib/lambda/_lib/pdf/ExhibitFormFullOther.pdf');
+    console.log(`done`);
 
-    process.env.CLOUDFRONT_DOMAIN = 'www.schoolofhardknocks.edu';
-    const baseForm = new ExhibitForm(SampleExhibitFormParms(FormTypes.FULL, ExhibitFormConstraints.OTHER));
-
-    // Create the exhibit form
-    await create(baseForm);
   })();
 
 }

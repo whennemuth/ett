@@ -22,6 +22,7 @@ export type ExhibitFormParms = {
 export type ItemParagraph = { text:string, options:PDFPageDrawTextOptions, estimatedHeight?:number };
 export type ItemParms = { paragraphs:ItemParagraph[] };
 export type BigRedButtonParms = { text:string, description:string, descriptionHeight:number };
+export type DrawAffiliateGroupParms = { affiliateType:AffiliateType, orgHeaderLines:string[], title?:string };
 
 /**
  * This is a baseline exhibit form. It is passed to variants to provide generalized function common to any variant.
@@ -105,66 +106,48 @@ export class ExhibitForm extends PdfForm {
    * @param a The affiliate data.
    * @param size The size of the font to be used.
    */
-  public drawAffliate = async (a:Affiliate, size:number) => {
-    const { BOTH } = ExhibitFormConstraints;
+  public drawAffliate = async (a:Affiliate, size:number, orgHeaderLines:string[]) => {
     const { 
       page, page: { basePage }, font, boldfont, _return, markPosition, 
-      returnToMarkedPosition: returnToPosition, parms: { data: { formType, constraint=BOTH } }
+      returnToMarkedPosition: returnToPosition
     } = this;
-    const { EMPLOYER_PRIMARY, EMPLOYER, EMPLOYER_PRIOR, ACADEMIC, OTHER } = AffiliateTypes;
-    const isCurrentSingle = (a:Affiliate) => {
-      return formType == FormTypes.SINGLE && (a.affiliateType == EMPLOYER || a.affiliateType == EMPLOYER_PRIMARY);
-    }
 
     // Draw the organization row
-    let text = 'Organization (no acronyms)';
-    let height = 16;
-    let margins = { right: 8, top:2 } as Margins;
-    if(isCurrentSingle(a) && constraint != BOTH) {
-      text = 'Current Employer or Appointing /';
-      height = 26;
-      margins.right = 4;
-      _return(10);
-    }
-    else if(constraint != BOTH) {
-      if(a.affiliateType == EMPLOYER_PRIMARY) {
-        text = 'Primary Current Employer';
-      }
-      else if(a.affiliateType == EMPLOYER) {
-        text = 'Other Current Employer /';
-        height = 26;
-        _return(10);
-      }
+    const lineHeight = 10;
+    const height = 16 + (orgHeaderLines.length - 1) * lineHeight;
+    const width = 150;
+
+    // let height = 16;
+    if(orgHeaderLines.length > 1) {
+      _return(lineHeight);
     }
 
     _return();
+    let rightMargin = 8;
+    let xOffset = width - boldfont.widthOfTextAtSize(orgHeaderLines[0], size) - rightMargin;
     await new Rectangle({
-      text,
+      text:orgHeaderLines[0],
       page,
       align: Align.right,
       valign: VAlign.top,
-      options: { borderWidth:1, borderColor:blue, color:grey, opacity:.2, width:150, height },
+      options: { borderWidth:1, borderColor:blue, color:grey, opacity:.2, width, height },
       textOptions: { size, font:boldfont },
-      margins
+      margins: { right:rightMargin, top:2 } as Margins
     }).draw();
 
-    if(isCurrentSingle(a) && constraint != BOTH) {
-      basePage.drawText('Organization (no acronyms)', { 
-        x: basePage.getX() + 28, y: basePage.getY() + 6, size, font: boldfont 
-      });
-    }
-    else if(constraint != BOTH && a.affiliateType == EMPLOYER) {
-      basePage.drawText('Appointing Organization', { 
-        x: basePage.getX() + 32, y: basePage.getY() + 6, size, font: boldfont 
+    if(orgHeaderLines.length > 1) {
+      xOffset = width - boldfont.widthOfTextAtSize(orgHeaderLines[1], size) - rightMargin;
+      basePage.drawText(orgHeaderLines[1], { 
+        x: basePage.getX() + xOffset, y: basePage.getY() + 6, size, font: boldfont 
       });
     }
     
-    basePage.moveRight(150); 
+    basePage.moveRight(width); 
 
     await new Rectangle({
       text: a.org, page,
       align: Align.left, valign: VAlign.middle,
-      options: { borderWidth:1, borderColor:blue, width:(page.bodyWidth - 150), height },
+      options: { borderWidth:1, borderColor:blue, width:(page.bodyWidth - width), height },
       textOptions: { size, font },
       margins: { left: 8 } as Margins
     }).draw();
@@ -205,7 +188,7 @@ export class ExhibitForm extends PdfForm {
         page,
         align: Align.left,
         valign: VAlign.middle,
-        options: { borderWidth:1, borderColor:blue, width:(page.bodyWidth - 150), height:16 },
+        options: { borderWidth:1, borderColor:blue, width:(page.bodyWidth - width), height:16 },
         textOptions: { size, font },
         margins: { left: 8 } as Margins
       }).draw();
@@ -218,16 +201,26 @@ export class ExhibitForm extends PdfForm {
    * @param affiliateType 
    * @param title 
    */
-  public drawAffiliateGroup = async (affiliateType:AffiliateType, title?:string) => {
-    const { BOTH } = ExhibitFormConstraints;
-    const { 
-      page, font, boldfont, data, data: { constraint=BOTH }, 
-      _return, drawAffliate, markPosition, getPositionalChange 
-    } = this;
-    const { EMPLOYER, EMPLOYER_PRIMARY, EMPLOYER_PRIOR } = AffiliateTypes;
+  public drawAffiliateGroup = async (parms:DrawAffiliateGroupParms) => {
+    const { affiliateType, orgHeaderLines, title } = parms;
+    const { page, page: { nextPageIfNecessary }, boldfont, data, _return, drawAffliate, markPosition, getPositionalChange } = this;
     let size = 9;
 
+    const affiliates = (data.affiliates as Affiliate[]).filter(affiliate => {
+      const { parms: { data: { formType }}} = this;
+      const { affiliateType:affType } = affiliate;
+      if(formType == FormTypes.SINGLE) {
+        return true;
+      }
+      return affType == affiliateType
+    });
+
+    if(affiliates.length > 0) {
+      nextPageIfNecessary(150, () => _return(16));
+    }
+
     if(title) {
+      page.basePage.moveDown(16);
       await new Rectangle({
         text: title,
         page,
@@ -240,28 +233,16 @@ export class ExhibitForm extends PdfForm {
       page.basePage.moveDown(16);
     }
 
-    const affiliates = (data.affiliates as Affiliate[]).filter(affiliate => {
-      const { parms: { data: { formType }}} = this;
-      const { affiliateType:affType } = affiliate;
-      if(formType == FormTypes.SINGLE) {
-        return true;
-      }
-      if(affiliateType == EMPLOYER) {
-        const empTypes = [ EMPLOYER, EMPLOYER_PRIMARY ];
-        if(constraint == BOTH) {
-          empTypes.push(EMPLOYER_PRIOR);
-        }
-        return empTypes.includes(affType);
-      }
-      return affType == affiliateType
-    });
+    if(affiliates.length == 0) {
+      return;
+    }
 
     // Iterate over each affiliate and draw it. The height of each should be approximately the same.
     const posId = markPosition();
     let affiliateHeight = 0;
     for(let i=0; i<affiliates.length; i++) {
       const a = affiliates[i];
-      await drawAffliate(a, size);
+      await drawAffliate(a, size, orgHeaderLines);
       _return(4);
       if(affiliateHeight == 0) {
         // Get the height of the first affiliate to determine if the next affiliate will fit on the page.
@@ -272,17 +253,6 @@ export class ExhibitForm extends PdfForm {
         page.nextPageIfNecessary(affiliateHeight, () => _return(16));        
       }
     };
-
-    if(affiliates.length == 0) {
-      await new Rectangle({
-        text: 'None',
-        page,
-        align: Align.center, valign: VAlign.middle,
-        options: { borderWidth:1, borderColor:blue, width:page.bodyWidth, height:16 },
-        textOptions: { size, font }
-      }).draw();
-    }
-    _return(16);
   }
 
   public drawSignature = async (formDescription:string) => {
@@ -508,60 +478,16 @@ export class ExhibitForm extends PdfForm {
    * This set of parms will be used to render a "blank" version of the exhibit form.
    * @returns 
    */
-  public static getBlankForm = (formType:FormType, constraint:ExhibitFormConstraint):ExhibitForm => {
-    const { BOTH:both, CURRENT:current, OTHER:other } = ExhibitFormConstraints;
-    const { ACADEMIC, EMPLOYER, EMPLOYER_PRIMARY, EMPLOYER_PRIOR, OTHER } = AffiliateTypes;
+  public static getBlankForm = (formType:FormType, affiliateTypes:AffiliateTypes[]):ExhibitForm => {
     const getBlankAffiliate = (affiliateType:AffiliateTypes):Affiliate => { 
       return { affiliateType, org: '', fullname: '', title: '', email: '', phone_number: '' } 
     };
 
     const parms = {
-      data: { formType, affiliates: [] as Affiliate[] } as ExhibitFormData,
+      data: { formType, affiliates: affiliateTypes.map(aType => getBlankAffiliate(aType)) } as ExhibitFormData,
       entity: { entity_id: '', entity_name: '' } as Entity,
       consenter: { firstname: '', middlename: '', lastname: '', email: '', phone_number: '' } as Consenter,
       consentFormUrl: consentFormUrl('[consenter_email]')
-    }
-
-    switch(constraint) {
-      case current:
-        switch(formType) {
-          case FormTypes.FULL:
-            parms.data.affiliates = [
-              getBlankAffiliate(EMPLOYER_PRIMARY),
-              getBlankAffiliate(EMPLOYER)
-            ];
-            break;
-          case FormTypes.SINGLE:
-            parms.data.affiliates = [ 
-              getBlankAffiliate(EMPLOYER)
-            ];
-            break;            
-        }
-        break;
-      case other:
-        switch(formType) {
-          case FormTypes.FULL:
-            parms.data.affiliates = [
-              getBlankAffiliate(EMPLOYER_PRIOR),
-              getBlankAffiliate(ACADEMIC),
-              getBlankAffiliate(OTHER)
-            ];
-        }
-      case both:
-        switch(formType) {
-          case FormTypes.FULL:
-            parms.data.affiliates = [
-              getBlankAffiliate(EMPLOYER_PRIMARY),
-              getBlankAffiliate(ACADEMIC),
-              getBlankAffiliate(OTHER)
-            ];
-            break;
-          case FormTypes.SINGLE:
-            parms.data.affiliates = [
-              getBlankAffiliate(ACADEMIC)
-            ];
-            break;
-        }
     }
 
     const form = new ExhibitForm(parms);
@@ -571,21 +497,20 @@ export class ExhibitForm extends PdfForm {
   }
 }
 
-
-export const SampleExhibitFormParms = (formType:FormType, constraint:ExhibitFormConstraint=ExhibitFormConstraints.BOTH) => { 
-  const { ACADEMIC, EMPLOYER, EMPLOYER_PRIMARY, EMPLOYER_PRIOR, OTHER } = AffiliateTypes;
-  const entity_id = '27ba9278-4337-445b-ac5e-a58d3040c7fc';
-  const entity = { entity_id, entity_name: 'The School of Hard Knocks' } as Entity;
-  const email = 'porky@looneytunes.com';
-  const consenter = { email, firstname: 'Porky', middlename: 'P', lastname: 'Pig', phone_number: '617-823-9051' } as Consenter
-  const data = {
-    formType: FormTypes.FULL,
-    constraint: constraint,
-    entity_id: 'abc123',
-    affiliates: [ ],
-    sent_timestamp: new Date().toISOString()
-  } as ExhibitFormData;
-  
+export type SampleAffiliates = {
+  employerPrimary:Affiliate, employer1:Affiliate, employer2:Affiliate, employerPrior:Affiliate, 
+  academic1:Affiliate, academic2:Affiliate, other:Affiliate
+}
+export const getSampleAffiliates = ():SampleAffiliates => {
+  const { EMPLOYER, EMPLOYER_PRIMARY, EMPLOYER_PRIOR, ACADEMIC, OTHER } = AffiliateTypes;
+  const employerPrimary = {
+    affiliateType: EMPLOYER_PRIMARY,
+    org: 'The Actors Guild',
+    fullname: 'Orson Welles',
+    email: 'orson@the-guild.com',
+    title: 'Lead actor',
+    phone_number: '617-555-1212'
+  };
   const employer1 = { 
     affiliateType: EMPLOYER,
     org: 'Warner Bros.', 
@@ -634,41 +559,23 @@ export const SampleExhibitFormParms = (formType:FormType, constraint:ExhibitForm
     title: 'Professor animation studies',
     phone_number: '617-444-8888'
   }
+  return { employerPrimary, employer1, employer2, employerPrior, academic1, academic2, other };
+}
 
-  switch(constraint) {
-    case ExhibitFormConstraints.CURRENT:
-      switch(formType) {
-        case FormTypes.FULL:
-          data.affiliates!.push(employer1, employer2);
-          break;
-        case FormTypes.SINGLE:
-          data.affiliates = [ employer1 ];
-          break;
-      }
-      break;
-    case ExhibitFormConstraints.OTHER:
-      switch(formType) {
-        case FormTypes.FULL:
-          data.affiliates = [ employerPrior, academic1, academic2, other ];
-          break;
-        case FormTypes.SINGLE:
-          data.affiliates = [ academic1 ];
-          break;
-      }
-      break;
-    case ExhibitFormConstraints.BOTH:
-      switch(formType) {
-        case FormTypes.FULL:
-          data.affiliates = [ employer1, employer2, employerPrior, academic1, other ];
-          break;
-        case FormTypes.SINGLE:
-          data.affiliates = [ employer1 ];
-          break;
-      }
-  }
+export const SampleExhibitFormParms = (affiliates:Affiliate[]):ExhibitFormParms => { 
+  const entity_id = '27ba9278-4337-445b-ac5e-a58d3040c7fc';
+  const entity = { entity_id, entity_name: 'The School of Hard Knocks' } as Entity;
+  const email = 'porky@looneytunes.com';
+  const consenter = { email, firstname: 'Porky', middlename: 'P', lastname: 'Pig', phone_number: '617-823-9051' } as Consenter
+  const data = {
+    formType: FormTypes.FULL, // Temporary default - may get reassigned
+    entity_id: 'abc123',
+    affiliates: [ ],
+    sent_timestamp: new Date().toISOString()
+  } as ExhibitFormData;
 
-  data.constraint = constraint;
-  data.formType = formType;
+  data.affiliates = affiliates;
 
-  return { formType:FormTypes.FULL, consenter, entity, data, consentFormUrl: consentFormUrl(email) };
+  return { consenter, entity, data, consentFormUrl: consentFormUrl(email) };
+  
 };

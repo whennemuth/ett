@@ -3,8 +3,8 @@ import { PDFDocument, PDFFont, PDFPage, StandardFonts } from 'pdf-lib';
 import { IContext } from '../../../../contexts/IContext';
 import { log } from '../../Utils';
 import { Configurations } from '../config/Config';
-import { AffiliateTypes, ExhibitFormConstraint, ExhibitFormConstraints, FormType, FormTypes } from '../dao/entity';
-import { blue, ExhibitForm, SampleExhibitFormParms } from './ExhibitForm';
+import { AffiliateTypes, ExhibitFormConstraints, FormTypes } from '../dao/entity';
+import { blue, ExhibitForm, ExhibitFormParms, getSampleAffiliates, SampleExhibitFormParms } from './ExhibitForm';
 import { IPdfForm, PdfForm } from './PdfForm';
 import { Page } from './lib/Page';
 
@@ -16,8 +16,16 @@ export class ExhibitFormSingleCurrent extends PdfForm implements IPdfForm {
   private font:PDFFont;
   private boldfont:PDFFont;
 
-  public static getBlankForm = (formType:FormType, constraint:ExhibitFormConstraint): IPdfForm => {
-    return new ExhibitFormSingleCurrent(ExhibitForm.getBlankForm(formType, constraint));
+  public static getBlankForm = (): IPdfForm => {
+    return new ExhibitFormSingleCurrent(ExhibitForm.getBlankForm(
+      FormTypes.SINGLE, [ AffiliateTypes.EMPLOYER ]
+    ));
+  }
+
+  public static getInstance = (parms:ExhibitFormParms): IPdfForm => {
+    parms.data.constraint = ExhibitFormConstraints.CURRENT;
+    parms.data.formType = FormTypes.SINGLE;
+    return new ExhibitFormSingleCurrent(new ExhibitForm(parms));
   }
 
   constructor(baseForm:ExhibitForm) {
@@ -54,7 +62,13 @@ export class ExhibitFormSingleCurrent extends PdfForm implements IPdfForm {
 
     await drawIntro();
 
-    await drawAffiliateGroup(AffiliateTypes.EMPLOYER);
+    await drawAffiliateGroup({
+      affiliateType:AffiliateTypes.EMPLOYER,
+      orgHeaderLines: [
+        'Current Employer or Appointing /',
+        'Organization (no acronyms)'
+      ]
+    });
 
     await drawAgreement();
 
@@ -212,7 +226,7 @@ export class ExhibitFormSingleCurrent extends PdfForm implements IPdfForm {
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/ExhibitFormSingleCurrent.ts')) {
 
-  const testBlankForm = true;
+  const testBlankForm = false;
 
   (async () => {
 
@@ -222,23 +236,13 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/
     process.env[Configurations.ENV_VAR_NAME] = JSON.stringify(context.CONFIG);
     process.env.CLOUDFRONT_DOMAIN = 'www.schoolofhardknocks.edu';
 
-    const create = async (baseForm:ExhibitForm) => {
-      const form = new ExhibitFormSingleCurrent(baseForm);
-      await form.writeToDisk('./lib/lambda/_lib/pdf/ExhibitFormSingleCurrent.pdf');
-      console.log(`done`);
-    }
+    const form = testBlankForm ?
+      ExhibitFormSingleCurrent.getBlankForm() :
+      ExhibitFormSingleCurrent.getInstance(SampleExhibitFormParms([ getSampleAffiliates().employer1 ]));
 
-    // If blank form, just create the blank form and return;
-    if(testBlankForm) {
-      await create(ExhibitForm.getBlankForm(FormTypes.SINGLE, ExhibitFormConstraints.CURRENT));
-      return;
-    }
+    await form.writeToDisk('./lib/lambda/_lib/pdf/ExhibitFormSingleCurrent.pdf');
+    console.log(`done`);
 
-    process.env.CLOUDFRONT_DOMAIN = 'www.schoolofhardknocks.edu';
-    const baseForm = new ExhibitForm(SampleExhibitFormParms(FormTypes.SINGLE, ExhibitFormConstraints.CURRENT));
-
-    // Create the exhibit form
-    await create(baseForm);
   })();
 
 }

@@ -4,7 +4,7 @@ import { IContext } from '../../../../contexts/IContext';
 import { log } from '../../Utils';
 import { Configurations } from '../config/Config';
 import { AffiliateTypes, ExhibitFormConstraints, FormTypes } from '../dao/entity';
-import { blue, ExhibitForm, red, SampleExhibitFormParms } from './ExhibitForm';
+import { blue, ExhibitForm, ExhibitFormParms, getSampleAffiliates, red, SampleExhibitFormParms } from './ExhibitForm';
 import { IPdfForm, PdfForm } from './PdfForm';
 import { Page } from './lib/Page';
 import { Align, VAlign } from './lib/Utils';
@@ -21,6 +21,19 @@ export class ExhibitFormFullCurrent extends PdfForm implements IPdfForm {
     super();
     this.baseForm = baseForm;
     this.page = baseForm.page;
+  }
+
+  public static getBlankForm = (): IPdfForm => {
+    const { EMPLOYER_PRIMARY, EMPLOYER } = AffiliateTypes;
+    return new ExhibitFormFullCurrent(ExhibitForm.getBlankForm(
+      FormTypes.FULL, [ EMPLOYER_PRIMARY, EMPLOYER ]
+    ));
+  }
+
+  public static getInstance = (parms:ExhibitFormParms): IPdfForm => {
+    parms.data.constraint = ExhibitFormConstraints.CURRENT;
+    parms.data.formType = FormTypes.FULL;
+    return new ExhibitFormFullCurrent(new ExhibitForm(parms));
   }
 
   public set consentFormUrl(url:string) {
@@ -51,7 +64,19 @@ export class ExhibitFormFullCurrent extends PdfForm implements IPdfForm {
 
     await drawIntro();
 
-    await drawAffiliateGroup(AffiliateTypes.EMPLOYER, 'Current Employer(s) and Appointing Organizations<sup>1</sup>');
+    await drawAffiliateGroup({ 
+      affiliateType:AffiliateTypes.EMPLOYER_PRIMARY, 
+      title:'Current Employer(s) and Appointing Organizations<sup>1</sup>',
+      orgHeaderLines: [ 'Primary Current Employer' ]
+    });
+
+    await drawAffiliateGroup({ 
+      affiliateType:AffiliateTypes.EMPLOYER, 
+      orgHeaderLines: [ 
+        'Other Current Employer /',
+        'Appointing Organization'
+      ]
+    });
 
     await drawRedBox();
 
@@ -104,7 +129,7 @@ export class ExhibitFormFullCurrent extends PdfForm implements IPdfForm {
         `the date of this Exhibit.  They are among my <u>Consent Recipients (also called Affiliates).</u> ` +
         `The definitions in the Consent Form also apply to this Exhibit Form.</b>   <u>My known Consent Recipients ` +
         `that are my <b>Current</b> Employer(s) and Appointing Organization(s) are:</u>`, 
-      options: { size, font }, linePad: 4, padBottom: 16 
+      options: { size, font }, linePad: 4 
     });
   }
 
@@ -371,23 +396,17 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/
     process.env[Configurations.ENV_VAR_NAME] = JSON.stringify(context.CONFIG);
     process.env.CLOUDFRONT_DOMAIN = 'www.schoolofhardknocks.edu';
 
-    const create = async (baseForm:ExhibitForm) => {
-      const form = new ExhibitFormFullCurrent(baseForm);
-      await form.writeToDisk('./lib/lambda/_lib/pdf/ExhibitFormFullCurrent.pdf');
-      console.log(`done`);
-    }
+    const form = testBlankForm ?
+      ExhibitFormFullCurrent.getBlankForm() :
+      ExhibitFormFullCurrent.getInstance(SampleExhibitFormParms([
+        getSampleAffiliates().employerPrimary, 
+        getSampleAffiliates().employer1,
+        getSampleAffiliates().employer2
+      ]));
 
-    // If blank form, just create the blank form and return;
-    if(testBlankForm) {
-      await create(ExhibitForm.getBlankForm(FormTypes.FULL, ExhibitFormConstraints.CURRENT));
-      return;
-    }
+    await form.writeToDisk('./lib/lambda/_lib/pdf/ExhibitFormFullCurrent.pdf');
+    console.log(`done`);
 
-    process.env.CLOUDFRONT_DOMAIN = 'www.schoolofhardknocks.edu';
-    const baseForm = new ExhibitForm(SampleExhibitFormParms(FormTypes.FULL, ExhibitFormConstraints.CURRENT));
-
-    // Create the exhibit form
-    await create(baseForm);
   })();
 
 }
