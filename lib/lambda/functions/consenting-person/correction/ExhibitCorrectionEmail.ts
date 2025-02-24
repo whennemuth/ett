@@ -3,10 +3,11 @@ import { IContext } from "../../../../../contexts/IContext";
 import { ConsenterCrud } from "../../../_lib/dao/dao-consenter";
 import { EntityCrud } from "../../../_lib/dao/dao-entity";
 import { UserCrud } from "../../../_lib/dao/dao-user";
-import { AffiliateTypes, Consenter, Entity, FormTypes, Roles, User, YN } from "../../../_lib/dao/entity";
+import { Affiliate, AffiliateTypes, Consenter, Entity, ExhibitFormConstraints, FormTypes, Roles, User, YN } from "../../../_lib/dao/entity";
 import { Attachment, EmailParms, sendEmail } from "../../../_lib/EmailWithAttachments";
 import { ExhibitForm, ExhibitFormParms } from "../../../_lib/pdf/ExhibitForm";
-import { ExhibitFormSingle } from "../../../_lib/pdf/ExhibitFormSingle";
+import { ExhibitFormSingleBoth } from '../../../_lib/pdf/ExhibitFormSingleBoth';
+import { ExhibitFormSingleCurrent } from '../../../_lib/pdf/ExhibitFormSingleCurrent';
 import { IPdfForm, PdfForm } from "../../../_lib/pdf/PdfForm";
 import { consentFormUrl, ExhibitFormCorrection } from "../ConsentingPerson";
 import { bugsbunny, daffyduck, porkypig } from '../ConsentingPerson.mocks';
@@ -41,12 +42,34 @@ export class ExhibitCorrectionEmail {
     }
   }
 
+  private getExhibitForm = (affiliate:Affiliate):IPdfForm => {
+    const { BOTH, CURRENT, OTHER } = ExhibitFormConstraints;
+    const constraint = ExhibitForm.getConstraintFromAffiliateType(affiliate.affiliateType);
+    const { _consenter: consenter, _entity: { entity_id, entity_name } } = this;
+    
+    const parms = {
+      consenter,
+      consentFormUrl: consentFormUrl(consenter.email),
+      data: { formType:FormTypes.SINGLE, constraint, entity_id, affiliates: [ affiliate ] },
+      entity: { entity_id, entity_name },
+    } as ExhibitFormParms;
+
+    switch(constraint) {
+      case CURRENT:
+        return ExhibitFormSingleCurrent.getInstance(parms);
+      case OTHER:
+        return ExhibitFormSingleBoth.getInstance(parms);
+      case BOTH:
+        return ExhibitFormSingleBoth.getInstance(parms);
+    }
+  }
+
   public sendToEntity = async ():Promise<boolean> => {
     const { context, initialize, corrections: { appends=[], deletes=[], updates=[] } } = this;
 
     await initialize();
 
-    const { _consenter: consenter, _consenter: { firstname, middlename, lastname }, _entity: { entity_id, entity_name } } = this;
+    const { _consenter: { firstname, middlename, lastname }, _entity: { entity_id, entity_name }, getExhibitForm } = this;
     const { fullName } = PdfForm;
     const consenterFullname = fullName(firstname, middlename, lastname);
     const subject = 'ETT Notice of Exhibit Form Correction';
@@ -72,32 +95,16 @@ export class ExhibitCorrectionEmail {
     // Build the attachments for affiliate updates
     updates.forEach(affiliate => {
       const name = `corrected-affiliate-${++counter}.pdf`;
-      attachments.push({ 
-        name, 
-        description: name, 
-        pdf: new ExhibitFormSingle(new ExhibitForm({
-          consenter,
-          consentFormUrl: consentFormUrl(consenter.email),
-          data: { formType:FormTypes.SINGLE, entity_id, affiliates: [ affiliate ] }, // TODO: Should constraint be included?
-          entity: { entity_id, entity_name },
-        } as ExhibitFormParms)) 
-      });
+      const pdf = getExhibitForm(affiliate);
+      attachments.push({ name, description: name, pdf });
     });
 
     // Build the attachments for new affiliates
     counter = 0;
     appends.forEach(affiliate => {
       const name = `new-affiliate-${++counter}.pdf`;
-      attachments.push({ 
-        name, 
-        description: name, 
-        pdf: new ExhibitFormSingle(new ExhibitForm({
-          consenter,
-          consentFormUrl: consentFormUrl(consenter.email),
-          data: { formType:FormTypes.SINGLE, entity_id, affiliates: [ affiliate ] }, // TODO: Should constraint be included?
-          entity: { entity_id, entity_name },
-        } as ExhibitFormParms)) 
-      });
+      const pdf = getExhibitForm(affiliate);
+      attachments.push({ name, description: name, pdf }); 
     });
 
     // Get the email recipients
@@ -131,11 +138,11 @@ export class ExhibitCorrectionEmail {
   }
 
   public sendToAffiliates = async ():Promise<boolean> => {
-    const { context, initialize, corrections: { appends=[], deletes=[], updates=[] } } = this;
+    const { context, initialize, corrections: { updates=[] }, getExhibitForm } = this;
 
     await initialize();
     
-    const { _consenter: consenter, _consenter: { firstname, middlename, lastname }, _entity: { entity_id, entity_name } } = this;
+    const { _consenter: { firstname, middlename, lastname }, _entity: { entity_name } } = this;
     const { fullName } = PdfForm;
     const consenterFullname = fullName(firstname, middlename, lastname);
     const subject = 'ETT Notice of Consent Revision';
@@ -150,17 +157,9 @@ export class ExhibitCorrectionEmail {
 
       // Send the email
       const from = `noreply@${context.ETT_DOMAIN}`;
+      const pdf = getExhibitForm(updates[i]);
       const ok = await sendEmail({ subject, from, message, to: [ email ], attachments: [
-        { 
-          name: 'correction.pdf', 
-          description: 'correction.pdf', 
-          pdf: new ExhibitFormSingle(new ExhibitForm({
-            consenter,
-            consentFormUrl: consentFormUrl(consenter.email),
-            data: { formType:FormTypes.SINGLE, entity_id, affiliates: [ updates[i] ] }, // TODO: Put in the constraint
-            entity: { entity_id, entity_name },
-          } as ExhibitFormParms)) 
-        }
+        { name: 'correction.pdf', description: 'correction.pdf', pdf }
       ] } as EmailParms);
       allOk &&= ok;
     }

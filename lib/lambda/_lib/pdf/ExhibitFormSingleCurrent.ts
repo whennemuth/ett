@@ -42,11 +42,15 @@ export class ExhibitFormSingleCurrent extends PdfForm implements IPdfForm {
    * @returns The bytes for the entire pdf form.
    */
   public async getBytes():Promise<Uint8Array> {
-    const { baseForm, drawLogo, drawTitle, drawIntro, drawAgreement, drawReadyForSubmission } = this;
+    const { 
+      baseForm, baseForm: { data: { affiliates }, getOrgHeaderLines}, 
+      drawLogo, drawTitle, drawIntro, drawAgreement, drawReadyForSubmission 
+    } = this;
 
     await baseForm.initialize();
 
     const { doc, embeddedFonts, pageMargins, font, boldfont, drawAffiliateGroup, drawSignature } = baseForm;
+    const affiliateType:AffiliateTypes = affiliates![0].affiliateType;
     
     this.doc = doc;
     this.embeddedFonts = embeddedFonts;
@@ -62,13 +66,7 @@ export class ExhibitFormSingleCurrent extends PdfForm implements IPdfForm {
 
     await drawIntro();
 
-    await drawAffiliateGroup({
-      affiliateType:AffiliateTypes.EMPLOYER,
-      orgHeaderLines: [
-        'Current Employer or Appointing /',
-        'Organization (no acronyms)'
-      ]
-    });
+    await drawAffiliateGroup({ affiliateType, orgHeaderLines:getOrgHeaderLines(affiliateType) });
 
     await drawAgreement();
 
@@ -238,7 +236,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/
 
     const form = testBlankForm ?
       ExhibitFormSingleCurrent.getBlankForm() :
-      ExhibitFormSingleCurrent.getInstance(SampleExhibitFormParms([ getSampleAffiliates().employer1 ]));
+      ExhibitFormSingleCurrent.getInstance(SampleExhibitFormParms([ getSampleAffiliates().employerPrimary ]));
 
     await form.writeToDisk('./lib/lambda/_lib/pdf/ExhibitFormSingleCurrent.pdf');
     console.log(`done`);

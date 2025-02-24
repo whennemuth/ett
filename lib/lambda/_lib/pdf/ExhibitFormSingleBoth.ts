@@ -3,7 +3,7 @@ import { PDFDocument, PDFFont, PDFPage, StandardFonts } from 'pdf-lib';
 import { IContext } from '../../../../contexts/IContext';
 import { log } from '../../Utils';
 import { Configurations } from '../config/Config';
-import { AffiliateTypes, ExhibitFormConstraints, FormTypes } from '../dao/entity';
+import { AffiliateType, AffiliateTypes, ExhibitFormConstraints, FormTypes } from '../dao/entity';
 import { blue, ExhibitForm, ExhibitFormParms, getSampleAffiliates, SampleExhibitFormParms } from './ExhibitForm';
 import { IPdfForm, PdfForm } from './PdfForm';
 import { Page } from './lib/Page';
@@ -42,11 +42,15 @@ export class ExhibitFormSingleBoth extends PdfForm implements IPdfForm {
    * @returns The bytes for the entire pdf form.
    */
   public async getBytes():Promise<Uint8Array> {
-    const { baseForm, drawLogo, drawTitle, drawIntro, drawAgreement, drawReadyForSubmission } = this;
+    const { 
+      baseForm, baseForm: { data: { affiliates }, getOrgHeaderLines }, 
+      drawLogo, drawTitle, drawIntro, drawAgreement, drawReadyForSubmission 
+    } = this;
 
     await baseForm.initialize();
 
     const { doc, embeddedFonts, pageMargins, font, boldfont, drawAffiliateGroup, drawSignature } = baseForm;
+    const affiliateType:AffiliateType = affiliates![0].affiliateType;
     
     this.doc = doc;
     this.embeddedFonts = embeddedFonts;
@@ -55,6 +59,7 @@ export class ExhibitFormSingleBoth extends PdfForm implements IPdfForm {
     this.boldfont = boldfont;
     this.page = new Page(doc.addPage([620, 785]) as PDFPage, this.pageMargins, this.embeddedFonts);
     baseForm.page = this.page;
+  
     
     await drawLogo(this.page);
 
@@ -62,11 +67,8 @@ export class ExhibitFormSingleBoth extends PdfForm implements IPdfForm {
 
     await drawIntro();
 
-    await drawAffiliateGroup({
-      affiliateType:AffiliateTypes.OTHER,
-      orgHeaderLines: [ 'Organization (no acronyms)' ]
-    });
-
+    await drawAffiliateGroup({ affiliateType, orgHeaderLines:getOrgHeaderLines(affiliateType) });
+ 
     await drawAgreement();
 
     await drawSignature('single exhibit Form');

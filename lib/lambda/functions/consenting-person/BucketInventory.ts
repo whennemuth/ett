@@ -45,7 +45,7 @@ export class BucketInventory {
    * @param entityId 
    * @returns 
    */
-  public static getInstanceForEntity = async(entityId:string):Promise<BucketInventory> => {
+  public static getInstanceForEntity = async (entityId:string):Promise<BucketInventory> => {
     const inventory = new BucketInventory('', entityId);
     const { fromBucketObjectKey } = BucketItemMetadata
     const bucketItem = new BucketItem();
@@ -78,6 +78,14 @@ export class BucketInventory {
     return this.prefix;
   }
 
+  public getConsenterEmail = () => {
+    return this.consenterEmail;
+  }
+
+  public getEntityId = () => {
+    return this.entityId;
+  }
+  
   /**
    * Equivalent of sql "SELECT DISTINCT entity_id" across the inventory.
    * @returns 

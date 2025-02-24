@@ -1,7 +1,7 @@
 import { Color, PDFDocument, PDFFont, PDFPageDrawTextOptions, StandardFonts, rgb } from "pdf-lib";
 import { consentFormUrl } from "../../functions/consenting-person/ConsentingPerson";
 import { Configurations, DurationType } from "../config/Config";
-import { Affiliate, AffiliateType, AffiliateTypes, ConfigNames, Consenter, Entity, ExhibitFormConstraints, ExhibitForm as ExhibitFormData, FormType, FormTypes } from "../dao/entity";
+import { Affiliate, AffiliateType, AffiliateTypes, ConfigNames, Consenter, Entity, ExhibitFormConstraint, ExhibitFormConstraints, ExhibitForm as ExhibitFormData, FormType, FormTypes } from "../dao/entity";
 import { PdfForm } from "./PdfForm";
 import { EmbeddedFonts } from "./lib/EmbeddedFonts";
 import { Rectangle } from "./lib/Rectangle";
@@ -81,6 +81,10 @@ export class ExhibitForm extends PdfForm {
     this.blankForm = blank;
   }
 
+  /**
+   * Get the number of days after which an entity is considered stale from the app configuration.
+   * @returns 
+   */
   public getStaleEntityDays = async():Promise<number> => {
     if( ! this.staleEntityDays) {
       const { getAppConfig } = new Configurations();
@@ -92,6 +96,10 @@ export class ExhibitForm extends PdfForm {
     return this.staleEntityDays;
   }
 
+  /**
+   * Get the number of days after which a second reminder is sent to an affiliate from the app configuration.
+   * @returns 
+   */
   public getSecondReminderDays = async():Promise<number> => {
     if( ! this.secondReminderDays) {
       const { getAppConfig } = new Configurations();
@@ -254,7 +262,52 @@ export class ExhibitForm extends PdfForm {
       }
     };
   }
+  
+  /**
+   * Get the textual content for the organization column header for a given affiliate type.
+   * @param affType 
+   * @returns 
+   */
+  public getOrgHeaderLines = (affType:AffiliateType):string[] => {
+    const { ACADEMIC, EMPLOYER, EMPLOYER_PRIMARY, EMPLOYER_PRIOR, OTHER } = AffiliateTypes;
+    switch(affType) {
+      case EMPLOYER_PRIMARY:
+       return [ 'Primary Current Employer' ];
+      case EMPLOYER:
+        return [ 'Current Employer or Appointing /', 'Organization (no acronyms)' ];
+      case EMPLOYER_PRIOR: case ACADEMIC: case OTHER:
+        return [ 'Organization (no acronyms)' ];
+    }
+  }
 
+  /**
+   * Pick a constraint that best fits the affiliate type.
+   * 
+   * NOTE: This call is being made in the context of selecting the type of single exhibit form, by constraint,
+   * for corrections. Currently, constraint is not a part of the file storage path naming methodology. Therefore, it
+   * is not possible to determine what the original constraint was of the single exhbit form being corrected. 
+   * Thus, it is possible that a single exhibit form originally derived from a "BOTH" full exhibit
+   * form will be based on the "EMPLOYER" constraint - which means that the single exhbit form being corrected will
+   * be rendered from the ExhibitFormSingleCurrent.ts file, not the ExhibitFormSingleBoth.ts file, which is ok 
+   * for now because they do not differ enough to warrant adding further complexity to the file storage naming conventions.
+   * @param affType 
+   * @returns 
+   */
+  public static getConstraintFromAffiliateType = (affType:AffiliateType):ExhibitFormConstraint => {
+    const { ACADEMIC, EMPLOYER, EMPLOYER_PRIMARY, EMPLOYER_PRIOR, OTHER } = AffiliateTypes;
+    const { CURRENT, OTHER:OtherConstraint } = ExhibitFormConstraints;
+    switch(affType) {
+      case EMPLOYER_PRIMARY: case EMPLOYER:
+        return CURRENT;
+      case EMPLOYER_PRIOR: case ACADEMIC: case OTHER: default:
+        return OtherConstraint;
+    }
+  }
+
+  /**
+   * Draw the signature textbox and related date, cellphone, and email textboxes.
+   * @param formDescription 
+   */
   public drawSignature = async (formDescription:string) => {
     const {  
       page, page: { bodyWidth, margins, drawRectangle, drawText, nextPageIfNecessary }, 
@@ -381,6 +434,10 @@ export class ExhibitForm extends PdfForm {
   }
   
   private orderedItemCounter = { count: 0 };
+  /**
+   * Draw one of a set of paragraphs, ordered with lettering.
+   * @param parms 
+   */
   public drawOrderedItem = async (parms:ItemParms) => {
     const { page: { 
       bodyWidth, drawWrappedText, nextPageIfNecessary 
@@ -408,6 +465,10 @@ export class ExhibitForm extends PdfForm {
     basePage.moveDown(16);
   }
 
+  /**
+   * Draw one of a set of of bulleted paragraphs.
+   * @param parms 
+   */
   public drawBulletedItem = async (parms:ItemParms) => {
     const { page: { bodyWidth, drawWrappedText, nextPageIfNecessary }, boldfont, _return } = this;    
     const { paragraphs } = parms;
@@ -431,6 +492,10 @@ export class ExhibitForm extends PdfForm {
     basePage.moveDown(20);
   }
 
+  /**
+   * Draw a large red button with a white lable and a description to the right.
+   * @param parms 
+   */
   public drawBigRedButton = async (parms:BigRedButtonParms) => {
     const { text, description, descriptionHeight } = parms;
     const { _return, page, page: { drawRectangle, drawWrappedText, bodyWidth, basePage, margins }, boldfont, font } = this;

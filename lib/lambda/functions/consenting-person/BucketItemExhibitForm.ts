@@ -1,11 +1,14 @@
 import { S3 } from "@aws-sdk/client-s3";
-import { Affiliate, AffiliateTypes, Consenter, YN } from "../../_lib/dao/entity";
-import { ExhibitForm, ExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
-import { ExhibitFormSingle } from "../../_lib/pdf/ExhibitFormSingle";
+import { IContext } from "../../../../contexts/IContext";
+import { Affiliate, AffiliateTypes, Consenter, ExhibitFormConstraints, FormTypes, YN } from "../../_lib/dao/entity";
+import { ExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
+import { ExhibitFormSingleBoth } from "../../_lib/pdf/ExhibitFormSingleBoth";
+import { ExhibitFormSingleCurrent } from "../../_lib/pdf/ExhibitFormSingleCurrent";
+import { ExhibitFormSingleOther } from "../../_lib/pdf/ExhibitFormSingleOther";
+import { IPdfForm } from "../../_lib/pdf/PdfForm";
+import { log } from "../../Utils";
 import { BucketItem, Tags } from "./BucketItem";
 import { BucketItemMetadata, BucketItemMetadataParms, ItemType } from "./BucketItemMetadata";
-import { log } from "../../Utils";
-import { IContext } from "../../../../contexts/IContext";
 import { consentFormUrl } from "./ConsentingPerson";
 
 /**
@@ -28,14 +31,15 @@ export class BucketExhibitForm {
   }
 
   /**
-   * Add the disclosure form to the bucket.
+   * Add the exhibit form to the bucket.
    * @returns 
    */
   public add = async (consenter:Consenter, _correction:boolean=false):Promise<string> => {
     const { EXHIBIT } = ItemType;
     const { exhibit_forms=[] } = consenter;
+    const { BOTH, CURRENT, OTHER } = ExhibitFormConstraints
     let { metadata, metadata: { 
-      consenterEmail, entityId, affiliateEmail, correction=_correction, savedDate=new Date() }, 
+      consenterEmail, constraint, entityId, affiliateEmail, correction=_correction, savedDate=new Date() }, 
       bucket: { bucketName:Bucket, region }
     } = this;
 
@@ -67,13 +71,34 @@ export class BucketExhibitForm {
         data: exhibitForm,
         consentFormUrl: consentFormUrl(consenterEmail),
       } as ExhibitFormParms;
-      const pdf = new ExhibitFormSingle(new ExhibitForm(parms));
+
+      let pdf:IPdfForm
+      const _constraint = constraint ?? BOTH;
+      switch(constraint) {
+        case CURRENT:
+          pdf = ExhibitFormSingleCurrent.getInstance(parms);
+          break;
+        case OTHER:
+          pdf = ExhibitFormSingleOther.getInstance(parms);
+          break;
+        case BOTH: default:
+          pdf = ExhibitFormSingleBoth.getInstance(parms);
+          break;
+      }
+
+      // Get the s3 client and the pdf file bytes
+      const s3 = new S3({ region });
+      const Body = await pdf!.getBytes();
+
+      // Configure the constraint as a tag to the exhibit form in the bucket
+      const constraintInfo = new URLSearchParams();
+      constraintInfo.append('constraint', _constraint);
+      constraintInfo.append('constraint_assigned_by_default', constraint ? 'false' : 'true');
+      const Tagging = constraintInfo.toString();
 
       // Save the new single exhibit form pdf file to the s3 bucket
-      const s3 = new S3({ region });
-      const Body = await pdf.getBytes();
       log(`Adding ${Key}`);
-      await s3.putObject({ Bucket, Key, Body, ContentType: 'application/pdf' });
+      await s3.putObject({ Bucket, Key, Body, Tagging, ContentType: 'application/pdf' });
 
       // Return the object key of the exhibit form.
       return Key;
@@ -168,6 +193,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         // entity_id: 'entity_id_1',
         entity_id: 'eea2d463-2eab-4304-b2cf-cf03cf57dfaa',
         sent_timestamp: dummyDateString,
+        constraint: ExhibitFormConstraints.BOTH,
+        formType: FormTypes.SINGLE,
         affiliates: [
           { 
             affiliateType: AffiliateTypes.EMPLOYER,

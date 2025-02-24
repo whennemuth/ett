@@ -2,12 +2,14 @@ import * as ctx from '../../../../contexts/context.json';
 import { IContext } from "../../../../contexts/IContext";
 import { DAOFactory } from "../../_lib/dao/dao";
 import { UserCrud } from '../../_lib/dao/dao-user';
-import { Consenter, Delegate, Entity, ExhibitForm as ExhibitFormData, Role, Roles, User, YN } from "../../_lib/dao/entity";
+import { Consenter, Delegate, Entity, ExhibitFormConstraints, ExhibitForm as ExhibitFormData, Role, Roles, User, YN } from "../../_lib/dao/entity";
 import { EmailParms, sendEmail } from "../../_lib/EmailWithAttachments";
 import { ConsentForm } from "../../_lib/pdf/ConsentForm";
 import { DisclosureForm, DisclosureFormData } from "../../_lib/pdf/DisclosureForm";
-import { ExhibitForm, ExhibitFormParms, getSampleAffiliates, SampleExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
-import { ExhibitFormSingle } from '../../_lib/pdf/ExhibitFormSingle';
+import { ExhibitFormParms, getSampleAffiliates, SampleExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
+import { ExhibitFormSingleBoth } from '../../_lib/pdf/ExhibitFormSingleBoth';
+import { ExhibitFormSingleCurrent } from '../../_lib/pdf/ExhibitFormSingleCurrent';
+import { ExhibitFormSingleOther } from '../../_lib/pdf/ExhibitFormSingleOther';
 import { IPdfForm, PdfForm } from "../../_lib/pdf/PdfForm";
 import { log } from '../../Utils';
 import { DisclosureItemsParms } from "../consenting-person/BucketItem";
@@ -77,20 +79,21 @@ export class BasicDisclosureRequest {
 
   public send = async (recipients:Recipients):Promise<boolean> => { 
     const { 
-      exhibitData, data, data: { 
+      exhibitData, exhibitData: { constraint, affiliates=[] }, data, data: { 
         consenter, 
         consenter: { email:consenterEmail }, 
         requestingEntity: { name:entity_name },
         disclosingEntity: { representatives }
       } 
     } = this;
+    const { BOTH, CURRENT, OTHER } = ExhibitFormConstraints;
 
     // Email attachments
     const affiliateEmail = recipients.to[0];
     const parms = {
       consenter, consentFormUrl: consentFormUrl(consenterEmail), data:exhibitData, entity: { entity_id:'abc123', entity_name }
     } as ExhibitFormParms;
-    const affiliateMatch = (exhibitData.affiliates ?? []).find(a => {
+    const affiliateMatch = affiliates.find(a => {
       return a.email == affiliateEmail;
     });
 
@@ -99,7 +102,19 @@ export class BasicDisclosureRequest {
       return false;
     }
 
-    const singleExhibitForm = new ExhibitFormSingle(new ExhibitForm(parms));
+    let singleExhibitForm:IPdfForm;
+    switch(constraint) {
+      case BOTH:
+        singleExhibitForm = ExhibitFormSingleBoth.getInstance(parms);
+        break;
+      case CURRENT:
+        singleExhibitForm = ExhibitFormSingleCurrent.getInstance(parms);
+        break;
+      case OTHER:
+        singleExhibitForm = ExhibitFormSingleOther.getInstance(parms);
+        break;
+    }
+
     const disclosureForm = new DisclosureForm(data);
 
     return send({ 

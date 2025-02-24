@@ -1942,10 +1942,10 @@
         const url = new URL(document.location.href);
         return url.origin + url.pathname;
       }
-      const getType = () => {
+      const getConstraint = () => {
         return document.location.pathname.split('/')[4];
       }
-      return { isMatch, getRedirectUri, getOriginAndPath, getType };
+      return { isMatch, getRedirectUri, getOriginAndPath, getConstraint };
     }
 
     const exhibitsPath = ExhibitsPath();
@@ -3008,7 +3008,7 @@
               document.getElementById('waitForAI').style.display = 'none';
               document.getElementById('consenter-exhibit-compose-link').click();
               const affiliateTypes = document.querySelector('select[name=org-type]').options;
-              switch(exhibitsPath.getType()) {
+              switch(exhibitsPath.getConstraint()) {
                 case 'current':
                   affiliateTypes.namedItem('header').remove();
                   affiliateTypes.namedItem('ACADEMIC').remove();
@@ -3654,7 +3654,7 @@
       })
     }
 
-    function getExhibitFormPayload() {
+    function getExhibitFormPayload(formType='full') {
       const { email } = IDJwtCookie.getUser() ?? {}; 
       const affiliates = [];
 
@@ -3670,7 +3670,12 @@
         affiliates.push(affiliate);
       })
       const { entity_id } = selectedEntity;
-      const payload = { email, exhibit_data: { entity_id, affiliates }};
+      const payload = { email, exhibit_data: { 
+        entity_id, 
+        constraint: exhibitsPath.getConstraint(),
+        formType,
+        affiliates
+      }};
       return payload;
     }
 
@@ -3715,7 +3720,7 @@
      * Save the full exhibit form to the database. This is NOT the same as submitting an exhibit form.
      */
     const saveExhibitForm = async () => {
-      const payload = getExhibitFormPayload();
+      const payload = getExhibitFormPayload('full');
       await sendExhibitFormPayload('save-exhibit-form', payload, () => {
         alert('Exhibit form saved.');
         populateConsenterEntityLists();
@@ -3727,7 +3732,7 @@
      * storage, and trigger emails to the entity and the affiliates listed in the exhibit form.
      */
     const submitExhibitForm = async () => {
-      const payload = getExhibitFormPayload();
+      const payload = getExhibitFormPayload('full');
       await sendExhibitFormPayload('send-exhibit-form', payload, () => {
         alert('Exhibit form submitted.');
         populateConsenterEntityLists();
@@ -5118,7 +5123,7 @@
       updatedAffiliates.forEach(a => {
         const updated = {
           email: a.id,
-          affilliateType: a.querySelector('select[name="org-type"]').value,
+          affiliateType: a.querySelector('select[name="org-type"]').value,
           org: a.querySelector('input[name="org-name"]').value,
           fullname: a.querySelector('input[name="poc-name"]').value,
           title: a.querySelector('input[name="poc-title"]').value,
@@ -5141,7 +5146,7 @@
         newAffiliates = fieldsetContainer.querySelectorAll('#trPoc') ?? [];
         newAffiliates.forEach(tr => {
           const addition = {
-            affilliateType: tr.querySelector('select[name="org-type"]').value,
+            affiliateType: tr.querySelector('select[name="org-type"]').value,
             org: tr.querySelector('input[name="org-name"]').value,
             email: tr.querySelector('input[name="poc-email"]').value,
             fullname: tr.querySelector('input[name="poc-name"]').value,

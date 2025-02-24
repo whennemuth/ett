@@ -1,3 +1,4 @@
+import { ExhibitFormConstraint } from "../../_lib/dao/entity";
 import { log } from "../../Utils";
 import { BucketItem } from "./BucketItem";
 
@@ -9,8 +10,9 @@ export enum ItemType {
 export type BucketItemMetadataParms = {
   consenterEmail: string,
   entityId: string,
-  affiliateEmail?: string,
   itemType: ItemType,
+  affiliateEmail?: string,
+  constraint?: ExhibitFormConstraint
   correction?: boolean,
   // If any of the remaining are specified, metadata should be specific to a single object
   savedDate?: Date,

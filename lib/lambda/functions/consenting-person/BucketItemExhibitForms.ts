@@ -1,6 +1,6 @@
 import { DeleteObjectsCommandOutput, ObjectIdentifier, S3 } from "@aws-sdk/client-s3";
 import { IContext } from "../../../../contexts/IContext";
-import { AffiliateTypes, Consenter, ExhibitForm as ExhibitFormData, YN } from "../../_lib/dao/entity";
+import { AffiliateTypes, Consenter, ExhibitFormConstraints, ExhibitForm as ExhibitFormData, FormTypes, YN } from "../../_lib/dao/entity";
 import { BucketItem } from "./BucketItem";
 import { BucketExhibitForm } from "./BucketItemExhibitForm";
 import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "./BucketItemMetadata";
@@ -208,6 +208,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
       {
         entity_id: '13376a3d-12d8-40e1-8dee-8c3d099da1b2',
         sent_timestamp: dummyDateString,
+        constraint: ExhibitFormConstraints.BOTH,
+        formType: FormTypes.SINGLE,
         affiliates: [
           { 
             affiliateType: AffiliateTypes.EMPLOYER,

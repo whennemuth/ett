@@ -42,11 +42,15 @@ export class ExhibitFormSingleOther extends PdfForm implements IPdfForm {
    * @returns The bytes for the entire pdf form.
    */
   public async getBytes():Promise<Uint8Array> {
-    const { baseForm, drawLogo, drawTitle, drawIntro, drawAgreement, drawReadyForSubmission } = this;
+    const { 
+      baseForm, baseForm: { data: { affiliates }, getOrgHeaderLines}, 
+      drawLogo, drawTitle, drawIntro, drawAgreement, drawReadyForSubmission 
+    } = this;
 
     await baseForm.initialize();
 
     const { doc, embeddedFonts, pageMargins, font, boldfont, drawAffiliateGroup, drawSignature } = baseForm;
+    const affiliateType:AffiliateTypes = affiliates![0].affiliateType;
     
     this.doc = doc;
     this.embeddedFonts = embeddedFonts;
@@ -62,10 +66,7 @@ export class ExhibitFormSingleOther extends PdfForm implements IPdfForm {
 
     await drawIntro();
 
-    await drawAffiliateGroup({
-      affiliateType:AffiliateTypes.OTHER, 
-      orgHeaderLines: [ 'Organization (no acronyms)' ]
-    });
+    await drawAffiliateGroup({ affiliateType, orgHeaderLines:getOrgHeaderLines(affiliateType) });
 
     await drawAgreement();
 

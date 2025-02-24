@@ -2,12 +2,15 @@ import * as ctx from '../../../../contexts/context.json';
 import { IContext } from "../../../../contexts/IContext";
 import { ExhibitFormConstraints, FormTypes } from "../../_lib/dao/entity";
 import { sendEmail } from "../../_lib/EmailWithAttachments";
-import { ExhibitForm, ExhibitFormParms, getSampleAffiliates, SampleExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
+import { ExhibitFormParms, getSampleAffiliates, SampleExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
 import { ExhibitFormFullBoth } from '../../_lib/pdf/ExhibitFormFullBoth';
 import { ExhibitFormFullCurrent } from '../../_lib/pdf/ExhibitFormFullCurrent';
 import { ExhibitFormFullOther } from '../../_lib/pdf/ExhibitFormFullOther';
-import { ExhibitFormSingle } from "../../_lib/pdf/ExhibitFormSingle";
+import { ExhibitFormSingleBoth } from '../../_lib/pdf/ExhibitFormSingleBoth';
+import { ExhibitFormSingleCurrent } from '../../_lib/pdf/ExhibitFormSingleCurrent';
+import { ExhibitFormSingleOther } from '../../_lib/pdf/ExhibitFormSingleOther';
 import { IPdfForm, PdfForm } from "../../_lib/pdf/PdfForm";
+import { FormName } from '../forms/Download';
 
 
 /**
@@ -38,17 +41,31 @@ export class ExhibitEmail {
     const context:IContext = <IContext>ctx;
     const { BOTH, CURRENT, OTHER } = ExhibitFormConstraints;
     
+    if( ! formType) {
+      throw new Error('Form type is missing');
+    }
+    
+    if( ! constraint) {
+      throw new Error('Constraint is missing');
+    }
+    
+    let name:string|undefined = undefined;
     switch(formType) {
+      
       case FormTypes.FULL:
+        const { EXHIBIT_FORM_BOTH_FULL, EXHIBIT_FORM_OTHER_FULL, EXHIBIT_FORM_CURRENT_FULL } = FormName;
         switch(constraint) {
           case CURRENT:
             this.pdf = ExhibitFormFullCurrent.getInstance(parms);
+            name = EXHIBIT_FORM_CURRENT_FULL;
             break;
           case OTHER:
             this.pdf = ExhibitFormFullOther.getInstance(parms);
+            name = EXHIBIT_FORM_OTHER_FULL;
             break;
-          case BOTH:
+          case BOTH: default:
             this.pdf = ExhibitFormFullBoth.getInstance(parms);
+            name = EXHIBIT_FORM_BOTH_FULL;
             break;
         }
         return await sendEmail({
@@ -58,13 +75,27 @@ export class ExhibitEmail {
           to: [ emailAddress ],
           attachments: {
             pdf: this.pdf,
-            name: 'exhibit-form-full.pdf',
-            description: 'exhibit-form-full.pdf'
+            name: `${name}.pdf`,
+            description: `${name}.pdf`
           }
         });
 
       case FormTypes.SINGLE:
-        this.pdf = new ExhibitFormSingle(new ExhibitForm(parms));
+        const { EXHIBIT_FORM_BOTH_SINGLE, EXHIBIT_FORM_CURRENT_SINGLE, EXHIBIT_FORM_OTHER_SINGLE } = FormName;
+        switch(constraint) {
+          case CURRENT:
+            this.pdf = ExhibitFormSingleCurrent.getInstance(parms);
+            name = EXHIBIT_FORM_CURRENT_SINGLE;
+            break;
+          case OTHER:
+            this.pdf = ExhibitFormSingleOther.getInstance(parms);
+            name = EXHIBIT_FORM_OTHER_SINGLE;
+            break;
+          case BOTH: default:
+            this.pdf = ExhibitFormSingleBoth.getInstance(parms);
+            name = EXHIBIT_FORM_BOTH_SINGLE;
+            break;
+        }
         return await sendEmail({
           subject: 'ETT Notice of Consent',
           from: `noreply@${context.ETT_DOMAIN}`,
@@ -72,12 +103,12 @@ export class ExhibitEmail {
           to: [ emailAddress ],
           attachments: {
             pdf: this.pdf,
-            name: 'exhibit-form-single.pdf',
-            description: 'exhibit-form-single.pdf'
+            name: `${name}.pdf`,
+            description: `${name}.pdf`
           }
         });
     }
-  }
+   }
 
   public getAttachment = ():IPdfForm => {
     return this.pdf;
