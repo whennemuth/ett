@@ -58,6 +58,12 @@
         "description": "Duration that partially complete exhibit forms can survive in the ETT system before failure to submit them will result in their deletion"
       },
       {
+        "name": "delete-consenter-after",
+        "value": "172800",
+        "config_type": "duration",
+        "description": "Duration that a consenter can remain in the ETT system unconsented before being deleted"
+      },
+      {
         "name": "stale-ai-vacancy",
         "value": "2592000",
         "config_type": "duration",

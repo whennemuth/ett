@@ -133,8 +133,11 @@ export class UserInvitation {
                     A ${role_fullname} is: ${role_description}
                   </div>
                   <div class="direction1">
-                    Click <a href="${this._link}" style="font-weight: bold;">here</a> to register
-                  </div></div>
+                    Follow the link below register:
+                  </div>
+                  <p>
+                    <a href="${this._link}" style="font-weight: bold;">${this._link}</a>
+                  </p>
                 </div>`,
             }
           }

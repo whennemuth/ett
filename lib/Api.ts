@@ -20,7 +20,7 @@ export type ApiConstructParms = {
   databaseExhibitFormPurgeLambdaArn: string,
   disclosureRequestReminderLambdaArn: string,
   bucketExhibitFormPurgeLambdaArn: string,
-  handleStaleEntityVacancyLambdaArn: string
+  handleStaleEntityVacancyLambdaArn: string,
 }
 
 /**

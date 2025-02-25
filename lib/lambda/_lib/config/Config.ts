@@ -176,7 +176,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/conf
     let configs = new Configurations(ctx.CONFIG as CONFIG);
     let appConfigs = await configs.getAppConfigs();
     log(appConfigs);
-    let appConfig = await configs.getAppConfig(ConfigNames.CONSENT_EXPIRATION);
+    let appConfig = await configs.getAppConfig(ConfigNames.DELETE_CONSENTER_AFTER);
     log(appConfig);
 
     log("\nTest configurations from an environment variable:")
@@ -184,7 +184,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/conf
     configs = new Configurations();
     appConfigs = await configs.getAppConfigs();
     log(appConfigs);
-    appConfig = await configs.getAppConfig(ConfigNames.CONSENT_EXPIRATION);
+    appConfig = await configs.getAppConfig(ConfigNames.DELETE_CONSENTER_AFTER);
     log(appConfig);
 
     log("\nSaving config to database...");
@@ -195,7 +195,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/conf
     configs = new Configurations(ctx.CONFIG as CONFIG);
     appConfigs = await configs.getAppConfigs();
     log(appConfigs);
-    appConfig = await configs.getAppConfig(ConfigNames.CONSENT_EXPIRATION);
+    appConfig = await configs.getAppConfig(ConfigNames.DELETE_CONSENTER_AFTER);
     log(appConfig);
 
   })();

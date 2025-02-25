@@ -93,19 +93,20 @@ const buildAll = () => {
   // Set up the dynamodb table for users.
   const dynamodb = new DynamoDbConstruct(stack, 'Dynamodb');
 
-  // Set up the public api register endpoints for "pre-signup" that are called before any cognito signup occurs.
-  const signupApi = new SignupApiConstruct(stack, 'SignupApi', {
-    cloudfrontDomain: cloudfront.getDistributionDomainName(),
-    userPool:cognito.getUserPool(),
-    exhibitFormsBucket
-  } as SignupApiConstructParms);
-
   // Create all the delayed execution lambda functions
   const delayedExecutionLambdas = new DelayedExecutionLambdas(stack, 'DelayedExecution', {
     cloudfrontDomain: cloudfront.getDistributionDomainName(),
     exhibitFormsBucket,
     userPoolId:cognito.getUserPool().userPoolId
   } as DelayedExecutionLambdaParms);
+
+  // Set up the public api register endpoints for "pre-signup" that are called before any cognito signup occurs.
+  const signupApi = new SignupApiConstruct(stack, 'SignupApi', {
+    cloudfrontDomain: cloudfront.getDistributionDomainName(),
+    userPool:cognito.getUserPool(),
+    exhibitFormsBucket,
+    purgeConsenterLambdaArn: delayedExecutionLambdas.consenterPurgeLambda.functionArn,
+  } as SignupApiConstructParms);
 
   // Set up an api for every role with cognito as the authorizer and oauth as the flow.
   const api = new ApiConstruct(stack, 'Api', {
@@ -119,7 +120,7 @@ const buildAll = () => {
     databaseExhibitFormPurgeLambdaArn: delayedExecutionLambdas.databaseExhibitFormPurgeLambda.functionArn,
     disclosureRequestReminderLambdaArn: delayedExecutionLambdas.disclosureRequestReminderLambda.functionArn,
     bucketExhibitFormPurgeLambdaArn: delayedExecutionLambdas.bucketExhibitFormPurgeLambda.functionArn,
-    handleStaleEntityVacancyLambdaArn: delayedExecutionLambdas.handleStaleEntityVacancyLambda.functionArn
+    handleStaleEntityVacancyLambdaArn: delayedExecutionLambdas.handleStaleEntityVacancyLambda.functionArn,
   } as ApiConstructParms);
 
   // Grant the apis the necessary permissions (policy actions).

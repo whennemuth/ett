@@ -17,6 +17,7 @@ export type SignupApiConstructParms = {
   userPool: UserPool,
   cloudfrontDomain: string,
   exhibitFormsBucket: Bucket
+  purgeConsenterLambdaArn: string
 };
 
 /**
@@ -183,16 +184,19 @@ export class SignupApiConstruct extends Construct {
    * Create the public registration lambda function and api for the first stage of consenter registration
    */
   private createRegisterConsenterApi = () => {
-    const { constructId, parms: { cloudfrontDomain }, stageName, context: { REGION, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } } = this;
+    const { 
+      constructId, parms: { cloudfrontDomain, purgeConsenterLambdaArn }, stageName, 
+      context: { REGION, ACCOUNT, TAGS: { Landscape:landscape }, STACK_ID } 
+    } = this;
     const basename = `${constructId}RegisterConsenter`;
     const description = 'for the first stage of public registration of a consenting person';
+    const prefix = `${STACK_ID}-${landscape}`;
 
     // Create the lambda function
     this.registerConsenterLambda = new class extends AbstractFunction { }(this, basename, {
       runtime: Runtime.NODEJS_18_X,
       memorySize: 1024,
       entry: 'lib/lambda/functions/signup/ConsenterRegistration.ts',
-      // handler: 'handler',
       functionName: `${STACK_ID}-${landscape}-signup-register-consenter-lambda`,
       description: `Function ${description}`,
       cleanup: true,
@@ -201,9 +205,43 @@ export class SignupApiConstruct extends Construct {
           '@aws-sdk/*',
         ]
       },
+      role: new Role(this, 'RegisterConsenterApiRole', {
+        assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+        description: `Grants actions to the consenter registration api lambda function to perform the related api tasks.`,
+        inlinePolicies: {
+          'EttEntitySignupEventBridgePolicy': new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'events:DeleteRule', 'events:DisableRule', 'events:EnableRule', 'events:PutRule', 'events:PutTargets', 'events:RemoveTargets' ],
+                resources: [
+                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/ett-*`
+                ],
+                effect: Effect.ALLOW
+              }),
+              new PolicyStatement({
+                actions: [ 'events:List*', 'events:Describe*' ],
+                resources: [
+                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/*`
+                ],
+                effect: Effect.ALLOW
+              }),
+              new PolicyStatement({
+                actions: [ 'lambda:AddPermission' ],
+                resources: [
+                  `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${prefix}-${DelayedExecutions.DisclosureRequestReminder.coreName}`,
+                  `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${prefix}-${DelayedExecutions.HandleStaleEntityVacancy.coreName}`
+                ],
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
+        }
+      }),
       environment: {
         REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
+        PREFIX: `${STACK_ID}-${landscape}`,
+        [DelayedExecutions.ConsenterPurge.targetArnEnvVarName]: purgeConsenterLambdaArn,
         [Configurations.ENV_VAR_NAME]: new Configurations(this.context.CONFIG).getJson()
       }
     });

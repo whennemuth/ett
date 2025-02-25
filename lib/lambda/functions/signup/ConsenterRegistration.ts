@@ -1,7 +1,12 @@
+import { DelayedExecutions } from "../../../DelayedExecution";
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
+import { Configurations } from "../../_lib/config/Config";
 import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
-import { Consenter, YN } from "../../_lib/dao/entity";
+import { ConfigNames, Consenter, YN } from "../../_lib/dao/entity";
+import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
+import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, error, errorResponse, invalidResponse, log, okResponse } from "../../Utils";
+import { RulePrefix as PcRulePrefix } from "../delayed-execution/PurgeConsenter";
 
 /**
  * Handles the public steps of registration for consenting individual
@@ -48,7 +53,7 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
     if(existingConsenter) {
       const { sub } = existingConsenter;
       if(sub) {
-        // If the consenter record has a cognito sub, then they have already signed up and been establishe as a user in the userpool.
+        // If the consenter record has a cognito sub, then they have already signed up and been established as a user in the userpool.
         return invalidResponse(`Cannot sign up ${email} - this account already exists with ETT. Please login instead.`);
       }
       console.log(`Consenter ${email} already exists in database (no cognito account yet), updating...`);
@@ -56,6 +61,8 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
     }
     else {
       await dao.create();
+
+      await sheduleConsenterPurge(email);
     }
   
     return okResponse(`${email} registered`);
@@ -66,3 +73,21 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
   }
 }
 
+export const sheduleConsenterPurge = async (consenterEmail:string) => {
+  const envVarName = DelayedExecutions.ConsenterPurge.targetArnEnvVarName;
+  const functionArn = process.env[envVarName];
+  const description = `${PcRulePrefix} (${consenterEmail})`;
+  if(functionArn) {
+    const configs = new Configurations();
+    const waitTime = (await configs.getAppConfig(ConfigNames.DELETE_CONSENTER_AFTER)).getDuration();
+    const lambdaInput = { consenterEmail };
+    const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
+    const { SECONDS } = PeriodType;
+    const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
+    await delayedTestExecution.startCountdown(timer, description);
+  }
+  else {
+    console.error(`Cannot schedule ${description}: ${envVarName} variable is missing from the environment!`);
+  }
+
+}

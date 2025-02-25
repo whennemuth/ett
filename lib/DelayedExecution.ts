@@ -28,6 +28,10 @@ export const DelayedExecutions = {
   HandleStaleEntityVacancy: {
     coreName: 'handle-stale-entity-vacancy',
     targetArnEnvVarName: 'HANDLE_STALE_ENTITY_VACANCY_ARN'
+  } as DelayedExecutionNames,
+  ConsenterPurge: {
+    coreName: 'purge-consenter',
+    targetArnEnvVarName: 'PURGE_CONSENTER_FUNCTION_ARN'
   } as DelayedExecutionNames
 }
 
@@ -45,6 +49,7 @@ export class DelayedExecutionLambdas extends Construct {
   private _disclosureRequestReminderLambda:AbstractFunction;
   private _bucketExhibitFormPurgeLambda:AbstractFunction;
   private _handleStaleEntityVacancyLambda:AbstractFunction;
+  private _consenterPurgeLambda:AbstractFunction;
 
   constructor(scope:Construct, constructId:string, parms:DelayedExecutionLambdaParms) {
     super(scope, constructId);
@@ -61,6 +66,8 @@ export class DelayedExecutionLambdas extends Construct {
     this.createBucketExhibitFormPurgeLambda();
 
     this.createHandleStaleEntityVacancyLambda();
+
+    this.createConsenterPurgeLambda();
   }
 
   private createDatabaseExhibitFormPurgeLambda = () => {
@@ -393,9 +400,87 @@ export class DelayedExecutionLambdas extends Construct {
       principal: new ServicePrincipal('events.amazonaws.com'),
       action: 'lambda:InvokeFunction',
       sourceArn: `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
-    })
-
+    });
   }
+
+  private createConsenterPurgeLambda = () => {
+    const { constructId, parms: { cloudfrontDomain, userPoolId }, 
+      context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } 
+    } = this;
+    const baseId = `${constructId}PurgeConsenter`;
+    const prefix = `${STACK_ID}-${landscape}`
+    const functionName = `${prefix}-${DelayedExecutions.ConsenterPurge.coreName}`;
+    const description = 'Function for purging consenter records that have had no related consent submitted in the required time';
+    
+    this._consenterPurgeLambda = new class extends AbstractFunction { }(this, baseId, {
+      runtime: Runtime.NODEJS_18_X,
+      // memorySize: 1024,
+      timeout: Duration.seconds(15),
+      entry: 'lib/lambda/functions/delayed-execution/PurgeConsenter.ts',
+      // handler: 'handler',
+      functionName,
+      description,
+      cleanup: true,
+      bundling: {
+        externalModules: [
+          '@aws-sdk/*',
+        ]
+      },
+      role: new Role(this, 'PurgeConsenterRole', {
+        assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+        description: 'Grants access to dynamodb, cognito, and event-bridge',
+        inlinePolicies: {
+          [`${functionName}--db-policy`]: new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'dynamodb:DeleteItem', 'dynamodb:Query', 'dynamodb:GetItem' ],
+                resources: [
+                  `arn:aws:dynamodb:${REGION}:${ACCOUNT}:table/${prefix}-*`,
+                  `arn:aws:dynamodb:${REGION}:${ACCOUNT}:table/${prefix}-*/index/*`
+                ],
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
+          [`${functionName}-eventbridge-policy`]: new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'events:*' ],
+                resources: [
+                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
+                ],
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
+          [`${functionName}-delete-user-from-pool`]: new PolicyDocument({
+            statements: [ new PolicyStatement({
+              actions: [
+                'cognito-idp:AdminDeleteUser', 'cognito-idp:AdminGetUser'
+              ],
+              resources: [ `arn:aws:cognito-idp:${REGION}:${ACCOUNT}:userpool/${REGION}_*` ],
+              effect: Effect.ALLOW
+            })]
+          }),
+        }
+      }),
+      environment: {
+        REGION,
+        CLOUDFRONT_DOMAIN: cloudfrontDomain,
+        USERPOOL_ID: userPoolId,
+        PREFIX: prefix,
+        [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
+      }
+    });
+
+    // Grant event bridge permission to invoke the lambda function.
+    this._consenterPurgeLambda.addPermission(`${functionName}-invoke-permission`, {
+      principal: new ServicePrincipal('events.amazonaws.com'),
+      action: 'lambda:InvokeFunction',
+      sourceArn: `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
+    });
+  }
+
 
   public get databaseExhibitFormPurgeLambda(): AbstractFunction {
     return this._databaseExhibitFormPurgeLambda;
@@ -411,5 +496,9 @@ export class DelayedExecutionLambdas extends Construct {
 
   public get handleStaleEntityVacancyLambda():AbstractFunction {
     return this._handleStaleEntityVacancyLambda;
+  }
+
+  public get consenterPurgeLambda():AbstractFunction {
+    return this._consenterPurgeLambda;
   }
 }
