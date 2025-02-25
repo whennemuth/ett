@@ -1,22 +1,24 @@
 import * as ctx from '../../../../contexts/context.json';
 import { IContext } from "../../../../contexts/IContext";
 import { DAOFactory } from "../../_lib/dao/dao";
-import { Consenter, Delegate, Entity, ExhibitForm as ExhibitFormData, Role, Roles, User, YN } from "../../_lib/dao/entity";
+import { UserCrud } from '../../_lib/dao/dao-user';
+import { Consenter, Delegate, Entity, ExhibitFormConstraints, ExhibitForm as ExhibitFormData, Role, Roles, User, YN } from "../../_lib/dao/entity";
 import { EmailParms, sendEmail } from "../../_lib/EmailWithAttachments";
 import { ConsentForm } from "../../_lib/pdf/ConsentForm";
 import { DisclosureForm, DisclosureFormData } from "../../_lib/pdf/DisclosureForm";
-import { ExhibitForm } from "../../_lib/pdf/ExhibitForm";
-import { ExhibitFormSingle } from '../../_lib/pdf/ExhibitFormSingle';
+import { ExhibitFormParms, getSampleAffiliates, SampleExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
+import { ExhibitFormSingleBoth } from '../../_lib/pdf/ExhibitFormSingleBoth';
+import { ExhibitFormSingleCurrent } from '../../_lib/pdf/ExhibitFormSingleCurrent';
+import { ExhibitFormSingleOther } from '../../_lib/pdf/ExhibitFormSingleOther';
 import { IPdfForm, PdfForm } from "../../_lib/pdf/PdfForm";
-import { BucketCorrectionForm } from '../consenting-person/correction/BucketItemCorrectionForm';
+import { log } from '../../Utils';
 import { DisclosureItemsParms } from "../consenting-person/BucketItem";
 import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureForm";
 import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
 import { BucketItemMetadata } from "../consenting-person/BucketItemMetadata";
-import { test_data } from '../consenting-person/ExhibitEmail';
+import { consentFormUrl } from '../consenting-person/ConsentingPerson';
+import { BucketCorrectionForm } from '../consenting-person/correction/BucketItemCorrectionForm';
 import { abrahamlincoln, alberteinstein, bingcrosby, bugsbunny, elvispresley } from "./MockObjects";
-import { log } from '../../Utils';
-import { UserCrud } from '../../_lib/dao/dao-user';
 
 
 export type DisclosureEmailParms = DisclosureItemsParms & {
@@ -77,17 +79,42 @@ export class BasicDisclosureRequest {
 
   public send = async (recipients:Recipients):Promise<boolean> => { 
     const { 
-      exhibitData, data, data: { 
+      exhibitData, exhibitData: { constraint, affiliates=[] }, data, data: { 
         consenter, 
         consenter: { email:consenterEmail }, 
         requestingEntity: { name:entity_name },
         disclosingEntity: { representatives }
       } 
     } = this;
+    const { BOTH, CURRENT, OTHER } = ExhibitFormConstraints;
 
     // Email attachments
     const affiliateEmail = recipients.to[0];
-    const singleExhibitForm = new ExhibitFormSingle(new ExhibitForm(exhibitData), consenter, affiliateEmail);
+    const parms = {
+      consenter, consentFormUrl: consentFormUrl(consenterEmail), data:exhibitData, entity: { entity_id:'abc123', entity_name }
+    } as ExhibitFormParms;
+    const affiliateMatch = affiliates.find(a => {
+      return a.email == affiliateEmail;
+    });
+
+    if( ! affiliateMatch) {
+      console.error(`Cannot send disclosure request email: Affiliate email ${affiliateEmail} not found in exhibit form`);
+      return false;
+    }
+
+    let singleExhibitForm:IPdfForm;
+    switch(constraint) {
+      case BOTH:
+        singleExhibitForm = ExhibitFormSingleBoth.getInstance(parms);
+        break;
+      case CURRENT:
+        singleExhibitForm = ExhibitFormSingleCurrent.getInstance(parms);
+        break;
+      case OTHER:
+        singleExhibitForm = ExhibitFormSingleOther.getInstance(parms);
+        break;
+    }
+
     const disclosureForm = new DisclosureForm(data);
 
     return send({ 
@@ -166,6 +193,9 @@ const grabFromBucketAndSend = async (parms:DisclosureEmailParms, recipients:Reci
 
   // Get the exhibit form
   const singleExhibitForm = new class implements IPdfForm {
+    writeToDisk(path: string): Promise<void> {
+      throw new Error('Method not implemented.');
+    }
     async getBytes(): Promise<Uint8Array> {
       return new BucketExhibitForm(s3ObjectKeyForExhibitForm).get();
     }
@@ -173,6 +203,9 @@ const grabFromBucketAndSend = async (parms:DisclosureEmailParms, recipients:Reci
 
   // Get the disclosure form
   const disclosureForm = new class implements IPdfForm {
+    writeToDisk(path: string): Promise<void> {
+      throw new Error('Method not implemented.');
+    }
     async getBytes(): Promise<Uint8Array> {
       return new BucketDisclosureForm({ metadata: s3ObjectKeyForDisclosureForm }).get();
     }
@@ -182,6 +215,9 @@ const grabFromBucketAndSend = async (parms:DisclosureEmailParms, recipients:Reci
   const correctionFormsBytes = await BucketCorrectionForm.getAll(consenterEmail, savedDate);
   const correctionForms = correctionFormsBytes.map(bytes => {
     return new class implements IPdfForm {
+      writeToDisk(path: string): Promise<void> {
+        throw new Error('Method not implemented.');
+      }
       async getBytes(): Promise<Uint8Array> {
         return bytes;
       }
@@ -293,7 +329,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     disclosingEntity: { name: 'Boston University', representatives: [ alberteinstein, elvispresley ] },
     requestingEntity: { name: 'Northeastern University', authorizedIndividuals: [ abrahamlincoln, bingcrosby ] }
   } as DisclosureFormData;
-
+  
+  const test_data = SampleExhibitFormParms([ getSampleAffiliates().employerPrimary ]).data;
   const test_exhibit_data = Object.assign({}, test_data) ?? {};
   // Make sure email address to send to matches one of the affiliates in the exhibit form test data, so validation will pass.
   if(test_exhibit_data.affiliates && test_exhibit_data.affiliates.length > 0) {

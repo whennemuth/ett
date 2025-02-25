@@ -4,7 +4,7 @@ import { Page } from "./lib/Page";
 import { Margins, Position, rgbPercent } from "./lib/Utils";
 import { v4 as uuidv4 } from 'uuid';
 
-export type IPdfForm = { getBytes():Promise<Uint8Array> };
+export type IPdfForm = { getBytes():Promise<Uint8Array>, writeToDisk(path:string):Promise<void> };
 type MarkedPosition = { id:string, position:Position }
 export abstract class PdfForm {
 
@@ -56,6 +56,18 @@ export abstract class PdfForm {
     const { x, y } = markedPositions.find(p => p.id == id)!.position
     const { basePage } = page;
     basePage.moveTo(x, y);
+  }
+
+  /**
+   * Get the change in position from the marked position.
+   * @param id 
+   * @returns 
+   */
+  public getPositionalChange = (id:string):Position => {
+    const { markedPosition, page } = this;
+    const { x, y } = markedPosition(id);
+    const { basePage } = page;
+    return { x:basePage.getX() - x, y:basePage.getY() - y };
   }
 
   public getDoc = () => {

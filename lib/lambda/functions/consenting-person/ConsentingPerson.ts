@@ -7,7 +7,7 @@ import { Configurations } from "../../_lib/config/Config";
 import { DAOFactory } from "../../_lib/dao/dao";
 import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
-import { Affiliate, AffiliateTypes, ConfigNames, Consenter, ConsenterFields, Entity, ExhibitForm, Roles, User, YN } from "../../_lib/dao/entity";
+import { Affiliate, AffiliateTypes, ConfigNames, Consenter, ConsenterFields, Entity, ExhibitForm, ExhibitFormConstraints, FormTypes, Roles, User, YN } from "../../_lib/dao/entity";
 import { ConsentFormData } from "../../_lib/pdf/ConsentForm";
 import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
@@ -24,11 +24,12 @@ import { TagInspector } from "./BucketItemTag";
 import { ConsentFormEmail } from "./ConsentEmail";
 import { ConsentingPersonToCorrect } from "./correction/Correction";
 import { ExhibitCorrectionEmail } from "./correction/ExhibitCorrectionEmail";
-import { ExhibitEmail, FormTypes } from "./ExhibitEmail";
+import { ExhibitEmail } from "./ExhibitEmail";
 import { deleteExhibitForm, RulePrefix as DbRulePrefix } from "../delayed-execution/PurgeExhibitFormFromDatabase";
 import { RulePrefix as S3RulePrefix } from "../delayed-execution/PurgeExhibitFormFromBucket"
 import { CognitoStandardAttributes, UserAccount } from "../../_lib/cognito/UserAccount";
 import { IndividualRegistrationFormData, IndividualRegistrationFormEmail } from "./RegistrationEmail";
+import { ExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
 
 export enum Task {
   SAVE_EXHIBIT_FORM = 'save-exhibit-form',
@@ -67,6 +68,9 @@ export type ConsenterInfo = {
 export type ExhibitFormCorrection = {
   entity_id:string, updates:Affiliate[], appends:Affiliate[], deletes:string[]
 }
+
+export const consentFormUrl = (consenterEmail:string):string => 
+  `https://${process.env.CLOUDFRONT_DOMAIN}/forms/private/consent?email=${encodeURIComponent(consenterEmail)}`;
 
 /**
  * This function performs all actions a CONSENTING_PERSON can take.
@@ -655,12 +659,14 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
     const { SECONDS } = PeriodType;
     const configs = new Configurations();
     const { DELETE_EXHIBIT_FORMS_AFTER: deleteAfter} = ConfigNames;
+    const { constraint } = exhibitForm;
 
     for(let i=0; i<affiliates.length; i++) {
       let metadata = { 
         consenterEmail,
         entityId:entity.entity_id, 
         affiliateEmail:affiliates[i].email,
+        constraint,
         savedDate: now
       } as BucketItemMetadataParms;
 
@@ -710,9 +716,18 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
   const sendFullExhibitFormToEntityStaff = async () => {
     emailSendFailures.length = 0;
     let sent:boolean = false;
+    let _exhibitForm = {...exhibitForm}; // Create a shallow clone
+    if( ! _exhibitForm.formType) {
+      _exhibitForm.formType = FormTypes.FULL;
+    }
     for(let i=0; i<entityReps.length; i++) {
       try {
-        sent = await new ExhibitEmail(exhibitForm, FormTypes.FULL, entity, consenter).send(entityReps[i].email);
+        sent = await new ExhibitEmail({
+          consenter,
+          entity,
+          consentFormUrl: consentFormUrl(consenterEmail),
+          data: _exhibitForm,
+        } as ExhibitFormParms).send(entityReps[i].email);
       }
       catch(e) {
         error(e);
@@ -728,8 +743,11 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
    * Send the full exhibit form to each authorized individual and the RE admin.
    */
   const sendFullExhibitFormToDelegates = async () => {
-    emailSendFailures.length = 0;
     let sent:boolean = false;
+    let _exhibitForm = {...exhibitForm}; // Create a shallow clone
+    if( ! _exhibitForm.formType) {
+      _exhibitForm.formType = FormTypes.FULL;
+    }
     for(let i=0; i<entityReps.length; i++) {
       let delegateEmail:string|undefined;
       try {
@@ -740,7 +758,12 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
           continue;
         }
         const delegateEmail = entityReps[i].delegate!.email;
-        sent = await new ExhibitEmail(exhibitForm, FormTypes.FULL, entity, consenter).send(delegateEmail);
+        sent = await new ExhibitEmail({
+          consenter,
+          entity,
+          consentFormUrl: consentFormUrl(consenterEmail),
+          data: _exhibitForm,
+        } as ExhibitFormParms).send(delegateEmail);
       }
       catch(e) {
         error(e);
@@ -757,8 +780,17 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
    */
   const sendFullExhibitFormToConsenter = async () => {
     let sent:boolean = false;
+    let _exhibitForm = {...exhibitForm}; // Create a shallow clone
+    if( ! _exhibitForm.formType) {
+      _exhibitForm.formType = FormTypes.FULL;
+    }
     try {
-      sent = await new ExhibitEmail(exhibitForm, FormTypes.FULL, entity, consenter).send(consenterEmail);
+      sent = await new ExhibitEmail({
+        consenter,
+        entity,
+        consentFormUrl: consentFormUrl(consenterEmail),
+        data: _exhibitForm,
+      } as ExhibitFormParms).send(consenterEmail);
     }
     catch(e) {
       error(e);
@@ -1036,7 +1068,7 @@ export const correctExhibitData = async (consenterEmail:string, corrections:Exhi
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/ConsentingPerson.ts')) {
 
-  const task = Task.SEND_CONSENT as Task;
+  const task = Task.CORRECT_EXHIBIT_FORM as Task;
   
   const bugs = {
     affiliateType:"employer",
@@ -1123,7 +1155,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
           payload.parameters = {
             email: "cp1@warhen.work",
             exhibit_data: {
-              entity_id: "3ef70b3e-456b-42e8-86b0-d8fbd0066628",
+              entity_id: "9ea1b3d3-729b-4c51-b0d0-51000b19be4e",
+              constraint: ExhibitFormConstraints.CURRENT,
               affiliates: [
                 {
                   affiliateType: "ACADEMIC",
@@ -1133,14 +1166,14 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
                   title: "Daytime child television host",
                   phone_number: "781-333-5555"
                 },
-                {
-                  affiliateType: "OTHER",
-                  email: "affiliate3@warhen.work",
-                  org: "Thingamagig University",
-                  fullname: "Elvis Presley",
-                  title: "Entertainer",
-                  phone_number: "508-333-9999"
-                }
+                // {
+                //   affiliateType: "OTHER",
+                //   email: "affiliate3@warhen.work",
+                //   org: "Thingamagig University",
+                //   fullname: "Elvis Presley",
+                //   title: "Entertainer",
+                //   phone_number: "508-333-9999"
+                // }
               ]
             }
           }

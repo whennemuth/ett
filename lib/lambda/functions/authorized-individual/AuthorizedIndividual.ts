@@ -1,6 +1,6 @@
 import { SESv2Client, SendEmailCommand, SendEmailCommandInput, SendEmailResponse } from "@aws-sdk/client-sesv2";
-import { CONFIG, IContext } from "../../../../contexts/IContext";
 import * as ctx from '../../../../contexts/context.json';
+import { CONFIG, IContext } from "../../../../contexts/IContext";
 import { DelayedExecutions } from "../../../DelayedExecution";
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
@@ -22,7 +22,7 @@ import { EntityToCorrect } from "./correction/EntityCorrection";
 import { Personnel } from "./correction/EntityPersonnel";
 import { DemolitionRecord, EntityToDemolish } from "./Demolition";
 import { DisclosureEmailParms, DisclosureRequestEmail, RecipientListGenerator } from "./DisclosureRequestEmail";
-import { ExhibitFormRequest } from "./ExhibitFormRequest";
+import { ExhibitFormRequest, SendExhibitFormRequestParms } from "./ExhibitFormRequest";
 
 export enum Task {
   LOOKUP_USER_CONTEXT = 'lookup-user-context',
@@ -313,10 +313,6 @@ export const getConsenterList = async (fragment?:string):Promise<LambdaProxyInte
     return match ? { email, fullname } : undefined;
   }).filter(s => { return s != undefined });
   return okResponse('Ok', { consenters:mapped });
-}
-
-export type SendExhibitFormRequestParms = {
-  consenterEmail:string, entity_id:string, constraint:string, linkUri?:string
 }
 
 /**

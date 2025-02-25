@@ -3,12 +3,14 @@ import { IContext } from "../../../../../contexts/IContext";
 import { ConsenterCrud } from "../../../_lib/dao/dao-consenter";
 import { EntityCrud } from "../../../_lib/dao/dao-entity";
 import { UserCrud } from "../../../_lib/dao/dao-user";
-import { AffiliateTypes, Consenter, Entity, Roles, User, YN } from "../../../_lib/dao/entity";
+import { Affiliate, AffiliateTypes, Consenter, Entity, ExhibitFormConstraints, FormTypes, Roles, User, YN } from "../../../_lib/dao/entity";
 import { Attachment, EmailParms, sendEmail } from "../../../_lib/EmailWithAttachments";
-import { ExhibitForm } from "../../../_lib/pdf/ExhibitForm";
-import { ExhibitFormSingle } from "../../../_lib/pdf/ExhibitFormSingle";
+import { ExhibitForm, ExhibitFormParms } from "../../../_lib/pdf/ExhibitForm";
+import { ExhibitFormSingleBoth } from '../../../_lib/pdf/ExhibitFormSingleBoth';
+import { ExhibitFormSingleCurrent } from '../../../_lib/pdf/ExhibitFormSingleCurrent';
 import { IPdfForm, PdfForm } from "../../../_lib/pdf/PdfForm";
-import { ExhibitFormCorrection } from "../ConsentingPerson";
+import { consentFormUrl, ExhibitFormCorrection } from "../ConsentingPerson";
+import { bugsbunny, daffyduck, porkypig } from '../ConsentingPerson.mocks';
 
 
 /**
@@ -18,9 +20,10 @@ import { ExhibitFormCorrection } from "../ConsentingPerson";
 export class ExhibitCorrectionEmail {
   private context:IContext;
   private corrections:ExhibitFormCorrection;
-  private entity:Entity;
   private consenterEmail:string;
-  private consenter:Consenter;
+  private _entity:Entity;
+  private _consenter:Consenter;
+  private _users:User[];
   private pdf:IPdfForm;
 
   constructor(consenterEmail:string, corrections:ExhibitFormCorrection) {
@@ -30,12 +33,34 @@ export class ExhibitCorrectionEmail {
   }
 
   private initialize = async ():Promise<void> => {
-    const { consenter, consenterEmail, corrections:{ entity_id } } = this;
-    if( ! this.consenter) {
-      this.consenter = await ConsenterCrud({ email:consenterEmail} as Consenter).read() as Consenter;
+    const { consenterEmail, corrections:{ entity_id } } = this;
+    if( ! this._consenter) {
+      this._consenter = await ConsenterCrud({ email:consenterEmail} as Consenter).read() as Consenter;
     }
-    if( ! this.entity) {
-      this.entity = await EntityCrud({ entity_id } as Entity).read() as Entity;
+    if( ! this._entity) {
+      this._entity = await EntityCrud({ entity_id } as Entity).read() as Entity;
+    }
+  }
+
+  private getExhibitForm = (affiliate:Affiliate):IPdfForm => {
+    const { BOTH, CURRENT, OTHER } = ExhibitFormConstraints;
+    const constraint = ExhibitForm.getConstraintFromAffiliateType(affiliate.affiliateType);
+    const { _consenter: consenter, _entity: { entity_id, entity_name } } = this;
+    
+    const parms = {
+      consenter,
+      consentFormUrl: consentFormUrl(consenter.email),
+      data: { formType:FormTypes.SINGLE, constraint, entity_id, affiliates: [ affiliate ] },
+      entity: { entity_id, entity_name },
+    } as ExhibitFormParms;
+
+    switch(constraint) {
+      case CURRENT:
+        return ExhibitFormSingleCurrent.getInstance(parms);
+      case OTHER:
+        return ExhibitFormSingleBoth.getInstance(parms);
+      case BOTH:
+        return ExhibitFormSingleBoth.getInstance(parms);
     }
   }
 
@@ -44,7 +69,7 @@ export class ExhibitCorrectionEmail {
 
     await initialize();
 
-    const { consenter, consenter: { firstname, middlename, lastname }, entity: { entity_id, entity_name } } = this;
+    const { _consenter: { firstname, middlename, lastname }, _entity: { entity_id, entity_name }, getExhibitForm } = this;
     const { fullName } = PdfForm;
     const consenterFullname = fullName(firstname, middlename, lastname);
     const subject = 'ETT Notice of Exhibit Form Correction';
@@ -70,30 +95,24 @@ export class ExhibitCorrectionEmail {
     // Build the attachments for affiliate updates
     updates.forEach(affiliate => {
       const name = `corrected-affiliate-${++counter}.pdf`;
-      attachments.push({ 
-        name, 
-        description: name, 
-        pdf: new ExhibitFormSingle(new ExhibitForm({
-          entity_id, affiliates: [ affiliate ]
-        }), consenter, affiliate.email) 
-      });
+      const pdf = getExhibitForm(affiliate);
+      attachments.push({ name, description: name, pdf });
     });
 
     // Build the attachments for new affiliates
     counter = 0;
     appends.forEach(affiliate => {
       const name = `new-affiliate-${++counter}.pdf`;
-      attachments.push({ 
-        name, 
-        description: name, 
-        pdf: new ExhibitFormSingle(new ExhibitForm({
-          entity_id, affiliates: [ affiliate ]
-        }), consenter, affiliate.email) 
-      });
+      const pdf = getExhibitForm(affiliate);
+      attachments.push({ name, description: name, pdf }); 
     });
 
     // Get the email recipients
-    const users = (await UserCrud({ entity_id } as User).read() ?? []) as User[];
+    if( ! this._users) {
+      this._users = (await UserCrud({ entity_id } as User).read() ?? []) as User[];
+    }
+
+    const { _users: users } = this;
 
     // Get the first AI of the entity as the "to" addressee
     const firstAI = users.find(user => user.active == YN.Yes && user.role == Roles.RE_AUTH_IND);
@@ -119,11 +138,11 @@ export class ExhibitCorrectionEmail {
   }
 
   public sendToAffiliates = async ():Promise<boolean> => {
-    const { context, initialize, corrections: { appends=[], deletes=[], updates=[] } } = this;
+    const { context, initialize, corrections: { updates=[] }, getExhibitForm } = this;
 
     await initialize();
     
-    const { consenter, consenter: { firstname, middlename, lastname }, entity: { entity_id, entity_name } } = this;
+    const { _consenter: { firstname, middlename, lastname }, _entity: { entity_name } } = this;
     const { fullName } = PdfForm;
     const consenterFullname = fullName(firstname, middlename, lastname);
     const subject = 'ETT Notice of Consent Revision';
@@ -138,19 +157,26 @@ export class ExhibitCorrectionEmail {
 
       // Send the email
       const from = `noreply@${context.ETT_DOMAIN}`;
+      const pdf = getExhibitForm(updates[i]);
       const ok = await sendEmail({ subject, from, message, to: [ email ], attachments: [
-        { 
-          name: 'correction.pdf', 
-          description: 'correction.pdf', 
-          pdf: new ExhibitFormSingle(new ExhibitForm({
-            entity_id, affiliates: [ updates[i] ]
-          }), consenter, email) 
-        }
+        { name: 'correction.pdf', description: 'correction.pdf', pdf }
       ] } as EmailParms);
       allOk &&= ok;
     }
 
     return allOk;
+  }
+
+  public set entity(entity:Entity) {
+    this._entity = entity;
+  }
+
+  public set consenter(consenter:Consenter) {
+    this._consenter = consenter;
+  }
+
+  public set users(users:User[]) {  
+    this._users = users;
   }
 
   public getAttachment = ():IPdfForm => {
@@ -167,8 +193,25 @@ const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/correction/ExhibitCorrectionEmail.ts')) {
 
   const { ACADEMIC, EMPLOYER, OTHER } = AffiliateTypes;
-  const correctionEmail = new ExhibitCorrectionEmail('cp2@warhen.work', {
-    entity_id: 'eea2d463-2eab-4304-b2cf-cf03cf57dfaa',
+
+  // Mock the entity and consenter (consenter must have a real email address)
+  const entity = { 
+    entity_id: 'eea2d463-2eab-4304-b2cf-cf03cf57dfaa', 
+    entity_name: 'The School of Hard Knocks' 
+  } as Entity;
+  const consenter = {
+    email: 'cp2@warhen.work', firstname: 'Elmer', middlename: 'F', lastname: 'Fudd', consented_timestamp: [ new Date().toISOString() ]
+  } as Consenter;
+
+  // Mock the entity representatives but give them real email addresses
+  const users = [ daffyduck, bugsbunny, porkypig ]
+  users[0].email = 'asp1.random.edu@warhen.work';
+  users[1].email = 'auth1.random.edu@warhen.work';
+  users[2].email = 'auth2.random.edu@warhen.work';
+
+  // Mock the correction data (affiliates must have real email addresses)
+  const correctionEmail = new ExhibitCorrectionEmail(consenter.email, {
+    entity_id: entity.entity_id,
     appends: [
       { 
         affiliateType:OTHER, 
@@ -202,6 +245,10 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
       'bogus.email@bogusorg.com'
     ]
   });
+
+  correctionEmail.entity = entity;
+  correctionEmail.consenter = consenter;
+  correctionEmail.users = users;
 
   (async ()=> {
     if( await correctionEmail.sendToEntity()) {

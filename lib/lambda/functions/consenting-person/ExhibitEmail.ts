@@ -1,15 +1,17 @@
-import { AffiliateTypes, Consenter, Entity, ExhibitForm as ExhibitFormData, YN } from "../../_lib/dao/entity";
-import { ExhibitForm } from "../../_lib/pdf/ExhibitForm";
-import { ExhibitFormFull } from "../../_lib/pdf/ExhibitFormFull";
-import { ExhibitFormSingle } from "../../_lib/pdf/ExhibitFormSingle";
-import { IPdfForm, PdfForm } from "../../_lib/pdf/PdfForm";
-import { sendEmail } from "../../_lib/EmailWithAttachments";
 import * as ctx from '../../../../contexts/context.json';
 import { IContext } from "../../../../contexts/IContext";
+import { ExhibitFormConstraints, FormTypes } from "../../_lib/dao/entity";
+import { sendEmail } from "../../_lib/EmailWithAttachments";
+import { ExhibitFormParms, getSampleAffiliates, SampleExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
+import { ExhibitFormFullBoth } from '../../_lib/pdf/ExhibitFormFullBoth';
+import { ExhibitFormFullCurrent } from '../../_lib/pdf/ExhibitFormFullCurrent';
+import { ExhibitFormFullOther } from '../../_lib/pdf/ExhibitFormFullOther';
+import { ExhibitFormSingleBoth } from '../../_lib/pdf/ExhibitFormSingleBoth';
+import { ExhibitFormSingleCurrent } from '../../_lib/pdf/ExhibitFormSingleCurrent';
+import { ExhibitFormSingleOther } from '../../_lib/pdf/ExhibitFormSingleOther';
+import { IPdfForm, PdfForm } from "../../_lib/pdf/PdfForm";
+import { FormName } from '../forms/Download';
 
-
-export const enum FormTypes { FULL = 'full', SINGLE = 'single' };
-export type FormType = FormTypes.FULL | FormTypes.SINGLE;
 
 /**
  * This class represents an email issued by the system on behalf of a consenting individual to either 
@@ -20,33 +22,52 @@ export type FormType = FormTypes.FULL | FormTypes.SINGLE;
  *   3) The consenting person themselves, where the email contains a pdf attachment that includes all affiliates.
  */
 export class ExhibitEmail {
-  private data:ExhibitFormData;
-  private formType:FormType;
-  private entity:Entity;
-  private consenter:Consenter;
+  private parms:ExhibitFormParms;
   private pdf:IPdfForm; 
 
   /**
    * @param data The data to build the exhibit form from.
    * @param formType Full or single
    */
-  constructor(data:ExhibitFormData, formType:FormType, entity:Entity, consenter:Consenter) {
-    this.data = data;
-    this.formType = formType;
-    this.entity = entity;
-    this.consenter = consenter;
+  constructor(parms:ExhibitFormParms) {
+    this.parms = parms;
   }
 
   public send = async (emailAddress:string):Promise<boolean> => {
-    const { data, formType, entity, consenter, consenter: { firstname, middlename, lastname } } = this;
+    const { parms, parms: { data: { formType, constraint }, entity, consenter: { firstname, middlename, lastname } } } = this;
     const { fullName } = PdfForm;
     const consenterFullname = fullName(firstname, middlename, lastname);
     const { entity_name } = entity;
     const context:IContext = <IContext>ctx;
+    const { BOTH, CURRENT, OTHER } = ExhibitFormConstraints;
     
+    if( ! formType) {
+      throw new Error('Form type is missing');
+    }
+    
+    if( ! constraint) {
+      throw new Error('Constraint is missing');
+    }
+    
+    let name:string|undefined = undefined;
     switch(formType) {
+      
       case FormTypes.FULL:
-        this.pdf = new ExhibitFormFull(new ExhibitForm(data), consenter);
+        const { EXHIBIT_FORM_BOTH_FULL, EXHIBIT_FORM_OTHER_FULL, EXHIBIT_FORM_CURRENT_FULL } = FormName;
+        switch(constraint) {
+          case CURRENT:
+            this.pdf = ExhibitFormFullCurrent.getInstance(parms);
+            name = EXHIBIT_FORM_CURRENT_FULL;
+            break;
+          case OTHER:
+            this.pdf = ExhibitFormFullOther.getInstance(parms);
+            name = EXHIBIT_FORM_OTHER_FULL;
+            break;
+          case BOTH: default:
+            this.pdf = ExhibitFormFullBoth.getInstance(parms);
+            name = EXHIBIT_FORM_BOTH_FULL;
+            break;
+        }
         return await sendEmail({
           subject: 'ETT Exhibit Form Submission',
           from: `noreply@${context.ETT_DOMAIN}`,
@@ -54,12 +75,27 @@ export class ExhibitEmail {
           to: [ emailAddress ],
           attachments: {
             pdf: this.pdf,
-            name: 'exhibit-form-full.pdf',
-            description: 'exhibit-form-full.pdf'
+            name: `${name}.pdf`,
+            description: `${name}.pdf`
           }
         });
+
       case FormTypes.SINGLE:
-        this.pdf = new ExhibitFormSingle(new ExhibitForm(data), consenter, emailAddress);
+        const { EXHIBIT_FORM_BOTH_SINGLE, EXHIBIT_FORM_CURRENT_SINGLE, EXHIBIT_FORM_OTHER_SINGLE } = FormName;
+        switch(constraint) {
+          case CURRENT:
+            this.pdf = ExhibitFormSingleCurrent.getInstance(parms);
+            name = EXHIBIT_FORM_CURRENT_SINGLE;
+            break;
+          case OTHER:
+            this.pdf = ExhibitFormSingleOther.getInstance(parms);
+            name = EXHIBIT_FORM_OTHER_SINGLE;
+            break;
+          case BOTH: default:
+            this.pdf = ExhibitFormSingleBoth.getInstance(parms);
+            name = EXHIBIT_FORM_BOTH_SINGLE;
+            break;
+        }
         return await sendEmail({
           subject: 'ETT Notice of Consent',
           from: `noreply@${context.ETT_DOMAIN}`,
@@ -67,12 +103,12 @@ export class ExhibitEmail {
           to: [ emailAddress ],
           attachments: {
             pdf: this.pdf,
-            name: 'exhibit-form-single.pdf',
-            description: 'exhibit-form-single.pdf'
+            name: `${name}.pdf`,
+            description: `${name}.pdf`
           }
         });
     }
-  }
+   }
 
   public getAttachment = ():IPdfForm => {
     return this.pdf;
@@ -86,62 +122,23 @@ export class ExhibitEmail {
  */
 const { argv:args } = process;
 
-export const test_entity = {
-  entity_id: 'abc123',
-  description: 'Boston University',
-  entity_name: 'Boston University',
-  active: YN.Yes,
-} as Entity;
-
-export const test_data = {
-  entity_id: 'abc123',
-  affiliates: [
-    { 
-      affiliateType: AffiliateTypes.EMPLOYER,
-      org: 'Warner Bros.', 
-      fullname: 'Foghorn Leghorn', 
-      email: 'foghorn@warnerbros.com',
-      title: 'Lead animation coordinator',
-      phone_number: '617-333-4444'
-    },
-    {
-      affiliateType: AffiliateTypes.ACADEMIC,
-      org: 'Cartoon University',
-      fullname: 'Bugs Bunny',
-      email: 'bugs@cu.edu',
-      title: 'Dean of school of animation',
-      phone_number: '508-222-7777'
-    },
-    {
-      affiliateType: AffiliateTypes.EMPLOYER,
-      org: 'Warner Bros',
-      fullname: 'Daffy Duck',
-      email: 'daffy@warnerbros.com',
-      title: 'Deputy animation coordinator',
-      phone_number: '781-555-7777'
-    },
-    {
-      affiliateType: AffiliateTypes.ACADEMIC,
-      org: 'Cartoon University',
-      fullname: 'Yosemite Sam',
-      email: 'yosemite-sam@cu.edu',
-      title: 'Professor animation studies',
-      phone_number: '617-444-8888'
-    }
-  ]
-} as ExhibitFormData;
-
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/ExhibitEmail.ts')) {
   const email = process.env.PDF_RECIPIENT_EMAIL;
+  process.env.CLOUDFRONT_DOMAIN = 'www.schoolofhardknocks.edu';
 
   if( ! email) {
     console.log('Email environment variable is missing. Put PDF_RECIPIENT_EMAIL=[email] in .env in ${workspaceFolder}');
     process.exit(1);
   }
 
-  new ExhibitEmail(test_data, FormTypes.FULL, test_entity, { 
-    firstname:'Porky', middlename: 'P', lastname: 'Pig'
-  } as Consenter).send(email)
+  new ExhibitEmail(SampleExhibitFormParms([
+      getSampleAffiliates().employerPrimary,
+      getSampleAffiliates().employer1, 
+      getSampleAffiliates().employer2, 
+      getSampleAffiliates().employerPrior, 
+      getSampleAffiliates().academic1,
+      getSampleAffiliates().other
+    ])).send(email)
     .then(success => {
       console.log(success ? 'Succeeded' : 'Failed');
     })

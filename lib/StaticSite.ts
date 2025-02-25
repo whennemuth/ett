@@ -11,6 +11,7 @@ export interface StaticSiteConstructParms {
   cognitoUserpoolRegion: string,
   registerEntityApiUri: string,
   registerConsenterApiUri: string,
+  publicFormDownloadUris: string[],
   apis: AbstractRoleApi[]
 }
 
@@ -60,6 +61,7 @@ export abstract class StaticSiteConstruct extends Construct {
       PAYLOAD_HEADER: AbstractRoleApi.ETTPayloadHeader,
       REGISTER_ENTITY_API_URI: parms.registerEntityApiUri,
       REGISTER_CONSENTER_API_URI: parms.registerConsenterApiUri,
+      PUBLIC_FORM_DOWNLOAD_URIS: parms.publicFormDownloadUris,
       ROLES: { } as any
     };
     parms.apis.forEach((api:AbstractRoleApi) => {

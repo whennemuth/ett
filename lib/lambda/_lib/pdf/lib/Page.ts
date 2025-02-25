@@ -53,4 +53,20 @@ export class Page {
   public get remainingVerticalSpace():number {
     return this.page.getY() - this.margins.bottom;
   }
+
+  public nextPage = (dimensions?:[number, number], extra?:() => void):PDFPage => {
+    const { page, margins: { left, top } } = this;
+    dimensions ??= [page.getWidth(), page.getHeight()];
+    this.page = page.doc.addPage(dimensions) as PDFPage;
+    this.page.moveTo(left, (page.getHeight() - top));
+    extra && extra();
+    return this.page;
+  }
+
+  public nextPageIfNecessary = (requiredSpace:number, extra?:() => void):PDFPage => {
+    if(this.remainingVerticalSpace < requiredSpace) {
+      this.nextPage(undefined, extra);
+    }
+    return this.page;
+  }
 }

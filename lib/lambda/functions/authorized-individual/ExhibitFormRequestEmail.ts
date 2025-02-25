@@ -1,7 +1,7 @@
 import { IContext } from "../../../../contexts/IContext";
 import * as ctx from '../../../../contexts/context.json';
 import { DAOFactory } from "../../_lib/dao/dao";
-import { Consenter, Entity, YN } from "../../_lib/dao/entity";
+import { Consenter, Entity, ExhibitFormConstraints, YN } from "../../_lib/dao/entity";
 import { EmailParms, sendEmail } from "../../_lib/EmailWithAttachments";
 import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { lookupCloudfrontDomain } from "../../Utils";
@@ -10,7 +10,7 @@ export type ExhibitFormRequestEmailParms = {
   consenterEmail:string;
   entity_id:string;
   linkUri:string;
-  constraint: 'current' | 'other' | 'both';
+  constraint: ExhibitFormConstraints;
 }
 
 export class ExhibitFormRequestEmail {

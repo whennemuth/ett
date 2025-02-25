@@ -394,6 +394,7 @@ describe(`Entity Registration lambda trigger: handler ${Task.REGISTER}`, () => {
   });
   
   it('Should NOT attempt to update the invitation if successfully found with existing registration', async () => {
+    
     goodCode = code;
     alreadyRegistered = true;
     await invokeAndAssert({
@@ -407,7 +408,7 @@ describe(`Entity Registration lambda trigger: handler ${Task.REGISTER}`, () => {
       expectedResponse: {
         statusCode: 200,
         outgoingBody: {
-          message: `Ok: Already registered at ${dte}`,
+          message: `Ok: Registration completed for ${event.pathParameters['invitation-code']}`,
           payload: { ok: true }
         } as OutgoingBody
       }

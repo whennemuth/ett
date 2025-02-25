@@ -53,8 +53,13 @@ export type User = {
 };
 
 /**************** CONSENTER ****************/
-export enum AffiliateTypes { EMPLOYER = 'EMPLOYER', EMPLOYER_PRIOR = 'EMPLOYER_PRIOR', ACADEMIC = 'ACADEMIC', OTHER = 'OTHER' };
-export type AffiliateType = AffiliateTypes.EMPLOYER | AffiliateTypes.EMPLOYER_PRIOR | AffiliateTypes.ACADEMIC | AffiliateTypes.OTHER;
+export enum AffiliateTypes { 
+  EMPLOYER_PRIMARY = 'EMPLOYER_PRIMARY', EMPLOYER = 'EMPLOYER', EMPLOYER_PRIOR = 'EMPLOYER_PRIOR', 
+  ACADEMIC = 'ACADEMIC', OTHER = 'OTHER' 
+};
+export type AffiliateType = 
+  AffiliateTypes.EMPLOYER_PRIMARY | AffiliateTypes.EMPLOYER | AffiliateTypes.EMPLOYER_PRIOR | 
+  AffiliateTypes.ACADEMIC | AffiliateTypes.OTHER;
 export type Affiliate = {
   affiliateType: AffiliateType,
   email: string,
@@ -70,12 +75,21 @@ export enum ExhibitFormFields {
   sent_timestamp = 'sent_timestamp',
   affiliates = 'affiliates'
 }
+export enum ExhibitFormConstraints { 
+  CURRENT = 'current', OTHER = 'other', BOTH = 'both' 
+}
+export type ExhibitFormConstraint = 
+  ExhibitFormConstraints.CURRENT | ExhibitFormConstraints.OTHER | ExhibitFormConstraints.BOTH;
+export const enum FormTypes { FULL = 'full', SINGLE = 'single' };
+export type FormType = FormTypes.FULL | FormTypes.SINGLE;
 export type ExhibitForm = {
   entity_id: string,
   create_timestamp?: string,
   update_timestamp?: string,
   sent_timestamp?: string,
-  affiliates?: Affiliate[]
+  affiliates?: Affiliate[],
+  formType: FormType,
+  constraint: ExhibitFormConstraint
 };
 export enum ConsenterFields {
   email = 'email',

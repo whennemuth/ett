@@ -3,14 +3,14 @@ import { mockClient } from "aws-sdk-client-mock";
 import 'aws-sdk-client-mock-jest';
 import { IncomingPayload, OutgoingBody } from "../../../role/AbstractRole";
 import { DAOConsenter, DAOEntity, DAOInvitation, DAOUser, FactoryParms } from "../../_lib/dao/dao";
-import { Affiliate, AffiliateTypes, Config, Consenter, Entity, ExhibitForm as ExhibitFormData, Roles, User, YN } from "../../_lib/dao/entity";
+import { Affiliate, AffiliateTypes, Config, Consenter, Entity, ExhibitFormConstraints, ExhibitForm as ExhibitFormData, FormType, FormTypes, Roles, User, YN } from "../../_lib/dao/entity";
 import { DisclosureFormData } from "../../_lib/pdf/DisclosureForm";
 import { IPdfForm } from "../../_lib/pdf/PdfForm";
 import { deepClone } from "../../Utils";
 import { MockCalls, TestParms, invokeAndAssert } from "../../UtilsTest";
 import { BucketDisclosureFormParms } from "./BucketItemDisclosureForm";
 import { BucketItemMetadata, BucketItemMetadataParms } from "./BucketItemMetadata";
-import { FormType, FormTypes } from "./ExhibitEmail";
+import { ExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
 
 /**
  * Keeps track of how many times any method of any mock has been called.
@@ -28,9 +28,10 @@ enum ConsentState { OK, NONE, RESCINDED, RESTORED, INACTIVE }
  */
 export function ExhibitEmailMock() {
   return {
-    ExhibitEmail: jest.fn().mockImplementation((data:ExhibitFormData, formType:FormType, entity:Entity) => {
+    ExhibitEmail: jest.fn().mockImplementation((parms:ExhibitFormParms) => {
       return {
         send: async (email:string):Promise<boolean> => {
+          const { formType } = parms.data;
           mockCalls.update(`email.send`);
           mockCalls.update(`email.send.${formType}.${email}`);
           return email != BAD_EXHIBIT_RECIPIENT_EMAIL;
@@ -333,6 +334,8 @@ export const SendAffiliateData = {
         parameters: {
           email: `${ConsentState.NONE}-${sylvesterTheCat.email}`,
           exhibit_data: {
+            formType: FormTypes.FULL,
+            constraint: ExhibitFormConstraints.BOTH,
             email: 'yosemitesam@warnerbros.com',
             entity_id: entity1.entity_id,
             fullname: 'Yosemite Sam',
@@ -363,6 +366,8 @@ export const SendAffiliateData = {
         parameters: {
           email: `${ConsentState.RESCINDED}-${sylvesterTheCat.email}`,
           exhibit_data: {
+            formType: FormTypes.FULL,
+            constraint: ExhibitFormConstraints.BOTH,
             email: 'yosemitesam@warnerbros.com',
             entity_id: entity1.entity_id,
             fullname: 'Yosemite Sam',
@@ -393,6 +398,8 @@ export const SendAffiliateData = {
         parameters: {
           email: `${ConsentState.INACTIVE}-${sylvesterTheCat.email}`,
           exhibit_data: {
+            formType: FormTypes.FULL,
+            constraint: ExhibitFormConstraints.BOTH,
             email: 'yosemitesam@warnerbros.com',
             entity_id: entity1.entity_id,
             fullname: 'Yosemite Sam',
@@ -422,6 +429,8 @@ export const SendAffiliateData = {
         parameters: {
           email: `${ConsentState.OK}-${sylvesterTheCat.email}`,
           exhibit_data: {
+            formType: FormTypes.FULL,
+            constraint: ExhibitFormConstraints.BOTH,
             email: 'yosemitesam@warnerbros.com',
             entity_id: BAD_ENTITY_ID1,
             fullname: 'Yosemite Sam',
@@ -451,6 +460,8 @@ export const SendAffiliateData = {
         parameters: {
           email: `${ConsentState.OK}-${sylvesterTheCat.email}`,
           exhibit_data: {
+            formType: FormTypes.FULL,
+            constraint: ExhibitFormConstraints.BOTH,
             email: 'yosemitesam@warnerbros.com',
             entity_id: BAD_ENTITY_ID2,
             fullname: 'Yosemite Sam',
@@ -484,6 +495,8 @@ export const SendAffiliateData = {
         parameters: {
           email: `${ConsentState.OK}-${sylvesterTheCat.email}`,
           exhibit_data: {
+            formType: FormTypes.FULL,
+            constraint: ExhibitFormConstraints.BOTH,
             email: 'yosemitesam@warnerbros.com',
             // entity_id: BAD_ENTITY_ID3,
             entity_id: entity1.entity_id,
@@ -545,6 +558,8 @@ export const SendAffiliateData = {
           parameters: {
             email,
             exhibit_data: {
+              formType: FormTypes.FULL,
+              constraint: ExhibitFormConstraints.BOTH,
               email: 'yosemitesam@warnerbros.com',
               entity_id: entity1.entity_id,
               fullname: 'Yosemite Sam',
