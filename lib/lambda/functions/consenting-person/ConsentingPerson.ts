@@ -743,7 +743,6 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
    * Send the full exhibit form to each authorized individual and the RE admin.
    */
   const sendFullExhibitFormToDelegates = async () => {
-    emailSendFailures.length = 0;
     let sent:boolean = false;
     let _exhibitForm = {...exhibitForm}; // Create a shallow clone
     if( ! _exhibitForm.formType) {

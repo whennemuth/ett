@@ -10,6 +10,7 @@ import { deepClone } from "../../Utils";
 import { MockCalls, TestParms, invokeAndAssert } from "../../UtilsTest";
 import { BucketDisclosureFormParms } from "./BucketItemDisclosureForm";
 import { BucketItemMetadata, BucketItemMetadataParms } from "./BucketItemMetadata";
+import { ExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
 
 /**
  * Keeps track of how many times any method of any mock has been called.
@@ -27,9 +28,10 @@ enum ConsentState { OK, NONE, RESCINDED, RESTORED, INACTIVE }
  */
 export function ExhibitEmailMock() {
   return {
-    ExhibitEmail: jest.fn().mockImplementation((data:ExhibitFormData, formType:FormType, entity:Entity) => {
+    ExhibitEmail: jest.fn().mockImplementation((parms:ExhibitFormParms) => {
       return {
         send: async (email:string):Promise<boolean> => {
+          const { formType } = parms.data;
           mockCalls.update(`email.send`);
           mockCalls.update(`email.send.${formType}.${email}`);
           return email != BAD_EXHIBIT_RECIPIENT_EMAIL;

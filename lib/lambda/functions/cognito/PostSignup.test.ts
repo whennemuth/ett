@@ -366,7 +366,7 @@ describe('Post signup lambda trigger: handler', () => {
     invitationScenario = 'match';
     await handler(event);     
     expect(role_lookup_attempts).toEqual(1);
-    expect(invitation_lookup_attempts).toEqual(1);
+    expect(invitation_lookup_attempts).toEqual(3);
     expect(create_user_attempts).toEqual(1);
     expect(remove_user_attempts).toEqual(0);
     expect(delayed_executions_scheduled).toEqual(0);
@@ -376,7 +376,7 @@ describe('Post signup lambda trigger: handler', () => {
     invitationScenario = 'match';
     await handler(event);     
     expect(role_lookup_attempts).toEqual(1);
-    expect(invitation_lookup_attempts).toEqual(1);
+    expect(invitation_lookup_attempts).toEqual(3);
     expect(create_user_attempts).toEqual(1);
     expect(remove_user_attempts).toEqual(0);
     expect(delayed_executions_scheduled).toEqual(0);
@@ -386,13 +386,13 @@ describe('Post signup lambda trigger: handler', () => {
     invitationScenario = 'match';
     await handler(event);     
     expect(role_lookup_attempts).toEqual(1);
-    expect(invitation_lookup_attempts).toEqual(1);
+    expect(invitation_lookup_attempts).toEqual(3);
     expect(create_user_attempts).toEqual(1);
     expect(remove_user_attempts).toEqual(0);
     expect(delayed_executions_scheduled).toEqual(0);
   });
 
-  it('Should schedule delayed execution for stale enity vacancy handling when necessary', async () => {
+  it('Should schedule delayed execution for stale entity vacancy handling when necessary', async () => {
     const event = { 
       userPoolId, 
       callerContext: { clientId },
