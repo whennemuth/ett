@@ -462,6 +462,17 @@ export class DelayedExecutionLambdas extends Construct {
               effect: Effect.ALLOW
             })]
           }),
+          [`${functionName}-ses-policy`]: new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'ses:Send*', 'ses:Get*' ],
+                resources: [
+                  `arn:aws:ses:${REGION}:${ACCOUNT}:identity/*`
+                ],
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
         }
       }),
       environment: {

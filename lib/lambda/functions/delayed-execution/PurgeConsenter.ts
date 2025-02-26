@@ -1,9 +1,12 @@
 import { IContext } from "../../../../contexts/IContext";
-import { DelayedExecutionLambdas, DelayedExecutions } from "../../../DelayedExecution";
+import { DelayedExecutions } from "../../../DelayedExecution";
 import { UserAccount } from "../../_lib/cognito/UserAccount";
+import { Configurations } from "../../_lib/config/Config";
 import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
-import { Consenter, Roles } from "../../_lib/dao/entity";
+import { ConfigNames, Consenter, Roles } from "../../_lib/dao/entity";
+import { EmailParms, sendEmail } from "../../_lib/EmailWithAttachments";
 import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../_lib/timer/DelayedExecution";
+import { humanReadableFromSeconds } from "../../_lib/timer/DurationConverter";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, log } from "../../Utils";
 import { isActiveConsent } from "../consenting-person/ConsentingPerson";
@@ -54,6 +57,19 @@ export const handler = async (event:ScheduledLambdaInput, context:any) => {
         await userAccount.Delete();
       }
     }
+
+    const configs = new Configurations();
+    const { CONSENT_EXPIRATION } = ConfigNames;
+    const periodSeconds = parseInt((await configs.getAppConfig(CONSENT_EXPIRATION)).value);
+
+    // Notify the consenter that their account has been purged.
+    sendEmail({ 
+      subject: 'ETT consent expiration notification', 
+      from: `noreply@${context.ETT_DOMAIN}`, 
+      message: `This email is notification that your window of ${humanReadableFromSeconds(periodSeconds)} ` +
+        `has expired. To resume with ETT, repeat you initial account signup and registration.`, 
+      to: [ consenterEmail ] 
+    } as EmailParms);
   }
   catch(e:any) {
     log(e);
