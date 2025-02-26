@@ -105,7 +105,9 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
           if( delegate_email && ! delegate_fullname ) { 
             return invalidResponse('Bad Request: delegate_email cannot be missing delegate_fullname querystring parameter');
           }
-          delegate = { fullname: delegate_fullname, email: delegate_email, title: delegate_title, phone_number: delegate_phone };
+          if(delegate_email && delegate_fullname) {
+            delegate = { fullname: delegate_fullname, email: delegate_email, title: delegate_title, phone_number: delegate_phone };
+          }
         }
         else {
           if(delegate_email || delegate_fullname || delegate_title || delegate_phone) {
