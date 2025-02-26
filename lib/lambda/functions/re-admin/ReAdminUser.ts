@@ -423,7 +423,7 @@ export const inviteUser = async (user:User, inviterRole:Role, linkGenerator:Func
         return false; // Another user was invited for the same role in the same entity, but they are not active, exclude them as conflicting.
       }
 
-      return true; // // Another currently active user was invited for the same role in the same entity, thus conflicting.
+      return true; // Another currently active user was invited for the same role in the same entity, thus conflicting.
     });
 
     if(conflictingInvitations.length > 0) {

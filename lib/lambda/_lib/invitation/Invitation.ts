@@ -62,10 +62,10 @@ export class UserInvitation {
         role_fullname = 'System Administrator';
         role_description = 'A system administrator for the entire ETT plaform. Actions that can be taken \
           by a system adminstrator are not entity-specific and involve, among other functions, the \
-          invitation of registered entity administrators to the platform to register and create their entities. '
+          invitation of administrative support professionals to the platform to register and create their entities. '
         break;
       case Roles.RE_ADMIN:
-        role_fullname = 'Registered Entity Administrator';
+        role_fullname = 'Administrative support professional';
         role_description = 'A person who directly works with one or both of the RE Authorized Individuals \
           and can assist them in interacting with the ETT technology—and who can manage the registered entities \
           involvement in the ETT, including by making requests for Individuals to complete Consent or Affiliate \
