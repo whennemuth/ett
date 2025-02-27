@@ -1,3 +1,5 @@
+import * as ctx from '../../../../contexts/context.json';
+import { IContext } from "../../../../contexts/IContext";
 import { PublicApiConstruct } from "../../../PublicApi";
 import { LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { ExhibitFormFullBoth } from "../../_lib/pdf/ExhibitFormFullBoth";
@@ -7,6 +9,7 @@ import { ExhibitFormSingleBoth } from "../../_lib/pdf/ExhibitFormSingleBoth";
 import { ExhibitFormSingleCurrent } from "../../_lib/pdf/ExhibitFormSingleCurrent";
 import { ExhibitFormSingleOther } from "../../_lib/pdf/ExhibitFormSingleOther";
 import { IPdfForm } from "../../_lib/pdf/PdfForm";
+import { getBlankData, RegistrationFormEntity, RegistrationFormEntityData } from "../../_lib/pdf/RegistrationFormEntity";
 import { debugLog, error, errorResponse, invalidResponse, okPdfResponse } from "../../Utils";
 import { consentFormUrl } from "../consenting-person/ConsentingPerson";
 
@@ -30,6 +33,7 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
 
     const { FORM_NAME_PATH_PARAM: pathParm} = PublicApiConstruct;
     const { [pathParm]:formName } = event.pathParameters;
+    const context:IContext = <IContext>ctx;
 
     if( ! formName ) {
       return invalidResponse(`Bad Request: ${pathParm} not specified (${Object.values(formName).join('|')})`);
@@ -43,6 +47,9 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
     switch(formName as FormName) {
       
       case FormName.REGISTRATION_FORM_ENTITY:
+        const blankData = getBlankData() as RegistrationFormEntityData;
+        blankData.loginHref = `https://${process.env.CLOUDFRONT_DOMAIN}${context.CONSENTING_PERSON_PATH}`;
+        form = new RegistrationFormEntity(blankData);
         break;
 
       case FormName.REGISTRATION_FORM_INDIVIDUAL:

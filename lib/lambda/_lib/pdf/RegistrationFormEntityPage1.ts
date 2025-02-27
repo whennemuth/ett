@@ -6,14 +6,13 @@ import { Page } from "./lib/Page";
 import { Rectangle } from "./lib/Rectangle";
 import { Align, Margins, rgbPercent, VAlign } from "./lib/Utils";
 import { IPdfForm, PdfForm } from "./PdfForm";
-import { getSampleData, RegistrationFormEntityData, RegistrationFormEntityDrawParms } from "./RegistrationFormEntity";
+import { getBlankData, getSampleData, RegistrationFormEntityData, RegistrationFormEntityDrawParms } from "./RegistrationFormEntity";
 
 const blue = rgbPercent(47, 84, 150) as Color;
 const lightblue = rgbPercent(180, 198, 231) as Color;
 const red = rgbPercent(255, 0, 0);
 
 type FieldSet = { fldName:string[], fldValue:string, fldNameWidth:number, fldWidth:number, height:number };
-
 export class RegistrationFormEntityPage1 extends PdfForm implements IPdfForm {
   private data:RegistrationFormEntityData;
   private font:PDFFont;
@@ -85,7 +84,7 @@ export class RegistrationFormEntityPage1 extends PdfForm implements IPdfForm {
 
   private drawSubTitle = async () => {
     const { page, font, _return, data: { create_timestamp, entity: { users } } } = this;
-    let signedOn = 'Unknown Date';
+    let signedOn = new Date().toUTCString();
     if(create_timestamp) {
       const created = new Date(Date.parse(create_timestamp));
       signedOn = created.toUTCString();
@@ -273,6 +272,7 @@ export class RegistrationFormEntityPage1 extends PdfForm implements IPdfForm {
       _return(8);
     }
   }
+
 }
 
 
@@ -282,7 +282,8 @@ const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/RegistrationFormEntityPage1.ts')) {
 
   const outputfile = './lib/lambda/_lib/pdf/RegistrationFormEntityPage1.pdf';
-  const data = getSampleData();
+  // const data = getSampleData();
+  const data = getBlankData();
 
   new RegistrationFormEntityPage1(data).writeToDisk(outputfile)
     .then((bytes) => {

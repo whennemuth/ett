@@ -17,12 +17,11 @@ export class RegistrationFormEntityPage3 extends PdfForm implements IPdfForm {
   private loginHref:string;
   private signedDate:string
 
-  constructor(loginHref:string, signedDateISOString:string) {
+  constructor(loginHref:string, signedDateISOString:string=new Date().toISOString()) {
     super();
     this.loginHref = loginHref;
     this.pageMargins = { top: 35, bottom: 35, left: 40, right: 40 } as Margins;
-    const date = new Date(signedDateISOString);
-    this.signedDate = date.toUTCString();
+    this.signedDate = new Date(signedDateISOString).toUTCString();
   }
 
   public async getBytes(): Promise<Uint8Array> {

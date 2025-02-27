@@ -17,7 +17,7 @@ export type RegistrationFormEntityDrawParms = {
 export class RegistrationFormEntity extends PdfForm implements IPdfForm {
   private data:RegistrationFormEntityData
 
-  constructor(data:RegistrationFormEntityData) {
+  constructor(data:RegistrationFormEntityData=getBlankData()) {
     super();
     this.data = data;
   }
@@ -29,7 +29,7 @@ export class RegistrationFormEntity extends PdfForm implements IPdfForm {
     this.form = this.doc.getForm();
 
     let { doc, form, embeddedFonts, data, data: { create_timestamp, loginHref } } = this;
-    loginHref = loginHref ?? '[ web address TBD ]';
+    loginHref = loginHref ?? '[ ETT web address ]';
 
     await new RegistrationFormEntityPage1(data).draw({ doc, form, embeddedFonts });
 
@@ -44,6 +44,21 @@ export class RegistrationFormEntity extends PdfForm implements IPdfForm {
   public async writeToDisk(path:string) {
     writeFile(path, await this.getBytes());
   }
+}
+
+/**
+ * Return data for use in rendering a "blank" form.
+ * @returns 
+ */
+export const getBlankData = ():RegistrationFormEntityData => {
+  const blankDelegate = { email:'', title:'', fullname:'', phone_number:'' } as Delegate;
+  const blankUser = { ...blankDelegate, delegate:blankDelegate } as User
+  const blankEntityInfo = {
+    description:'', entity_name:'', totalUserCount:3, users: [
+      { ...blankUser, role:Roles.RE_AUTH_IND }, { ...blankUser, role:Roles.RE_AUTH_IND }
+    ]
+  } as EntityInfo
+  return { ...blankUser, role:Roles.RE_ADMIN, entity:blankEntityInfo } as RegistrationFormEntityData;
 }
 
 export const getSampleData = ():RegistrationFormEntityData => {
@@ -111,7 +126,8 @@ const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/RegistrationFormEntity.ts')) {
 
   const outputfile = './lib/lambda/_lib/pdf/RegistrationFormEntity.pdf';
-  const data = getSampleData();
+  // const data = getSampleData();
+  const data = getBlankData();
 
   new RegistrationFormEntity(data).writeToDisk(outputfile)
     .then((bytes) => {
