@@ -3,6 +3,7 @@ import { IContext } from "../../../../contexts/IContext";
 import { PublicApiConstruct } from "../../../PublicApi";
 import { LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { Consenter } from '../../_lib/dao/entity';
+import { ConsentForm, getBlankData as getBlankConsentData } from '../../_lib/pdf/ConsentForm';
 import { ExhibitFormFullBoth } from "../../_lib/pdf/ExhibitFormFullBoth";
 import { ExhibitFormFullCurrent } from "../../_lib/pdf/ExhibitFormFullCurrent";
 import { ExhibitFormFullOther } from "../../_lib/pdf/ExhibitFormFullOther";
@@ -10,7 +11,7 @@ import { ExhibitFormSingleBoth } from "../../_lib/pdf/ExhibitFormSingleBoth";
 import { ExhibitFormSingleCurrent } from "../../_lib/pdf/ExhibitFormSingleCurrent";
 import { ExhibitFormSingleOther } from "../../_lib/pdf/ExhibitFormSingleOther";
 import { IPdfForm } from "../../_lib/pdf/PdfForm";
-import { getBlankData, RegistrationFormEntity, RegistrationFormEntityData } from "../../_lib/pdf/RegistrationFormEntity";
+import { getBlankData as getBlankRegistrationData, RegistrationFormEntity, RegistrationFormEntityData } from "../../_lib/pdf/RegistrationFormEntity";
 import { RegistrationFormIndividual } from '../../_lib/pdf/RegistrationFormIndividual';
 import { debugLog, error, errorResponse, invalidResponse, okPdfResponse } from "../../Utils";
 import { consentFormUrl } from "../consenting-person/ConsentingPerson";
@@ -49,9 +50,9 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
     switch(formName as FormName) {
       
       case FormName.REGISTRATION_FORM_ENTITY:
-        const blankData = getBlankData() as RegistrationFormEntityData;
-        blankData.loginHref = `https://${process.env.CLOUDFRONT_DOMAIN}${context.CONSENTING_PERSON_PATH}`;
-        form = new RegistrationFormEntity(blankData);
+        const blankRegData = getBlankRegistrationData() as RegistrationFormEntityData;
+        blankRegData.loginHref = `https://${process.env.CLOUDFRONT_DOMAIN}${context.CONSENTING_PERSON_PATH}`;
+        form = new RegistrationFormEntity(blankRegData);
         break;
 
       case FormName.REGISTRATION_FORM_INDIVIDUAL:
@@ -62,6 +63,8 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         break;
 
       case FormName.CONSENT_FORM:
+        const blankConsentData = getBlankConsentData();
+        form = new ConsentForm(blankConsentData);
         break;
 
       case FormName.EXHIBIT_FORM_CURRENT_FULL:

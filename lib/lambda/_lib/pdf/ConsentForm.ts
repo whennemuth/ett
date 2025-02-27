@@ -51,19 +51,32 @@ export class ConsentForm extends PdfForm implements IPdfForm {
   }  
 }
 
+export const getBlankData = ():ConsentFormData => {
+  return {
+    entityName: '[ Name of Entity ]',
+    consenter: {  email:'', firstname:'', middlename:'', lastname:'', phone_number:'', active:YN.Yes }
+  } as ConsentFormData;
+}
 
-
-// RUN MANUALLY:
-const { argv:args } = process;
-if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/ConsentForm.ts')) {
-
-  new ConsentForm({
+export const getSampleData = ():ConsentFormData => {
+  return {
     entityName: 'Boston University',
     consenter: { 
       email: 'bugsbunny@warnerbros.com', firstname: 'Bugs', middlename: 'B', lastname: 'Bunny',
       phone_number: '617-333-5555', consented_timestamp: [ new Date().toISOString() ], active: YN.Yes
     } as Consenter
-  } as ConsentFormData).writeToDisk('./lib/lambda/_lib/pdf/consentForm.pdf')
+  };
+}
+
+// RUN MANUALLY:
+const { argv:args } = process;
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/ConsentForm.ts')) {
+
+  const data = getBlankData();
+  // or...
+  // const data = getSampleData();
+
+  new ConsentForm(data).writeToDisk('./lib/lambda/_lib/pdf/consentForm.pdf')
   .then((bytes) => {
     console.log('done');
   })
