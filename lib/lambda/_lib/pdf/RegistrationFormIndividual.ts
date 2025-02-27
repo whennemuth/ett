@@ -67,7 +67,7 @@ export class RegistrationFormIndividual extends PdfForm implements IPdfForm {
   private drawConsenter = async () => {
     let size = 10;
     const { page, page: { basePage, bodyWidth }, boldfont, font, _return, getFullName, consenter, loginHref } = this;
-    const { firstname='', middlename='', lastname='', email, phone_number='', create_timestamp='' } = consenter;
+    const { firstname='', middlename='', lastname='', email='', phone_number='', create_timestamp='' } = consenter;
 
     basePage.moveDown(16);
 
@@ -136,7 +136,7 @@ export class RegistrationFormIndividual extends PdfForm implements IPdfForm {
 
     _return(16);
 
-    const created = new Date(Date.parse(create_timestamp));
+    const created = new Date(Date.parse(create_timestamp || new Date().toISOString()));
     await page.drawWrappedText({
       text: `Your registration was digitally signed <i>(having the same effect as a handwritten signature)</i> ` +
         `and your account created on: <b>${created.toUTCString()}.</b>`,
@@ -187,6 +187,10 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/
   const loginHref = `https://d227na12o3l3dd.cloudfront.net/bootstrap/index.htm?action=start-login&selected_role=${Roles.CONSENTING_PERSON}`;
 
   (async () => {
-    await new RegistrationFormIndividual(consenter, loginHref).writeToDisk('./lib/lambda/_lib/pdf/RegistrationFormIndividual.pdf');
+    // Populated form
+    // await new RegistrationFormIndividual(consenter, loginHref).writeToDisk('./lib/lambda/_lib/pdf/RegistrationFormIndividual.pdf');
+
+    // Or blank form
+    await new RegistrationFormIndividual({} as Consenter, loginHref).writeToDisk('./lib/lambda/_lib/pdf/RegistrationFormIndividual.pdf');
   })();
 }
