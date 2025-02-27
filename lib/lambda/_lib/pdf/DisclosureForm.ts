@@ -1,7 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import { PDFDocument, PDFForm } from "pdf-lib";
 import { bugsbunny, daffyduck, yosemitesam } from '../../functions/authorized-individual/MockObjects';
-import { Consenter, User } from "../dao/entity";
+import { Consenter, Roles, User, YN } from "../dao/entity";
 import { DisclosureFormPage1 } from "./DisclosureFormPage1";
 import { DisclosureFormPage2 } from "./DisclosureFormPage2";
 import { DisclosureFormPage3 } from "./DisclosureFormPage3";
@@ -63,6 +63,25 @@ export class DisclosureForm extends PdfForm implements IPdfForm {
   }
 }
 
+export const getBlankData = ():DisclosureFormData => {
+  const consenter = { email:'', phone_number:'', firstname:'', middlename:'', lastname:'' } as Consenter;
+  const blankUser = { email:'', phone_number:'', fullname:'', title:'', role:Roles.RE_AUTH_IND, active:YN.Yes } as User;
+  const disclosingEntity = { name:'', representatives: [ blankUser ] } as DisclosingEntity;
+  const requestingEntity = { name:'', authorizedIndividuals: [ blankUser ] } as RequestingEntity;
+  return { consenter, requestingEntity, disclosingEntity } as DisclosureFormData;
+}
+
+export const getSampleData = ():DisclosureFormData => {
+  return {
+    consenter: { 
+      email: 'foghorn@warnerbros.com', phone_number: '617-222-4444', 
+      firstname: 'Foghorn', middlename: 'F', lastname: 'Leghorn' 
+    },
+    disclosingEntity: { name: 'Boston University', representatives: [ daffyduck, yosemitesam ] },
+    requestingEntity: { name: 'Northeastern University', authorizedIndividuals: [ bugsbunny ] }
+  } as DisclosureFormData;
+}
+
 
 
 
@@ -70,15 +89,11 @@ export class DisclosureForm extends PdfForm implements IPdfForm {
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/DisclosureForm.ts')) {
 
-  new DisclosureForm(
-  {
-    consenter: { 
-      email: 'foghorn@warnerbros.com', phone_number: '617-222-4444', 
-      firstname: 'Foghorn', middlename: 'F', lastname: 'Leghorn' 
-    },
-    disclosingEntity: { name: 'Boston University', representatives: [ daffyduck, yosemitesam ] },
-    requestingEntity: { name: 'Northeastern University', authorizedIndividuals: [ bugsbunny ] }
-  } as DisclosureFormData).writeToDisk('./lib/lambda/_lib/pdf/disclosureForm.pdf')
+  // const data = getBlankData();
+  // or...
+  const data = getSampleData();
+
+  new DisclosureForm(data).writeToDisk('./lib/lambda/_lib/pdf/disclosureForm.pdf')
   .then((bytes) => {
     console.log('done');
   })

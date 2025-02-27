@@ -4,6 +4,7 @@ import { PublicApiConstruct } from "../../../PublicApi";
 import { LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { Consenter } from '../../_lib/dao/entity';
 import { ConsentForm, getBlankData as getBlankConsentData } from '../../_lib/pdf/ConsentForm';
+import { DisclosureForm, getBlankData as getBlankDisclosureData } from '../../_lib/pdf/DisclosureForm';
 import { ExhibitFormFullBoth } from "../../_lib/pdf/ExhibitFormFullBoth";
 import { ExhibitFormFullCurrent } from "../../_lib/pdf/ExhibitFormFullCurrent";
 import { ExhibitFormFullOther } from "../../_lib/pdf/ExhibitFormFullOther";
@@ -67,6 +68,11 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         form = new ConsentForm(blankConsentData);
         break;
 
+      case FormName.DISCLOSURE_FORM:
+        const blankDisclosureData = getBlankDisclosureData();
+        form = new DisclosureForm(blankDisclosureData);
+        break;
+  
       case FormName.EXHIBIT_FORM_CURRENT_FULL:
         form = ExhibitFormFullCurrent.getBlankForm();
         (form as ExhibitFormFullCurrent).consentFormUrl = consentFormUrl('[consenter_email]');
@@ -95,9 +101,6 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
       case FormName.EXHIBIT_FORM_BOTH_SINGLE:
         form = ExhibitFormSingleBoth.getBlankForm();
         (form as ExhibitFormSingleBoth).consentFormUrl = consentFormUrl('[consenter_email');
-        break;
-
-      case FormName.DISCLOSURE_FORM:
         break;
 
       default:
