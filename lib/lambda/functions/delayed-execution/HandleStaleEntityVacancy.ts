@@ -3,7 +3,7 @@ import { DelayedExecutions } from "../../../DelayedExecution";
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { Configurations, IAppConfig } from "../../_lib/config/Config";
 import { EntityCrud } from "../../_lib/dao/dao-entity";
-import { ConfigNames, Entity, Roles, User } from "../../_lib/dao/entity";
+import { ConfigNames, Entity, Invitation, Roles, User } from "../../_lib/dao/entity";
 import { EntityToAutomate } from "../../_lib/EntityAutomation";
 import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../_lib/timer/DelayedExecution";
 import { humanReadableFromSeconds } from "../../_lib/timer/DurationConverter";
@@ -13,6 +13,7 @@ import { Personnel } from "../authorized-individual/correction/EntityPersonnel";
 import { EntityState } from "../authorized-individual/correction/EntityState";
 import { EntityToDemolish } from "../authorized-individual/Demolition";
 import { ExhibitFormsBucketEnvironmentVariableName } from "../consenting-person/BucketItemMetadata";
+import { sendEndOfRegistrationEmail } from "./RemoveStaleInvitations";
 
 export type StaleVacancyLambdaParms = {
   entity_id: string
@@ -85,6 +86,11 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
         const entityToDemolish = new EntityToDemolish(entity_id);
         entityToDemolish.dryRun = dryrun;
         await entityToDemolish.demolish();
+        const { deletedUsers } = entityToDemolish;
+        for(const user of deletedUsers) {
+          const { role, email } = user;
+          await sendEndOfRegistrationEmail({ invitation: { email, role } as Invitation });
+        }
       }
       else {
         const limit = config.getDuration ? config.getDuration() : 0;

@@ -62,7 +62,12 @@ export class LambdaFunction extends AbstractFunction {
   constructor(scope: Construct, constructId: string, parms:ApiConstructParms) {
     const context:IContext = scope.node.getContext('stack-parms');
     const { STACK_ID, ACCOUNT, REGION, CONFIG } = context;
-    const { userPool, cloudfrontDomain, landscape, exhibitFormsBucket, disclosureRequestReminderLambdaArn, handleStaleEntityVacancyLambdaArn } = parms;
+    const { 
+      userPool, cloudfrontDomain, landscape, exhibitFormsBucket, 
+      disclosureRequestReminderLambdaArn, 
+      handleStaleEntityVacancyLambdaArn,
+      removeStaleInvitations
+    } = parms;
     const { userPoolId, userPoolArn } = userPool;
     const prefix = `${STACK_ID}-${landscape}`;
     super(scope, constructId, {
@@ -153,6 +158,7 @@ export class LambdaFunction extends AbstractFunction {
         [ExhibitFormsBucketEnvironmentVariableName]: exhibitFormsBucket.bucketName,
         [DelayedExecutions.DisclosureRequestReminder.targetArnEnvVarName]: disclosureRequestReminderLambdaArn,
         [DelayedExecutions.HandleStaleEntityVacancy.targetArnEnvVarName]: handleStaleEntityVacancyLambdaArn,
+        [DelayedExecutions.RemoveStaleInvitations.targetArnEnvVarName]: removeStaleInvitations,
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });

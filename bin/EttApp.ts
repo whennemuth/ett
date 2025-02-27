@@ -121,6 +121,7 @@ const buildAll = () => {
     disclosureRequestReminderLambdaArn: delayedExecutionLambdas.disclosureRequestReminderLambda.functionArn,
     bucketExhibitFormPurgeLambdaArn: delayedExecutionLambdas.bucketExhibitFormPurgeLambda.functionArn,
     handleStaleEntityVacancyLambdaArn: delayedExecutionLambdas.handleStaleEntityVacancyLambda.functionArn,
+    removeStaleInvitations: delayedExecutionLambdas.removeStaleInvitationsLambda.functionArn
   } as ApiConstructParms);
 
   // Grant the apis the necessary permissions (policy actions).
@@ -194,7 +195,7 @@ const buildAll = () => {
   }); 
   new CfnOutput(stack, `${Roles.RE_ADMIN}-api-uri`, {
     value: api.reAdminApi.getApi().getRestApiUrl(),
-    description: 'Registered entity administrator api uri'
+    description: 'Administrative Support Professional api uri'
   }); 
   new CfnOutput(stack, `${Roles.RE_AUTH_IND}-api-uri`, {
     value: api.authIndApi.getApi().getRestApiUrl(),

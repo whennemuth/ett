@@ -10,6 +10,7 @@ import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
 import { Configurations } from "../lambda/_lib/config/Config";
 import { ExhibitFormsBucketEnvironmentVariableName } from "../lambda/functions/consenting-person/BucketItemMetadata";
 import { Duration } from "aws-cdk-lib";
+import { DelayedExecutions } from "../DelayedExecution";
 
 export class SysAdminApi extends AbstractRole {
   private api: AbstractRoleApi;
@@ -62,7 +63,7 @@ export class LambdaFunction extends AbstractFunction {
     const context:IContext = scope.node.getContext('stack-parms');
     const { ACCOUNT, CONFIG, REGION, TAGS: { Landscape:landscape }, STACK_ID } = context;
     const config = new Configurations(CONFIG);
-    const { userPool, userPoolName, userPoolDomain, cloudfrontDomain, redirectPath, exhibitFormsBucket } = parms;
+    const { userPool, userPoolName, userPoolDomain, cloudfrontDomain, redirectPath, exhibitFormsBucket, removeStaleInvitations } = parms;
     const { userPoolArn, userPoolId } = userPool;
     const redirectUri = `https://${(cloudfrontDomain + '/' + redirectPath).replace('//', '/')}`;
     const prefix = `${STACK_ID}-${landscape}`;
@@ -163,6 +164,7 @@ export class LambdaFunction extends AbstractFunction {
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
         REDIRECT_URI: redirectUri,
         [ExhibitFormsBucketEnvironmentVariableName]: exhibitFormsBucket.bucketName,
+        [DelayedExecutions.RemoveStaleInvitations.targetArnEnvVarName]: removeStaleInvitations,        
       }
     });
   }

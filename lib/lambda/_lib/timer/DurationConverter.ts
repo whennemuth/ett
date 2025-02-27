@@ -1,5 +1,3 @@
-import { get } from "http";
-
 const humanizeDuration = require("humanize-duration");
 
 export const humanReadableFromMilliseconds = (duration:number): string => humanizeDuration(duration);

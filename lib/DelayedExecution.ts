@@ -32,6 +32,10 @@ export const DelayedExecutions = {
   ConsenterPurge: {
     coreName: 'purge-consenter',
     targetArnEnvVarName: 'PURGE_CONSENTER_FUNCTION_ARN'
+  } as DelayedExecutionNames,
+  RemoveStaleInvitations: {
+    coreName: 'remove-stale-invitations',
+    targetArnEnvVarName: 'REMOVE_STALE_INVITATIONS_FUNCTION_ARN'
   } as DelayedExecutionNames
 }
 
@@ -50,6 +54,7 @@ export class DelayedExecutionLambdas extends Construct {
   private _bucketExhibitFormPurgeLambda:AbstractFunction;
   private _handleStaleEntityVacancyLambda:AbstractFunction;
   private _consenterPurgeLambda:AbstractFunction;
+  private _removeStaleInvitationsLambda:AbstractFunction;
 
   constructor(scope:Construct, constructId:string, parms:DelayedExecutionLambdaParms) {
     super(scope, constructId);
@@ -68,6 +73,8 @@ export class DelayedExecutionLambdas extends Construct {
     this.createHandleStaleEntityVacancyLambda();
 
     this.createConsenterPurgeLambda();
+
+    this.createStaleInvitationsLambda();
   }
 
   private createDatabaseExhibitFormPurgeLambda = () => {
@@ -428,7 +435,7 @@ export class DelayedExecutionLambdas extends Construct {
       },
       role: new Role(this, 'PurgeConsenterRole', {
         assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
-        description: 'Grants access to dynamodb, cognito, and event-bridge',
+        description: 'Grants access to dynamodb, cognito, ses, and event-bridge',
         inlinePolicies: {
           [`${functionName}--db-policy`]: new PolicyDocument({
             statements: [
@@ -492,6 +499,85 @@ export class DelayedExecutionLambdas extends Construct {
     });
   }
 
+  private createStaleInvitationsLambda = () => {
+    const { constructId, parms: { cloudfrontDomain, userPoolId },
+      context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID }
+    } = this;
+    const baseId = `${constructId}RemoveStaleInvitations`;
+    const prefix = `${STACK_ID}-${landscape}`
+    const functionName = `${prefix}-${DelayedExecutions.RemoveStaleInvitations.coreName}`;
+    const description = 'Function for removing stale invitations that have not been accepted in the required time';
+
+    this._removeStaleInvitationsLambda = new class extends AbstractFunction { }(this, baseId, {
+      runtime: Runtime.NODEJS_18_X,
+      // memorySize: 1024,
+      timeout: Duration.seconds(15),
+      entry: 'lib/lambda/functions/delayed-execution/RemoveStaleInvitations.ts',
+      // handler: 'handler',
+      functionName,
+      description,
+      cleanup: true,
+      bundling: {
+        externalModules: [
+          '@aws-sdk/*',
+        ]
+      },
+      role: new Role(this, 'RemoveStaleInvitationsRole', {
+        assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+        description: 'Grants access to dynamodb, cognito, and event-bridge',
+        inlinePolicies: {
+          [`${functionName}--db-policy`]: new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'dynamodb:DeleteItem', 'dynamodb:Query', 'dynamodb:GetItem' ],
+                resources: [
+                  `arn:aws:dynamodb:${REGION}:${ACCOUNT}:table/${prefix}-*`,
+                  `arn:aws:dynamodb:${REGION}:${ACCOUNT}:table/${prefix}-*/index/*`
+                ],
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
+          [`${functionName}-eventbridge-policy`]: new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'events:*' ],
+                resources: [
+                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
+                ],
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
+          [`${functionName}-ses-policy`]: new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                actions: [ 'ses:Send*', 'ses:Get*' ],
+                resources: [
+                  `arn:aws:ses:${REGION}:${ACCOUNT}:identity/*`
+                ],
+                effect: Effect.ALLOW
+              })
+            ]
+          }),
+        }
+      }),
+      environment: {
+        REGION,
+        CLOUDFRONT_DOMAIN: cloudfrontDomain,
+        USERPOOL_ID: userPoolId,
+        PREFIX: prefix,
+        [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
+      }
+    });
+
+    // Grant event bridge permission to invoke the lambda function.
+    this._removeStaleInvitationsLambda.addPermission(`${functionName}-invoke-permission`, {
+      principal: new ServicePrincipal('events.amazonaws.com'),
+      action: 'lambda:InvokeFunction',
+      sourceArn: `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
+    });
+  }
 
   public get databaseExhibitFormPurgeLambda(): AbstractFunction {
     return this._databaseExhibitFormPurgeLambda;
@@ -511,5 +597,9 @@ export class DelayedExecutionLambdas extends Construct {
 
   public get consenterPurgeLambda():AbstractFunction {
     return this._consenterPurgeLambda;
+  }
+
+  public get removeStaleInvitationsLambda():AbstractFunction {
+    return this._removeStaleInvitationsLambda;
   }
 }

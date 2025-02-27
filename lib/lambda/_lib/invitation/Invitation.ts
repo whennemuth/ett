@@ -1,4 +1,4 @@
-import { Entity, Invitation, Role, Roles, User } from '../dao/entity';
+import { ConfigNames, Entity, Invitation, Role, Roles, User } from '../dao/entity';
 import { DAOInvitation, DAOFactory } from '../dao/dao';
 import { SESv2Client, SendEmailCommand, SendEmailCommandInput, SendEmailResponse } from '@aws-sdk/client-sesv2';
 import { v4 as uuidv4 } from 'uuid';
@@ -10,6 +10,11 @@ import { UserCrud } from '../dao/dao-user';
 import { SignupLink } from './SignupLink';
 import { DeleteItemCommandOutput } from '@aws-sdk/client-dynamodb';
 import { InvitationCrud } from '../dao/dao-invitation';
+import { DelayedExecutions } from '../../../DelayedExecution';
+import { Configurations } from '../config/Config';
+import { RulePrefix as dsicPrefix, StaleInvitationLambdaParms } from '../../functions/delayed-execution/RemoveStaleInvitations';
+import { DelayedLambdaExecution } from '../timer/DelayedExecution';
+import { EggTimer, PeriodType } from '../timer/EggTimer';
 
 /**
  * An invitation email is one sent with a link in it to the ETT privacy policy acknowledgement webpage as the
@@ -52,9 +57,10 @@ export class UserInvitation {
    * Send the invitation email.
    * @returns 
    */
-  public send = async ():Promise<boolean> => {
+  public send = async (expires:boolean=true):Promise<boolean> => {
     // Destructure the invitation and get a description of the role invited for.
-    let { role, email } = this.invitation;
+    let { invitation, entity_name, _link, messageId, persist, setDelayedExecutionToPurge } = this;
+    let { role, email } = invitation;
     let role_description = '';
     let role_fullname = '';
     switch(role as Role) {
@@ -80,9 +86,9 @@ export class UserInvitation {
     }
 
     let heading:string = `You are invited to register as a ${role_fullname} in the Ethical Transparency Application`;
-    if(this.entity_name != ENTITY_WAITING_ROOM) {
-    // if(this.entity_name && this.entity_name != ENTITY_WAITING_ROOM) {
-        heading = `${heading} for the following organization: <br><br><span class="entity1">${this.entity_name}</span>`;
+    if(entity_name != ENTITY_WAITING_ROOM) {
+    // if(entity_name && entity_name != ENTITY_WAITING_ROOM) {
+        heading = `${heading} for the following organization: <br><br><span class="entity1">${entity_name}</span>`;
     }
     
     // Send the invitation email
@@ -136,7 +142,7 @@ export class UserInvitation {
                     Follow the link below register:
                   </div>
                   <p>
-                    <a href="${this._link}" style="font-weight: bold;">${this._link}</a>
+                    <a href="${_link}" style="font-weight: bold;">${_link}</a>
                   </p>
                 </div>`,
             }
@@ -147,16 +153,21 @@ export class UserInvitation {
 
     try {
       const response:SendEmailResponse = await client.send(command);
-      this.messageId = response?.MessageId;
-      if(this.messageId) {
-        await this.persist();
+      messageId = response?.MessageId;
+      if(messageId) {
+
+        await persist();
+
+        if(expires) {
+          await setDelayedExecutionToPurge();
+        }
       }
     } 
     catch (e:any) {
       error(e);
       return false;
     }
-    return this.messageId ? true : false;
+    return messageId ? true : false;
   }
 
   /**
@@ -166,7 +177,7 @@ export class UserInvitation {
    */
   private persist = async ():Promise<any> => {
     try {
-      const { invitation, entity_name } = this;
+      const { invitation, entity_name, _code, messageId } = this;
       let { email, entity_id, role, sent_timestamp } = invitation;
 
 
@@ -175,12 +186,12 @@ export class UserInvitation {
       }
 
       const Payload = {
-        code: this._code, 
-        email: this._code,
+        code: _code, 
+        email: _code,
         entity_id, 
         entity_name,
         role, 
-        message_id: this.messageId,
+        message_id: messageId,
         sent_timestamp
       } as Invitation;
 
@@ -198,6 +209,32 @@ export class UserInvitation {
     catch (e:any) {
       error(e);
       return null;      
+    }
+  }
+
+  /**
+   * Set the delayed execution to purge the invitation from the database after the configured interval.
+   */
+  private setDelayedExecutionToPurge = async ():Promise<void> => {
+    const { _code, invitation: { role, email } } = this;
+    const envVarName = DelayedExecutions.RemoveStaleInvitations.targetArnEnvVarName;
+    const functionArn = process.env[envVarName];
+    const description = `${dsicPrefix} (invitation code:${_code})`;
+    const configName = role == Roles.RE_ADMIN ? 
+      ConfigNames.ASP_INVITATION_EXPIRE_AFTER : 
+      ConfigNames.AUTH_IND_INVITATION_EXPIRE_AFTER;
+
+    if(functionArn) {
+      const configs = new Configurations();
+      const waitTime = (await configs.getAppConfig(configName)).getDuration();
+      const lambdaInput = { invitationCode: _code, email } as StaleInvitationLambdaParms;
+      const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
+      const { SECONDS } = PeriodType;
+      const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
+      await delayedTestExecution.startCountdown(timer, description);
+    }
+    else {
+      console.error(`Cannot schedule ${description}: ${envVarName} variable is missing from the environment!`);
     }
   }
 
