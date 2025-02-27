@@ -1,3 +1,4 @@
+import * as ctx from '../../../../contexts/context.json';
 import { IContext } from "../../../../contexts/IContext";
 import { DelayedExecutions } from "../../../DelayedExecution";
 import { UserAccount } from "../../_lib/cognito/UserAccount";
@@ -59,15 +60,16 @@ export const handler = async (event:ScheduledLambdaInput, context:any) => {
     }
 
     const configs = new Configurations();
-    const { CONSENT_EXPIRATION } = ConfigNames;
-    const periodSeconds = parseInt((await configs.getAppConfig(CONSENT_EXPIRATION)).value);
+    const { DELETE_CONSENTER_AFTER } = ConfigNames;
+    const periodSeconds = parseInt((await configs.getAppConfig(DELETE_CONSENTER_AFTER)).value);
+    const _context:IContext = <IContext>ctx;
 
     // Notify the consenter that their account has been purged.
     sendEmail({ 
       subject: 'ETT consent expiration notification', 
-      from: `noreply@${context.ETT_DOMAIN}`, 
-      message: `This email is notification that your window of ${humanReadableFromSeconds(periodSeconds)} ` +
-        `has expired. To resume with ETT, repeat you initial account signup and registration.`, 
+      from: `noreply@${_context.ETT_DOMAIN}`, 
+      message: `This email is notification that your ${humanReadableFromSeconds(periodSeconds)} window of ` + 
+        `time for providing consent has expired. To resume with ETT, repeat you initial account signup and registration.`,
       to: [ consenterEmail ] 
     } as EmailParms);
   }
@@ -87,7 +89,7 @@ export const handler = async (event:ScheduledLambdaInput, context:any) => {
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/delayed-execution/PurgeConsenter.ts')) {
 
-  const task = 'scheduled' as 'immediate'|'scheduled';
+  const task = 'immediate' as 'immediate'|'scheduled';
   const { MINUTES } = PeriodType;
 
   (async () => {
