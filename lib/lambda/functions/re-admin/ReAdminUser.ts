@@ -372,7 +372,7 @@ export const inviteUser = async (user:User, inviterRole:Role, linkGenerator:Func
     // Prevent inviting the user if they already have an account with the specified entity.
     const user = await lookupSingleUser(email, entity_id);
     if(user && user.active == YN.Yes) {
-      return invalidResponse(`Invitee ${email} has already accepted invitation for entity ${entity_id}`);
+      return invalidResponse(`Invitee ${email} has already accepted invitation for entity ${entity?.entity_name}`);
     }
 
     // Prevent inviting a non-RE_AUTH_IND user if somebody has already been invited for the same role in the same entity.
