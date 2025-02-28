@@ -178,7 +178,7 @@ export function ConfigurationsMock() {
       return {
         getAppConfig: async (name:ConfigName):Promise<IAppConfig> => {
           switch(name) {
-            case ConfigNames.AUTH_IND_INVITATION_EXPIRE_AFTER:
+            case ConfigNames.STALE_AI_VACANCY:
             case ConfigNames.ASP_INVITATION_EXPIRE_AFTER:
               return { 
                 config_type: ConfigTypes.NUMBER,

@@ -217,16 +217,19 @@ export class UserInvitation {
    */
   private setDelayedExecutionToPurge = async ():Promise<void> => {
     const { _code, invitation: { role, email } } = this;
+    const { ASP_INVITATION_EXPIRE_AFTER, STALE_AI_VACANCY } = ConfigNames;
     const envVarName = DelayedExecutions.RemoveStaleInvitations.targetArnEnvVarName;
     const functionArn = process.env[envVarName];
     const description = `${dsicPrefix} (invitation code:${_code})`;
-    const configName = role == Roles.RE_ADMIN ? 
-      ConfigNames.ASP_INVITATION_EXPIRE_AFTER : 
-      ConfigNames.AUTH_IND_INVITATION_EXPIRE_AFTER;
+    const configName = role == Roles.RE_ADMIN ? ASP_INVITATION_EXPIRE_AFTER : STALE_AI_VACANCY
 
     if(functionArn) {
       const configs = new Configurations();
-      const waitTime = (await configs.getAppConfig(configName)).getDuration();
+      let waitTime = (await configs.getAppConfig(configName)).getDuration();
+      if(configName == STALE_AI_VACANCY) {
+        // Have the invitation expire 10 minutes AFTER the stale entity vacancy check for AIs occurs.
+        waitTime += 600;
+      }
       const lambdaInput = { invitationCode: _code, email } as StaleInvitationLambdaParms;
       const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
       const { SECONDS } = PeriodType;

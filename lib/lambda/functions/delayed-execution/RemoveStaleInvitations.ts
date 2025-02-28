@@ -1,9 +1,8 @@
 import * as ctx from '../../../../contexts/context.json';
 import { IContext } from "../../../../contexts/IContext";
 import { DelayedExecutions } from "../../../DelayedExecution";
-import { Configurations } from '../../_lib/config/Config';
 import { InvitationCrud } from "../../_lib/dao/dao-invitation";
-import { ConfigNames, Invitation, Roles } from "../../_lib/dao/entity";
+import { Invitation, Roles } from "../../_lib/dao/entity";
 import { EmailParms, sendEmail } from '../../_lib/EmailWithAttachments';
 import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
@@ -40,30 +39,21 @@ export const handler = async (event:ScheduledLambdaInput, context:any) => {
       return;
     }
 
-    const { role } = invitation;
-
-    // At this point, the invitation is "anonymous" and will not have the email address, so set it.
-    invitation.email = email;
-
-    // For a RE_AUTH_IND, bail out if the stale entity vacancy handler is yet to run (let it handle invitation removal).
-    if(role == Roles.RE_AUTH_IND) {
-      const configs = new Configurations();
-      const { AUTH_IND_INVITATION_EXPIRE_AFTER:_staleInvitation, STALE_AI_VACANCY:_staleVacancy } = ConfigNames;
-      const staleInvitation = parseInt((await configs.getAppConfig(_staleInvitation)).value);
-      const staleVacancy = parseInt((await configs.getAppConfig(_staleVacancy)).value);
-      if(staleVacancy >= staleInvitation) {
-        log(invitation, 'This stale invitation handler is configured to run at the same time ' + 
-          'as or BEFORE the stale entity vacancy handler. Therefore deferring deletion of invitation ' +
-          'to stale entity vacancy handler');
-        return;
-      }
-    }
+    let invitationWasUsedToRegister = true;
+    if(invitation.email != email) {
+      // At this point, the invitation is "anonymous", but set email temporarily as if it were not.
+      invitation.email = email;
+      invitationWasUsedToRegister = false;
+    }    
     
     log(invitation, 'Deleting stale invitation from database');
 
     await dao.Delete();
 
-    await sendEndOfRegistrationEmail({ invitation });
+    // Inform the user via email that their invitation has expired if they have not used that invitation yet.
+    if( ! invitationWasUsedToRegister) {
+      await sendEndOfRegistrationEmail({ invitation });
+    }
   }
   catch(e:any) {
     log(e);
@@ -87,15 +77,15 @@ export const sendEndOfRegistrationEmail = async (parms:EndOfRegistrationEmailPar
 
   try {
     message = message ?? 'This email is notification that your invitation to register in the Ethical ' +
-      'Training Tool (ETT) has expired and the registration period has ended.';
+      `Training Tool (ETT) has expired, and the registration period is now ended.`;
     subject = subject ?? 'ETT end of registration Notification';
 
     switch(role) {
       case RE_ADMIN:
-        message = message.replace('(ETT)', '(ETT) as Administrative Support Professional');
+        message = message.replace('(ETT)', '(ETT) as an Administrative Support Professional');
         break;
       case RE_AUTH_IND:
-        message = message.replace('(ETT)', 'Authorized Individual');
+        message = message.replace('(ETT)', '(ETT) as an Authorized Individual');
         break;
       case SYS_ADMIN:
         message = 'This email is notification that your invitation to register in the Ethical (ETT) has expired';
