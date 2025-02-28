@@ -15,7 +15,7 @@ import { SignupApiConstruct, SignupApiConstructParms } from '../lib/SignupApi';
 import { StaticSiteConstructParms } from '../lib/StaticSite';
 import { StaticSiteBootstrapConstruct } from '../lib/StaticSiteBootstrap';
 import { StaticSiteWebsiteConstruct } from '../lib/StaticSiteWebsite';
-import { Roles } from '../lib/lambda/_lib/dao/entity';
+import { roleFullName, Roles } from '../lib/lambda/_lib/dao/entity';
 import { ViewerRequestParametersConstruct } from '../lib/lambda/functions/cloudfront/ViewerRequestParameters';
 import { PublicApiConstruct, PublicApiConstructParms } from '../lib/PublicApi';
 
@@ -191,19 +191,19 @@ const buildAll = () => {
   });  
   new CfnOutput(stack, `${Roles.SYS_ADMIN}-api-uri`, {
     value: api.sysAdminApi.getApi().getRestApiUrl(),
-    description: 'System Administrator api uri'
+    description: `${roleFullName(Roles.SYS_ADMIN)} api uri`
   }); 
   new CfnOutput(stack, `${Roles.RE_ADMIN}-api-uri`, {
     value: api.reAdminApi.getApi().getRestApiUrl(),
-    description: 'Administrative Support Professional api uri'
+    description: `${roleFullName(Roles.RE_ADMIN)} api uri`
   }); 
   new CfnOutput(stack, `${Roles.RE_AUTH_IND}-api-uri`, {
     value: api.authIndApi.getApi().getRestApiUrl(),
-    description: 'Authorized individual api uri'
+    description: `${roleFullName(Roles.RE_AUTH_IND)} api uri`
   });
   new CfnOutput(stack, `${Roles.CONSENTING_PERSON}-api-uri`, {
     value: api.consentingPersonApi.getApi().getRestApiUrl(),
-    description: 'Consenting person api uri'
+    description: `${roleFullName(Roles.CONSENTING_PERSON)} api uri`
   });
 
   publicApi.publicFormsDownloadApiUris.forEach((uri) => {

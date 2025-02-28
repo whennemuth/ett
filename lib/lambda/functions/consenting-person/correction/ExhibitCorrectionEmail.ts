@@ -3,7 +3,7 @@ import { IContext } from "../../../../../contexts/IContext";
 import { ConsenterCrud } from "../../../_lib/dao/dao-consenter";
 import { EntityCrud } from "../../../_lib/dao/dao-entity";
 import { UserCrud } from "../../../_lib/dao/dao-user";
-import { Affiliate, AffiliateTypes, Consenter, Entity, ExhibitFormConstraints, FormTypes, Roles, User, YN } from "../../../_lib/dao/entity";
+import { Affiliate, AffiliateTypes, Consenter, Entity, ExhibitFormConstraints, FormTypes, roleFullName, Roles, User, YN } from "../../../_lib/dao/entity";
 import { Attachment, EmailParms, sendEmail } from "../../../_lib/EmailWithAttachments";
 import { ExhibitForm, ExhibitFormParms } from "../../../_lib/pdf/ExhibitForm";
 import { ExhibitFormSingleBoth } from '../../../_lib/pdf/ExhibitFormSingleBoth';
@@ -73,7 +73,7 @@ export class ExhibitCorrectionEmail {
     const { fullName } = PdfForm;
     const consenterFullname = fullName(firstname, middlename, lastname);
     const subject = 'ETT Notice of Exhibit Form Correction';
-    let message = `Consenting individual ${consenterFullname} has corrected an exhibit form that was previously submitted to ${entity_name}.`
+    let message = `${roleFullName(Roles.CONSENTING_PERSON)} ${consenterFullname} has corrected an exhibit form that was previously submitted to ${entity_name}.`
 
     // Build a list of what's changed into the email message
     message += '<p><ul>';
@@ -117,7 +117,7 @@ export class ExhibitCorrectionEmail {
     // Get the first AI of the entity as the "to" addressee
     const firstAI = users.find(user => user.active == YN.Yes && user.role == Roles.RE_AUTH_IND);
     if( ! firstAI) {
-      console.warn(`Could not find an active authorized individual for entity: ${entity_id}`);
+      console.warn(`Could not find an active ${roleFullName(Roles.RE_AUTH_IND)} for entity: ${entity_id}`);
       return false;
     }
 
@@ -146,7 +146,7 @@ export class ExhibitCorrectionEmail {
     const { fullName } = PdfForm;
     const consenterFullname = fullName(firstname, middlename, lastname);
     const subject = 'ETT Notice of Consent Revision';
-    let message = `Consenting individual ${consenterFullname} has made corrections to your details in their exhibit form for ${entity_name}.`
+    let message = `${roleFullName(Roles.CONSENTING_PERSON)} ${consenterFullname} has made corrections to your details in their exhibit form for ${entity_name}.`
 
     let allOk:boolean = true;
     for(let i=0; i<updates.length; i++) {

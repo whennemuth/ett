@@ -2,7 +2,7 @@ import { UserInvitation } from './Invitation';
 import 'aws-sdk-client-mock-jest';
 import { mockClient } from 'aws-sdk-client-mock';
 import { SESv2Client, SendEmailCommand, SendEmailCommandInput, SendEmailResponse } from '@aws-sdk/client-sesv2';
-import { Invitation, Roles } from '../dao/entity';
+import { Invitation, roleFullName, Roles } from '../dao/entity';
 import { DAOInvitation } from '../dao/dao';
 import { Actions } from '../../../role/AbstractRole';
 
@@ -104,7 +104,7 @@ describe('Send', () => {
     expect(sesInput.Content?.Simple?.Subject?.Data).toEqual('INVITATION: Ethical Transparency Tool (ETT)');
     const html:string|undefined = sesInput.Content?.Simple?.Body?.Html?.Data;
     expect(html).toContain(entity_name);
-    expect(html).toContain('Registered Entity Authorized Individual');
+    expect(html).toContain(roleFullName(Roles.RE_AUTH_IND));
     expect(html).toContain(`${link}&code=${invitation.code}`);
     expect(daoInviteAttempts).toEqual(4);
   });  

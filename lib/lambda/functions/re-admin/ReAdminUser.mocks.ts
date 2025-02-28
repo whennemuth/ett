@@ -2,7 +2,7 @@ import { UpdateItemCommandOutput } from "@aws-sdk/client-dynamodb";
 import { IncomingPayload, OutgoingBody } from "../../../role/AbstractRole";
 import { DAOEntity, DAOInvitation, DAOUser, FactoryParms } from "../../_lib/dao/dao";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
-import { ConfigName, ConfigNames, ConfigType, ConfigTypes, Entity, Invitation, Role, Roles, User, YN } from "../../_lib/dao/entity";
+import { ConfigName, ConfigNames, ConfigType, ConfigTypes, Entity, Invitation, Role, roleFullName, Roles, User, YN } from "../../_lib/dao/entity";
 import { MockCalls, TestParms, invokeAndAssert } from "../../UtilsTest";
 import { AppConfig, IAppConfig } from "../../_lib/config/Config";
 
@@ -794,7 +794,7 @@ export const CreateAndInviteTests = {
     const email1 = parms.incomingPayload.parameters.invitations['invitee1'].email as string;
     const email2 =  email1.toUpperCase();
     parms.incomingPayload.parameters.invitations['invitee2'].email = email2;
-    parms.expectedResponse.outgoingBody.message = `Cannot invite two authorized individuals with the same email: ${email1}`;
+    parms.expectedResponse.outgoingBody.message = `Cannot invite two ${roleFullName(Roles.RE_AUTH_IND)}s with the same email: ${email1}`;
     await invokeAndAssert(parms);
   },
   successful: async (_handler:any, eventMock:any, taskName:string) => {

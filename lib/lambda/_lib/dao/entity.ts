@@ -10,6 +10,16 @@ export enum YN { Yes = 'Y', No = 'N' };
 
 export type Role = Roles.SYS_ADMIN | Roles.RE_ADMIN | Roles.RE_AUTH_IND | Roles.CONSENTING_PERSON | Roles.HELLO_WORLD
 
+export const roleFullName = (role:Role) => {
+  switch(role) {
+    case Roles.SYS_ADMIN: return 'System Administrator';
+    case Roles.RE_ADMIN: return 'Administrative Support Professional';
+    case Roles.RE_AUTH_IND: return 'Authorized Individual';
+    case Roles.CONSENTING_PERSON: return 'Consenting Individual';
+    case Roles.HELLO_WORLD: return 'Hello Worlder'
+  }
+}
+
 export type Y_or_N = YN.Yes | YN.No
 
 /**************** USER ****************/
@@ -178,7 +188,6 @@ export type Invitation = {
 /**************** CONFIG ****************/
 export enum ConfigNames { 
   CONSENT_EXPIRATION = 'consent-expiration',
-  AUTH_IND_INVITATION_EXPIRE_AFTER = 'auth-ind-invitation-expire-after',
   ASP_INVITATION_EXPIRE_AFTER = 'asp-invitation-expire-after',
   AUTH_IND_NBR = 'auth-ind-nbr',
   FIRST_REMINDER = 'first-reminder',
@@ -193,7 +202,6 @@ export enum ConfigNames {
 }
 export type ConfigName = 
   ConfigNames.CONSENT_EXPIRATION |
-  ConfigNames.AUTH_IND_INVITATION_EXPIRE_AFTER |
   ConfigNames.ASP_INVITATION_EXPIRE_AFTER |
   ConfigNames.AUTH_IND_NBR | 
   ConfigNames.DELETE_DRAFTS_AFTER | 

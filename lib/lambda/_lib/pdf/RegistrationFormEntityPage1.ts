@@ -1,6 +1,6 @@
 import { writeFile } from "fs/promises";
 import { Color, PageSizes, PDFDocument, PDFFont, PDFPage, StandardFonts } from "pdf-lib";
-import { Roles, User } from "../dao/entity";
+import { roleFullName, Roles, User } from "../dao/entity";
 import { EmbeddedFonts } from "./lib/EmbeddedFonts";
 import { Page } from "./lib/Page";
 import { Rectangle } from "./lib/Rectangle";
@@ -114,10 +114,10 @@ export class RegistrationFormEntityPage1 extends PdfForm implements IPdfForm {
     // Determine the full name of the role
     switch(role) {
       case Roles.RE_ADMIN:
-        rolename = `Administrative Support Professional<sup>${sup}</sup>:`;
+        rolename = `${roleFullName(Roles.RE_ADMIN)}<sup>${sup}</sup>:`;
         break;
       case Roles.RE_AUTH_IND:
-        rolename = `Authorized Individual ${index}<sup>${sup}</sup>:`;
+        rolename = `${roleFullName(Roles.RE_AUTH_IND)} ${index}<sup>${sup}</sup>:`;
         break;
       default:
         rolename = `Contact for Disclosure Request Responses ${index}<sup>${sup}</sup>:`;
@@ -215,8 +215,8 @@ export class RegistrationFormEntityPage1 extends PdfForm implements IPdfForm {
     const size = 10;
     _return(16);
     const text = 
-      '<i>Your organization’s representatives are its above-listed Administrative Support Professional ' +
-      'and its Authorized Individuals, who are also the contacts for responses to Disclosure Requests. ' +
+      `<i>Your organization’s representatives are its above-listed ${roleFullName(Roles.RE_ADMIN)}` +
+      `and its ${roleFullName(Roles.RE_AUTH_IND)}s, who are also the contacts for responses to Disclosure Requests. ` +
       'Registering your organization to use ETT also means that in your official and personal capacities you ' +
       'have read and agree to the ETT Privacy Notice and Privacy Policy [link] and consent on your own and ' +
       'your organization’s behalf to inclusion of your organization’s name, with or without its ' +
@@ -235,10 +235,10 @@ export class RegistrationFormEntityPage1 extends PdfForm implements IPdfForm {
   private drawDefinitions = async () => {
     const { page: { drawWrappedText, basePage, margins }, font, _return } = this;
     const defs = [
-      'Administrative Support Professional who assists and directly works with one or both of the Authorized ' +
+      `${roleFullName(Roles.RE_ADMIN)} who assists and directly works with one or both of the Authorized ` +
       'Individuals, is accustomed to maintaining confidential and sensitive information, and can ' +
       'administratively support the Registered Entity’s use of ETT, including submitting requests for ' +
-      'disclosures when directed by an Authorized Individual.',
+      `disclosures when directed by an ${roleFullName(Roles.RE_AUTH_IND)}.`,
 
       'Person in a senior role that is accustomed to managing confidential and sensitive information, who ' +
       'will make Disclosure Requests and directly receive the completed Disclosure Form information on ' +
@@ -248,7 +248,7 @@ export class RegistrationFormEntityPage1 extends PdfForm implements IPdfForm {
       'These are the contacts who will respond to Disclosure Requests from another ETT-Registered Entity ' +
       'when your organization is disclosing its findings of misconduct against a person who is being ' +
       'considered by the other ETT-Registered Entity. You may input “same as [specify Authorized ' +
-      'Individuals or Administrative Support Professional]” it these individuals will fulfill the ' +
+      `Individuals or ${roleFullName(Roles.RE_ADMIN)}]” it these individuals will fulfill the ` +
       'Disclosure Response Contact role too'
     ]
 

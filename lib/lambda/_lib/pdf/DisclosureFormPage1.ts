@@ -1,7 +1,7 @@
 import { writeFile } from "fs/promises";
 import { Color, PDFDocument, PDFFont, PDFPage, PDFPageDrawTextOptions, PageSizes, StandardFonts, rgb } from "pdf-lib";
 import { bugsbunny, daffyduck, yosemitesam } from "../../functions/authorized-individual/MockObjects";
-import { User } from "../dao/entity";
+import { roleFullName, Roles, User } from "../dao/entity";
 import { DisclosureFormData, DisclosureFormDrawParms } from "./DisclosureForm";
 import { IPdfForm, PdfForm } from "./PdfForm";
 import { EmbeddedFonts } from "./lib/EmbeddedFonts";
@@ -91,7 +91,7 @@ export class DisclosureFormPage1 extends PdfForm implements IPdfForm {
 
     // Draw the table header row
     await new Rectangle({
-      text: 'Individual Who Consented to Disclosures via this Disclosure Form (“Consenting Individual”):',
+      text: `Individual Who Consented to Disclosures via this Disclosure Form (“${roleFullName(Roles.CONSENTING_PERSON)}”):`,
       page,
       align: Align.left,
       valign: VAlign.middle,
@@ -184,7 +184,7 @@ export class DisclosureFormPage1 extends PdfForm implements IPdfForm {
     const rep = delegate ?? authInd;
 
     await new Rectangle({
-      text: `Authorized Individual #${number}`,
+      text: `${roleFullName(Roles.RE_AUTH_IND)} #${number}`,
       page,
       align: Align.left,
       valign: VAlign.middle,
@@ -319,7 +319,7 @@ export class DisclosureFormPage1 extends PdfForm implements IPdfForm {
 
     await new Rectangle({
       text: [ 
-        "<b>Authorized Individual(s) — </b><i>Person(s) in senior role(s) that deal with sensitive information, who will directly view the</i>", 
+        `<b>${roleFullName(Roles.RE_AUTH_IND)}(s) — </b><i>Person(s) in senior role(s) that deal with sensitive information, who will directly view the</i>`, 
         "<i>completed Disclosure Form on behalf of the Requesting Entity</i>" ],
       page,
       align: Align.left,
@@ -456,7 +456,7 @@ export class DisclosureFormPage1 extends PdfForm implements IPdfForm {
       '    misconduct listed on this Form.',
       '3) Please choose a secure means of communicating the completed form to the Requesting Entity.',
       '    Some examples are a password protected PDF or website or live screen sharing.',
-      '4) Please be sure to save a record of your completed Disclosure Form and copies of the Consenting Individual’s',
+      `4) Please be sure to save a record of your completed Disclosure Form and copies of the ${roleFullName(Roles.CONSENTING_PERSON)}’s`,
       '    completed Consent Form and Exhibit Form (both provided to you by ETT via email).  ETT is not a record-keeper.',
       '    <i>(The Disclosing Entity is a “Consent Recipient” referenced on the Consent Form and listed on the Exhibit Form.)</i>'
     ]

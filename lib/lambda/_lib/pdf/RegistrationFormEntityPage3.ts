@@ -1,6 +1,6 @@
 import { writeFile } from "fs/promises";
 import { Color, PageSizes, PDFDocument, PDFFont, PDFPage, PDFPageDrawTextOptions, StandardFonts } from "pdf-lib";
-import { Roles } from "../dao/entity";
+import { roleFullName, Roles } from "../dao/entity";
 import { EmbeddedFonts } from "./lib/EmbeddedFonts";
 import { Page } from "./lib/Page";
 import { Align, Margins, rgbPercent, VAlign } from "./lib/Utils";
@@ -153,12 +153,12 @@ export class RegistrationFormEntityPage3 extends PdfForm implements IPdfForm {
 
     await drawBulletedItem({
       header: 
-        'Authorized Individuals (AIs) should be in senior institutional roles, accustomed ' +
+        `${roleFullName(Roles.RE_AUTH_IND)}s (AIs) should be in senior institutional roles, accustomed ` +
         'to managing sensitive',
       headerOptions: { font, size:9, lineHeight:14 },
       body: 
         'and confidential information, and knowledgeable about the ETT-Registered Entity. ' +
-        'Administrative Support Professionals (ASPs) should also be accustomed to managing sensitive ' +
+        `${roleFullName(Roles.RE_ADMIN)}s (ASPs) should also be accustomed to managing sensitive ` +
         'and confidential information. An ETT-Registered Entity determines these roles/people.'
       ,
       bodyOptions: { font, size:9, lineHeight:12 }

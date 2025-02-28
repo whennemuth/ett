@@ -5,7 +5,7 @@ import { Construct } from "constructs";
 import { IContext } from "../../contexts/IContext";
 import { AbstractFunction } from "../AbstractFunction";
 import { ApiConstructParms } from "../Api";
-import { Roles } from "../lambda/_lib/dao/entity";
+import { roleFullName, Roles } from "../lambda/_lib/dao/entity";
 import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
 import { Configurations } from "../lambda/_lib/config/Config";
 import { DelayedExecutions } from "../DelayedExecution";
@@ -28,15 +28,15 @@ export class AuthorizedIndividualApi extends AbstractRole {
       lambdaFunction,
       userPool,
       role: Roles.RE_AUTH_IND,
-      roleFullName: 'Authorized Individual',
-      description: 'Api for all operations that are open to an authorized individual',
+      roleFullName: roleFullName(Roles.RE_AUTH_IND),
+      description: `Api for all operations that are open to an ${roleFullName(Roles.RE_AUTH_IND)}`,
       bannerImage: 'client-auth-ind.png',
       resourceId: Roles.RE_AUTH_IND,
       methods: [ 'POST', 'GET' ],
       scopes: [
         new ResourceServerScope({ 
           scopeName: 'manage-applicants', 
-          scopeDescription: 'Access to inspect and correspond with consenting individuals'
+          scopeDescription: `Access to inspect and correspond with ${roleFullName(Roles.CONSENTING_PERSON)}s`
         }),
         new ResourceServerScope({
           scopeName: 'manage-affiliates',
@@ -77,7 +77,7 @@ export class LambdaFunction extends AbstractFunction {
       entry: 'lib/lambda/functions/authorized-individual/AuthorizedIndividual.ts',
       // handler: 'handler',
       functionName: `${prefix}-${Roles.RE_AUTH_IND}-user`,
-      description: 'Function for all authorized individual activity.',
+      description: `Function for all ${roleFullName(Roles.RE_AUTH_IND)} activity.`,
       cleanup: true,
       bundling: {
         externalModules: [

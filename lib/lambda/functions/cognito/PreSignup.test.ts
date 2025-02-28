@@ -1,7 +1,7 @@
 import { AdminGetUserCommandOutput } from '@aws-sdk/client-cognito-identity-provider';
 import { CognitoStandardAttributes, UserAccount } from '../../_lib/cognito/UserAccount';
 import { DAOConsenter, ReadParms } from '../../_lib/dao/dao';
-import { Consenter, Invitation, Role, Roles } from '../../_lib/dao/entity';
+import { Consenter, Invitation, Role, roleFullName, Roles } from '../../_lib/dao/entity';
 import { Messages, handler } from './PreSignup';
 import * as event from './PreSignupEventMock.json'
 
@@ -102,7 +102,7 @@ describe('Pre signup lambda trigger: handler', () => {
     invitationLookupResults = [] as Invitation[];
     expect(async () => {
       await handler(event);
-    }).rejects.toThrow(new Error(Messages.UNINVITED.replace('ROLE', role)));
+    }).rejects.toThrow(new Error(Messages.UNINVITED.replace('ROLE', roleFullName(Roles.RE_ADMIN))));
   });
 
   it('Should error out if there are matching registered invitations, but none that match by role', async () => {
@@ -114,7 +114,7 @@ describe('Pre signup lambda trigger: handler', () => {
     ] as Invitation[];
     expect(async () => {
       await handler(event);
-    }).rejects.toThrow(new Error(Messages.UNINVITED.replace('ROLE', role)));
+    }).rejects.toThrow(new Error(Messages.UNINVITED.replace('ROLE', roleFullName(Roles.RE_ADMIN))));
   });
 
   it('Should return without error if only invitation attempts that match by role, but are retracted', async () => {

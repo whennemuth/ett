@@ -4,7 +4,7 @@ import { UserAccount } from "../../_lib/cognito/UserAccount";
 import { Configurations } from "../../_lib/config/Config";
 import { DAOFactory, DAOInvitation } from "../../_lib/dao/dao";
 import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
-import { ConfigName, ConfigNames, Consenter, Invitation, Role, Roles, Validator } from "../../_lib/dao/entity";
+import { ConfigName, ConfigNames, Consenter, Invitation, Role, roleFullName, Roles, Validator } from "../../_lib/dao/entity";
 import { debugLog, log } from "../../Utils";
 import { PreSignupEventType } from "./PreSignupEventType";
 
@@ -138,7 +138,7 @@ export const handler = async (_event:any) => {
         if(retractedInvitations.length > 0) {
           throw new Error(Messages.RETRACTED + role);
         }
-        throw new Error(Messages.UNINVITED.replace('ROLE', role));
+        throw new Error(Messages.UNINVITED.replace('ROLE', roleFullName(role)));
       default:
         if(role == Roles.RE_ADMIN || role == Roles.RE_AUTH_IND) {
           // Get invitation that was most recently sent for to the user that has not been retracted.

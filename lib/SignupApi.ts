@@ -12,6 +12,7 @@ import { Configurations } from "./lambda/_lib/config/Config";
 import { Bucket } from "aws-cdk-lib/aws-s3";
 import { ExhibitFormsBucketEnvironmentVariableName } from "./lambda/functions/consenting-person/BucketItemMetadata";
 import { DelayedExecutions } from "./DelayedExecution";
+import { roleFullName, Roles } from "./lambda/_lib/dao/entity";
 
 export type SignupApiConstructParms = {
   userPool: UserPool,
@@ -189,7 +190,7 @@ export class SignupApiConstruct extends Construct {
       context: { REGION, ACCOUNT, TAGS: { Landscape:landscape }, STACK_ID } 
     } = this;
     const basename = `${constructId}RegisterConsenter`;
-    const description = 'for the first stage of public registration of a consenting person';
+    const description = `for the first stage of public registration of a ${roleFullName(Roles.CONSENTING_PERSON)}`;
     const prefix = `${STACK_ID}-${landscape}`;
 
     // Create the lambda function

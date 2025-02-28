@@ -6,6 +6,7 @@ import { IPdfForm, PdfForm } from "./PdfForm";
 import { EmbeddedFonts } from "./lib/EmbeddedFonts";
 import { Page } from "./lib/Page";
 import { Margins, rgbPercent } from "./lib/Utils";
+import { roleFullName, Roles } from "../dao/entity";
 
 const blue = rgbPercent(47, 84, 150) as Color;
 const orange = rgbPercent(196, 89, 17);
@@ -90,7 +91,7 @@ export class DisclosureFormPage2 extends PdfForm implements IPdfForm {
       basePage.moveDown(14);
       await page.drawWrappedText(
         {
-          text: 'finding of responsibility against the Consenting Individual under your policy. (Apply the ' +
+          text: `finding of responsibility against the ${roleFullName(Roles.CONSENTING_PERSON)} under your policy. (Apply the ` +
             'substance of the generic descriptions, even if your organization’s policy terminology differs.)',
           options: { size: 12, font },
           horizontalRoom: (bodyWidth - 40),

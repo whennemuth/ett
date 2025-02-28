@@ -4,7 +4,7 @@ import { Function, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from "constructs";
 import { IContext } from '../../contexts/IContext';
 import { AbstractFunction } from "../AbstractFunction";
-import { Roles } from '../lambda/_lib/dao/entity';
+import { roleFullName, Roles } from '../lambda/_lib/dao/entity';
 import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
 import { Configurations } from "../lambda/_lib/config/Config";
 import { ApiConstructParms } from "../Api";
@@ -27,15 +27,15 @@ export class ReAdminUserApi extends AbstractRole {
       lambdaFunction,
       userPool,
       role: Roles.RE_ADMIN,
-      roleFullName: 'Administrative Support Professional',
-      description: 'Api for all operations that are open to a Administrative Support Professional',
+      roleFullName: roleFullName(Roles.RE_ADMIN),
+      description: `Api for all operations that are open to a ${roleFullName(Roles.RE_ADMIN)}`,
       bannerImage: 'client-admin.png',
       resourceId: Roles.RE_ADMIN,
       methods: [ 'POST', 'GET' ],
       scopes: [
         new ResourceServerScope({ 
           scopeName: 'invite-auth-ind', 
-          scopeDescription: 'Access to invite an RE authorized individual to create an account'
+          scopeDescription: `Access to invite an RE ${roleFullName(Roles.RE_AUTH_IND)} to create an account`
         }),
         new ResourceServerScope({
           scopeName: 'create-entity',

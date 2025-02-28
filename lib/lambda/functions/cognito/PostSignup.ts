@@ -6,7 +6,7 @@ import { Configurations } from '../../_lib/config/Config';
 import { DAOConsenter, DAOEntity, DAOFactory, DAOUser } from '../../_lib/dao/dao';
 import { ENTITY_WAITING_ROOM, EntityCrud } from '../../_lib/dao/dao-entity';
 import { UserCrud } from '../../_lib/dao/dao-user';
-import { ConfigNames, ConfigTypes, Consenter, ConsenterFields, Entity, Invitation, Role, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
+import { ConfigNames, ConfigTypes, Consenter, ConsenterFields, Entity, Invitation, Role, roleFullName, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
 import { scheduleStaleEntityVacancyHandler } from '../authorized-individual/correction/EntityCorrection';
 import { sendRegistration } from '../consenting-person/ConsentingPerson';
 import { sendEntityRegistrationForm, updateReAdminInvitationWithNewEntity, UserInfo } from '../re-admin/ReAdminUser';
@@ -258,11 +258,11 @@ export const handler = async (_event:any) => {
     const entity = { entity_id, entity_name } as Entity;
     if(asps.length == 0) {
       // This is probably not possible in a post signup scenario (ai wouldn't register before an asp), but account for it.
-      log(entity, 'Scheduling delayed execution for handling overdue vacancy of ASP');
+      log(entity, `Scheduling delayed execution for handling overdue vacancy of ${roleFullName(Roles.RE_ADMIN)}`);
       await scheduleStaleEntityVacancyHandler(entity, Roles.RE_ADMIN);
     }
     else if(ais.length < aiMin) {
-      log(entity, 'Scheduling delayed execution for handling overdue vacancy of Authorized Individual');
+      log(entity, `Scheduling delayed execution for handling overdue vacancy of ${roleFullName(Roles.RE_AUTH_IND)}`);
       await scheduleStaleEntityVacancyHandler(entity, Roles.RE_AUTH_IND);
     }
   }

@@ -77,7 +77,7 @@ export class RegistrationFormEntityPage2 extends PdfForm implements IPdfForm {
       'publicize, and recruit additional entities to use ETT and to support ETT-Registered Entities’ ' +
       'ability to use ETT efficiently. Any such reference will not include an endorsement of ETT or state ' +
       'the specific way (within all the permitted ways) in which your organization is or was using ETT, ' +
-      'unless an Authorized Individual gives additional written consent. (ETT may be abbreviated or spelled ' +
+      'unless an ${roleDescription(Roles.RE_AUTH_IND)} gives additional written consent. (ETT may be abbreviated or spelled ' +
       'out as the Ethical Transparency Tool.)</i>'
     );
 

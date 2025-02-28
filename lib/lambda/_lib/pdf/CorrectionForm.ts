@@ -1,5 +1,5 @@
 import { Color, PDFDocument, PDFFont, PDFPage, PDFPageDrawTextOptions, rgb, StandardFonts } from "pdf-lib";
-import { Consenter, ConsenterFields } from "../dao/entity";
+import { Consenter, ConsenterFields, roleFullName, Roles } from "../dao/entity";
 import { IPdfForm, PdfForm } from "./PdfForm";
 import { EmbeddedFonts } from "./lib/EmbeddedFonts";
 import { Align, Margins, rgbPercent, VAlign } from "./lib/Utils";
@@ -60,7 +60,7 @@ export class CorrectionForm extends PdfForm implements IPdfForm {
   private drawTitle = async () => {
     const { boldfont, font, page } = this;
     await page.drawCenteredText('ETHICAL TRANSPARENCY TOOL (ETT)', { size: 12, font:boldfont }, 4);
-    await page.drawCenteredText('Consenting Individual Correction Form', { size:10, font }, 8);
+    await page.drawCenteredText(`${roleFullName(Roles.CONSENTING_PERSON)} Correction Form`, { size:10, font }, 8);
   }
 
   
@@ -73,7 +73,7 @@ export class CorrectionForm extends PdfForm implements IPdfForm {
 
     _return(8);
     await page.drawWrappedText({
-      text: `The following consenting individual has made corrections to their name and/or contact information.`,
+      text: `The following ${roleFullName(Roles.CONSENTING_PERSON)} has made corrections to their name and/or contact information.`,
       options: { size, font },
       linePad: 4, 
       padBottom: 8

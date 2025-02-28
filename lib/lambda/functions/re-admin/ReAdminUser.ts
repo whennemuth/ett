@@ -5,7 +5,7 @@ import { lookupEmail, lookupUserPoolId } from '../../_lib/cognito/Lookup';
 import { Configurations } from '../../_lib/config/Config';
 import { DAOEntity, DAOFactory, DAOUser } from '../../_lib/dao/dao';
 import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
-import { ConfigNames, Entity, Invitation, Role, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
+import { ConfigNames, Entity, Invitation, Role, roleFullName, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
 import { UserInvitation } from '../../_lib/invitation/Invitation';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
 import { debugLog, errorResponse, invalidResponse, isOk, log, lookupCloudfrontDomain, lookupPendingInvitations, lookupSingleActiveEntity, lookupSingleUser, lookupUser, mergeResponses, okResponse } from "../../Utils";
@@ -463,7 +463,7 @@ const getInvitedUsersValidationResult = (parameters:any, callerSub?:string):Lamb
   }
 
   if( (email1 as string).toLowerCase() == (email2 as string).toLowerCase()) {
-    return invalidResponse(`Cannot invite two authorized individuals with the same email: ${email1}`);
+    return invalidResponse(`Cannot invite two ${roleFullName(Roles.RE_AUTH_IND)}s with the same email: ${email1}`);
   }
 
   return null;

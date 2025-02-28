@@ -1,6 +1,6 @@
 import * as ctx from '../../../../contexts/context.json';
 import { IContext } from "../../../../contexts/IContext";
-import { ExhibitFormConstraints, FormTypes } from "../../_lib/dao/entity";
+import { ExhibitFormConstraints, FormTypes, roleFullName, Roles } from "../../_lib/dao/entity";
 import { sendEmail } from "../../_lib/EmailWithAttachments";
 import { ExhibitFormParms, getSampleAffiliates, SampleExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
 import { ExhibitFormFullBoth } from '../../_lib/pdf/ExhibitFormFullBoth';
@@ -71,7 +71,7 @@ export class ExhibitEmail {
         return await sendEmail({
           subject: 'ETT Exhibit Form Submission',
           from: `noreply@${context.ETT_DOMAIN}`,
-          message: `Consenting individual ${consenterFullname} is forwarding you their full affliate list via ETT`,
+          message: `${roleFullName(Roles.CONSENTING_PERSON)} ${consenterFullname} is forwarding you their full affliate list via ETT`,
           to: [ emailAddress ],
           attachments: {
             pdf: this.pdf,
@@ -99,7 +99,7 @@ export class ExhibitEmail {
         return await sendEmail({
           subject: 'ETT Notice of Consent',
           from: `noreply@${context.ETT_DOMAIN}`,
-          message: `Consenting individual ${consenterFullname} has named you as an affilate for disclosure to ${entity_name}`,
+          message: `${roleFullName(Roles.CONSENTING_PERSON)} ${consenterFullname} has named you as an affilate for disclosure to ${entity_name}`,
           to: [ emailAddress ],
           attachments: {
             pdf: this.pdf,

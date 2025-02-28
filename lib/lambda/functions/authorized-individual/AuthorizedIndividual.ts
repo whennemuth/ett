@@ -7,7 +7,7 @@ import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { Configurations } from "../../_lib/config/Config";
 import { DAOConsenter, DAOFactory, DAOUser } from "../../_lib/dao/dao";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
-import { ConfigNames, Consenter, Entity, Role, Roles, User, YN } from "../../_lib/dao/entity";
+import { ConfigNames, Consenter, Entity, Role, roleFullName, Roles, User, YN } from "../../_lib/dao/entity";
 import { SignupLink } from "../../_lib/invitation/SignupLink";
 import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
@@ -215,7 +215,7 @@ export const notifyUserOfDemolition = async (emailAddress:string, entity:Entity)
                   <hr>
                   You have recently participated in an invitation to register with ${entity.entity_name} through the ETT (Ethical Transparency Tool).
                   <br>
-                  However, an Authorized Individual has opted to cancel the registration process for this entity. 
+                  However, an ${roleFullName(Roles.RE_AUTH_IND)} has opted to cancel the registration process for this entity. 
                 </div>
               </div>`
           }

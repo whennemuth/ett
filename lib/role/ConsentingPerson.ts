@@ -3,7 +3,7 @@ import { Function, Runtime } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import { AbstractFunction } from "../AbstractFunction";
 import { ApiConstructParms } from "../Api";
-import { Roles } from "../lambda/_lib/dao/entity";
+import { roleFullName, Roles } from "../lambda/_lib/dao/entity";
 import { AbstractRole, AbstractRoleApi } from "./AbstractRole";
 import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { IContext } from "../../contexts/IContext";
@@ -27,8 +27,8 @@ export class ConsentingPersonApi extends AbstractRole {
       lambdaFunction,
       userPool,
       role: Roles.CONSENTING_PERSON,
-      roleFullName: 'Consenting Person',
-      description: 'Api for all operations that are open to a consenting person',
+      roleFullName: roleFullName(Roles.CONSENTING_PERSON),
+      description: `Api for all operations that are open to a ${roleFullName(Roles.CONSENTING_PERSON)}`,
       bannerImage: 'client-consenting.png',
       resourceId: Roles.CONSENTING_PERSON,
       methods: [ 'POST', 'GET' ],
@@ -74,7 +74,7 @@ export class LambdaFunction extends AbstractFunction {
       entry: 'lib/lambda/functions/consenting-person/ConsentingPerson.ts',
       // handler: 'handler',
       functionName: `${prefix}-${Roles.CONSENTING_PERSON}-user`,
-      description: 'Function for all consenting persons activity.',
+      description: `Function for all ${roleFullName(Roles.CONSENTING_PERSON)}s activity.`,
       cleanup: true,
       bundling: {
         externalModules: [

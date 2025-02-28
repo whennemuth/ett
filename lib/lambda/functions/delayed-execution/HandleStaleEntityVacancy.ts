@@ -3,7 +3,7 @@ import { DelayedExecutions } from "../../../DelayedExecution";
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { Configurations, IAppConfig } from "../../_lib/config/Config";
 import { EntityCrud } from "../../_lib/dao/dao-entity";
-import { ConfigNames, Entity, Invitation, Roles, User } from "../../_lib/dao/entity";
+import { ConfigNames, Entity, Invitation, roleFullName, Roles, User } from "../../_lib/dao/entity";
 import { EntityToAutomate } from "../../_lib/EntityAutomation";
 import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../_lib/timer/DelayedExecution";
 import { humanReadableFromSeconds } from "../../_lib/timer/DurationConverter";
@@ -68,7 +68,7 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
       }
 
       if(AIVacancy() && ! violation) {
-        log(`${entity_name} has an authorized individual vacancy`);
+        log(`${entity_name} has an ${roleFullName(Roles.RE_AUTH_IND)} vacancy`);
         config = await configs.getAppConfig(STALE_AI_VACANCY) as IAppConfig;
         if(await exceededRoleVacancyTimeLimit(Roles.RE_AUTH_IND, config)) {
           const info = {
@@ -76,7 +76,7 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
             exceededBy: getOverUnderTime() ?? 'unknown',
             report: getReport()
           }
-          log(info, `${entity_name} authorized individual vacancy has exceeded the allowed limit`);
+          log(info, `${entity_name} ${roleFullName(Roles.RE_AUTH_IND)} vacancy has exceeded the allowed limit`);
           violation = true;
         }
       }

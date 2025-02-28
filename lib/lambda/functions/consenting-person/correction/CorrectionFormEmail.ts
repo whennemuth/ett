@@ -1,7 +1,7 @@
 import * as ctx from '../../../../../contexts/context.json';
 import { IContext } from "../../../../../contexts/IContext";
 import { UserCrud } from "../../../_lib/dao/dao-user";
-import { Consenter, Roles, User, YN } from "../../../_lib/dao/entity";
+import { Consenter, roleFullName, Roles, User, YN } from "../../../_lib/dao/entity";
 import { EmailParms, sendEmail } from "../../../_lib/EmailWithAttachments";
 import { CorrectionForm } from "../../../_lib/pdf/CorrectionForm";
 import { PdfForm } from "../../../_lib/pdf/PdfForm";
@@ -28,7 +28,7 @@ export class ConsenterCorrectionEmail {
     // Get the first AI of the entity as the "to" addressee
     const firstAI = users.find(user => user.active == YN.Yes && user.role == Roles.RE_AUTH_IND);
     if( ! firstAI) {
-      console.warn(`Could not find an active authorized individual for entity: ${entity_id}`);
+      console.warn(`Could not find an active ${roleFullName(Roles.RE_AUTH_IND)} for entity: ${entity_id}`);
       return false;
     }
 

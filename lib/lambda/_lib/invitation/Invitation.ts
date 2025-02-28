@@ -1,4 +1,4 @@
-import { ConfigNames, Entity, Invitation, Role, Roles, User } from '../dao/entity';
+import { ConfigNames, Entity, Invitation, Role, roleFullName, Roles, User } from '../dao/entity';
 import { DAOInvitation, DAOFactory } from '../dao/dao';
 import { SESv2Client, SendEmailCommand, SendEmailCommandInput, SendEmailResponse } from '@aws-sdk/client-sesv2';
 import { v4 as uuidv4 } from 'uuid';
@@ -65,27 +65,27 @@ export class UserInvitation {
     let role_fullname = '';
     switch(role as Role) {
       case Roles.SYS_ADMIN:
-        role_fullname = 'System Administrator';
-        role_description = 'A system administrator for the entire ETT plaform. Actions that can be taken \
-          by a system adminstrator are not entity-specific and involve, among other functions, the \
-          invitation of administrative support professionals to the platform to register and create their entities. '
+        role_fullname = roleFullName(Roles.SYS_ADMIN);
+        role_description = `A ${roleFullName(Roles.SYS_ADMIN)} for the entire ETT plaform. Actions that can be taken ` +
+          `by a ${roleFullName(Roles.SYS_ADMIN)} are not entity-specific and involve, among other functions, the ` +
+          `invitation of ${roleFullName(Roles.RE_ADMIN)}s to the platform to register and create their entities. `
         break;
       case Roles.RE_ADMIN:
-        role_fullname = 'Administrative support professional';
-        role_description = 'A person who directly works with one or both of the RE Authorized Individuals \
-          and can assist them in interacting with the ETT technology—and who can manage the registered entities \
-          involvement in the ETT, including by making requests for Individuals to complete Consent or Affiliate \
-          Exhibit Forms.'
+        role_fullname = roleFullName(Roles.RE_ADMIN);
+        role_description = `A person who directly works with one or both of the ${roleFullName(Roles.RE_AUTH_IND)}s ` +
+          `and can assist them in interacting with the ETT technology—and who can manage the registered entities ` +
+          `involvement in the ETT, including by making requests for Individuals to complete Consent or Affiliate ` +
+          `Exhibit Forms.`
         break;
       case Roles.RE_AUTH_IND:
-        role_fullname = 'Registered Entity Authorized Individual';
-        role_description = 'A person in a senior role(s) within a registered entity that deals with \
-          sensitive information, who will directly view the completed Disclosure Form on behalf of the \
-          registered entity. Each registered entity has two Authorized Individuals'
+        role_fullname = roleFullName(Roles.RE_AUTH_IND);
+        role_description = `A person in a senior role(s) within a registered entity that deals with ` +
+          `sensitive information, who will directly view the completed Disclosure Form on behalf of the ` +
+          `registered entity. Each registered entity has two ${roleFullName(Roles.RE_AUTH_IND)}s`
         break;
     }
 
-    let heading:string = `You are invited to register as a ${role_fullname} in the Ethical Transparency Application`;
+    let heading:string = `You are invited to register as an ${role_fullname} in the Ethical Transparency Application`;
     if(entity_name != ENTITY_WAITING_ROOM) {
     // if(entity_name && entity_name != ENTITY_WAITING_ROOM) {
         heading = `${heading} for the following organization: <br><br><span class="entity1">${entity_name}</span>`;

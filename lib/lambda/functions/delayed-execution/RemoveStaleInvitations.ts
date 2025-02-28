@@ -2,7 +2,7 @@ import * as ctx from '../../../../contexts/context.json';
 import { IContext } from "../../../../contexts/IContext";
 import { DelayedExecutions } from "../../../DelayedExecution";
 import { InvitationCrud } from "../../_lib/dao/dao-invitation";
-import { Invitation, Roles } from "../../_lib/dao/entity";
+import { Invitation, roleFullName, Roles } from "../../_lib/dao/entity";
 import { EmailParms, sendEmail } from '../../_lib/EmailWithAttachments';
 import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
@@ -77,18 +77,14 @@ export const sendEndOfRegistrationEmail = async (parms:EndOfRegistrationEmailPar
 
   try {
     message = message ?? 'This email is notification that your invitation to register in the Ethical ' +
-      `Training Tool (ETT) has expired, and the registration period is now ended.`;
-    subject = subject ?? 'ETT end of registration Notification';
+      `Training Tool (ETT) as an ${roleFullName(role)} has expired`
 
     switch(role) {
-      case RE_ADMIN:
-        message = message.replace('(ETT)', '(ETT) as an Administrative Support Professional');
-        break;
-      case RE_AUTH_IND:
-        message = message.replace('(ETT)', '(ETT) as an Authorized Individual');
+      case RE_ADMIN: case RE_AUTH_IND:
+        message = message + ', and the registration period is now ended.'
         break;
       case SYS_ADMIN:
-        message = 'This email is notification that your invitation to register in the Ethical (ETT) has expired';
+        message = message + '.';
         subject = 'ETT invitation expiration Notification';
         break;
     }
