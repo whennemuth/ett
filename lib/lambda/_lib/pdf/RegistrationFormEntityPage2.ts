@@ -5,6 +5,7 @@ import { Page } from "./lib/Page";
 import { Margins, rgbPercent } from "./lib/Utils";
 import { IPdfForm, PdfForm } from "./PdfForm";
 import { RegistrationFormEntityDrawParms } from "./RegistrationFormEntity";
+import { roleFullName, Roles } from "../dao/entity";
 
 const red = rgbPercent(255, 0, 0);
 
@@ -77,8 +78,8 @@ export class RegistrationFormEntityPage2 extends PdfForm implements IPdfForm {
       'publicize, and recruit additional entities to use ETT and to support ETT-Registered Entities’ ' +
       'ability to use ETT efficiently. Any such reference will not include an endorsement of ETT or state ' +
       'the specific way (within all the permitted ways) in which your organization is or was using ETT, ' +
-      'unless an ${roleDescription(Roles.RE_AUTH_IND)} gives additional written consent. (ETT may be abbreviated or spelled ' +
-      'out as the Ethical Transparency Tool.)</i>'
+      `unless an ${roleFullName(Roles.RE_AUTH_IND)} gives additional written consent. (ETT may ` +
+      'be abbreviated or spelled out as the Ethical Transparency Tool.)</i>'
     );
 
     _return(16);

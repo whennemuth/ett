@@ -88,7 +88,7 @@ export class UserInvitation {
           `<p>${makeSafeHtml(_link)}</p>` +
           `You are the Administrative Support Professional, who, with two senior Authorized Individuals, ` +
           `will represent your organization in using this tool.` +
-          `More information on ETT is here:</b>`;
+          `<br>More information on ETT is here:</b>`;
         break;
 
       case Roles.RE_AUTH_IND:
