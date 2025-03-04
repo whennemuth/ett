@@ -427,7 +427,7 @@ export const sendDisclosureRequest = async (consenterEmail:string, entity_id:str
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/authorized-individual/AuthorizedIndividual.ts')) {
 
-  const task:Task = Task.SEND_DISCLOSURE_REQUEST;
+  const task:Task = Task.SEND_EXHIBIT_FORM_REQUEST;
   const { DisclosureRequestReminder, HandleStaleEntityVacancy } = DelayedExecutions;
 
   (async () => {
@@ -519,6 +519,19 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
             role:"RE_AUTH_IND",
             registrationUri:`https://${cloudfrontDomain}/bootstrap/index.htm`
         }});
+        break;
+
+      case Task.SEND_EXHIBIT_FORM_REQUEST:
+        _event.headers[AbstractRoleApi.ETTPayloadHeader] = JSON.stringify({
+          task: "send-exhibit-form-request",
+          parameters: {
+            consenterEmail: "cp1@warhen.work",
+            entity_id: "7935cf3b-714c-4d99-a926-626355030981",
+            constraint: "both",
+            linkUri: "https://d227na12o3l3dd.cloudfront.net/bootstrap/index.htm",
+            filename: "index.htm"
+          }
+        });
         break;
 
       case Task.PING:

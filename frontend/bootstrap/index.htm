@@ -1945,7 +1945,39 @@
       const getConstraint = () => {
         return document.location.pathname.split('/')[4];
       }
-      return { isMatch, getRedirectUri, getOriginAndPath, getConstraint };
+      // Values can be passed in the hash like: https://domain/subdir?selected_role=xyz#entity_id=abc
+      // where getHashValue('entity_id') would return 'abc'
+      const getHashValue = (key) => {
+        let { hash } = window.location;
+        if( ! hash) return;
+        hash = window.location.hash.substring(1); // Remove the '#' character
+        if( ! hash) return;
+        const kv = hash.split('&').find(pair => {
+          const kv = pair.split('=');
+          if(kv.length < 2) return;
+          if(kv[0] == key) {
+            return kv[1];
+          }
+        });
+        if(kv) {
+          return kv.split('=')[1];
+        }
+      }
+      const pushStash = (obj) => {
+        window.sessionStorage.setItem('exhibitsPathStash', JSON.stringify(obj));
+      }
+      const applyStash = () => {
+        const obj = JSON.parse(window.sessionStorage.getItem('exhibitsPathStash'));
+        return obj;
+      }
+      const popStash = () => {
+        const obj = JSON.parse(window.sessionStorage.getItem('exhibitsPathStash'));
+        if(obj) {
+          window.sessionStorage.removeItem('exhibitsPathStash');
+        }
+        return obj;
+      }
+      return { isMatch, getRedirectUri, getOriginAndPath, getConstraint, getHashValue, pushStash, applyStash };
     }
 
     const exhibitsPath = ExhibitsPath();
@@ -2022,16 +2054,30 @@
      * acquiring an authorization code to exchange for a JWT.
      */
     function initiateAuthorizationRequest(codeChallenge, state) {
+      const redirectUrl = new URL(redirectUri());
+
+      // Set the action
+      redirectUrl.searchParams.set('action', 'login');
+      // Set the role
+      redirectUrl.searchParams.set('selected_role', selected_role);
+      // Set the task     
       const queryParams = new URLSearchParams(window.location.search);
-      let redirect_uri = `${redirectUri()}?action=login&selected_role=${selected_role}`;
       const task = queryParams.get('task');
       if(task) {
-        redirect_uri = `${redirect_uri}&task=${task}`;
+        redirectUrl.searchParams.set('task', task);
       }
+      // Set the entity_id     
+      if(exhibitsPath.isMatch() && exhibitsPath.getHashValue('entity_id')) {
+        // Put the requesting entity_id in session state so that it survives the cognito redirect
+        exhibitsPath.pushStash({
+          entity_id: exhibitsPath.getHashValue('entity_id')
+        })
+      }
+
       const params = {
         response_type: 'code',
         client_id: clientId(),
-        redirect_uri,
+        redirect_uri: redirectUrl.href,
         state: state,
         code_challenge: codeChallenge,
         code_challenge_method: 'S256'
@@ -3081,20 +3127,54 @@
       }
     }
 
+    /**
+     * Populate the requesting entity dropdown lists for exhibit form submissions.
+     */
     const populateConsenterEntityLists = () => {
-      populateConsenterEntityList('requestingEntityDropdownList');
+      // If having just signed in to submit an exhibit form to a specific entity, set a variable
+      // that will be used to restrict the entity selection list to just that one entity.
+      let requestingEntityId;
+      if(exhibitsPath.isMatch()) {
+        // Check the stash for the entity_id of the requesting entity
+        let { entity_id } = exhibitsPath.applyStash() ?? {};
+        if( ! entity_id) {
+          // The user must already have had a valid JWT, so no cognito callback and stash involved.
+          entity_id = exhibitsPath.getHashValue('entity_id');
+        }
+        if(entity_id) {
+          requestingEntityId = entity_id;
+          const { entities } = consenterInfo;
+          selectedEntity = entities.find(e => {
+            return e.entity_id == entity_id;
+          });
+        }
+      }
+
+      populateConsenterEntityList('requestingEntityDropdownList', requestingEntityId);
       populateConsenterEntityList('requestingEntityDropdownList2');
+
+      if(requestingEntityId) {
+        // Make the dropdown button reflect the selected entity.
+        const button = document.querySelector('#requestingEntityDropdownButton');
+        button.innerText = selectedEntity.entity_name;
+        // Hide the "select one" label since there is only one entity to select.
+        button.closest('#requestingEntityDropdown').querySelector('b').style.display = 'none';
+      }
     }
 
-    const populateConsenterEntityList = (listId) => {
+    const populateConsenterEntityList = (listId, requestingEntityId) => {
       const { consenter: { exhibit_forms=[] }, entities } = consenterInfo;
       if( entities.length == 0) {
         return;
       }
       const lbx = document.querySelector(`#${listId}`);
       lbx.innerHTML = '';
+      
       entities.forEach(entity => {
         const { entity_id, entity_name } = entity;
+        if(requestingEntityId && entity_id != requestingEntityId) {
+          return;
+        }
         const a = document.createElement("a");
         a.id = entity_id;
         a.name = entity_name;
@@ -4069,7 +4149,8 @@
 
       // Save state and code_verifier in session storage
       const storage = window.sessionStorage;
-      storage.clear();
+      storage.removeItem("state");
+      storage.removeItem("code_verifier");
       storage.setItem("state", state);
       storage.setItem("code_verifier", codeVerifier);
 
@@ -5236,7 +5317,8 @@
         document.cookie = `${cookieName}=${cookieValue}`;
         // Now that the cookie is set and we have the JWT, we don't need the state and code verfier values anymore.
         const storage = window.sessionStorage;
-        storage.clear();
+        storage.removeItem("state");
+        storage.removeItem("code_verifier");
       };
       this.clearJwt = function() {
         document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
@@ -5776,7 +5858,7 @@
         }
         else if(!AccessJwtCookie.jwtExpired()) {
           setName(AccessJwtCookie.getRole(), IDJwtCookie.getUser())
-          await showAppForRole();        
+          await showAppForRole();  
         }
         else if(exhibitsPath.isMatch()) {
           // Not signed in and consenter is coming in on the "private" link emailed to them by AI
@@ -5898,7 +5980,9 @@
           const queryParams = new URLSearchParams(window.location.search);
           let task = queryParams.get('task'); 
           if(task) {
-            href = `${href}?task=${task}`;
+            const url = new URL(href);
+            url.searchParams.set('task', task);
+            href = url.href;
           }
           
           // Redirect

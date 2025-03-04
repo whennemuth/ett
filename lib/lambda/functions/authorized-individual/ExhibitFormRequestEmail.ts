@@ -48,6 +48,11 @@ export class ExhibitFormRequestEmail {
     // Get who the email will say it is from
     const context:IContext = <IContext>ctx;
     const from = `noreply@${context.ETT_DOMAIN}`;
+
+    // Prevent any special characters in the link from being interpreted as HTML
+    linkUri = linkUri
+      .replace(/&/g, "&amp;")
+      .replace(/=/g, "=3D");  // Ensure '=' is properly handled in quoted-printable
     
     return sendEmail({
       subject: `ETT Exhibit Form Request`,

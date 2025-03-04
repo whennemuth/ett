@@ -31,7 +31,7 @@ export class ExhibitFormRequest {
    * @returns 
    */
   private tryAsBootstrapLink = (url:URL):string|void => {
-    const { parms: { constraint } } = this;
+    const { parms: { entity_id, constraint } } = this;
     const { pathname:path } = url;
 
     // Bail out if the url does not indicate a bootstrap link
@@ -43,6 +43,7 @@ export class ExhibitFormRequest {
     pathParts = pathParts.filter(part => part && part != 'index.htm');
 
     url.pathname = `${pathParts.join('/')}/consenting/add-exhibit-form/${constraint}/index.htm`;
+    url.hash = `entity_id=${entity_id}`;
     return url.href;
   }
 
@@ -52,7 +53,7 @@ export class ExhibitFormRequest {
    * @returns 
    */
   private tryAsStandardWebsiteLink = (url:URL):string|void => {
-    const { parms: { constraint } } = this;
+    const { parms: { entity_id, constraint } } = this;
     const { pathname:path } = url;
 
     let pathParts = path.split('/');
@@ -60,6 +61,7 @@ export class ExhibitFormRequest {
     pathParts = pathParts.filter(part => part && /^\w+\.((htm)|(html))$/i.test(part) == false);
 
     url.pathname = `${pathParts.join('/')}/consenting/add-exhibit-form/${constraint}`;
+    url.hash = `entity_id=${entity_id}`;
     return url.href;
   }
 
