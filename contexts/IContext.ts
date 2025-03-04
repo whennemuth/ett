@@ -7,6 +7,7 @@ export interface IContext {
   REGION:   string;
   LOCALHOST?: string;
   ETT_DOMAIN?: string;
+  ETT_EMAIL_FROM?: string;
   CLOUDFRONT_DOMAIN?: string;
   CLOUDFRONT_CERTIFICATE?: string;
   REDIRECT_PATH_WEBSITE:string;

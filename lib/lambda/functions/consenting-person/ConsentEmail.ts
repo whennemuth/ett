@@ -28,7 +28,7 @@ export class ConsentFormEmail {
       from: `noreply@${context.ETT_DOMAIN}`, 
       message: `Please find enclosed a pdf copy of the ETT consent form, for ${consenterFullName}`,
       to: [ emailAddress ],
-      attachments: [
+      pdfAttachments: [
         {
           pdf: new ConsentForm({ consenter, entityName }),
           name: 'consent-form.pdf',

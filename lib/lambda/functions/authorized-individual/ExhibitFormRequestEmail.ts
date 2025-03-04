@@ -57,7 +57,7 @@ export class ExhibitFormRequestEmail {
         `Follow the link provided below to log in to your ETT account and to access the form:` + 
         `<p>${linkUri}</p>`,
       from,
-      attachments: []
+      pdfAttachments: []
     } as EmailParms);  
   }
 }

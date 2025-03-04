@@ -50,7 +50,7 @@ export class ConsenterCorrectionEmail {
       message: `Please find enclosed a correction form listing modifications that consenting ` +
         `individual ${fullname} has made to their name and/or contact details.`,
       to: [ firstAI.email ], cc, bcc,
-      attachments: [
+      pdfAttachments: [
         {
           pdf: correctionForm,
           name: 'consenter-correction-form.pdf',

@@ -1,20 +1,24 @@
-import { ConfigNames, Entity, Invitation, Role, roleFullName, Roles, User } from '../dao/entity';
-import { DAOInvitation, DAOFactory } from '../dao/dao';
-import { SESv2Client, SendEmailCommand, SendEmailCommandInput, SendEmailResponse } from '@aws-sdk/client-sesv2';
+import { DeleteItemCommandOutput } from '@aws-sdk/client-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
-import { ENTITY_WAITING_ROOM, EntityCrud } from '../dao/dao-entity';
-import { error, log, lookupCloudfrontDomain } from '../../Utils';
 import { IContext } from '../../../../contexts/IContext';
 import * as ctx from '../../../../contexts/context.json';
-import { UserCrud } from '../dao/dao-user';
-import { SignupLink } from './SignupLink';
-import { DeleteItemCommandOutput } from '@aws-sdk/client-dynamodb';
-import { InvitationCrud } from '../dao/dao-invitation';
 import { DelayedExecutions } from '../../../DelayedExecution';
-import { Configurations } from '../config/Config';
+import { error, log, lookupCloudfrontDomain } from '../../Utils';
 import { RulePrefix as dsicPrefix, StaleInvitationLambdaParms } from '../../functions/delayed-execution/RemoveStaleInvitations';
+import { sendEmail } from '../EmailWithAttachments';
+import { Configurations } from '../config/Config';
+import { DAOFactory, DAOInvitation } from '../dao/dao';
+import { EntityCrud } from '../dao/dao-entity';
+import { InvitationCrud } from '../dao/dao-invitation';
+import { UserCrud } from '../dao/dao-user';
+import { ConfigNames, Entity, Invitation, Roles, Role, User } from '../dao/entity';
 import { DelayedLambdaExecution } from '../timer/DelayedExecution';
 import { EggTimer, PeriodType } from '../timer/EggTimer';
+import { SignupLink } from './SignupLink';
+import { getHowEttWorksBase64 } from './how-ett-works';
+
+export type SendParms = { expires?:boolean, persist?:boolean
+}
 
 /**
  * An invitation email is one sent with a link in it to the ETT privacy policy acknowledgement webpage as the
@@ -30,6 +34,7 @@ export class UserInvitation {
   private invitation:Invitation;
   private _code:string;
   private _link:string;
+  private _domain:string;
   private entity_name:string;
   private messageId:string|undefined;
 
@@ -50,124 +55,163 @@ export class UserInvitation {
     let { code } = invitation;
     if( ! code) code = uuidv4();
     this._code = code;
+    // Add the code to the link and prevent any '&' or '=' characters from being misinterpreted as HTML.
     this._link = `${this._link}&code=${this._code}`
+    this._domain = process.env.CLOUDFRONT_DOMAIN ?? new URL(this._link).hostname;
   }
 
-  /**
-   * Send the invitation email.
-   * @returns 
-   */
-  public send = async (expires:boolean=true):Promise<boolean> => {
-    // Destructure the invitation and get a description of the role invited for.
-    let { invitation, entity_name, _link, messageId, persist, setDelayedExecutionToPurge } = this;
-    let { role, email } = invitation;
-    let role_description = '';
-    let role_fullname = '';
-    switch(role as Role) {
-      case Roles.SYS_ADMIN:
-        role_fullname = roleFullName(Roles.SYS_ADMIN);
-        role_description = `A ${roleFullName(Roles.SYS_ADMIN)} for the entire ETT plaform. Actions that can be taken ` +
-          `by a ${roleFullName(Roles.SYS_ADMIN)} are not entity-specific and involve, among other functions, the ` +
-          `invitation of ${roleFullName(Roles.RE_ADMIN)}s to the platform to register and create their entities. `
-        break;
-      case Roles.RE_ADMIN:
-        role_fullname = roleFullName(Roles.RE_ADMIN);
-        role_description = `A person who directly works with one or both of the ${roleFullName(Roles.RE_AUTH_IND)}s ` +
-          `and can assist them in interacting with the ETT technology—and who can manage the registered entities ` +
-          `involvement in the ETT, including by making requests for Individuals to complete Consent or Affiliate ` +
-          `Exhibit Forms.`
-        break;
-      case Roles.RE_AUTH_IND:
-        role_fullname = roleFullName(Roles.RE_AUTH_IND);
-        role_description = `A person in a senior role(s) within a registered entity that deals with ` +
-          `sensitive information, who will directly view the completed Disclosure Form on behalf of the ` +
-          `registered entity. Each registered entity has two ${roleFullName(Roles.RE_AUTH_IND)}s`
-        break;
-    }
+  private makeSafeHtml = (html:string):string => {
+    return html
+      .replace(/&/g, "&amp;")
+      .replace(/=/g, "=3D");  // Ensure '=' is properly handled in quoted-printable
+  }
 
-    let heading:string = `You are invited to register as an ${role_fullname} in the Ethical Transparency Application`;
-    if(entity_name != ENTITY_WAITING_ROOM) {
-    // if(entity_name && entity_name != ENTITY_WAITING_ROOM) {
-        heading = `${heading} for the following organization: <br><br><span class="entity1">${entity_name}</span>`;
-    }
-    
-    // Send the invitation email
-    const client = new SESv2Client({
-      region: process.env.REGION
-    });
-
+  public send = async (parms:SendParms):Promise<boolean> => {
+    const { expires=true, persist=true } = parms;
     const context:IContext = <IContext>ctx;
-    
-    const command = new SendEmailCommand({
-      Destination: {
-        ToAddresses: [ email ]
-      },
-      FromEmailAddress: `noreply@${context.ETT_DOMAIN}`,
-      Content: {
-        Simple: {
-          Subject: {
-            Charset: 'utf-8',
-            Data: 'INVITATION: Ethical Transparency Tool (ETT)',
-          },          
-          Body: {
-            // Text: { Charset: 'utf-8', Data: 'This is a test' },
-            Html: {
-              Charset: 'utf-8',
-              Data: `
-                <style>
-                  div { float: initial; clear: both; padding: 20px; width: 500px; }
-                  hr { height: 1px; background-color: black; margin-bottom:20px; margin-top: 20px; border: 0px; }
-                  .content { max-width: 500px; margin: auto; }
-                  .heading1 { font: 16px Georgia, serif; background-color: #ffd780; text-align: center; }
-                  .entity1 { font: bold 18px Georgia, serif; color: crimson; }
-                  .body1 { font: italic 14px Georgia, serif; background-color: #ffe7b3; text-align: justify;}
-                  .direction1 { font: 16px Georgia, serif; background-color: #ffefcc; text-align: center; }
-                </style>
-                <div class="content">
-                  <div class="heading1">${heading}</div>
-                  <div class="body1" style="padding:20px;">
-                    <hr>
-                    ETT is designed to support AAU’s harassment prevention principles and the recommendations of 
-                    NASEM’s June 2018 report on sexual harassment of women in academic science, engineering, and 
-                    medicine by helping to create a norm of transparency about findings of misconduct against a 
-                    person, across the higher-education and research ecosystem of societies, institutions of higher 
-                    education, and other research organizations. This tool covers sexual, gender, and racial 
-                    misconduct — as well as professional licensure, financial, and research misconduct to maximize 
-                    its utility.
-                    <br>
-                    <hr>
-                    A ${role_fullname} is: ${role_description}
-                  </div>
-                  <div class="direction1">
-                    Follow the link below register:
-                  </div>
-                  <p>
-                    <a href="${_link}" style="font-weight: bold;">${_link}</a>
-                  </p>
-                </div>`,
+    let { invitation, entity_name, _link, messageId, persist:_persist, setDelayedExecutionToPurge, makeSafeHtml } = this;
+    let { role, email } = invitation;
+
+    let heading:string = `Welcome to the Ethical Transparency Tool (ETT)!<br>`;
+
+    switch(role) {
+
+      case Roles.SYS_ADMIN:
+        heading = `${heading}Follow this link to establish a system administrator account with ETT:<br>`;
+        break;
+
+      case Roles.RE_ADMIN:
+        heading = `<b>${heading}Register for An ETT Account:<br>` +
+          `Your University, College, or Society is being invited to register to use ETT. You are one of the ` +
+          `three representatives of your University, College, or Society that is being invited to register ` +
+          `to use ETT.<br>Follow this link to begin registration:` + 
+          `<p>${makeSafeHtml(_link)}</p>` +
+          `You are the Administrative Support Professional, who, with two senior Authorized Individuals, ` +
+          `will represent your organization in using this tool.` +
+          `More information on ETT is here:</b>`;
+        break;
+
+      case Roles.RE_AUTH_IND:
+        heading = `<b>${heading}Register for An ETT Account:<br>` +
+          `Your University, College, or Society is being invited to register to use ETT. You are one of two ` +
+          `senior Authorized Individuals who will represent your organization in using this tool, authorize ` +
+          `initiation of Disclosure Requests, directly receive completed Disclosure Forms, and decide who at ` +
+          `the organization needs the disclosed information.<br>Follow this link to complete registration:` +
+          `<p>${makeSafeHtml(_link)}</p>` +
+          `More information on ETT is here:</b>`;
+          break;
+    }
+
+    const howEttWorksImage = makeSafeHtml('<img src="cid:how-ett-works"/>');
+    const ettLink = makeSafeHtml(`<a class="au" href="${this._domain}">Ethical Transparency Tool</a>`);
+    const privacyLink = makeSafeHtml(`<a class="au" href="${this._domain}/privacy">Privacy Policy</a>`);
+    const societiesLink = makeSafeHtml(`<a class="au" href="https://societiesconsortium.com/">Societies Consortium to End Harassment in STEMM</a>`);
+
+    const message = `
+      <style>
+        div { float: initial; clear: both; padding: 20px; width: 500px; }
+        hr { height: 1px; background-color: black; margin-bottom:20px; margin-top: 20px; border: 0px; }
+        .content { max-width: 500px; margin: auto; }
+        .heading1 { font: 16px Georgia, serif; background-color: #ffd780; text-align: center; }
+        .entity1 { font: bold 18px Georgia, serif; color: crimson; }
+        .body1 { font: italic 14px Georgia, serif; background-color: #ffe7b3; text-align: justify; }
+        .direction1 { font: 16px Georgia, serif; background-color: #ffefcc; text-align: center; }
+        .au { font-decoration: underline; }
+      </style>
+      <div class="content">
+        <div class="heading1">${heading}</div>
+        <p>&nbsp;</p>
+        <p><hr></p>
+        <div class="body1">
+          <br>
+          <b>ABOUT ETT</b><br>
+          ETT is an ethical and efficient communication tool for societies, colleges, and universities 
+          to lead by helping to create a norm of transparency about findings (not allegations) of 
+          misconduct about individuals (sexual/gender and race/ethnicity, as well as financial, 
+          scientific/research, and licensure), wherever it occurs.  ETT is designed to implement 
+          AAU's harassment prevention principles and the recommendations of NASEM’s June 2018 report 
+          on sexual harassment of women in academia and to support inclusive learning and research 
+          for all talent.
+        </div>
+        <div class="body1">
+          <br>
+          <b>What are the benefits of ETT?</b><br>
+          <ul>
+            <li>
+              Creating a healthy climate for all - reducing awards and appointments for harassers, 
+              while recognizing that a person may learn and correct past behaviors, benefiting everyone.
+            </li>
+            <li>
+              <b>Ethically treating everyone</b> - making it easier for an entity that made a misconduct 
+              finding (the most reliable source) to share it with an entity that requests it via 
+              ETT.  Doing so with care for sensitive information and without shaming or whisper 
+              campaigns.
+            </li>
+            <li>
+              Minimizing legal and enterprise risk for all involved: organizations maintain 
+              independence in all policy- and decision making; candidates provide consent for 
+              disclosures; and disclosures are limited to useful but hard to dispute facts—the 
+              kind and date of a misconduct finding.
+            </li>
+            <li>
+              Enhancing efficiency in consenting to and requesting disclosures – a consent has a 
+              10-year life and can be used to request and provide disclosures throughout (unless 
+              rescinded early) and ETT automates requests for disclosures and reminders.
+            </li>
+            <li style="font-weight:bold;">
+              ETT never receives disclosures–only the organizations that request them using 
+              ETT do - there is no centralized shame list or conduct record.
+            </li>
+          </ul>
+        </div>
+        <div class="body1">
+          <br>
+          <b>How does the Ethical Transparency Tool work?</b><br>
+          ${howEttWorksImage}
+        </div>
+        <div class="body1">
+          <br>
+          <b>What information is retained in the ETT?</b><br>
+          Organizations’ and individuals’ registration to use ETT and individuals’ consent forms 
+          are stored in ETT.  Candidate professional affiliations (their employers, appointing and 
+          honoring organizations, and societies) and organization requests for disclosures are 
+          deleted as soon as ETT sends them and two reminders. (A limited archival record of the 
+          transmission is kept behind a firewall.)  ETT is a conduit, not a records repository. 
+          <p>
+            Click these links for more information on the ${ettLink}, the ${privacyLink}, and the ${societiesLink}.
+          </p>
+        </div>
+      </div>`;
+
+      try {
+        const sent = await sendEmail({
+          subject: `${role == Roles.RE_ADMIN ? 'BU' : entity_name} Invitation to Register in ETT`,
+          from: `${context.ETT_EMAIL_FROM}@${context.ETT_DOMAIN}`, 
+          message,
+          to: [ email ],
+          pngAttachments: [
+            {
+              id: 'how-ett-works',
+              pngBase64:getHowEttWorksBase64(),
+              name: 'how-ett-works.png',
+              description: 'how-ett-works.png'
             }
+          ]  
+        });
+        if(sent && persist) {
+  
+          await _persist();
+  
+          if(expires) {
+            await setDelayedExecutionToPurge();
           }
         }
+        return sent;
+      } 
+      catch (e:any) {
+        error(e);
+        return false;
       }
-    } as SendEmailCommandInput);
-
-    try {
-      const response:SendEmailResponse = await client.send(command);
-      messageId = response?.MessageId;
-      if(messageId) {
-
-        await persist();
-
-        if(expires) {
-          await setDelayedExecutionToPurge();
-        }
-      }
-    } 
-    catch (e:any) {
-      error(e);
-      return false;
-    }
-    return messageId ? true : false;
   }
 
   /**
@@ -274,9 +318,19 @@ export class UserInvitation {
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/invitation/Invitation.ts')) {
 
-  const inviterEmail = 'asp1.random.edu@warhen.work';
-  const inviteeEmail = 'auth1.random.edu@warhen.work';
-  const role = Roles.RE_AUTH_IND;
+  let inviterEmail:string;
+  let inviteeEmail:string;
+  const role:Role = Roles.RE_ADMIN as Role;
+  switch(role) {
+    case Roles.RE_ADMIN:
+      inviterEmail = 'sysadmin1@warhen.work';
+      inviteeEmail = 'asp1.random.edu@warhen.work';
+      break;
+    case Roles.RE_AUTH_IND: default:
+      inviterEmail = 'asp1.random.edu@warhen.work';
+      inviteeEmail = 'auth1.random.edu@warhen.work';
+      break;
+  }
   const task = 'send' as 'send' | 'retract';
 
   (async () => {
@@ -328,7 +382,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/invi
     const { entity_name } = entity;
     const invitation = { entity_id, email:inviteeEmail, role } as Invitation
     const emailInvite = new UserInvitation(invitation, `${link}`, entity_name);
-    if( await emailInvite.send()) {
+    if( await emailInvite.send({ expires:false, persist:false }) ) {
       log({ invitation_code: emailInvite.code, invitation_link: emailInvite.link }, 'Invitation successfully sent');
     }
     else {

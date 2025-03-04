@@ -73,7 +73,7 @@ export class ExhibitEmail {
           from: `noreply@${context.ETT_DOMAIN}`,
           message: `${roleFullName(Roles.CONSENTING_PERSON)} ${consenterFullname} is forwarding you their full affliate list via ETT`,
           to: [ emailAddress ],
-          attachments: {
+          pdfAttachments: {
             pdf: this.pdf,
             name: `${name}.pdf`,
             description: `${name}.pdf`
@@ -101,7 +101,7 @@ export class ExhibitEmail {
           from: `noreply@${context.ETT_DOMAIN}`,
           message: `${roleFullName(Roles.CONSENTING_PERSON)} ${consenterFullname} has named you as an affilate for disclosure to ${entity_name}`,
           to: [ emailAddress ],
-          attachments: {
+          pdfAttachments: {
             pdf: this.pdf,
             name: `${name}.pdf`,
             description: `${name}.pdf`

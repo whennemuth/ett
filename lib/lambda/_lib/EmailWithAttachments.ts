@@ -3,14 +3,17 @@ import { IPdfForm } from "../_lib/pdf/PdfForm";
 import { bytesToBase64, error, log } from "../Utils";
 import { v4 as uuidv4 } from 'uuid';
 
-export type Attachment = { pdf:IPdfForm, name:string, description:string }
+export type PdfAttachment = { pdf:IPdfForm, id?:string, name:string, description:string }
+export type PngAttachment = { pngBase64:string, id:string, name:string, description:string }
 export type EmailParms = { 
-  from:string, to:string[], cc?:string[], bcc?:string[], subject:string, message:string, attachments:Attachment|Attachment[] 
+  from:string, to:string[], cc?:string[], bcc?:string[], subject:string, message:string, 
+  pdfAttachments?:PdfAttachment|PdfAttachment[]
+  pngAttachments?:PngAttachment|PngAttachment[]
 };
 
 export const sendEmail = async (parms:EmailParms):Promise<boolean> => {
   
-  const { subject, to, cc=[], bcc=[], message, from, attachments=[] } = parms;
+  const { subject, to, cc=[], bcc=[], message, from, pdfAttachments=[], pngAttachments=[] } = parms;
 
   log({ subject, to, cc, bcc, from }, 'Sending email');
 
@@ -22,11 +25,15 @@ export const sendEmail = async (parms:EmailParms):Promise<boolean> => {
   const altBoundaryStart=`--${altBoundary}`;
   const altBoundaryEnd=`${altBoundaryStart}--`;
 
-  const _attachments:Attachment[] = attachments instanceof Array ? attachments : [ attachments ];
+  const _pdfAttachments:PdfAttachment[] = pdfAttachments instanceof Array ? pdfAttachments : [ pdfAttachments ];
+  const _pngAttachments:PngAttachment[] = pngAttachments instanceof Array ? pngAttachments : [ pngAttachments ];
 
   let attachmentDataStrings = '';
-  for(let i=0; i<_attachments.length; i++) {
-    attachmentDataStrings += await getAttachmentDataString(_attachments[i], mainBoundaryStart, mainBoundaryEnd);
+  for(let i=0; i<_pdfAttachments.length; i++) {
+    attachmentDataStrings += await getPdfAttachmentDataString(_pdfAttachments[i], mainBoundaryStart);
+  }
+  for(let i=0; i<_pngAttachments.length; i++) {
+    attachmentDataStrings += await getPngAttachmentDataString(_pngAttachments[i], mainBoundaryStart);
   }
 
   const toLine = `To: ${to.join(', ')}`
@@ -45,19 +52,18 @@ ${mainBoundaryStart}
 Content-Type: multipart/alternative; boundary="${altBoundary}"
 
 ${altBoundaryStart}
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
 
 ${message}
 
 ${altBoundaryStart}
-Content-Type: text/html; charset=iso-8859-1
+Content-Type: text/html; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
 
 <html>
 <head></head>
 <body>
-<h2>Greetings!</h2>
 <p>${message}</p>
 </body>
 </html>
@@ -99,8 +105,8 @@ ${mainBoundaryEnd}
   return messageId ? true : false;
 }
 
-const getAttachmentDataString = async (attachment:Attachment, mainBoundaryStart:string, mainBoundaryEnd:string) => {
-  const { pdf, description, name } = attachment;
+const getPdfAttachmentDataString = async (attachment:PdfAttachment, mainBoundaryStart:string) => {
+  const { pdf, description, name, id=`${uuidv4()}` } = attachment;
 
   const pdfBase64 = bytesToBase64(await pdf.getBytes());
 
@@ -110,7 +116,24 @@ Content-Type: application/pdf; name="${name}"
 Content-Description: ${description}
 Content-Disposition: attachment;filename="${name}";creation-date="${new Date().toUTCString()}";
 Content-Transfer-Encoding: base64
+Content-ID: <${id}>
 
 ${pdfBase64}
 `;
+}
+
+const getPngAttachmentDataString = async (attachment:PngAttachment, mainBoundaryStart:string) => {
+  const { pngBase64, description, name, id } = attachment;
+
+return `
+${mainBoundaryStart}
+Content-Type: image/png; name="${name}"
+Content-Description: ${description}
+Content-Disposition: inline
+Content-Transfer-Encoding: base64
+Content-ID: <${id}>
+
+${pngBase64}
+`;
+
 }

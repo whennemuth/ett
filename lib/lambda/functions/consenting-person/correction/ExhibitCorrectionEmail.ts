@@ -4,7 +4,7 @@ import { ConsenterCrud } from "../../../_lib/dao/dao-consenter";
 import { EntityCrud } from "../../../_lib/dao/dao-entity";
 import { UserCrud } from "../../../_lib/dao/dao-user";
 import { Affiliate, AffiliateTypes, Consenter, Entity, ExhibitFormConstraints, FormTypes, roleFullName, Roles, User, YN } from "../../../_lib/dao/entity";
-import { Attachment, EmailParms, sendEmail } from "../../../_lib/EmailWithAttachments";
+import { PdfAttachment, EmailParms, sendEmail } from "../../../_lib/EmailWithAttachments";
 import { ExhibitForm, ExhibitFormParms } from "../../../_lib/pdf/ExhibitForm";
 import { ExhibitFormSingleBoth } from '../../../_lib/pdf/ExhibitFormSingleBoth';
 import { ExhibitFormSingleCurrent } from '../../../_lib/pdf/ExhibitFormSingleCurrent';
@@ -89,7 +89,7 @@ export class ExhibitCorrectionEmail {
     message +='</ul></p>';
 
     // Build the pdf attachment(s)
-    const attachments = [] as Attachment[];
+    const attachments = [] as PdfAttachment[];
     let counter = 0;
 
     // Build the attachments for affiliate updates
@@ -134,7 +134,7 @@ export class ExhibitCorrectionEmail {
     // Send the email
     console.log(`Sending exhibit form correction email to entity reps`);
     const from = `noreply@${context.ETT_DOMAIN}`;
-    return sendEmail({ subject, from, message, to: [ firstAI.email ], cc, bcc, attachments } as EmailParms);
+    return sendEmail({ subject, from, message, to: [ firstAI.email ], cc, bcc, pdfAttachments: attachments } as EmailParms);
   }
 
   public sendToAffiliates = async ():Promise<boolean> => {
@@ -158,7 +158,7 @@ export class ExhibitCorrectionEmail {
       // Send the email
       const from = `noreply@${context.ETT_DOMAIN}`;
       const pdf = getExhibitForm(updates[i]);
-      const ok = await sendEmail({ subject, from, message, to: [ email ], attachments: [
+      const ok = await sendEmail({ subject, from, message, to: [ email ], pdfAttachments: [
         { name: 'correction.pdf', description: 'correction.pdf', pdf }
       ] } as EmailParms);
       allOk &&= ok;

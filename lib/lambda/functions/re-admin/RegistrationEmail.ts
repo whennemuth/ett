@@ -37,7 +37,7 @@ export class EntityRegistrationEmail {
       subject: 'ETT Entity Registration Form',
       from: `noreply@${context.ETT_DOMAIN}`, 
       message: `Please find enclosed a pdf copy of the ETT registration form, for ${entity_name}`,
-      attachments: [
+      pdfAttachments: [
         {
           pdf: new RegistrationFormEntity(data),
           name: 'registration-form.pdf',

@@ -439,7 +439,7 @@ export const inviteUser = async (user:User, inviterRole:Role, linkGenerator:Func
       entity?.entity_name || ENTITY_WAITING_ROOM);
     
     // Send the invitation
-    if( await emailInvite.send()) {
+    if( await emailInvite.send({ expires:true, persist:true })) {
       const msg = `Invitation successfully sent: ${emailInvite.code}`
       return okResponse(msg, { invitation_code: emailInvite.code, invitation_link: emailInvite.link });
     }

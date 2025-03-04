@@ -30,10 +30,10 @@ export class IndividualRegistrationFormEmail {
 
     return await sendEmail({
       subject: 'ETT Individual Registration Form',
-      from: `noreply@${context.ETT_DOMAIN}`, 
+      from: `${context.ETT_EMAIL_FROM}@${context.ETT_DOMAIN}`, 
       message: `Please find enclosed a pdf copy of the ETT registration form, for ${consenterFullName}`,
       to: [ emailAddress ],
-      attachments: [
+      pdfAttachments: [
         {
           pdf: new RegistrationFormIndividual(consenter, loginHref),
           name: 'registration-form.pdf',

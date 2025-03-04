@@ -4,6 +4,7 @@
   "ACCOUNT": "037860335094",
   "REGION": "us-east-2",
   "LOCALHOST": "http://localhost:5173",
+  "ETT_EMAIL_FROM": "boston-universityETT",
   "ETT_DOMAIN": "warhen.work",
   "REDIRECT_PATH_BOOTSTRAP": "bootstrap/index.htm",
   "REDIRECT_PATH_WEBSITE": "/",
@@ -80,6 +81,6 @@
   "TAGS": {
     "Service": "client",
     "Function": "ett",
-    "Landscape": "warren"
+    "Landscape": "dev"
   }
 }

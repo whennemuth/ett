@@ -301,7 +301,7 @@ const send = async (parms:EmailParameters):Promise<boolean> => {
       `${consenterFullName} who is the subject of the disclosure and their original exhibit form ` +
       `naming you to disclose.`,
     to, cc, bcc,
-    attachments
+    pdfAttachments: attachments
   } as EmailParms);
 }
 

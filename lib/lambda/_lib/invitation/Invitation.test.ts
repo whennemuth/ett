@@ -63,21 +63,21 @@ describe('Send', () => {
 
   it('Should use the ses service send command, and return false if an error is encountered', async () => {
     const invitation = new UserInvitation(invitationParms, link, entity_name);
-    expect(await invitation.send()).toBe(false);
+    expect(await invitation.send({ expires:true, persist:true })).toBe(false);
     expect(sesCalls).toEqual(1);
     expect(daoInviteAttempts).toEqual(0);
   });
 
   it('Should use the ses service send command, and return true if no error is encountered', async () => {
     const invitation = new UserInvitation(invitationParms, link, entity_name);
-    expect(await invitation.send()).toBe(true);
+    expect(await invitation.send({ expires:true, persist:true })).toBe(true);
     expect(sesCalls).toEqual(2);
     expect(daoInviteAttempts).toEqual(1);
   });
 
   it('Should generate its own code if none is supplied', async () => {
     const invitation = new UserInvitation(invitationParms, link, entity_name);
-    expect(await invitation.send()).toBe(true);
+    expect(await invitation.send({ expires:true, persist:true })).toBe(true);
     expect(daoInviteAttempts).toEqual(2);
     expect(invitation.code).toBeDefined();
     expect(invitation.code).toMatch(/^[^\s]+$/);
@@ -88,7 +88,7 @@ describe('Send', () => {
     const sysAdminInvParms = Object.assign({}, invitationParms);
     sysAdminInvParms.role = Roles.SYS_ADMIN;
     const invitation = new UserInvitation(sysAdminInvParms, link, entity_name);
-    expect(await invitation.send()).toBe(true);
+    expect(await invitation.send({ expires:true, persist:true })).toBe(true);
     expect(daoInviteAttempts).toEqual(3);
     expect(invitation.code).toBeDefined();
     expect(invitation.code).toMatch(/^[^\s]+$/);
@@ -98,7 +98,7 @@ describe('Send', () => {
   it('Should configure the ses email as expected', async () => {
     const { email, role } = invitationParms;
     const invitation = new UserInvitation(invitationParms, link, entity_name);
-    expect(await invitation.send()).toBe(true);
+    expect(await invitation.send({ expires:true, persist:true })).toBe(true);
     expect(invitation.code).toBeDefined();
     expect(sesInput.Destination?.ToAddresses).toContain(email);
     expect(sesInput.Content?.Simple?.Subject?.Data).toEqual('INVITATION: Ethical Transparency Tool (ETT)');
