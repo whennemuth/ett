@@ -171,23 +171,54 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
   }
 
   /**
-   * Delete an invitation from the dynamodb table.
+   * Delete either a single invitation by code, or all invitations for a specific email + entity combo.
+   * @param reportDeleted 
+   * @returns 
    */
-  const Delete = async (reportDeleted?:boolean):Promise<DeleteItemCommandOutput> => {
+  const Delete = async (reportDeleted?:boolean):Promise<DeleteItemCommandOutput|void> => {
+    let outputs = [] as DeleteItemCommandOutput[];
     if( ! _code) {
+      if(email && entity_id) {
+        const invitations = await _query({ email, entity_id } as IdxParms) as Invitation[];
+        if(invitations.length > 0) {
+          for(const invitation of invitations) {
+            const output = await _delete(invitation.code, reportDeleted);
+            outputs.push(output);
+          }
+        }
+        else {
+          throw new Error(`Invitation delete error: No invitation found for ${email} and ${entity_id}`);
+        }
+      }
+    }
+    else {
+      const output = await _delete(_code, reportDeleted);
+      outputs.push(output);
+    }
+    if(outputs.length > 0) return outputs[outputs.length - 1]; // Return the last output if there are any
+  }
+
+  /**
+   * Delete a single invitation from the dynamodb table.
+   */
+  const _delete = async (code:string, reportDeleted?:boolean):Promise<DeleteItemCommandOutput> => {
+    if( ! code) {
       throwMissingError('delete', InvitationFields.code);
     }
+    log(code, 'Deleting invitation');
     const input = {
       TableName,
       Key: { 
-         [InvitationFields.code]: { S: _code, },
+         [InvitationFields.code]: { S: code },
       },
     } as DeleteItemCommandInput;
     if(reportDeleted) {
       input.ReturnValues = 'ALL_OLD';
     }
     command = new DeleteItemCommand(input);
-    return await sendCommand(command);
+    const response = await sendCommand(command);
+    log(response, 'Delete result');
+    return response;;
   }
 
   /**
@@ -264,14 +295,15 @@ export const EntityNotEqualsFilterExpression = (entityId:string): ((input: Query
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/dao/dao-invitation.ts')) {
 
-  const task = 'read-entity' as 'create' | 'update' | 'read-email' | 'read-entity' | 'delete';
+  const task = 'delete' as 'create' | 'update' | 'read-email' | 'read-entity' | 'delete';
 
   (async () => {
+    let invitation = {} as Invitation|null|Invitation[];
     switch(task) {
       case 'create':
       case 'update':
       case 'read-email':
-        const invitation = await InvitationCrud({ email: 'asp1.random.edu@warhen.work' } as Invitation).read();
+        invitation = await InvitationCrud({ email: 'asp1.random.edu@warhen.work' } as Invitation).read();
         log(invitation, 'Retrieved invitation');
         break;
       case 'read-entity':
@@ -286,6 +318,12 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/dao/
         log(invitations, 'Retrieved invitations');
         break;
       case 'delete':
+        invitation = await InvitationCrud({
+          email: 'asp2.random.edu@warhen.work',
+          entity_id: 'f4d65f83-e287-46f9-81ca-06904821aec4'
+        } as Invitation).Delete();
+        log(invitation, 'Deleted invitation');
+        break;
     }
   })();
 }
