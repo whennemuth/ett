@@ -3,6 +3,7 @@ import { IContext } from "../../../../../contexts/IContext";
 import { EntityCrud } from '../../../_lib/dao/dao-entity';
 import { Entity, User } from "../../../_lib/dao/entity";
 import { EmailParms, sendEmail } from '../../../_lib/EmailWithAttachments';
+import { log } from '../../../Utils';
 
 /**
  * This class represents an email that is sent to entity representatives to inform them that another member
@@ -21,7 +22,17 @@ export class EntityCorrectionEmail {
 
   public send = async ():Promise<boolean> => {
     const context:IContext = <IContext>ctx;
-    let { replaceable, replaceable: { email }, replacer: { fullname }, entity } = this;
+    let { 
+      replaceable, 
+      replaceable: { email:replaceableEmail }, 
+      replacer, 
+      replacer: { fullname, email:replacerEmail },
+      entity 
+    } = this;
+
+    if(replaceableEmail == replacerEmail) {
+      log({ replacer, replaceable }, 'Skipping "send-to-self" entity correction email');
+    }
 
     // Get the entity for its full name from the database if no entity was provided.
     if(! entity) {
@@ -30,13 +41,13 @@ export class EntityCorrectionEmail {
     }
 
     // Send the email
-    console.log(`Sending entity correction email to: ${email} about their removal from ${entity.entity_name} by ${fullname}`);
+    console.log(`Sending entity correction email to: ${replaceableEmail} about their removal from ${entity.entity_name} by ${fullname}`);
     return sendEmail({
       subject: `ETT Entity Correction Notification`,
       from: `noreply@${context.ETT_DOMAIN}`,
       message: `This email is notification of change with regards to your registration in the Ethical ` +
         `Training Tool (ETT): ${fullname} has removed you from ${entity.entity_name}.`,
-      to: [ email ]
+      to: [ replaceableEmail ]
     } as EmailParms);
   }
 }
