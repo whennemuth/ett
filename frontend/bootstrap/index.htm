@@ -2463,19 +2463,26 @@
           return invEmail == code && role == invRole;
         }
 
+        const aspCount = users.filter(u => u.role == 'RE_ADMIN').length;
+        const aiCount = users.filter(u => u.role == 'RE_AUTH_IND').length;
+
         // Render the asp table first...
         const asp = users.find(user => user.role == 'RE_ADMIN') ?? { role:'RE_ADMIN' };
+        const aspWasRemoved = aspCount == 0;
         const newAspInvitee = isNewInvitee(asp) || (asp && users.length == 0);
         createUserTable(asp, 1, () => newAspInvitee);
 
         // Render the first auth ind table...
         const authInd1 = users.find(user => user.role == 'RE_AUTH_IND') ?? { role:'RE_AUTH_IND' };
-        const newAuthInd1Invitee = newAspInvitee ? false : (isNewInvitee(authInd1) || (authInd1 && users.length == 1));
+        const authInd1IsNew = (isNewInvitee(authInd1) || ((authInd1 && ! aspWasRemoved) && users.length == 1));
+        const newAuthInd1Invitee = newAspInvitee ? false : authInd1IsNew;
         createUserTable(authInd1, 2, () => newAuthInd1Invitee);
 
         // Render the 2nd auth ind table...
         const authInd2 = users.find(u => u.role == 'RE_AUTH_IND' && u.email != authInd1.email) ?? { role:'RE_AUTH_IND' };
-        const newAuthInd2Invitee = (newAspInvitee || newAuthInd1Invitee) ? false : (isNewInvitee(authInd2) || (authInd2 && users.length == 2));
+        const otherIsNew = (newAspInvitee || newAuthInd1Invitee);
+        const authInd2IsNew = (isNewInvitee(authInd2) || (authInd2 && users.length == 2));
+        const newAuthInd2Invitee = otherIsNew ? false : (authInd2IsNew || aspWasRemoved);
         createUserTable(authInd2, 3, () => newAuthInd2Invitee);
       }
       catch(e) {
