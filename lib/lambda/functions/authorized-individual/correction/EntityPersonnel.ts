@@ -3,8 +3,9 @@ import { DelayedExecutions } from "../../../../DelayedExecution";
 import { lookupUserPoolId } from "../../../_lib/cognito/Lookup";
 import { CognitoStandardAttributes, UserAccount } from "../../../_lib/cognito/UserAccount";
 import { EntityCrud } from "../../../_lib/dao/dao-entity";
+import { InvitationCrud } from "../../../_lib/dao/dao-invitation";
 import { UserCrud } from "../../../_lib/dao/dao-user";
-import { Entity, Role, User, YN } from "../../../_lib/dao/entity";
+import { Entity, Invitation, Role, User, YN } from "../../../_lib/dao/entity";
 import { SignupLink } from "../../../_lib/invitation/SignupLink";
 import { log, lookupCloudfrontDomain } from "../../../Utils";
 import { inviteUser } from "../../re-admin/ReAdminUser";
@@ -183,6 +184,9 @@ export class Personnel {
       }
       const { email, entity_id } = replaceable;
       await UserCrud({ email, entity_id, active:YN.No } as User).update();
+
+      // Remove any invitations the user may have been issued
+      await InvitationCrud({ email, entity_id} as Invitation).Delete();
     }
 
     const removeUserFromCognito = async ():Promise<void> => {
