@@ -20,7 +20,7 @@ export class EntityCorrectionEmail {
     this.entity = entity;
   }
 
-  public send = async ():Promise<boolean> => {
+  public send = async (toEmail?:string):Promise<boolean> => {
     const context:IContext = <IContext>ctx;
     let { 
       replaceable, 
@@ -47,7 +47,7 @@ export class EntityCorrectionEmail {
       from: `noreply@${context.ETT_DOMAIN}`,
       message: `This email is notification of change with regards to your registration in the Ethical ` +
         `Training Tool (ETT): ${fullname} has removed you from ${entity.entity_name}.`,
-      to: [ replaceableEmail ]
+      to: [ toEmail ?? replaceableEmail ]
     } as EmailParms);
   }
 }
