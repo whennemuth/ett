@@ -187,7 +187,7 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
           }
         }
         else {
-          throw new Error(`Invitation delete error: No invitation found for ${email} and ${entity_id}`);
+          log({ email, entity_id }, 'No invitations found for');
         }
       }
     }

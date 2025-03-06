@@ -1,4 +1,4 @@
-import { SESv2Client, SendEmailCommand, SendEmailCommandInput, SendEmailResponse } from "@aws-sdk/client-sesv2";
+import { SendEmailCommand, SendEmailCommandInput, SendEmailResponse, SESv2Client } from "@aws-sdk/client-sesv2";
 import * as ctx from '../../../../contexts/context.json';
 import { CONFIG, IContext } from "../../../../contexts/IContext";
 import { DelayedExecutions } from "../../../DelayedExecution";
@@ -88,7 +88,7 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
 
         case Task.AMEND_ENTITY_NAME:
           var { entity_id, name } = parameters;
-          return await amendEntityName(entity_id, name);
+          return await amendEntityName(entity_id, name, callerSub);
 
         case Task.AMEND_ENTITY_USER:
           return await amendEntityUser(parameters);
@@ -240,7 +240,7 @@ export const notifyUserOfDemolition = async (emailAddress:string, entity:Entity)
  * @param name 
  * @returns 
  */
-const amendEntityName = async (entity_id:string, name:string): Promise<LambdaProxyIntegrationResponse> => {
+const amendEntityName = async (entity_id:string, name:string, callerSub:string): Promise<LambdaProxyIntegrationResponse> => {
   log({ entity_id, name }, `amendEntityName`)
   if( ! entity_id) {
     return invalidResponse('Missing entity_id parameter');
@@ -249,7 +249,7 @@ const amendEntityName = async (entity_id:string, name:string): Promise<LambdaPro
     return invalidResponse('Missing name parameter');
   }
   const corrector = new EntityToCorrect(new Personnel({ entity: entity_id }));
-  await corrector.correctEntity({ entity_id, entity_name:name } as Entity);
+  await corrector.correctEntity({ entity_id, entity_name:name } as Entity, callerSub);
   return okResponse('Ok', {});
 }
 

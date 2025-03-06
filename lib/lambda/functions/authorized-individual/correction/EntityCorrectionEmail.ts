@@ -30,23 +30,37 @@ export class EntityCorrectionEmail {
       entity 
     } = this;
 
-    if(replaceableEmail == replacerEmail) {
+    const selfCorrection = replaceableEmail == replacerEmail;
+
+    if(selfCorrection && ! toEmail) {
+      // A user need not be informed about an action they themselves have taken.
       log({ replacer, replaceable }, 'Skipping "send-to-self" entity correction email');
+      return false;
     }
 
     // Get the entity for its full name from the database if no entity was provided.
-    if(! entity) {
+    if( ! entity) {
       entity = await EntityCrud({ entity_id:replaceable.entity_id } as Entity).read() as Entity;
       this.entity = entity;
     }
 
+    const { entity_name } = entity;
+
+    let message = `This email is notification of change regarding your registration in the Ethical ` +
+      `Training Tool (ETT): ${fullname} has removed you from ${entity_name}.`
+
+    if(toEmail) {
+      const removedPerson = selfCorrection ? 'themselves' : replaceable.fullname;
+      message = `This email is notification of change regarding the entity you are registered with in ` +
+        `the Ethical Training Tool (ETT): ${fullname} has removed ${removedPerson} from ${entity_name}.`
+    }
+
     // Send the email
-    console.log(`Sending entity correction email to: ${replaceableEmail} about their removal from ${entity.entity_name} by ${fullname}`);
+    console.log(`Sending entity correction email to: ${replaceableEmail} about their removal from ${entity_name} by ${fullname}`);
     return sendEmail({
       subject: `ETT Entity Correction Notification`,
       from: `noreply@${context.ETT_DOMAIN}`,
-      message: `This email is notification of change with regards to your registration in the Ethical ` +
-        `Training Tool (ETT): ${fullname} has removed you from ${entity.entity_name}.`,
+      message,
       to: [ toEmail ?? replaceableEmail ]
     } as EmailParms);
   }

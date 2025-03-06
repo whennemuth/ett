@@ -1,12 +1,15 @@
+import * as ctx from '../../../../../contexts/context.json';
 import { IContext } from "../../../../../contexts/IContext";
 import { DelayedExecutions } from "../../../../DelayedExecution";
 import { lookupUserPoolId } from "../../../_lib/cognito/Lookup";
 import { Configurations } from "../../../_lib/config/Config";
 import { EntityCrud } from "../../../_lib/dao/dao-entity";
-import { ConfigNames, Entity, Role, Roles } from "../../../_lib/dao/entity";
+import { UserCrud } from '../../../_lib/dao/dao-user';
+import { ConfigNames, Entity, Role, Roles, User } from "../../../_lib/dao/entity";
+import { EmailParms, sendEmail } from '../../../_lib/EmailWithAttachments';
 import { DelayedLambdaExecution } from "../../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../../_lib/timer/EggTimer";
-import { lookupCloudfrontDomain } from "../../../Utils";
+import { log, lookupCloudfrontDomain } from "../../../Utils";
 import { RulePrefix, StaleVacancyLambdaParms } from "../../delayed-execution/HandleStaleEntityVacancy";
 import { Personnel } from "./EntityPersonnel";
 
@@ -27,17 +30,49 @@ export class EntityToCorrect {
    * Change the name or description of the entity
    * @param now 
    */
-  public correctEntity = async (now:Entity) => {
+  public correctEntity = async (now:Entity, correctorSub:string) => {
     if( ! now.entity_id) {
       throw new Error(`Invalid/missing parameter(s): Missing entity_id`);
     }
-    const crud = EntityCrud(now as Entity);
-    const then = await crud.read() as Entity;
-    if(now.entity_name != then.entity_name || now.description != then.description) {
-      await crud.update();
+
+    // Obtain the entity as it currently exists BEFORE making any changes - "then"
+    const entityCrud = EntityCrud(now as Entity);
+    const then = await entityCrud.read() as Entity;
+    if(now.entity_name == then.entity_name && now.description == then.description) {
+      console.warn(`EntityToCorrect.correctEntity: No change to entity`);
       return;
     }
-    console.warn(`EntityToCorrect.correctEntity: No change to entity`);
+
+    // Apply the changes to the entity
+    await entityCrud.update();
+
+    // Obtain all users of the entity
+    const entityUsers = await UserCrud({ entity_id:now.entity_id } as User).read() as User[];
+
+    // Obtain the user who is making the correction
+    const correctingUser = entityUsers.find(user => user.sub == correctorSub) ?? { 
+      email:'unknown', fullname:'unknown' 
+    } as User;
+
+    // Obtain all users of the entity who are NOT making the correction
+    const otherUsers = entityUsers.filter(user => user.sub != correctorSub);
+
+    // Send an email to all users of the entity about the change, except the user who is making the correction.
+    const context:IContext = <IContext>ctx;
+    const { email, fullname } = correctingUser;
+    for(const user of otherUsers) {
+      log({
+        corrector: { email, fullname },
+        entities: { then, now },
+      }, `Sending entity correction email to: ${user.email} about change of entity name`);
+      sendEmail({
+        subject: `ETT Entity Correction Notification`,
+        from: `noreply@${context.ETT_DOMAIN}`,
+        message: `This email is notification of change with regards to your registration in the Ethical ` +
+          `Training Tool (ETT): ${fullname} has changed the name of "${then.entity_name}" to "${now.entity_name}".`,
+        to: [ user.email ]
+      } as EmailParms);
+    }
   }
 
   /**
@@ -138,7 +173,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
       case "entity":
         const correctedEntityName = `The School of Hard Knocks ${new Date().toISOString()}`;
         corrector = new EntityToCorrect(new Personnel({ entity:entity_id }));
-        await corrector.correctEntity({ entity_id, entity_name:correctedEntityName } as Entity);
+        await corrector.correctEntity({ entity_id, entity_name:correctedEntityName } as Entity, 'auth1.random.edu@warhen.work');
         break;
       case "user":    
         // Get cloudfront domain

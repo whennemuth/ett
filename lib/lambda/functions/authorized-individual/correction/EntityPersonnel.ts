@@ -158,8 +158,8 @@ export class Personnel {
    * This is the last function to be called in the function chaining. It performs the swap.
    */
   public execute = async ():Promise<Personnel> => {
-    const { initialize, users } = this;
-    await initialize();
+    await this.initialize();
+    const { users } = this;
     const { entity_id, replacer, replacerEmail, replaceable, replaceableEmail, replacementEmail, _dryrun:dryrun } = this;
     const equalIgnoreCase = (s1?:string, s2?:string) => `${s1}`.toLowerCase() == `${s2}`.toLowerCase();
     
@@ -202,9 +202,8 @@ export class Personnel {
 
       const deleted = await account.Delete();
 
-      // Bail out if there was an issue deleting the user from cognito
       if( ! deleted) {
-        throw new Error(account.getMessage());
+        log({ email:replaceable.email, message: account.getMessage() }, 'Failed to remove user from cognito');
       }
     };
 
@@ -236,7 +235,7 @@ export class Personnel {
     // Notify the user they have been removed from the entity.
     await new EntityCorrectionEmail(replaceable, replacer).send();
 
-    // Notify any other active user in the entity of the amendment
+    // Notify any other active user in the entity of the amendment who neither the replacer nor the replaceable.
     const others:User[] = users.filter(u => u.email != replaceableEmail && u.email != replacerEmail);
     for(const user of others) {
       await new EntityCorrectionEmail(replaceable, replacer).send(user.email);
