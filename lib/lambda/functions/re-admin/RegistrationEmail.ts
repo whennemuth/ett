@@ -32,6 +32,8 @@ export class EntityRegistrationEmail {
     if(aiEmail1) cc.push(aiEmail1);
     if(aiEmail2) cc.push(aiEmail2);
 
+    log({ to:aspEmail, cc }, 'Sending entity registration email');
+
     return await sendEmail({
       to: [ aspEmail ], cc,
       subject: 'ETT Entity Registration Form',
