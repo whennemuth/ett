@@ -740,7 +740,7 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
 
   
   /**
-   * Send the full exhibit form to each authorized individual and the RE admin.
+   * Send the full exhibit form to each delegate.
    */
   const sendFullExhibitFormToDelegates = async () => {
     let sent:boolean = false;
