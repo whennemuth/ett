@@ -76,6 +76,7 @@ export const sendEndOfRegistrationEmail = async (parms:EndOfRegistrationEmailPar
   log(parms, 'Notifying user of stale invitation and end of registration period');
 
   try {
+    subject = subject ?? 'ETT Invitation Expiration Notification';
     message = message ?? 'This email is notification that your invitation to register in the Ethical ' +
       `Training Tool (ETT) as an ${roleFullName(role)} has expired`
 
@@ -85,7 +86,6 @@ export const sendEndOfRegistrationEmail = async (parms:EndOfRegistrationEmailPar
         break;
       case SYS_ADMIN:
         message = message + '.';
-        subject = 'ETT invitation expiration Notification';
         break;
     }
 
@@ -105,7 +105,7 @@ export const sendEndOfRegistrationEmail = async (parms:EndOfRegistrationEmailPar
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/delayed-execution/RemoveStaleInvitations.ts')) {
 
-  const task = 'scheduled' as 'immediate'|'scheduled';
+  const task = 'immediate' as 'immediate'|'scheduled';
   const { MINUTES } = PeriodType;
 
   (async () => {
@@ -122,7 +122,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     }
 
     const lambdaInput = { 
-      invitationCode:'320a96db-f316-4ce8-b27d-28f8589b711d', 
+      invitationCode:'fb8d324e-cb2a-47a0-a7ed-5e59589d9929', 
       email:'asp2.random.edu@warhen.work' 
     } as StaleInvitationLambdaParms;
 
