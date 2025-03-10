@@ -1,6 +1,6 @@
 import { CONFIG, IContext } from '../../../../contexts/IContext';
 import { LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
-import { debugLog, error, isOk, log, okResponse } from '../../Utils';
+import { debugLog, error, isOk, log, okResponse, warn } from '../../Utils';
 import { lookupRole, removeUserFromUserpool } from '../../_lib/cognito/Lookup';
 import { Configurations } from '../../_lib/config/Config';
 import { DAOConsenter, DAOEntity, DAOFactory, DAOUser } from '../../_lib/dao/dao';
@@ -267,8 +267,23 @@ export const handler = async (_event:any) => {
     }
   }
 
-  // Send registration forms
-  await sendRegistrationForm(person!, role!);
+  const { signup_parameter='register' } = invitation ?? {
+    signup_parameter: 'register'
+  } as Invitation;
+
+  switch(signup_parameter) {
+    case 'register':
+      // Send registration pdf forms via email to all users in the entity.
+      await sendRegistrationForm(person!, role!);
+      break;
+    case 'amend':
+      // The user is signing up to replace a prior user in the same role in the same entity.
+      log('Amendment signup detected. Delaying registration form emails to users until after the amendment is carried out.');
+      break;
+    default:
+      warn(`Unrecognized signup_parameter: ${signup_parameter}`);
+      break;
+  }
 
   // Returning the event without change means a "pass" and cognito will carry signup to completion.
   return event;
@@ -367,7 +382,9 @@ export const scrapeUserValuesFromInvitations = async (invitationLookup:RoleInvit
     return new Date(b.sent_timestamp).getTime() - new Date(a.sent_timestamp).getTime();
   });
   
-  return invitations[0];
+  const scrapedInvitation = invitations[0];
+  log(scrapedInvitation, 'Scraped Invitation');
+  return scrapedInvitation;
 }
 
 /**
@@ -379,6 +396,7 @@ export const sendRegistrationForm = async (person:User|Consenter, role:Role, ent
   let sent = false;
   let response:LambdaProxyIntegrationResponse;
   let _email:string = 'Unknown email';
+  log({ person, role, entityName }, 'Sending registration form email');
   try {
     switch(role) {
       case Roles.CONSENTING_PERSON:
@@ -464,7 +482,10 @@ export const registrationFormEmailPrerequisitesAreMet = (userInfo:UserInfo):bool
   lookupResults = users.filter(u => u.role == Roles.RE_AUTH_IND && u.active == YN.Yes);
   reAuthInds += lookupResults.length;
 
-  return (reAdmins == 1 && reAuthInds == 2);
+  const met = (reAdmins == 1 && reAuthInds == 2)
+  log({ reAdmins, reAuthInds }, `Registration form email prerequisites are ${met ? 'met' : 'NOT met'}`);
+
+  return met;
 }
 
 

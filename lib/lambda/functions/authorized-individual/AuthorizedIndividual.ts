@@ -5,9 +5,9 @@ import { DelayedExecutions } from "../../../DelayedExecution";
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { Configurations } from "../../_lib/config/Config";
-import { DAOConsenter, DAOFactory, DAOUser } from "../../_lib/dao/dao";
-import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
-import { ConfigNames, Consenter, Entity, Role, roleFullName, Roles, User, YN } from "../../_lib/dao/entity";
+import { DAOConsenter, DAOFactory, DAOUser, ReadParms } from "../../_lib/dao/dao";
+import { ENTITY_WAITING_ROOM, EntityCrud } from "../../_lib/dao/dao-entity";
+import { ConfigNames, Consenter, Entity, Invitation, Role, roleFullName, Roles, User, YN } from "../../_lib/dao/entity";
 import { SignupLink } from "../../_lib/invitation/SignupLink";
 import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
@@ -23,6 +23,9 @@ import { Personnel } from "./correction/EntityPersonnel";
 import { DemolitionRecord, EntityToDemolish } from "./Demolition";
 import { DisclosureEmailParms, DisclosureRequestEmail, RecipientListGenerator } from "./DisclosureRequestEmail";
 import { ExhibitFormRequest, SendExhibitFormRequestParms } from "./ExhibitFormRequest";
+import { sendRegistrationForm } from "../cognito/PostSignup";
+import { InvitationCrud } from "../../_lib/dao/dao-invitation";
+import { warn } from "console";
 
 export enum Task {
   LOOKUP_USER_CONTEXT = 'lookup-user-context',
@@ -31,7 +34,8 @@ export enum Task {
   SEND_EXHIBIT_FORM_REQUEST = 'send-exhibit-form-request',
   GET_CONSENTERS = 'get-consenter-list',
   AMEND_ENTITY_NAME = 'amend-entity-name',  
-  AMEND_ENTITY_USER = 'amend-entity-user',  
+  AMEND_ENTITY_USER = 'amend-entity-user',
+  AMEND_REGISTRATION_COMPLETE = 'amend-registration-complete',  
   INVITE_USER = 'invite-user',
   RETRACT_INVITATION = 'retract-invitation',
   SEND_REGISTRATION = 'send-registration',
@@ -93,6 +97,10 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
         case Task.AMEND_ENTITY_USER:
           return await amendEntityUser(parameters);
 
+        case Task.AMEND_REGISTRATION_COMPLETE:
+          var { amenderEmail, entity_id } = parameters;
+          return await handleRegistrationAmendmentCompletion(amenderEmail, entity_id);
+
         case Task.INVITE_USER:
            var { email, entity_id, role, registrationUri } = parameters;
            var user = { email, entity_id, role } as User;
@@ -101,8 +109,8 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
            }, callerSub);
            
         case Task.SEND_REGISTRATION:
-        var { email, role, loginHref } = parameters;
-        return await sendEntityRegistrationForm(email, role, loginHref);
+          var { email, role, loginHref } = parameters;
+          return await sendEntityRegistrationForm(email, role, loginHref);
              
         case Task.RETRACT_INVITATION:
           return await retractInvitation(parameters.code);
@@ -249,7 +257,7 @@ const amendEntityName = async (entity_id:string, name:string, callerSub:string):
     return invalidResponse('Missing name parameter');
   }
   const corrector = new EntityToCorrect(new Personnel({ entity: entity_id }));
-  await corrector.correctEntity({ entity_id, entity_name:name } as Entity, callerSub);
+  await corrector.correctEntity({ now: { entity_id, entity_name:name } as Entity, correctorSub: callerSub });
   return okResponse('Ok', {});
 }
 
@@ -269,11 +277,53 @@ const amendEntityUser = async (parms:any): Promise<LambdaProxyIntegrationRespons
   }
 
   const corrector = new EntityToCorrect(new Personnel({ entity:entity_id, replacer:replacerEmail, registrationUri }));
-  const corrected = await corrector.correctPersonnel(replaceableEmail, replacementEmail);
+  const corrected = await corrector.correctPersonnel({ replaceableEmail, replacementEmail });
   if(corrected) {
     return okResponse('Ok', {});
   }
   return errorResponse(`Entity correction failure: ${corrector.getMessage()}`);
+}
+
+/**
+ * If a registration was carried out with an amendment to immediately follow, the issuance of the email
+ * carrying a pdf copy of the registration form is postponed until the amendment is complete, and that
+ * amendment does not result in an entity role vacancy.
+ * @param signup_parameter 
+ */
+const handleRegistrationAmendmentCompletion = async (amenderEmail:string, entity_id:string):Promise<LambdaProxyIntegrationResponse> => {
+
+  // Lookup the invitation of the corrector to the entity for "stashed" information.
+  let invitation = { } as Invitation;
+  const invitations = await InvitationCrud({ 
+    email:amenderEmail, entity_id 
+  } as Invitation).read({ convertDates:false } as ReadParms) as Invitation[];
+  if(invitations.length > 0) {
+    // Return the most recent invitation
+    invitations.sort((a, b) => {
+      return new Date(b.sent_timestamp).getTime() - new Date(a.sent_timestamp).getTime();
+    });
+    invitation = invitations[0];
+  }
+  else {
+    // This might happen if the invitation expires while the registration is being completed.
+    warn({ amenderEmail, entity_id }, 'No invitation found');
+    return errorResponse(`No invitation found for ${amenderEmail} in entity ${entity_id}`);
+  }
+
+  const { signup_parameter } = invitation;
+
+  // If the invitation indicates the user chose to amend the entity during registration, issue the registration email now.
+  if(signup_parameter == 'amend') {
+    const entity = await EntityCrud({ entity_id } as Entity).read() as Entity;
+    const { entity_name } = entity;
+    log({ signup_parameter, email:amenderEmail, entity_name }, 'Postponed registration email issuance');
+    await sendRegistrationForm({ email:amenderEmail, role:Roles.RE_AUTH_IND } as User, Roles.RE_AUTH_IND, entity_name);
+    invitation.signup_parameter = 'amended';
+    // Update the invitation to reflect the registration amendment was carried out.
+    log(invitation, 'Changing invitation signup_parameter to "amended"');
+    await InvitationCrud(invitation).update();
+  }
+  return okResponse('Ok', {});
 }
 
 /**
@@ -427,7 +477,7 @@ export const sendDisclosureRequest = async (consenterEmail:string, entity_id:str
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/authorized-individual/AuthorizedIndividual.ts')) {
 
-  const task:Task = Task.SEND_EXHIBIT_FORM_REQUEST;
+  const task:Task = Task.AMEND_ENTITY_NAME;
   const { DisclosureRequestReminder, HandleStaleEntityVacancy } = DelayedExecutions;
 
   (async () => {
@@ -464,8 +514,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
       requestContext: {
         authorizer: {
           claims: {
-            username: '417bd590-f021-70f6-151f-310c0a83985c',
-            sub: '417bd590-f021-70f6-151f-310c0a83985c'
+            username: '21ebc5b0-d0c1-7012-2d88-7ca56d0d7394',
+            sub: '21ebc5b0-d0c1-7012-2d88-7ca56d0d7394'
           }
         }
       }
@@ -512,7 +562,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
 
       case Task.INVITE_USER:
         _event.headers[AbstractRoleApi.ETTPayloadHeader] = JSON.stringify({
-          task:"invite-user",
+          task,
           parameters:{
             entity_id:"2c0c4086-1bc0-4876-b7db-ed4244b16a6b",
             email:"asp1.random.edu@warhen.work",
@@ -523,13 +573,23 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
 
       case Task.SEND_EXHIBIT_FORM_REQUEST:
         _event.headers[AbstractRoleApi.ETTPayloadHeader] = JSON.stringify({
-          task: "send-exhibit-form-request",
+          task,
           parameters: {
             consenterEmail: "cp1@warhen.work",
             entity_id: "7935cf3b-714c-4d99-a926-626355030981",
             constraint: "both",
             linkUri: "https://d227na12o3l3dd.cloudfront.net/bootstrap/index.htm",
             filename: "index.htm"
+          }
+        });
+        break;
+
+      case Task.AMEND_ENTITY_NAME:
+        _event.headers[AbstractRoleApi.ETTPayloadHeader] = JSON.stringify({
+          task,
+          parameters: {
+            entity_id: "10d68819-d795-478e-9436-f7423a104d5c",
+            name: "The School of Rock (Amended 1)"
           }
         });
         break;

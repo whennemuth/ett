@@ -1235,9 +1235,14 @@
                       them to register with <span name="spanAmendEntityCurrentName" style="font-weight:bold;"></span> with a special link. 
                       The same 30 day deadline applies. 
                     </div>
-                    <div id="divCancelAmendment" style="margin-top:20px; display:none;">
-                      You are amending <span name="spanAmendEntityCurrentName" style="font-weight:bold;"></span> as a
-                      final step of your own registration <button id="btnCancelAmendment" class="btn btn-primary" type="button">Cancel Amendment</button>
+                    <div id="divCancelAmendment" style="margin-top:20px; display:none; font-weight: bold; overflow: auto; vertical-align: bottom;">
+                      <button id="btnCancelAmendment" class="btn btn-success" style="float:right; clear:both;" type="button">
+                        <i class="bi bi-caret-left-fill"></i><b>Finalize/Cancel & Return to Dashboard</b>
+                      </button>
+                      <div style="float:left; font-size: larger; width:100%;">
+                        You are amending <span name="spanAmendEntityCurrentName" style="font-weight:bold; font-size: larger;"></span> as a
+                        final step of your own registration <i class="bi bi-arrow-down-circle-fill"></i> 
+                      </div>
                     </div>
                     <table id="tblAmendEntity" class="amendEntity" style="margin-top:30px;">
                       <tr>
@@ -2518,6 +2523,9 @@
         }
         else {
           const chkDelegate = parentDiv.querySelector('#chkDelegate') ?? { checked: false };
+          if(amend) {
+            formdata.signup_parameter = 'amend';
+          }
           if(chkDelegate.checked) {
             formdata.delegate_email = parentDiv.querySelector('#txtDelegateEmail').value;
             formdata.delegate_fullname = parentDiv.querySelector('#txtDelegateFullname').value;
@@ -4934,7 +4942,7 @@
     }
 
     const sendEntityAmendmentRequest = async (parms) => {
-      let { role, entity: { entity_name, entity_id, users }} = userContext;
+      let { role, entity: { entity_name, entity_id, users }, email:amenderEmail } = userContext;
       const { email:replacerEmail } = IDJwtCookie.getUser();
       const { task, newEntityName, email:replaceableEmail, invitee:replacementEmail, myself } = parms;
 
@@ -4989,6 +4997,10 @@
           }});
 
           return;
+        case 'amend-registration-complete':
+          parameters = { entity_id, amenderEmail }
+          break;
+
         default:
           alert(`Invalid/missing task: ${task ?? 'missing'}`);
           return;
@@ -5835,7 +5847,8 @@
                 dashboard.querySelector('#auth-request-exhibits-tab').style.display = 'none';
                 dashboard.querySelector('#auth-request-disclosures-tab').style.display = 'none';
                 dashboard.querySelector('#divCancelAmendment').style.display = 'block';
-                dashboard.querySelector('#btnCancelAmendment').addEventListener('click', () => {
+                dashboard.querySelector('#btnCancelAmendment').addEventListener('click', async () => {
+                  await sendEntityAmendmentRequest({ task: 'amend-registration-complete' });
                   document.location.href = document.location.href.replace(/\&?task\=amend/, '');
                 });
               }

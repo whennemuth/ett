@@ -41,14 +41,15 @@ export class Registration {
         timestamp = new Date().toISOString();
       }
 
-      const { email, fullname, title, entity_name, delegate } = invitation;
+      const { email, fullname, title, entity_name, delegate, signup_parameter } = invitation;
       const _invitation = {
         code:this.code, 
         [InvitationFields.registered_timestamp]: timestamp,
         [InvitationFields.email]: email,
         [InvitationFields.fullname]: fullname,
         [InvitationFields.title]: title,
-        [InvitationFields.delegate]: delegate
+        [InvitationFields.delegate]: delegate,
+        [InvitationFields.signup_parameter]: signup_parameter
       } as Invitation;
 
       if(entity_name) {

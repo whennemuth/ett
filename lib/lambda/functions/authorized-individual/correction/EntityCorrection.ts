@@ -13,6 +13,16 @@ import { log, lookupCloudfrontDomain } from "../../../Utils";
 import { RulePrefix, StaleVacancyLambdaParms } from "../../delayed-execution/HandleStaleEntityVacancy";
 import { Personnel } from "./EntityPersonnel";
 
+export type CorrectEntityParms = {
+  now:Entity;
+  correctorSub:string;
+}
+
+export type CorrectPersonnelParms = {
+  replaceableEmail:string;
+  replacementEmail?:string;
+};
+
 /**
  * This class makes changes to an entity by modifying its name and/or swapping out personnel.
  */
@@ -30,7 +40,9 @@ export class EntityToCorrect {
    * Change the name or description of the entity
    * @param now 
    */
-  public correctEntity = async (now:Entity, correctorSub:string) => {
+  public correctEntity = async (parms:CorrectEntityParms) => {
+    log(parms, 'EntityToCorrect.correctEntity');
+    const { now, correctorSub } = parms;
     if( ! now.entity_id) {
       throw new Error(`Invalid/missing parameter(s): Missing entity_id`);
     }
@@ -82,15 +94,17 @@ export class EntityToCorrect {
    * @param replacementEmail The email of someone to be invited as a replacement entity representative
    * @returns 
    */
-  public correctPersonnel = async (replaceableEmail:string, replacementEmail?:string):Promise<boolean> => {
+  public correctPersonnel = async (parms:CorrectPersonnelParms):Promise<boolean> => {
+    const { replaceableEmail, replacementEmail } = parms;
     let { correctEntityUsers, personnel } = this;
 
     this.replaceableEmail = replaceableEmail;
     this.replacementEmail = replacementEmail;
+    const { getEntity, getReplaceableUser, getReplacerEmail } = personnel;
 
     if( ! await correctEntityUsers()) return false;
 
-    await scheduleStaleEntityVacancyHandler(personnel.getEntity(), personnel.getReplaceableUser()!.role);
+    await scheduleStaleEntityVacancyHandler(getEntity(), getReplaceableUser()!.role);
 
     return true;
   }
@@ -173,7 +187,10 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
       case "entity":
         const correctedEntityName = `The School of Hard Knocks ${new Date().toISOString()}`;
         corrector = new EntityToCorrect(new Personnel({ entity:entity_id }));
-        await corrector.correctEntity({ entity_id, entity_name:correctedEntityName } as Entity, 'auth1.random.edu@warhen.work');
+        await corrector.correctEntity({
+          now: { entity_id, entity_name:correctedEntityName } as Entity,
+          correctorSub: '216bc5e0-30a1-7065-1b6c-1c01467a315d'
+        });
         break;
       case "user":    
         // Get cloudfront domain
@@ -202,7 +219,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         // Perform the correction
         const registrationUri = `https://${cloudfrontDomain}/bootstrap/index.htm`;
         corrector = new EntityToCorrect(new Personnel({ entity:entity_id, replacer:replacerEmail, registrationUri }));
-        const corrected = await corrector.correctPersonnel(replaceableEmail, replacementEmail);
+        const corrected = await corrector.correctPersonnel({ replaceableEmail, replacementEmail });
         console.log(corrected ? 'Succeeded' : 'Failed');
         break;
     }

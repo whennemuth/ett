@@ -169,6 +169,7 @@ export enum InvitationFields {
   delegate = 'delegate',
   registered_timestamp = 'registered_timestamp',
   retracted_timestamp = 'retracted_timestamp',
+  signup_parameter = 'signup_parameter'
 }
 export type Invitation = {
   code: string,
@@ -183,6 +184,7 @@ export type Invitation = {
   delegate?: Delegate,
   registered_timestamp?: string,
   retracted_timestamp?: string,
+  signup_parameter?: string
 }
 
 /**************** CONFIG ****************/

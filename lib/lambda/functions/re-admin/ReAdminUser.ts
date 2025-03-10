@@ -534,19 +534,25 @@ export const retractInvitation = async (code:string):Promise<LambdaProxyIntegrat
  * @returns 
  */
 export const sendEntityRegistrationForm = async (email:string, role:Role, loginHref:string, meetsPrequisite?:(userInfo:UserInfo) => boolean):Promise<LambdaProxyIntegrationResponse> => {
+  log({ email, role, loginHref }, 'sendEntityRegistrationForm');
   const response = await lookupEntity(email, role) as LambdaProxyIntegrationResponse;
   if( ! isOk(response)) {
+    log('Failed to lookup entity info');
     return response;
   }
   if( ! response.body) {
+    log('No entity found');
     return invalidResponse(`No entity found for ${email}`);
   }
   const userInfo = await _lookupEntity(email, role) as UserInfo;
   if(meetsPrequisite && ! meetsPrequisite(userInfo)) {
+    log('Prerequisites NOT met for sending registration form');
     return okResponse('Ok');
   }
   const regEmail = new EntityRegistrationEmail({ ...userInfo, loginHref });
+
   await regEmail.send();
+
   return okResponse('Ok');
 }
 

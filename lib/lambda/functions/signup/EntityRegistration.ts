@@ -85,7 +85,9 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         // However, if it is set, it is a signal that the entity is already created and the asp is replacing 
         // a prior ASP asp part of an entity amendment.
         let { 
-          email, fullname, title, entity_id:entityId, entity_name, delegate_fullname, delegate_email, delegate_title, delegate_phone 
+          email, fullname, title, entity_id:entityId, entity_name, 
+          delegate_fullname, delegate_email, delegate_title, delegate_phone,
+          signup_parameter
         } = event.queryStringParameters;
 
         if( ! email) {
@@ -116,7 +118,14 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         }
         
         email = decodeURIComponent(email);
-        fullname = decodeURIComponent(fullname);        
+        fullname = decodeURIComponent(fullname);
+
+        if(signup_parameter) {
+          signup_parameter = decodeURIComponent(signup_parameter);
+        }
+        else {
+          signup_parameter = 'register';
+        };
         if(entity_name) {
           entity_name = decodeURIComponent(entity_name);
         }
@@ -124,12 +133,20 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
           title = decodeURIComponent(title);
         }
         
+        // Bail out if an ASP is trying to register with an entity_name that is already in use.
         if(role == Roles.RE_ADMIN && ! entityId) {
           if( await registration.entityNameAlreadyInUse(entity_name)) {
             return invalidResponse(`Bad Request: The specified name: "${entity_name}", is already in use.`)
           }
         }
-        if( await registration.registerUser({ email, fullname, title, entity_name, delegate } as Invitation)) {
+
+        // "Stash" the values that need to be retrieved by the PostSignup trigger lambda on to the invitation.
+        const invitationWithStash = { 
+          email, fullname, title, entity_name, delegate, signup_parameter 
+        } as Invitation;
+
+        // Register the user, persisting the "stashed" values of the invitation as well.
+        if( await registration.registerUser(invitationWithStash)) {
           return okResponse(`Ok: Registration completed for ${code}`);
         }
 
