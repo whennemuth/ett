@@ -58,7 +58,7 @@ export class ExhibitFormRequestEmail {
       subject: `ETT Exhibit Form Request`,
       to: [ consenterEmail ],
       message: `Thankyou ${consenterFullName} for registering with the Ethical Tranparency Tool.<br>` +
-        `${entity_name} is requesting you take the next step and fill out a prior contacts or "exhibit" form.<br>` +
+        `${entity_name} is requesting you take the next step and fill out a current/prior contacts or "exhibit" form.<br>` +
         `Follow the link provided below to log in to your ETT account and to access the form:` + 
         `<p>${linkUri}</p>`,
       from,
