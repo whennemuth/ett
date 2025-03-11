@@ -260,7 +260,7 @@ export class UserInvitation {
    * Set the delayed execution to purge the invitation from the database after the configured interval.
    */
   private setDelayedExecutionToPurge = async ():Promise<void> => {
-    const { _code, invitation: { role, email } } = this;
+    const { _code, invitation: { role, email, entity_id } } = this;
     const { ASP_INVITATION_EXPIRE_AFTER, STALE_AI_VACANCY } = ConfigNames;
     const envVarName = DelayedExecutions.RemoveStaleInvitations.targetArnEnvVarName;
     const functionArn = process.env[envVarName];
@@ -274,7 +274,7 @@ export class UserInvitation {
         // Have the invitation expire 10 minutes AFTER the stale entity vacancy check for AIs occurs.
         waitTime += 600;
       }
-      const lambdaInput = { invitationCode: _code, email } as StaleInvitationLambdaParms;
+      const lambdaInput = { invitationCode: _code, email, entity_id } as StaleInvitationLambdaParms;
       const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
       const { SECONDS } = PeriodType;
       const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 

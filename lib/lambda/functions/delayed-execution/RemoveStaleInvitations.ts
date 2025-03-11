@@ -9,7 +9,7 @@ import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, log } from "../../Utils";
 
 export type StaleInvitationLambdaParms = {
-  invitationCode:string, email:string
+  invitationCode:string, email:string, entity_id?:string
 }
 
 export const RulePrefix = 'Remove stale invitations';
