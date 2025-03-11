@@ -16,6 +16,7 @@ import { FilterForStaleEntityVacancy } from "../../_lib/timer/cleanup/FilterForS
 import { FilterForPurgeExhibitFormFromBucket } from "../../_lib/timer/cleanup/FilterForPurgeExhibitFormFromBucket";
 import { FilterForPurgeExhibitFormFromDatabase } from "../../_lib/timer/cleanup/FilterForPurgeExhibitFormFromDatabase";
 import { FilterForSendDisclosureRequestReminder } from "../../_lib/timer/cleanup/FilterForSendDisclosureRequestReminder";
+import { FilterForStaleInvitation } from "../../_lib/timer/cleanup/FilterForStaleInvitation";
 
 const dbclient = new DynamoDBClient({ region: process.env.REGION });
 const cognitoClient = new CognitoIdentityProviderClient({ region: process.env.REGION });
@@ -174,6 +175,7 @@ export class EntityToDemolish {
   
     const cleanupParms = { region, landscape, entity_id } as CleanupParms;
     const cleanup = new Cleanup(cleanupParms, [ 
+      new FilterForStaleInvitation(region),
       new FilterForStaleEntityVacancy(region),
       new FilterForPurgeExhibitFormFromBucket(cleanupParms),
       new FilterForPurgeExhibitFormFromDatabase(cleanupParms),

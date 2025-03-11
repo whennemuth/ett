@@ -8,6 +8,8 @@ export interface IRulesCache {
   getAllRules(landscape:string|undefined):Promise<Rule[]>
   entityDoesNotExist(entityId:string):Promise<boolean>
   consenterDoesNotExist(consenterEmail:string):Promise<boolean>
+  deleteRule(ruleName:string):void
+  ruleIsDeleted(ruleName:string):boolean
 }
 
 /**
@@ -15,6 +17,7 @@ export interface IRulesCache {
  */
 export class RulesCache implements IRulesCache {
   private rulesCache:Map<string, Rule[]> = new Map();
+  private deletedRules:string[] = [] as string[];
   private entityIdCache:string[] = [];
   private missingConsenterEmails:string[] = [];
   private foundConsenterEmails:string[] = [];
@@ -107,5 +110,13 @@ export class RulesCache implements IRulesCache {
     }
     missingConsenterEmails.push(consenterEmail);
     return true;
+  }
+
+  public deleteRule = (ruleName:string):void => {
+    this.deletedRules.push(ruleName);
+  }
+
+  public ruleIsDeleted = (ruleName:string):boolean => {
+    return this.deletedRules.includes(ruleName);
   }
 }

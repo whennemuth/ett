@@ -136,6 +136,10 @@ export class Cleanup {
       timeRemaining.humanReadable = humanReadableFromMilliseconds(milliseconds);
     }
     const logItem = { timeRemaining, ruleName: rule.Name, target } as any;
+    if(this.cache.ruleIsDeleted(rule.Name!)) {
+      log(rule.Name, `Rule already deleted`);
+      return;
+    }
     if(dryrun) {
       log(logItem, 'DRYRUN - Would delete');
       return;
@@ -151,8 +155,13 @@ export class Cleanup {
       return;
     }
     await PostExecution().cleanup(rule.Name, target.Id);
+    this.cache.deleteRule(rule.Name);
   }
 
+  /**
+   * Remove any event bridge rules whose lambda targets receive input that specify entities that no longer exist.
+   * @param _dryrun 
+   */
   public cleanup = async (_dryrun:boolean=false):Promise<any> => {
     this.dryrun = _dryrun;
     const { getRulesToDelete, deleteRule, cache: { getAllRules }, cleanupParms: { landscape }, filters } = this;
