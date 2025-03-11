@@ -3,7 +3,7 @@ import { DelayedExecutions } from "../../../DelayedExecution";
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { Configurations, IAppConfig } from "../../_lib/config/Config";
 import { EntityCrud } from "../../_lib/dao/dao-entity";
-import { ConfigNames, Entity, Invitation, roleFullName, Roles, User } from "../../_lib/dao/entity";
+import { ConfigNames, Entity, Invitation, roleFullName, Roles, User, YN } from "../../_lib/dao/entity";
 import { EntityToAutomate } from "../../_lib/EntityAutomation";
 import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../_lib/timer/DelayedExecution";
 import { humanReadableFromSeconds } from "../../_lib/timer/DurationConverter";
@@ -88,8 +88,19 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
         await entityToDemolish.demolish();
         const { deletedUsers } = entityToDemolish;
         for(const user of deletedUsers) {
-          const { role, email } = user;
-          await sendEndOfRegistrationEmail({ invitation: { email, role } as Invitation });
+          const { role, email, active } = user;
+          if(active != YN.Yes) {
+            log(`User ${email} is not active and will not be notified of entity termination`);
+            continue;
+          }
+          await sendEndOfRegistrationEmail({ 
+            invitation: { email, role } as Invitation,
+            subject: 'ETT Registration Expiration Notification',
+            message: `This email is notification that the period for registration of "${entity_name}" ` +
+              `in the Ethical Training Tool (ETT) has expired due to a prolonged vacancy of one or more of ` +
+              `its representatives. Your role as, or pending invitation to become ${roleFullName(role)} has ` +
+              `been cancelled.`,
+          });
         }
       }
       else {
