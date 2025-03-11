@@ -95,12 +95,12 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         
       case FormName.EXHIBIT_FORM_BOTH_FULL:
         form = ExhibitFormFullBoth.getBlankForm();
-        (form as ExhibitFormFullBoth).consentFormUrl = consentFormUrl('[consenter_email');
+        (form as ExhibitFormFullBoth).consentFormUrl = consentFormUrl('[consenter_email]');
         break;
 
       case FormName.EXHIBIT_FORM_BOTH_SINGLE:
         form = ExhibitFormSingleBoth.getBlankForm();
-        (form as ExhibitFormSingleBoth).consentFormUrl = consentFormUrl('[consenter_email');
+        (form as ExhibitFormSingleBoth).consentFormUrl = consentFormUrl('[consenter_email]');
         break;
 
       default:

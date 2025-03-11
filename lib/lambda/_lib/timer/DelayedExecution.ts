@@ -131,9 +131,14 @@ export const PostExecution = () => {
         Ids: [ targetId ],        
       } as RemoveTargetsCommandInput;
       log(removeRequest, 'Removing lambda target from event bridge rule');
-      const removeResponse:RemoveTargetsResponse = await client.send(new RemoveTargetsCommand(removeRequest));
-      if((removeResponse.FailedEntries ?? []).length > 0) {
-        log(removeResponse, `ERROR: Failed to remove lambda target from event bridge rule`)
+      try {
+        const removeResponse:RemoveTargetsResponse = await client.send(new RemoveTargetsCommand(removeRequest));
+        if((removeResponse.FailedEntries ?? []).length > 0) {
+          log(removeResponse, `ERROR: Failed to remove lambda target from event bridge rule`)
+        }
+      }
+      catch(e) {
+        log(e, `Failed to remove lambda target from event bridge rule`);
       }
 
       // 2) Delete the rule
@@ -142,10 +147,20 @@ export const PostExecution = () => {
         Force:true
       } as DeleteRuleRequest;
       log(deleteRequest, `Deleting event bridge rule`);
-      await client.send(new DeleteRuleCommand(deleteRequest));
+      try {
+        await client.send(new DeleteRuleCommand(deleteRequest));
+      }
+      catch(e) {
+        if((e as Error).name == 'ResourceNotFoundException') {
+          log(e, `Event bridge rule ${eventBridgeRuleName} not found`);
+        }
+        else {
+          log(e, `Failed to delete event bridge rule`);
+        }
+      }
     }
     catch(e) {
-      log(e, `ERROR: Failed to delete ${eventBridgeRuleName}`);
+      log(e, `Failed to delete ${eventBridgeRuleName}`);
     }
   }
   return { cleanup };
