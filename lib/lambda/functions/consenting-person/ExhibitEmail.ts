@@ -26,14 +26,14 @@ export class ExhibitEmail {
   private pdf:IPdfForm; 
 
   /**
-   * @param data The data to build the exhibit form from.
-   * @param formType Full or single
+   * 
+   * @param parms The data to build the exhibit form from and the form type.
    */
   constructor(parms:ExhibitFormParms) {
     this.parms = parms;
   }
 
-  public send = async (emailAddress:string):Promise<boolean> => {
+  public send = async (to:string[], cc?:string[]):Promise<boolean> => {
     const { parms, parms: { data: { formType, constraint }, entity, consenter: { firstname, middlename, lastname } } } = this;
     const { fullName } = PdfForm;
     const consenterFullname = fullName(firstname, middlename, lastname);
@@ -72,7 +72,7 @@ export class ExhibitEmail {
           subject: 'ETT Exhibit Form Submission',
           from: `noreply@${context.ETT_DOMAIN}`,
           message: `${roleFullName(Roles.CONSENTING_PERSON)} ${consenterFullname} is forwarding you their full affliate list via ETT`,
-          to: [ emailAddress ],
+          to, cc,
           pdfAttachments: {
             pdf: this.pdf,
             name: `${name}.pdf`,
@@ -100,7 +100,7 @@ export class ExhibitEmail {
           subject: 'ETT Notice of Consent',
           from: `noreply@${context.ETT_DOMAIN}`,
           message: `${roleFullName(Roles.CONSENTING_PERSON)} ${consenterFullname} has named you as an affilate for disclosure to ${entity_name}`,
-          to: [ emailAddress ],
+          to, cc,
           pdfAttachments: {
             pdf: this.pdf,
             name: `${name}.pdf`,
@@ -138,7 +138,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
       getSampleAffiliates().employerPrior, 
       getSampleAffiliates().academic1,
       getSampleAffiliates().other
-    ])).send(email)
+    ])).send([ email ])
     .then(success => {
       console.log(success ? 'Succeeded' : 'Failed');
     })

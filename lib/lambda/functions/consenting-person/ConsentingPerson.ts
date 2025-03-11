@@ -711,66 +711,55 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
 
   
   /**
-   * Send the full exhibit form to each authorized individual and the RE admin.
+   * Send the full exhibit form to each authorized individual, RE admin, and any delegates
    */
-  const sendFullExhibitFormToEntityStaff = async () => {
+  const sendFullExhibitFormToEntityStaffAndDelegates = async () => {
+    const to = [] as string[];
+    const cc = [] as string[];
     emailSendFailures.length = 0;
     let sent:boolean = false;
     let _exhibitForm = {...exhibitForm}; // Create a shallow clone
     if( ! _exhibitForm.formType) {
       _exhibitForm.formType = FormTypes.FULL;
     }
-    for(let i=0; i<entityReps.length; i++) {
-      try {
-        sent = await new ExhibitEmail({
-          consenter,
-          entity,
-          consentFormUrl: consentFormUrl(consenterEmail),
-          data: _exhibitForm,
-        } as ExhibitFormParms).send(entityReps[i].email);
-      }
-      catch(e) {
-        error(e);
-      }
-      if( ! sent) {
-        emailSendFailures.push(entityReps[i].email);
-      }
-    }
-  }
 
-  
-  /**
-   * Send the full exhibit form to each delegate.
-   */
-  const sendFullExhibitFormToDelegates = async () => {
-    let sent:boolean = false;
-    let _exhibitForm = {...exhibitForm}; // Create a shallow clone
-    if( ! _exhibitForm.formType) {
-      _exhibitForm.formType = FormTypes.FULL;
-    }
+    // Build the to and cc lists
     for(let i=0; i<entityReps.length; i++) {
-      let delegateEmail:string|undefined;
-      try {
-        if(entityReps[i].role == Roles.RE_ADMIN) {
-          continue;
-        }
-        if( ( ! entityReps[i].delegate) || ( ! entityReps[i].delegate?.email) ) {
-          continue;
-        }
-        const delegateEmail = entityReps[i].delegate!.email;
-        sent = await new ExhibitEmail({
-          consenter,
-          entity,
-          consentFormUrl: consentFormUrl(consenterEmail),
-          data: _exhibitForm,
-        } as ExhibitFormParms).send(delegateEmail);
+      // ASPs and AIs
+      if(to.length == 0) {
+        to.push(entityReps[i].email);
       }
-      catch(e) {
-        error(e);
+      else {
+        cc.push(entityReps[i].email);
       }
-      if( ! sent) {
-        emailSendFailures.push(delegateEmail ?? 'unknown');
+      if(entityReps[i].role == Roles.RE_ADMIN) {
+        continue;
       }
+      if( ( ! entityReps[i].delegate) || ( ! entityReps[i].delegate?.email) ) {
+        continue;
+      }
+      // Delegates
+      const delegateEmail = entityReps[i].delegate!.email;
+      if( ! cc.includes(delegateEmail)) {
+        cc.push(delegateEmail);
+      }
+    }
+
+    // Send the email to the first entity rep encountered, cc'ing the rest.
+    try {
+      sent = await new ExhibitEmail({
+        consenter,
+        entity,
+        consentFormUrl: consentFormUrl(consenterEmail),
+        data: _exhibitForm,
+      } as ExhibitFormParms).send(to, cc);
+    }
+    catch(e) {
+      error(e);
+    }
+    if( ! sent) {
+      emailSendFailures.push(...to);
+      emailSendFailures.push(...cc);
     }
   }
 
@@ -790,7 +779,7 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
         entity,
         consentFormUrl: consentFormUrl(consenterEmail),
         data: _exhibitForm,
-      } as ExhibitFormParms).send(consenterEmail);
+      } as ExhibitFormParms).send([ consenterEmail ]);
     }
     catch(e) {
       error(e);
@@ -850,9 +839,7 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
     
     await transferSingleExhibitFormsToBucket();
     
-    await sendFullExhibitFormToEntityStaff();
-    
-    await sendFullExhibitFormToDelegates();
+    await sendFullExhibitFormToEntityStaffAndDelegates();
 
     await sendFullExhibitFormToConsenter();
 
@@ -1068,7 +1055,7 @@ export const correctExhibitData = async (consenterEmail:string, corrections:Exhi
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/ConsentingPerson.ts')) {
 
-  const task = Task.CORRECT_EXHIBIT_FORM as Task;
+  const task = Task.SEND_EXHIBIT_FORM as Task;
   
   const bugs = {
     affiliateType:"employer",
