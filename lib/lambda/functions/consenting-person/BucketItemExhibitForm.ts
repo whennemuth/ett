@@ -6,7 +6,7 @@ import { ExhibitFormSingleBoth } from "../../_lib/pdf/ExhibitFormSingleBoth";
 import { ExhibitFormSingleCurrent } from "../../_lib/pdf/ExhibitFormSingleCurrent";
 import { ExhibitFormSingleOther } from "../../_lib/pdf/ExhibitFormSingleOther";
 import { IPdfForm } from "../../_lib/pdf/PdfForm";
-import { log } from "../../Utils";
+import { deepClone, log } from "../../Utils";
 import { BucketItem, Tags } from "./BucketItem";
 import { BucketItemMetadata, BucketItemMetadataParms, ItemType } from "./BucketItemMetadata";
 import { consentFormUrl } from "./ConsentingPerson";
@@ -68,7 +68,8 @@ export class BucketExhibitForm {
       const parms = {
         entity: { entity_id: entityId },
         consenter,
-        data: exhibitForm,
+        // clone the exhibit form so that edits to fields that the  pdf generator makes will not affect the original.
+        data: deepClone(exhibitForm), 
         consentFormUrl: consentFormUrl(consenterEmail),
       } as ExhibitFormParms;
 
