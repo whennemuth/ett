@@ -1,11 +1,12 @@
 import { EventBridgeClient, ListRulesCommand, ListRulesCommandInput, ListRulesCommandOutput, Rule } from "@aws-sdk/client-eventbridge";
-import { error } from "../../../Utils";
+import { error, log } from "../../../Utils";
 import { EntityCrud } from "../../dao/dao-entity";
 import { Consenter, Entity } from "../../dao/entity";
 import { ConsenterCrud } from "../../dao/dao-consenter";
 
 export interface IRulesCache {
   getAllRules(landscape:string|undefined):Promise<Rule[]>
+  getDeletedRules():string[]
   entityDoesNotExist(entityId:string):Promise<boolean>
   consenterDoesNotExist(consenterEmail:string):Promise<boolean>
   deleteRule(ruleName:string):void
@@ -112,6 +113,10 @@ export class RulesCache implements IRulesCache {
     return true;
   }
 
+  public getDeletedRules = ():string[] => {
+    return this.deletedRules;
+  }
+  
   public deleteRule = (ruleName:string):void => {
     this.deletedRules.push(ruleName);
   }

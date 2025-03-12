@@ -32,6 +32,7 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
   const { lambdaInput, eventBridgeRuleName, targetId } = event;
   const { entity_id } = lambdaInput as StaleVacancyLambdaParms;
   const dryrun:boolean = process.env.DRYRUN === 'true';
+  const deletedRules:string[] = [];
 
   try {
     debugLog({ event, context });
@@ -86,6 +87,7 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
         const entityToDemolish = new EntityToDemolish(entity_id);
         entityToDemolish.dryRun = dryrun;
         await entityToDemolish.demolish();
+        deletedRules.push(...entityToDemolish.deletedRules);
         const { deletedUsers } = entityToDemolish;
         for(const user of deletedUsers) {
           const { role, email, active } = user;
@@ -120,8 +122,13 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
   catch(e:any) {    
     log(e);
   }
-  finally { 
-    await PostExecution().cleanup(eventBridgeRuleName, targetId);
+  finally {
+    if(deletedRules.includes(eventBridgeRuleName)) {
+      log(`Rule ${eventBridgeRuleName} was already deleted during execution`);
+    }
+    else {
+      await PostExecution().cleanup(eventBridgeRuleName, targetId);
+    }    
   }
 }
 

@@ -58,6 +58,9 @@ export class Cleanup {
   public getFilters = ():Filter[] => {
     return this.filters;
   }
+  public getDeletedRules = ():string[] => {
+    return this.cache.getDeletedRules();
+  }
 
   /**
    * Apply provided filters to the rules for the specific landscape and target and return the resulting subset.
@@ -136,6 +139,7 @@ export class Cleanup {
       timeRemaining.humanReadable = humanReadableFromMilliseconds(milliseconds);
     }
     const logItem = { timeRemaining, ruleName: rule.Name, target } as any;
+  
     if(this.cache.ruleIsDeleted(rule.Name!)) {
       log(rule.Name, `Rule already deleted`);
       return;
@@ -165,8 +169,6 @@ export class Cleanup {
   public cleanup = async (_dryrun:boolean=false):Promise<any> => {
     this.dryrun = _dryrun;
     const { getRulesToDelete, deleteRule, cache: { getAllRules }, cleanupParms: { landscape }, filters } = this;
-    log(' ');
-    log(`--------- CLEANING UP ${landscape} ---------`);
     const rulesToDelete = await getRulesToDelete();
     const candidates = (await getAllRules(landscape)).filter((rule:Rule):boolean => {
       return filters.find((filter:Filter):boolean => filter.matchForRule(rule)) ? true : false;

@@ -40,6 +40,7 @@ export class EntityToDemolish {
   private _entity: Entity;
   private _deletedUsers = [] as User[];
   private _dryRun = false;
+  private _deletedRules = [] as string[];
 
   constructor(entityId:string, purgeBucket:boolean=true) {
     this.entityId = entityId;
@@ -51,6 +52,8 @@ export class EntityToDemolish {
    * @returns 
    */
   public deleteEntityFromDatabase = async ():Promise<any> => {
+    log(' ');
+    log(`--------- BEGIN CLEANING UP DATABASE ---------`);
 
     const TransactItems = [] as TransactWriteItem[];
     const { getTableName } = DynamoDbConstruct;
@@ -91,8 +94,10 @@ export class EntityToDemolish {
     log(this.dynamodbCommandInput, `Demolishing entity from dynamodb`);
     const transCommand = new TransactWriteItemsCommand(this.dynamodbCommandInput);
     if(this._dryRun) {
+      log(`--------- END CLEANING UP DATABASE ---------`);
       return new Promise((resolve) => resolve('dryrun'));
     }
+    log(`--------- END CLEANING UP DATABASE ---------`);
     return await dbclient.send(transCommand);
   }
 
@@ -101,6 +106,8 @@ export class EntityToDemolish {
    * items have just been deleted from the dynamodb users table.
    */
   public deleteEntityFromUserPool = async ():Promise<any> => {
+    log(' ');
+    log(`--------- BEGIN CLEANING UP USERPOOL ---------`);
     const UserPoolId = process.env.USERPOOL_ID;
     const deleteUser = async (Username:string, email:string):Promise<AdminDeleteUserCommandOutput|string> => {
       const input = { UserPoolId, Username } as AdminDeleteUserRequest;
@@ -127,12 +134,15 @@ export class EntityToDemolish {
         }        
       }
     }
+    log(`--------- END CLEANING UP USERPOOL ---------`);
   }
 
   /**
    * Delete the content of every consenter in the exhibit forms bucket that each has related to the entity (if any).
    */
   public deleteBucketContentForEntity = async () => {
+    log(' ');
+    log(`--------- BEGIN CLEANING UP BUCKET ---------`);
     const { entity } = this;
     if( ! entity) {
       this._entity = await EntityCrud({ entity_id:this.entityId } as Entity ).read() as Entity;
@@ -156,6 +166,7 @@ export class EntityToDemolish {
 
     // Log success message
     console.log("Successful - deleted:", (deleteResult.Deleted ?? []).length, "objects");
+    log(`--------- END CLEANING UP BUCKET ---------`);
   }
 
   /**
@@ -167,6 +178,8 @@ export class EntityToDemolish {
     const prefix = process.env.PREFIX;
     if( ! prefix) throw new Error('PREFIX environment variable not set');
     const landscape = prefix.split('-')[1];
+    log(' ');
+    log(`--------- BEGIN CLEANING UP RULES FOR "${landscape}" LANDSCAPE ---------`);
     const { entity } = this;
     if( ! entity) {
       this._entity = await EntityCrud({ entity_id:this.entityId } as Entity ).read() as Entity;
@@ -183,12 +196,17 @@ export class EntityToDemolish {
     ]);
 
     await cleanup.cleanup();
+    this._deletedRules.push(...cleanup.getDeletedRules());
+    log(`--------- END CLEANING UP RULES FOR "${landscape}" LANDSCAPE ---------`);
   }
 
   /**
    * Demolish everything related to the entity.
    */
   public demolish = async ():Promise<any> => {
+    log('------------------------------------------');
+    log(`             BEGIN DEMOLITION             `);
+    log('------------------------------------------');
 
     await this.deleteEntityFromDatabase();
 
@@ -202,6 +220,9 @@ export class EntityToDemolish {
     }
 
     await this.deleteEventBridgeRulesForEntity();
+    log('------------------------------------------');
+    log(`              END DEMOLITION              `);
+    log('------------------------------------------');
   }
 
   // Getters and setters
@@ -225,6 +246,9 @@ export class EntityToDemolish {
   }
   public set dryRun(_dryRun:boolean) {
     this._dryRun = _dryRun;
+  }
+  public get deletedRules(): string[] {
+    return this._deletedRules;
   }
 }
 
