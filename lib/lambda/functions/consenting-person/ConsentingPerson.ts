@@ -1,5 +1,6 @@
 import { DeleteObjectsCommandOutput } from "@aws-sdk/client-s3";
 import { CONFIG, IContext } from "../../../../contexts/IContext";
+import * as ctx from '../../../../contexts/context.json';
 import { DelayedExecutions } from "../../../DelayedExecution";
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
@@ -69,9 +70,33 @@ export type ExhibitFormCorrection = {
   entity_id:string, updates:Affiliate[], appends:Affiliate[], deletes:string[]
 }
 
-export const consentFormUrl = (consenterEmail:string):string => 
-  `https://${process.env.CLOUDFRONT_DOMAIN}/forms/private/consent?email=${encodeURIComponent(consenterEmail)}`;
+/**
+ * Return a path to the consenting person default dashboard so the user can locate the consent form
+ * "email to self" feature for their consent form.
+ * @param consenterEmail 
+ * @returns 
+ */
+export const consentFormUrl = (consenterEmail:string):string => {
+  const context:IContext = <IContext>ctx;
+  return `https://${process.env.CLOUDFRONT_DOMAIN}${context.CONSENTING_PERSON_PATH}`;
 
+  /**
+   * TODO:
+   *  
+   * 1) Figure out how each reference to this function can pass in the url of the request that triggered 
+   * the call. This will allow the function to return a url that can reflect the bootstrap app if the request
+   * came from there, as opposed to defaulting to the non-bootstrap app.
+   * 
+   * 2) Optional: Have the link that is returned here refer to a specific api endpoint for downloading the
+   * consent form, directly instead of the dashboard. If the user is not logged in, the link would have
+   * to contain a querystring parameter that signals the index.htm page to stash in session state that form 
+   * downloading is was requested so that when cognito redirects back to the page, the stashed state can be
+   * referenced and an automatic call to the api endpoint made to download the form (no email needed).
+   * This makes it so that the user need only navigate to the link returned here, possible authenticate, and
+   * then get a form download dialog box - they do not need to locate the form emailing feature and use it.
+   */
+}
+  
 /**
  * This function performs all actions a CONSENTING_PERSON can take.
  * @param event 
@@ -723,6 +748,11 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
       _exhibitForm.formType = FormTypes.FULL;
     }
 
+    // Sort the reps so that the ASP is encountered first and goes into the "to" array (not the "cc" array).
+    entityReps.sort((a, b) => {
+      return a.role == Roles.RE_ADMIN ? -1 : 1;
+    });
+
     // Build the to and cc lists
     for(let i=0; i<entityReps.length; i++) {
       // ASPs and AIs
@@ -1143,10 +1173,10 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
             email: "cp1@warhen.work",
             exhibit_data: {
               entity_id: "9ea1b3d3-729b-4c51-b0d0-51000b19be4e",
-              constraint: ExhibitFormConstraints.CURRENT,
+              constraint: ExhibitFormConstraints.BOTH,
               affiliates: [
                 {
-                  affiliateType: "ACADEMIC",
+                  affiliateType: AffiliateTypes.EMPLOYER,
                   email: "affiliate2@warhen.work",
                   org: "My Neighborhood University",
                   fullname: "Mister Rogers",
