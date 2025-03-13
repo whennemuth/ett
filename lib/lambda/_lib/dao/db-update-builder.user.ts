@@ -15,7 +15,7 @@ export const userUpdate = (TableName:string, user:User):Builder => {
       user.update_timestamp = new Date().toISOString();
     }
     const key = {
-      [ UserFields.email ]: { S: user.email },
+      [ UserFields.email ]: { S: user.email.toLowerCase() },
       [ UserFields.entity_id ]: { S: user.entity_id }
     } as Record<string, AttributeValue>;
     const item = getBlankCommandInput(TableName, key);
@@ -24,7 +24,8 @@ export const userUpdate = (TableName:string, user:User):Builder => {
     for(fld in UserFields) {
       if(key[fld]) continue;
       if( ! user[fld]) continue;
-      item.ExpressionAttributeValues![`:${fld}`] = wrap(user[fld]);
+      const value = fld == UserFields.email ? user[fld].toLowerCase() : user[fld];
+      item.ExpressionAttributeValues![`:${fld}`] = wrap(value);
       item.ExpressionAttributeNames![`#${fld}`] = fld;
       fieldset.push({ [`#${fld}`]: `:${fld}`})
     }

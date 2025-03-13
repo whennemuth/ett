@@ -94,7 +94,7 @@ export type UserInfo = User & { entity:EntityInfo };
  * @returns 
  */
 export const _lookupEntity = async (email:string, role:Role):Promise<UserInfo> => {
-
+  email = email.toLowerCase();
   const userinfo = [ ] as UserInfo[];
   let totalUserCount = 0;
 
@@ -288,6 +288,7 @@ export const deactivateEntity = async (parms:any):Promise<LambdaProxyIntegration
  */
 export const inviteUser = async (user:User, inviterRole:Role, linkGenerator:Function, inviterCognitoUserName?:string): Promise<LambdaProxyIntegrationResponse> => {
   let { email, entity_id, role } = user;
+  if(email) email = email.toLowerCase();
   const cloudfrontDomain = process.env.CLOUDFRONT_DOMAIN;
   if(cloudfrontDomain) {
 

@@ -43,9 +43,13 @@ export const handler = async (_event:any) => {
   try {
     debugLog(_event); 
 
+    if(_event?.request?.userAttributes?.email) {
+      _event.request.userAttributes.email = _event.request.userAttributes.email.toLowerCase();
+    }
     const event = _event;
     const { userPoolId, region, triggerSource, request } = event;
     const { clientId } = event?.callerContext;
+
     let role:Role|undefined;
 
     // Get the role for the user who is signing up.
@@ -68,6 +72,9 @@ export const handler = async (_event:any) => {
     if(adminCreateUser) {
       // Anyone being created through AdminCreateUser will be an exception to requiring an invitation to signup.
       // So, end with success here to avoid the invitation checks below.
+      if (event.request.userAttributes.email) {
+        event.request.userAttributes.email = event.request.userAttributes.email.toLowerCase();
+      }
       return event;
     }
     

@@ -17,6 +17,10 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
   const { CONSENTERS_ACTIVE } = IndexBaseNames;
   const TableName = getTableName(CONSENTERS);
   
+  if(consenterInfo.email) {
+    consenterInfo.email = consenterInfo.email.toLowerCase();
+  }
+  
   let { email, active=YN.Yes, firstname, middlename, lastname, exhibit_forms, 
     create_timestamp=(new Date().toISOString()), consented_timestamp, renewed_timestamp, rescinded_timestamp
   } = consenterInfo;

@@ -1,3 +1,4 @@
+import { AdminUpdateUserAttributesCommand, CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 import { CONFIG, IContext } from '../../../../contexts/IContext';
 import { LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
 import { debugLog, error, isOk, log, okResponse, warn } from '../../Utils';
@@ -20,7 +21,11 @@ import { PostSignupEventType } from './PostSignupEventType';
  */
 export const handler = async (_event:any) => {
   debugLog(_event); 
-  
+
+  if(_event?.request?.userAttributes?.email) {
+    _event.request.userAttributes.email = _event?.request?.userAttributes?.email.toLowerCase();
+  }
+
   const event = _event as PostSignupEventType;
 
   let role:Role|undefined;

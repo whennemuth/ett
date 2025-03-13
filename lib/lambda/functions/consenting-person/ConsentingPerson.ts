@@ -160,10 +160,11 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
  * @returns 
  */
 export const getConsenterResponse = async (parm:string|Consenter, includeEntityList:boolean=true): Promise<LambdaProxyIntegrationResponse> => {
-  const email = (typeof (parm ?? '') == 'string') ? parm as string : (parm as Consenter).email;
+  let email = (typeof (parm ?? '') == 'string') ? parm as string : (parm as Consenter).email;
   if( ! email) {
     return invalidResponse(INVALID_RESPONSE_MESSAGES.missingEmail)
   }
+  email = email.toLowerCase();
   const consenterInfo = await getConsenterInfo(parm, includeEntityList);
   if( ! consenterInfo) {
     return okResponse(`No such consenter: ${parm}`);
@@ -428,7 +429,7 @@ export const sendForm = async (consenter:Consenter, callback:(consenterInfo:Cons
  * @returns 
  */
 export const sendConsent = async (consenter:Consenter, entityName?:string): Promise<LambdaProxyIntegrationResponse> => {
-  const { email } = consenter;
+  const email = consenter.email.toLowerCase();
   entityName = entityName ?? 'Any entity registered with ETT';
   log(`Sending consent form to ${email}`);
   return sendForm(consenter, async (consenterInfo:ConsenterInfo) => {
@@ -444,7 +445,7 @@ export const sendConsent = async (consenter:Consenter, entityName?:string): Prom
  * @returns 
  */
 export const sendRegistration = async (consenterInfo:Consenter, entityName:string, loginHref?:string): Promise<LambdaProxyIntegrationResponse> => {
-  const { email } = consenterInfo;
+  const email = consenterInfo.email.toLowerCase();;
   const consenter = await ConsenterCrud(consenterInfo).read() as Consenter;
   if( ! consenter) {
     return errorResponse(`Cannot send registration form to ${email}: Consenter not found`);
@@ -465,6 +466,8 @@ export const sendRegistration = async (consenterInfo:Consenter, entityName:strin
  * @returns 
  */
 export const saveExhibitData = async (email:string, exhibitForm:ExhibitForm): Promise<LambdaProxyIntegrationResponse> => {
+  email = email.toLowerCase();
+
   // Validate incoming data
   if( ! exhibitForm) {
     return invalidResponse(INVALID_RESPONSE_MESSAGES.missingExhibitData);
@@ -558,7 +561,7 @@ export const scheduleExhibitFormPurgeFromDatabase = async (newConsenter:Consente
  * @returns 
  */
 export const sendExhibitData = async (consenterEmail:string, exhibitForm:ExhibitForm): Promise<LambdaProxyIntegrationResponse> => {
-  
+  consenterEmail = consenterEmail.toLowerCase();
   const emailSendFailures = [] as string[];
   const emailFailures = () => { return emailSendFailures.length > 0; }
 

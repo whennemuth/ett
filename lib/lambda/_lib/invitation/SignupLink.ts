@@ -92,6 +92,7 @@ export class SignupLink {
 
   public getRegistrationLink = async (parms:RegistrationLinkParms):Promise<string|undefined> => {
     let { email, entity_id, registrationUri } = parms;
+    if(email) email = email.toLowerCase();
     return new Promise((resolve, reject) => {
       let link:string;
       if(registrationUri) {

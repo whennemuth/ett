@@ -28,6 +28,9 @@ export const handler = async (_event:any) => {
     debugLog(_event);
 
     const event = _event as PreAuthenticationEventType;
+    if(event?.request?.userAttributes?.email) {
+      event.request.userAttributes.email = event.request.userAttributes.email.toLowerCase();
+    }
     const { userPoolId, userName, region } = event;
     let role:Role|undefined;
     if( event?.callerContext) {

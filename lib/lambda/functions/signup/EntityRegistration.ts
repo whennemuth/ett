@@ -142,7 +142,7 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
 
         // "Stash" the values that need to be retrieved by the PostSignup trigger lambda on to the invitation.
         const invitationWithStash = { 
-          email, fullname, title, entity_name, delegate, signup_parameter 
+          email:email.toLowerCase(), fullname, title, entity_name, delegate, signup_parameter 
         } as Invitation;
 
         // Register the user, persisting the "stashed" values of the invitation as well.

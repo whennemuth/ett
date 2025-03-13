@@ -21,6 +21,12 @@ export function InvitationCrud(invitationInfo:Invitation, _dryRun:boolean=false)
   const { INVITATIONS_ENTITY, INVITATIONS_EMAIL } = IndexBaseNames;
   const TableName = getTableName(INVITATIONS);
 
+  if(invitationInfo.email) {
+    if(invitationInfo.email.includes('@')) {
+      invitationInfo.email = invitationInfo.email.toLowerCase();
+    }
+  }
+
   let { code:_code, entity_id, role, email } = invitationInfo;
 
   let command:any;

@@ -4147,7 +4147,7 @@
       };
 
       if(email) {
-        params.username = email;
+        params.username = email.toLowerCase();
       }
       const queryString = Object.keys(params).map(key => `${key}=${params[key]}`).join('&');
       const signUpUrl = `https://${STATIC_PARAMETERS.COGNITO_DOMAIN}/signup?${queryString}`;
@@ -5377,6 +5377,7 @@
       this.getUser = function() {
         if(localTesting()) {
           let { entity: { users }, fullName, title, role, email } = userContext;
+          email = email.toLowerCase();
           if(users.length == 0) {
             return { name:fullName, email, getDisplayName: () => fullName || email };
           }
@@ -5386,7 +5387,8 @@
           return { name, email, getDisplayName: () => name || email };
         }
         const decodedToken = this.getDecodedToken();
-        const { name, email, phone_number } = decodedToken;
+        let { name, email, phone_number } = decodedToken;
+        if(email) email = email.toLowerCase();
         return { name, email, phone_number, getDisplayName: () => name || email };
       }
       this.getRole = function() {

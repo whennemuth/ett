@@ -31,7 +31,7 @@ export const consenterUpdate = (TableName:string, _new:Consenter, old:Consenter=
       _new.update_timestamp = new Date().toISOString();
     }
     const key = {
-      [ ConsenterFields.email ]: { S: _new.email }
+      [ ConsenterFields.email ]: { S: _new.email.toLowerCase() }
     } as Record<string, AttributeValue>;
     const input = getBlankCommandInput(TableName, key);
     let fld: keyof typeof ConsenterFields;
@@ -70,9 +70,11 @@ export const consenterUpdate = (TableName:string, _new:Consenter, old:Consenter=
 
         default:
           if( ! _new[fld]) continue;
-          if( ! fieldsAreEqual(_new[fld], old[fld])) { // Add to expressions only if the field has changed in value.
+          const newval = fld == ConsenterFields.email ? _new[fld].toLowerCase() : _new[fld];
+          const oldval = fld == ConsenterFields.email ? old[fld].toLowerCase() : old[fld];
+          if( ! fieldsAreEqual(newval, oldval)) { // Add to expressions only if the field has changed in value.
             input.ExpressionAttributeNames![`#${fld}`] = fld;
-            input.ExpressionAttributeValues![`:${fld}`] = wrap(_new[fld]);
+            input.ExpressionAttributeValues![`:${fld}`] = wrap(newval);
             updates.push({ [`#${fld}`]: `:${fld}`});
           }
           break;
