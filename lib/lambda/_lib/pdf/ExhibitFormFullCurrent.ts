@@ -112,7 +112,7 @@ export class ExhibitFormFullCurrent extends PdfForm implements IPdfForm {
     const size = 9;
 
     await drawWrappedText({ 
-      text: `<b>This Full Exhibit Form is incorporated into ${fullname} Consent Form, at:</b>`, 
+      text: `<b>This Current Employer(s) Exhibit Form is incorporated into ${fullname} Consent Form, at:</b>`, 
       options: { size, font }, linePad: 4, padBottom: 6 
     });
 
@@ -198,7 +198,7 @@ export class ExhibitFormFullCurrent extends PdfForm implements IPdfForm {
   private drawOrderedItems = async () => {
     const { page: { 
       bodyWidth, drawWrappedText, drawText, nextPageIfNecessary 
-    }, font, boldfont, _return, baseForm: { entityName, getStaleEntityDays, getSecondReminderDays, drawOrderedItem } } = this;
+    }, font, boldfont, _return, baseForm: { entityName, getStaleEntityPeriod, getSecondReminderPeriod, drawOrderedItem } } = this;
     let basePage = this.page.basePage;
 
     basePage = nextPageIfNecessary(32);
@@ -225,7 +225,7 @@ export class ExhibitFormFullCurrent extends PdfForm implements IPdfForm {
     await drawOrderedItem({
       paragraphs: [
         {
-          text: `<b><u>Within the next ${await getStaleEntityDays()} days</u>—if the Registered Entity ` +
+          text: `<b><u>Within the next ${await getStaleEntityPeriod()}</u>—if the Registered Entity ` +
             'initiates transmittal(s) via ETT to my listed  Consent Recipient(s)/Affiliates, asking them ' +
             'to complete Disclosure Forms about me (“<u>Disclosure Request(s)</u>”), transmit the ' +
             'Disclosure Request(s),</b> copying the Registered Entity and me.  Each Disclosure Request ' +
@@ -241,7 +241,7 @@ export class ExhibitFormFullCurrent extends PdfForm implements IPdfForm {
           options: { size:9, font }
         },
         {
-          text: `<b><u>Within the ${await getSecondReminderDays()} days after sending the initial ` +
+          text: `<b><u>Within the ${await getSecondReminderPeriod()} after sending the initial ` +
             'Disclosure Request(s)</u>—resend the Registered Entity’s Disclosure Request(s) twice ' +
             '(as reminders) to my Consent Recipients (current employer(s) and appointing organization(s)) ' + 
             'listed in this Exhibit Form,</b> copying the Registered Entity and me. <b>Then promptly ' +
@@ -269,7 +269,7 @@ export class ExhibitFormFullCurrent extends PdfForm implements IPdfForm {
 
     await drawOrderedItem({
       paragraphs: [ { text: `If the Registered Entity does not initiate Disclosure Requests within the ` + 
-        `${await getStaleEntityDays()}-day period provided, delete all of these Exhibit Forms from ETT.`, 
+        `${await getStaleEntityPeriod()} period provided, delete all of these Exhibit Forms from ETT.`, 
         options: { size:9, font:boldfont } } ]
     });
 

@@ -6,6 +6,7 @@ import { PdfForm } from "./PdfForm";
 import { EmbeddedFonts } from "./lib/EmbeddedFonts";
 import { Rectangle } from "./lib/Rectangle";
 import { Align, Margins, VAlign, rgbPercent } from "./lib/Utils";
+import { humanReadableFromSeconds } from "../timer/DurationConverter";
 
 export const blue = rgbPercent(47, 84, 150) as Color;
 export const grey = rgb(.1, .1, .1) as Color;
@@ -33,7 +34,9 @@ export class ExhibitForm extends PdfForm {
   private parms:ExhibitFormParms;
   private blankForm:boolean = false;
   private staleEntityDays:number;
+  private staleEntityPeriod:string;
   private secondReminderDays:number;
+  private secondReminderPeriod:string;
   
   font:PDFFont;
   boldfont:PDFFont;
@@ -85,28 +88,30 @@ export class ExhibitForm extends PdfForm {
    * Get the number of days after which an entity is considered stale from the app configuration.
    * @returns 
    */
-  public getStaleEntityDays = async():Promise<number> => {
-    if( ! this.staleEntityDays) {
+  public getStaleEntityPeriod = async():Promise<string> => {
+    if( ! this.staleEntityPeriod) {
       const { getAppConfig } = new Configurations();
       const { STALE_ASP_VACANCY, STALE_AI_VACANCY } = ConfigNames;
       const staleAI = await getAppConfig(STALE_AI_VACANCY)
       const staleASP = await getAppConfig(STALE_ASP_VACANCY);
-      this.staleEntityDays = staleAI.getDuration(DurationType.DAY) + staleASP.getDuration(DurationType.DAY);    
+      const seconds = staleAI.getDuration(DurationType.SECOND) + staleASP.getDuration(DurationType.SECOND);
+      this.staleEntityPeriod = humanReadableFromSeconds(seconds);
     }
-    return this.staleEntityDays;
+    return this.staleEntityPeriod;;
   }
 
   /**
    * Get the number of days after which a second reminder is sent to an affiliate from the app configuration.
    * @returns 
    */
-  public getSecondReminderDays = async():Promise<number> => {
-    if( ! this.secondReminderDays) {
+  public getSecondReminderPeriod = async():Promise<string> => {
+    if( ! this.secondReminderPeriod) {
       const { getAppConfig } = new Configurations();
       const { SECOND_REMINDER } = ConfigNames;
-      this.secondReminderDays = (await getAppConfig(SECOND_REMINDER)).getDuration(DurationType.DAY);
+      const seconds = (await getAppConfig(SECOND_REMINDER)).getDuration(DurationType.SECOND);
+      this.secondReminderPeriod = humanReadableFromSeconds(seconds);
     }
-    return this.secondReminderDays;
+    return this.secondReminderPeriod;
   }
 
   /**
@@ -366,8 +371,17 @@ export class ExhibitForm extends PdfForm {
       },
       textOptions: { size:14, font:boldfont, color:white, lineHeight: 16 }
     });
+
+    // Format the date into UTC and split it into two lines so that it fits in the box.
+    let sigdate = [ '' ];
+    if( ! isBlankForm) {
+      const sigdateStr = sent_timestamp? new Date(sent_timestamp) : new Date();
+      const sigdateUTC = sigdateStr.toUTCString().split(' ');
+      sigdate = [ sigdateUTC.slice(0, 4).join(' '), sigdateUTC.slice(4).join() ];
+    }
+
     await drawRectangle({
-      text: sent_timestamp? new Date(sent_timestamp).toDateString() : '',
+      text: sigdate,
       page, margins: { left:6, top:6, bottom:0, right:6 },
       align: Align.left, valign: VAlign.middle,
       options: {
@@ -645,3 +659,19 @@ export const SampleExhibitFormParms = (affiliates:Affiliate[]):ExhibitFormParms 
   return { consenter, entity, data, consentFormUrl: consentFormUrl(email) };
   
 };
+
+
+
+
+const { argv:args } = process;
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/ExhibitForm.ts')) {
+
+  (async () => {
+    const ctx = await import('../../../../contexts/context.json');
+    ctx.CONFIG.useDatabase = false;
+    process.env[Configurations.ENV_VAR_NAME] = JSON.stringify(ctx.CONFIG);
+    const period = await new ExhibitForm({} as ExhibitFormParms).getStaleEntityPeriod();
+    console.log(period);
+  })();
+
+}

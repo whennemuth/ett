@@ -54,18 +54,22 @@ export class ExhibitEmail {
       
       case FormTypes.FULL:
         const { EXHIBIT_FORM_BOTH_FULL, EXHIBIT_FORM_OTHER_FULL, EXHIBIT_FORM_CURRENT_FULL } = FormName;
+        let action:string = '';
         switch(constraint) {
           case CURRENT:
             this.pdf = ExhibitFormFullCurrent.getInstance(parms);
             name = EXHIBIT_FORM_CURRENT_FULL;
+            action = 'forwarding you their current employer affiliate list via ETT';
             break;
           case OTHER:
             this.pdf = ExhibitFormFullOther.getInstance(parms);
             name = EXHIBIT_FORM_OTHER_FULL;
+            action = 'forwarding you their full affiliate list via ETT, omitting any current employer(s)';
             break;
           case BOTH: default:
             this.pdf = ExhibitFormFullBoth.getInstance(parms);
             name = EXHIBIT_FORM_BOTH_FULL;
+            action = 'forwarding you their full affliate list via ETT';
             break;
         }
         return await sendEmail({

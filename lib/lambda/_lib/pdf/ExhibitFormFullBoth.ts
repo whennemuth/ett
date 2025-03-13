@@ -112,7 +112,7 @@ export class ExhibitFormFullBoth extends PdfForm implements IPdfForm {
   private drawTitle = async () => {
     const { page, boldfont, font } = this;
     await page.drawCenteredText('ETHICAL TRANSPARENCY TOOL (ETT)', { size: 12, font:boldfont }, 4);
-    await page.drawCenteredText('Full Exhibit Form –All Consent Recipients/Affiliates', { size:10, font }, 8);
+    await page.drawCenteredText('Full Exhibit Form – All Consent Recipients/Affiliates', { size:10, font }, 8);
   }
 
   /**
@@ -128,7 +128,7 @@ export class ExhibitFormFullBoth extends PdfForm implements IPdfForm {
     const size = 9;
 
     await drawWrappedText({ 
-      text: `<b>This Current Employer(s) Exhibit Form is incorporated into ${fullname} Consent Form, at:</b>`, 
+      text: `<b>This Full Exhibit Form is incorporated into ${fullname} Consent Form, at:</b>`, 
       options: { size, font }, linePad: 4, padBottom: 6 
     });
 
@@ -217,7 +217,7 @@ export class ExhibitFormFullBoth extends PdfForm implements IPdfForm {
   private drawOrderedItems = async () => {
     const { page: { 
       bodyWidth, drawWrappedText, drawText, nextPageIfNecessary 
-    }, font, boldfont, _return, baseForm: { entityName, getStaleEntityDays, getSecondReminderDays, drawOrderedItem } } = this;
+    }, font, boldfont, _return, baseForm: { entityName, getStaleEntityPeriod, getSecondReminderPeriod, drawOrderedItem } } = this;
     let basePage = this.page.basePage;
 
     basePage = nextPageIfNecessary(32);
@@ -243,7 +243,7 @@ export class ExhibitFormFullBoth extends PdfForm implements IPdfForm {
     await drawOrderedItem({
       paragraphs: [
         {
-          text: `<b><u>Within the next ${await getStaleEntityDays()} days</u>—if the Registered Entity ` +
+          text: `<b><u>Within the next ${await getStaleEntityPeriod()}</u>—if the Registered Entity ` +
             'initiates transmittals via ETT to my listed  Consent Recipients/Affiliates, asking them ' +
             'to complete Disclosure Forms about me (“<u>Disclosure Requests</u>”), transmit the ' +
             'disclosure Requests.</b>  Each Disclosure Request will include the relevant Single-Entity ' +
@@ -253,7 +253,7 @@ export class ExhibitFormFullBoth extends PdfForm implements IPdfForm {
         },
         {
           // TODO: Perhaps suggest an alternative wording - There are no disclosure requests to delete, and it seems like the implication is that they are being stored for 21 days.
-          text: `<b><u>Within the ${await getSecondReminderDays()} days after sending these initial ` +
+          text: `<b><u>Within ${await getSecondReminderPeriod()} after sending these initial ` +
             `Disclosure Request(s)</u>—resend the Registered Entity’s Disclosure Request(s) twice ` +
             `(as reminders) to my Consent Recipients (Affiliates) listed in this Exhibit Form,</b> copying ` +
             `the Registered Entity and me. <b>Then promptly delete the Disclosure Requests, my Full Exhibit ` +
@@ -281,7 +281,7 @@ export class ExhibitFormFullBoth extends PdfForm implements IPdfForm {
     
     await drawOrderedItem({
       paragraphs: [ { text: `If the Registered Entity does not initiate Disclosure Requests within the ` + 
-        `${await getStaleEntityDays()}-day period provided, delete all of these Exhibit Forms from ETT.`, 
+        `${await getStaleEntityPeriod()} period provided, delete all of these Exhibit Forms from ETT.`, 
         options: { size:9, font:boldfont } } ]
     });
 
@@ -387,7 +387,7 @@ export class ExhibitFormFullBoth extends PdfForm implements IPdfForm {
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/ExhibitFormFullBoth.ts')) {
 
-  const testBlankForm = true;
+  const testBlankForm = false;
 
   (async () => {
 
