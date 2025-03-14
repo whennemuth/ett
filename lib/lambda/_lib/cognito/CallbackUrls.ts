@@ -23,7 +23,7 @@ export class CallbackUrlFactory {
     this.role = role;
     if(host.startsWith("${Token")) {
       // These callback urls are being constructed during creation by the CDK of the cloudformation template.
-      // This means that the host is actually a token "placeholder" for the domain name of a clouformation 
+      // This means that the host is actually a token "placeholder" for the domain name of a cloudformation 
       // distribution that has not been created yet. This token cannot be fed to the URL constructor because it
       // will be seen as having illegal characters. Therefore, a temp value will be used while the URL object is
       // involved, replaced with the token at the last moment when the urls are converted to strings and returned.
@@ -138,11 +138,21 @@ export class CallbackUrlFactory {
         addUrl(urls, url.href);
       }
 
-      addCallbackRoute('/sysadmin');
-      addCallbackRoute('/entity');
-      addCallbackRoute('/auth-ind');
-      addCallbackRoute('/consenting');
-      addCallbackRoute('/amend-entity');
+      switch(role) {
+        case Roles.SYS_ADMIN:
+          addCallbackRoute('/sysadmin');
+          break;
+        case Roles.RE_ADMIN:
+          addCallbackRoute('/entity');
+          break;
+        case Roles.RE_AUTH_IND:
+          addCallbackRoute('/auth-ind');
+          addCallbackRoute('/auth-ind/amend');
+          break;
+        case Roles.CONSENTING_PERSON:
+          addCallbackRoute('/consenting');
+          break;
+      }
     }
 
     if(role == Roles.CONSENTING_PERSON) {
