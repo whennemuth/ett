@@ -52,7 +52,8 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
       
       case FormName.REGISTRATION_FORM_ENTITY:
         const blankRegData = getBlankRegistrationData() as RegistrationFormEntityData;
-        blankRegData.loginHref = `https://${process.env.CLOUDFRONT_DOMAIN}${context.CONSENTING_PERSON_PATH}`;
+        blankRegData.loginHref = `https://${process.env.CLOUDFRONT_DOMAIN}`;
+        blankRegData.termsHref = `https://${process.env.CLOUDFRONT_DOMAIN}${context.TERMS_OF_USE_PATH}`;
         form = new RegistrationFormEntity(blankRegData);
         break;
 

@@ -444,7 +444,7 @@ export const sendConsent = async (consenter:Consenter, entityName?:string): Prom
  * @param email 
  * @returns 
  */
-export const sendRegistration = async (consenterInfo:Consenter, entityName:string, loginHref?:string): Promise<LambdaProxyIntegrationResponse> => {
+export const sendConsenterRegistrationForm = async (consenterInfo:Consenter, entityName:string, loginHref?:string): Promise<LambdaProxyIntegrationResponse> => {
   const email = consenterInfo.email.toLowerCase();;
   const consenter = await ConsenterCrud(consenterInfo).read() as Consenter;
   if( ! consenter) {

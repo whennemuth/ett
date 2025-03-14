@@ -9,7 +9,7 @@ import { ENTITY_WAITING_ROOM, EntityCrud } from '../../_lib/dao/dao-entity';
 import { UserCrud } from '../../_lib/dao/dao-user';
 import { ConfigNames, ConfigTypes, Consenter, ConsenterFields, Entity, Invitation, Role, roleFullName, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
 import { scheduleStaleEntityVacancyHandler } from '../authorized-individual/correction/EntityCorrection';
-import { sendRegistration } from '../consenting-person/ConsentingPerson';
+import { sendConsenterRegistrationForm } from '../consenting-person/ConsentingPerson';
 import { sendEntityRegistrationForm, updateReAdminInvitationWithNewEntity, UserInfo } from '../re-admin/ReAdminUser';
 import { PostSignupEventType } from './PostSignupEventType';
 
@@ -408,18 +408,25 @@ export const sendRegistrationForm = async (person:User|Consenter, role:Role, ent
         const consenter = person as Consenter;
         _email = consenter.email;
         entityName = entityName ?? 'Any entity registered with ETT';
-        response = await sendRegistration(consenter, entityName);
+        response = await sendConsenterRegistrationForm(consenter, entityName);
         break;
       default:
         // Either RE_ADMIN or RE_AUTH_IND
         const { email, role, } = person as User;
         _email = email;
-        response = await sendEntityRegistrationForm(
+        response = await sendEntityRegistrationForm({
           email, 
           role, 
-          getLoginHref(role), 
-          registrationFormEmailPrerequisitesAreMet
-        );
+          termsHref: getTermsHref(),
+          loginHref: getLoginHref(), 
+          /**
+           * Cannot set a role-specific url since the registration form pdf is being attached in one email 
+           * where roles are all being cc'd togther. If each recipient got their own email separately, a 
+           * role-specific pdf form could be generated for each.
+           */
+          // loginHref: getLoginHref(role), 
+          meetsPrequisite: registrationFormEmailPrerequisitesAreMet
+    });
         break;
     }
     if(isOk(response)) {
@@ -455,9 +462,19 @@ export const sendRegistrationForm = async (person:User|Consenter, role:Role, ent
  * @param role 
  * @returns 
  */
-export const getLoginHref = (role:Role):string => {
+export const getLoginHref = (role?:Role):string => {
   const { CLOUDFRONT_DOMAIN:domain } = process.env;
-  const pathname = process.env[`${role}_PATH`];
+  const url = new URL(`https://${domain}`);
+  if(role) {
+    const pathname = process.env[`${role}_PATH`];
+    url.pathname = pathname!;
+  }
+  return url.href;
+}
+
+export const getTermsHref = ():string => {
+  const { CLOUDFRONT_DOMAIN:domain } = process.env;
+  const pathname = process.env.TERMS_OF_USE_PATH;
   const url = new URL(`https://${domain}`);
   url.pathname = pathname!;
   return url.href;

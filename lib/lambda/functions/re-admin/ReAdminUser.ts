@@ -72,8 +72,8 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
         case Task.RETRACT_INVITATION:
           return await retractInvitation(parameters.code);
         case Task.SEND_REGISTRATION:
-          var { email, role, loginHref } = parameters;
-          return await sendEntityRegistrationForm(email, role, loginHref);
+          var { email, role, termsHref, loginHref } = parameters;
+          return await sendEntityRegistrationForm({ email, role, termsHref, loginHref });
         case Task.PING:
           return okResponse('Ping!', parameters)
       } 
@@ -527,6 +527,14 @@ export const retractInvitation = async (code:string):Promise<LambdaProxyIntegrat
   return okResponse('Ok');
 }
 
+export type SendEntityRegistrationFormData = {
+  email:string,
+  role:Role,
+  termsHref?:string,
+  loginHref?:string,
+  meetsPrequisite?:(userInfo:UserInfo) => boolean
+}
+
 /**
  * Send an email to the user by their request a copy of their registration form.
  * @param email 
@@ -534,8 +542,9 @@ export const retractInvitation = async (code:string):Promise<LambdaProxyIntegrat
  * @param loginHref Contains the url that the pdf file includes for directions to the ETT website.
  * @returns 
  */
-export const sendEntityRegistrationForm = async (email:string, role:Role, loginHref:string, meetsPrequisite?:(userInfo:UserInfo) => boolean):Promise<LambdaProxyIntegrationResponse> => {
-  log({ email, role, loginHref }, 'sendEntityRegistrationForm');
+export const sendEntityRegistrationForm = async (data:SendEntityRegistrationFormData):Promise<LambdaProxyIntegrationResponse> => {
+  const { email, role, termsHref, loginHref, meetsPrequisite } = data;
+  log({ email, role, termsHref, loginHref }, 'sendEntityRegistrationForm');
   const response = await lookupEntity(email, role) as LambdaProxyIntegrationResponse;
   if( ! isOk(response)) {
     log('Failed to lookup entity info');
@@ -550,7 +559,7 @@ export const sendEntityRegistrationForm = async (email:string, role:Role, loginH
     log('Prerequisites NOT met for sending registration form');
     return okResponse('Ok');
   }
-  const regEmail = new EntityRegistrationEmail({ ...userInfo, loginHref });
+  const regEmail = new EntityRegistrationEmail({ ...userInfo, termsHref, loginHref });
 
   await regEmail.send();
 

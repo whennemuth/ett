@@ -56,7 +56,7 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
     }
     else {
       log(`Performing task: ${task}`);
-      const { email, role, loginHref } = parameters;
+      const { email, role, termsHref, loginHref } = parameters;
       switch(task as ReAdminTasks|Task) {
         case ReAdminTasks.LOOKUP_USER_CONTEXT:
           return await lookupEntity(email, role);
@@ -79,7 +79,7 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
         case ReAdminTasks.RETRACT_INVITATION:
           return await retractInvitation(parameters.code);
         case ReAdminTasks.SEND_REGISTRATION:
-           return await sendEntityRegistrationForm(email, role, loginHref);
+           return await sendEntityRegistrationForm({ email, role, termsHref, loginHref });
         case ReAdminTasks.PING:
           return okResponse('Ping!', parameters);
         case Task.REPLACE_RE_ADMIN:

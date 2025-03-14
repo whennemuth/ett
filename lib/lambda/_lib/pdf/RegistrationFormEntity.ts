@@ -8,7 +8,10 @@ import { RegistrationFormEntityPage2 } from "./RegistrationFormEntityPage2";
 import { RegistrationFormEntityPage3 } from "./RegistrationFormEntityPage3";
 import { EntityInfo, UserInfo } from "../../functions/re-admin/ReAdminUser";
 
-export type RegistrationFormEntityData = UserInfo & { loginHref?:string }
+export type RegistrationFormEntityData = UserInfo & { 
+  termsHref?:string,
+  loginHref?:string 
+}
 
 export type RegistrationFormEntityDrawParms = {
   doc:PDFDocument, form:PDFForm, embeddedFonts:EmbeddedFonts
@@ -28,14 +31,15 @@ export class RegistrationFormEntity extends PdfForm implements IPdfForm {
     this.embeddedFonts = new EmbeddedFonts(this.doc);
     this.form = this.doc.getForm();
 
-    let { doc, form, embeddedFonts, data, data: { create_timestamp, loginHref } } = this;
-    loginHref = loginHref ?? '[ ETT web address ]';
+    let { doc, form, embeddedFonts, data, data: { create_timestamp, loginHref, termsHref } } = this;
+    termsHref = termsHref ?? '[ ETT terms web address ]';
+    loginHref = loginHref ?? '[ ETT login web address ]';
 
     await new RegistrationFormEntityPage1(data).draw({ doc, form, embeddedFonts });
 
     await new RegistrationFormEntityPage2().draw({ doc, form, embeddedFonts });
 
-    await new RegistrationFormEntityPage3(loginHref, create_timestamp!).draw({ doc, form, embeddedFonts });
+    await new RegistrationFormEntityPage3(termsHref, loginHref, create_timestamp!).draw({ doc, form, embeddedFonts });
 
     const pdfBytes = await this.doc.save();
     return pdfBytes;
@@ -114,7 +118,8 @@ export const getSampleData = ():RegistrationFormEntityData => {
       update_timestamp: today,
       entity_id: '12345',
     } as EntityInfo,
-    loginHref: 'https://www.example.com'
+    loginHref: 'https://www.example.com/login',
+    termsHref: 'https://www.example.com/terms'
   } as RegistrationFormEntityData
 }
 

@@ -16,6 +16,7 @@ export interface IContext {
   RE_ADMIN_PATH:string;
   RE_AUTH_IND_PATH:string;
   CONSENTING_PERSON_PATH:string;
+  TERMS_OF_USE_PATH:string;
   DEFAULT_ROOT_OBJECT:string;
   CONFIG: CONFIG;
   TAGS:     Tags;

@@ -15,11 +15,13 @@ export class RegistrationFormEntityPage3 extends PdfForm implements IPdfForm {
   private font:PDFFont;
   private boldfont:PDFFont;
   private loginHref:string;
+  private termsHref:string;
   private signedDate:string
 
-  constructor(loginHref:string, signedDateISOString:string=new Date().toISOString()) {
+  constructor(termsHref:string, loginHref:string, signedDateISOString:string=new Date().toISOString()) {
     super();
     this.loginHref = loginHref;
+    this.termsHref = termsHref;
     this.pageMargins = { top: 35, bottom: 35, left: 40, right: 40 } as Margins;
     this.signedDate = new Date(signedDateISOString).toUTCString();
   }
@@ -99,7 +101,7 @@ export class RegistrationFormEntityPage3 extends PdfForm implements IPdfForm {
   }
 
   private drawOuterBoxContent = async () => {
-    const { loginHref, page, page: { basePage, bodyWidth }, font, boldfont, _return } = this;
+    const { termsHref, page, page: { basePage, bodyWidth }, font, boldfont, _return } = this;
 
     _return(16);
     await page.drawCenteredText(
@@ -109,7 +111,7 @@ export class RegistrationFormEntityPage3 extends PdfForm implements IPdfForm {
 
     _return(4);
     await page.drawCenteredText(
-      `<i>(Also posted at <u>${loginHref}</u>)</i>`,
+      `<i>(Also posted at <u>${termsHref}</u>)</i>`,
       { font, size:8, lineHeight:14 }
     )
 
@@ -309,9 +311,10 @@ const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/RegistrationFormEntityPage3.ts')) {
 
   const outputfile = './lib/lambda/_lib/pdf/RegistrationFormEntityPage3.pdf';
+  const termsHref = `https://d227na12o3l3dd.cloudfront.net/terms`;
   const loginHref = `https://d227na12o3l3dd.cloudfront.net/bootstrap/index.htm?action=start-login&selected_role=${Roles.CONSENTING_PERSON}`;
   
-  new RegistrationFormEntityPage3(loginHref, new Date().toISOString()).writeToDisk(outputfile)
+  new RegistrationFormEntityPage3(termsHref, loginHref, new Date().toISOString()).writeToDisk(outputfile)
     .then((bytes) => {
       console.log('done');
     })

@@ -12,6 +12,7 @@
   "RE_ADMIN_PATH": "/entity",
   "RE_AUTH_IND_PATH": "/auth-ind",
   "CONSENTING_PERSON_PATH": "/consenting",
+  "TERMS_OF_USE_PATH": "/terms",
   "DEFAULT_ROOT_OBJECT": "index.html",
   "CONFIG": {
     "useDatabase": true,
@@ -81,6 +82,6 @@
   "TAGS": {
     "Service": "client",
     "Function": "ett",
-    "Landscape": "warren"
+    "Landscape": "lalitha"
   }
 }
