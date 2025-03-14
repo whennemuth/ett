@@ -1,4 +1,5 @@
 import { SendEmailCommand, SendEmailCommandInput, SendEmailResponse, SESv2Client } from "@aws-sdk/client-sesv2";
+import { warn } from "console";
 import * as ctx from '../../../../contexts/context.json';
 import { CONFIG, IContext } from "../../../../contexts/IContext";
 import { DelayedExecutions } from "../../../DelayedExecution";
@@ -7,25 +8,25 @@ import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { Configurations } from "../../_lib/config/Config";
 import { DAOConsenter, DAOFactory, DAOUser, ReadParms } from "../../_lib/dao/dao";
 import { ENTITY_WAITING_ROOM, EntityCrud } from "../../_lib/dao/dao-entity";
+import { InvitationCrud } from "../../_lib/dao/dao-invitation";
 import { ConfigNames, Consenter, Entity, Invitation, Role, roleFullName, Roles, User, YN } from "../../_lib/dao/entity";
+import { InvitablePerson, InvitablePersonParms } from "../../_lib/invitation/InvitablePerson";
 import { SignupLink } from "../../_lib/invitation/SignupLink";
 import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
+import { sendRegistrationForm } from "../cognito/PostSignup";
 import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureForm";
 import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
 import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
 import { DisclosureRequestReminderLambdaParms, RulePrefix } from "../delayed-execution/SendDisclosureRequestReminder";
-import { inviteUser, lookupEntity, retractInvitation, sendEntityRegistrationForm } from "../re-admin/ReAdminUser";
+import { lookupEntity, retractInvitation, sendEntityRegistrationForm } from "../re-admin/ReAdminUser";
 import { EntityToCorrect } from "./correction/EntityCorrection";
 import { Personnel } from "./correction/EntityPersonnel";
 import { DemolitionRecord, EntityToDemolish } from "./Demolition";
 import { DisclosureEmailParms, DisclosureRequestEmail, RecipientListGenerator } from "./DisclosureRequestEmail";
 import { ExhibitFormRequest, SendExhibitFormRequestParms } from "./ExhibitFormRequest";
-import { sendRegistrationForm } from "../cognito/PostSignup";
-import { InvitationCrud } from "../../_lib/dao/dao-invitation";
-import { warn } from "console";
 
 export enum Task {
   LOOKUP_USER_CONTEXT = 'lookup-user-context',
@@ -102,11 +103,14 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           return await handleRegistrationAmendmentCompletion(amenderEmail, entity_id);
 
         case Task.INVITE_USER:
-           var { email, entity_id, role, registrationUri } = parameters;
-           var user = { email, entity_id, role } as User;
-           return await inviteUser(user, Roles.RE_AUTH_IND, async (entity_id:string, role?:Role) => {
-             return await new SignupLink().getRegistrationLink({ email, entity_id, registrationUri });
-           }, callerSub);
+          var { email, entity_id, role, registrationUri } = parameters;
+          var user = { email, entity_id, role } as User;
+          const invitablePerson = new InvitablePerson({ invitee:user, inviterRole:Roles.RE_ADMIN, 
+            linkGenerator: async (entity_id:string, role?:Role) => {
+              return await new SignupLink().getRegistrationLink({ email, entity_id, registrationUri });
+            }, inviterCognitoUserName:callerSub
+          } as InvitablePersonParms);
+          return await invitablePerson.invite();
            
         case Task.SEND_REGISTRATION:
           var { email, role, termsHref, loginHref } = parameters;

@@ -7,10 +7,11 @@ import { DAOEntity, DAOFactory } from '../../_lib/dao/dao';
 import { ENTITY_WAITING_ROOM, EntityCrud } from '../../_lib/dao/dao-entity';
 import { Config, ConfigNames, Entity, EntityFields, Role, Roles, User, YN } from '../../_lib/dao/entity';
 import { EntityToAutomate } from '../../_lib/EntityAutomation';
+import { InvitablePerson, InvitablePersonParms } from '../../_lib/invitation/InvitablePerson';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
 import { debugLog, error, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
 import { EntityToDemolish } from '../authorized-individual/Demolition';
-import { Task as ReAdminTasks, createEntity, deactivateEntity, inviteUser, inviteUsers, lookupEntity, updateEntity, retractInvitation, sendEntityRegistrationForm } from '../re-admin/ReAdminUser';
+import { Task as ReAdminTasks, createEntity, deactivateEntity, inviteUsers, lookupEntity, retractInvitation, sendEntityRegistrationForm, updateEntity } from '../re-admin/ReAdminUser';
 import { DynamoDbTableOutput } from './DynamoDbTableOutput';
 import { HtmlTableView } from './view/HtmlTableView';
 
@@ -67,13 +68,7 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
         case ReAdminTasks.DEACTIVATE_ENTITY:
           return await deactivateEntity(parameters);
         case ReAdminTasks.INVITE_USER:
-          const { registrationUri } = parameters;
-          return await inviteUser(parameters, Roles.SYS_ADMIN, async (entity_id:string, role:Role) => {
-            if(role == Roles.SYS_ADMIN) {
-              return await new SignupLink().getCognitoLinkForRole(role, registrationUri);
-            }
-            return await new SignupLink().getRegistrationLink({ email, entity_id, registrationUri });
-          });
+          return await inviteASingleUser(parameters);
         case ReAdminTasks.INVITE_USERS:
           return await inviteUsers(parameters);
         case ReAdminTasks.RETRACT_INVITATION:
@@ -106,6 +101,19 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
   catch(e:any) {
     return errorResponse(`Internal server error: ${e.message}`);
   }
+}
+
+export const inviteASingleUser = async (parameters:any):Promise<LambdaProxyIntegrationResponse> => {
+  const { registrationUri, email } = parameters;
+  const invitablePerson1 = new InvitablePerson({ invitee:parameters as User, inviterRole:Roles.SYS_ADMIN, 
+    linkGenerator: async (entity_id:string, role?:Role) => {
+      if(role == Roles.SYS_ADMIN) {
+        return await new SignupLink().getCognitoLinkForRole(role, registrationUri);
+      }
+      return await new SignupLink().getRegistrationLink({ email, entity_id, registrationUri });
+    }
+  } as InvitablePersonParms);
+  return await invitablePerson1.invite();
 }
 
 /**

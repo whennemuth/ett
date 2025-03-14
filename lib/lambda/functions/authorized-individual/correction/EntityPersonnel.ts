@@ -6,9 +6,9 @@ import { EntityCrud } from "../../../_lib/dao/dao-entity";
 import { InvitationCrud } from "../../../_lib/dao/dao-invitation";
 import { UserCrud } from "../../../_lib/dao/dao-user";
 import { Entity, Invitation, Role, User, YN } from "../../../_lib/dao/entity";
+import { InvitablePerson } from "../../../_lib/invitation/InvitablePerson";
 import { SignupLink } from "../../../_lib/invitation/SignupLink";
 import { log, lookupCloudfrontDomain } from "../../../Utils";
-import { inviteUser } from "../../re-admin/ReAdminUser";
 import { EntityCorrectionEmail } from "./EntityCorrectionEmail";
 
 export type PersonnelParms = {
@@ -223,7 +223,7 @@ export class Personnel {
         return;
       }
       log(invitee, 'Personnel.inviteNewUser');
-      await inviteUser(invitee, inviterRole, linkGenerator );
+      await new InvitablePerson({ invitee, inviterRole, linkGenerator }).invite();
     }
 
     // Deactivate the user being swapped out in the database
