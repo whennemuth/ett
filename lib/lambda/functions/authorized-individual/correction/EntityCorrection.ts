@@ -5,7 +5,7 @@ import { lookupUserPoolId } from "../../../_lib/cognito/Lookup";
 import { Configurations } from "../../../_lib/config/Config";
 import { EntityCrud } from "../../../_lib/dao/dao-entity";
 import { UserCrud } from '../../../_lib/dao/dao-user';
-import { ConfigNames, Entity, Role, Roles, User } from "../../../_lib/dao/entity";
+import { ConfigNames, Entity, Role, Roles, User, YN } from "../../../_lib/dao/entity";
 import { EmailParms, sendEmail } from '../../../_lib/EmailWithAttachments';
 import { DelayedLambdaExecution } from "../../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../../_lib/timer/EggTimer";
@@ -59,7 +59,8 @@ export class EntityToCorrect {
     await entityCrud.update();
 
     // Obtain all users of the entity
-    const entityUsers = await UserCrud({ entity_id:now.entity_id } as User).read() as User[];
+    const entityUsers = (await UserCrud({ entity_id:now.entity_id } as User).read() as User[])
+      .filter(user => user.active == YN.Yes);
 
     // Obtain the user who is making the correction
     const correctingUser = entityUsers.find(user => user.sub == correctorSub) ?? { 
