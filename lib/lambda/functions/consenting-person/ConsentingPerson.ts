@@ -26,8 +26,8 @@ import { ConsentFormEmail } from "./ConsentEmail";
 import { ConsentingPersonToCorrect } from "./correction/Correction";
 import { ExhibitCorrectionEmail } from "./correction/ExhibitCorrectionEmail";
 import { ExhibitEmail } from "./ExhibitEmail";
-import { deleteExhibitForm, RulePrefix as DbRulePrefix } from "../delayed-execution/PurgeExhibitFormFromDatabase";
-import { RulePrefix as S3RulePrefix } from "../delayed-execution/PurgeExhibitFormFromBucket"
+import { deleteExhibitForm, RulePrefix as DbRulePrefix } from "../delayed-execution/targets/PurgeExhibitFormFromDatabase";
+import { RulePrefix as S3RulePrefix } from "../delayed-execution/targets/PurgeExhibitFormFromBucket"
 import { CognitoStandardAttributes, UserAccount } from "../../_lib/cognito/UserAccount";
 import { IndividualRegistrationFormData, IndividualRegistrationFormEmail } from "./RegistrationEmail";
 import { ExhibitFormParms } from "../../_lib/pdf/ExhibitForm";

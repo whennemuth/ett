@@ -1,16 +1,16 @@
-import * as ctx from '../../../../contexts/context.json';
-import { IContext } from "../../../../contexts/IContext";
-import { DelayedExecutions } from "../../../DelayedExecution";
-import { UserAccount } from "../../_lib/cognito/UserAccount";
-import { Configurations } from "../../_lib/config/Config";
-import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
-import { ConfigNames, Consenter, Roles } from "../../_lib/dao/entity";
-import { EmailParms, sendEmail } from "../../_lib/EmailWithAttachments";
-import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../_lib/timer/DelayedExecution";
-import { humanReadableFromSeconds } from "../../_lib/timer/DurationConverter";
-import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
-import { debugLog, log } from "../../Utils";
-import { isActiveConsent } from "../consenting-person/ConsentingPerson";
+import * as ctx from '../../../../../contexts/context.json';
+import { IContext } from "../../../../../contexts/IContext";
+import { DelayedExecutions } from "../../../../DelayedExecution";
+import { UserAccount } from "../../../_lib/cognito/UserAccount";
+import { Configurations } from "../../../_lib/config/Config";
+import { ConsenterCrud } from "../../../_lib/dao/dao-consenter";
+import { ConfigNames, Consenter, Roles } from "../../../_lib/dao/entity";
+import { EmailParms, sendEmail } from "../../../_lib/EmailWithAttachments";
+import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../../_lib/timer/DelayedExecution";
+import { humanReadableFromSeconds } from "../../../_lib/timer/DurationConverter";
+import { EggTimer, PeriodType } from "../../../_lib/timer/EggTimer";
+import { debugLog, log } from "../../../Utils";
+import { isActiveConsent } from "../../consenting-person/ConsentingPerson";
 
 export const RulePrefix = 'Consenter purge';
 
@@ -19,8 +19,7 @@ export const RulePrefix = 'Consenter purge';
  * this lambda will be triggered to remove the consenter record from the database and any presence in 
  * the user pool if a configured amount of time has gone by without the user having submitted a consent form.
  * @param event 
- * @param context 
- */
+ * @param context  */
 export const handler = async (event:ScheduledLambdaInput, context:any) => {
   const { lambdaInput, eventBridgeRuleName, targetId } = event;
   try {
@@ -93,7 +92,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
   const { MINUTES } = PeriodType;
 
   (async () => {
-    const context:IContext = await require('../../../../contexts/context.json');
+    const context:IContext = await require('../../../../../contexts/context.json');
     const { STACK_ID, REGION, ACCOUNT, TAGS: { Landscape }} = context;
     const prefix = `${STACK_ID}-${Landscape}`;
     process.env.PREFIX = prefix;

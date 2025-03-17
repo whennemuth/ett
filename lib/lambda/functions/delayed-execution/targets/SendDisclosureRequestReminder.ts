@@ -1,11 +1,11 @@
-import { IContext } from "../../../../contexts/IContext";
-import { DelayedExecutions } from "../../../DelayedExecution";
-import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../_lib/timer/DelayedExecution";
-import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
-import { debugLog, error, log } from "../../Utils";
-import { DisclosureEmailParms, DisclosureRequestReminderEmail, RecipientListGenerator } from "../authorized-individual/DisclosureRequestEmail";
-import { BucketInventory } from "../consenting-person/BucketInventory";
-import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
+import { IContext } from "../../../../../contexts/IContext";
+import { DelayedExecutions } from "../../../../DelayedExecution";
+import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../../_lib/timer/DelayedExecution";
+import { EggTimer, PeriodType } from "../../../_lib/timer/EggTimer";
+import { debugLog, error, log } from "../../../Utils";
+import { DisclosureEmailParms, DisclosureRequestReminderEmail, RecipientListGenerator } from "../../authorized-individual/DisclosureRequestEmail";
+import { BucketInventory } from "../../consenting-person/BucketInventory";
+import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../../consenting-person/BucketItemMetadata";
 import { purgeCorrectionForms, purgeFormFromBucket } from "./PurgeExhibitFormFromBucket";
 import { getTestItem } from "./TestBucketItem";
 
@@ -141,7 +141,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
   const { EXHIBIT, DISCLOSURE } = ItemType;
 
   (async () => {
-    const context:IContext = await require('../../../../contexts/context.json');
+    const context:IContext = await require('../../../../../contexts/context.json');
     const { STACK_ID, REGION, ACCOUNT, TAGS: { Landscape } } = context;
     const prefix = `${STACK_ID}-${Landscape}`;
     const bucketName = `${prefix}-exhibit-forms`;

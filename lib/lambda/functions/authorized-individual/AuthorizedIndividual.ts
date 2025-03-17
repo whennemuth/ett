@@ -20,7 +20,7 @@ import { sendRegistrationForm } from "../cognito/PostSignup";
 import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureForm";
 import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
 import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
-import { DisclosureRequestReminderLambdaParms, RulePrefix } from "../delayed-execution/SendDisclosureRequestReminder";
+import { DisclosureRequestReminderLambdaParms, RulePrefix } from "../delayed-execution/targets/SendDisclosureRequestReminder";
 import { lookupEntity, retractInvitation, sendEntityRegistrationForm } from "../re-admin/ReAdminUser";
 import { EntityToCorrect } from "./correction/EntityCorrection";
 import { Personnel } from "./correction/EntityPersonnel";

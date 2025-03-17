@@ -1,12 +1,12 @@
-import * as ctx from '../../../../contexts/context.json';
-import { IContext } from "../../../../contexts/IContext";
-import { DelayedExecutions } from "../../../DelayedExecution";
-import { InvitationCrud } from "../../_lib/dao/dao-invitation";
-import { Invitation, roleFullName, Roles } from "../../_lib/dao/entity";
-import { EmailParms, sendEmail } from '../../_lib/EmailWithAttachments';
-import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../_lib/timer/DelayedExecution";
-import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
-import { debugLog, log } from "../../Utils";
+import * as ctx from '../../../../../contexts/context.json';
+import { IContext } from "../../../../../contexts/IContext";
+import { DelayedExecutions } from "../../../../DelayedExecution";
+import { InvitationCrud } from "../../../_lib/dao/dao-invitation";
+import { Invitation, roleFullName, Roles } from "../../../_lib/dao/entity";
+import { EmailParms, sendEmail } from '../../../_lib/EmailWithAttachments';
+import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../../_lib/timer/DelayedExecution";
+import { EggTimer, PeriodType } from "../../../_lib/timer/EggTimer";
+import { debugLog, log } from "../../../Utils";
 
 export type StaleInvitationLambdaParms = {
   invitationCode:string, email:string, entity_id?:string
@@ -109,7 +109,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
   const { MINUTES } = PeriodType;
 
   (async () => {
-    const context:IContext = await require('../../../../contexts/context.json');
+    const context:IContext = await require('../../../../../contexts/context.json');
     const { STACK_ID, REGION, ACCOUNT, TAGS: { Landscape }} = context;
     const prefix = `${STACK_ID}-${Landscape}`;
     process.env.PREFIX = prefix;

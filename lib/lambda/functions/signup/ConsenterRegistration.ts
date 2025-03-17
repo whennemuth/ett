@@ -6,7 +6,7 @@ import { ConfigNames, Consenter, YN } from "../../_lib/dao/entity";
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, error, errorResponse, invalidResponse, log, okResponse } from "../../Utils";
-import { RulePrefix as PcRulePrefix } from "../delayed-execution/PurgeConsenter";
+import { RulePrefix as PcRulePrefix } from "../delayed-execution/targets/PurgeConsenter";
 
 /**
  * Handles the public steps of registration for consenting individual
