@@ -1,7 +1,6 @@
-import { AdminUpdateUserAttributesCommand, CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 import { CONFIG, IContext } from '../../../../contexts/IContext';
 import { LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
-import { debugLog, error, isOk, log, okResponse, warn } from '../../Utils';
+import { debugLog, error, isOk, log, warn } from '../../Utils';
 import { lookupRole, removeUserFromUserpool } from '../../_lib/cognito/Lookup';
 import { Configurations } from '../../_lib/config/Config';
 import { DAOConsenter, DAOEntity, DAOFactory, DAOUser } from '../../_lib/dao/dao';
