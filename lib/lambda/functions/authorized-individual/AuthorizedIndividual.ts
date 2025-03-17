@@ -105,7 +105,7 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
         case Task.INVITE_USER:
           var { email, entity_id, role, registrationUri } = parameters;
           var user = { email, entity_id, role } as User;
-          const invitablePerson = new InvitablePerson({ invitee:user, inviterRole:Roles.RE_ADMIN, 
+          const invitablePerson = new InvitablePerson({ invitee:user, inviterRole:Roles.RE_AUTH_IND, 
             linkGenerator: async (entity_id:string, role?:Role) => {
               return await new SignupLink().getRegistrationLink({ email, entity_id, registrationUri });
             }, inviterCognitoUserName:callerSub
