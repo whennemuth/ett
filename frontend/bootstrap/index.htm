@@ -3070,15 +3070,30 @@
               document.getElementById('consenter-exhibit-compose-link').click();
               const affiliateTypes = document.querySelector('select[name=org-type]').options;
               switch(exhibitsPath.getConstraint()) {
+
                 case 'current':
-                  affiliateTypes.namedItem('header').remove();
-                  affiliateTypes.namedItem('ACADEMIC').remove();
+
+                  affiliateTypes.namedItem('EMPLOYER').remove();
                   affiliateTypes.namedItem('EMPLOYER_PRIOR').remove();
+                  affiliateTypes.namedItem('ACADEMIC').remove();
                   affiliateTypes.namedItem('OTHER').remove();
+                  const optPrimary = document.createElement('option');
+                  optPrimary.value = 'EMPLOYER_PRIMARY';
+                  optPrimary.text = '1) Primary current employer';
+                  affiliateTypes.add(optPrimary);
+                  optSecondary = document.createElement('option');
+                  optSecondary.value = 'EMPLOYER';
+                  optSecondary.text = '2) Secondary current employer';
+                  affiliateTypes.add(optSecondary);
+
+                  const allOrgTypePicklists = document.querySelectorAll('select[name=org-type]');
+                  Array.from(allOrgTypePicklists).forEach(picklist => picklist.addEventListener('change', validatePocType));
                   break;
+
                 case 'other':
                   affiliateTypes.namedItem('EMPLOYER').remove();
                   break;
+
                 case 'both': default:
                   break;
               }
@@ -3341,7 +3356,7 @@
       let _on_off = on_off;
       if(on_off == undefined) {
         _on_off = fld.id == 'requestingEntityDropdown' && ! selectedEntity;
-        _on_off ||= fld.nodeName == 'SELECT' && ! fld.value;
+        _on_off ||= fld.nodeName == 'SELECT' && (! fld.value || fld.value == '<- Select One ->');
         _on_off ||= fld.nodeName == 'INPUT' && ! fld.value;
       }
       fld.style.borderStyle = _on_off ? 'solid' : '';
@@ -3366,6 +3381,23 @@
       })
     }
 
+    const validatePocType = (event) => {
+      const orgType = event.srcElement;
+      if(orgType.value == 'EMPLOYER_PRIMARY') {
+        const tableBody = orgType.parentElement.parentElement.parentElement.parentElement;
+        const orgTypes = tableBody.querySelectorAll('select[name=org-type]');
+        const primaryCount = Array.from(orgTypes).filter(select => {
+          return select.value == 'EMPLOYER_PRIMARY';
+        }).length;
+        if(primaryCount > 1) {
+          alert('Only one primary employer allowed');
+          orgType.selectedIndex = 0;
+          orgType.value = '<- Select One ->';
+          toggleHighlight(orgType);
+        }
+      }
+    };
+
     /**
      * Add or remove a point of contact from the exhibit form
      */
@@ -3381,7 +3413,11 @@
 
         // Remove red borders of any of the rows child fields if they have them.
         validateAffiliateRow(newrow);
-        
+
+        // Add a listener to the new row's org-type picklist to validate the type.
+        const allOrgTypePicklists = document.querySelectorAll('select[name=org-type]');
+        Array.from(allOrgTypePicklists).forEach(picklist => picklist.addEventListener('change', validatePocType));
+                
         // Call the tooltip activation command globally to enable tooltips for the new fields of the new row.
         $('[data-toggle="tooltip"]').tooltip({ 
           html:true,
