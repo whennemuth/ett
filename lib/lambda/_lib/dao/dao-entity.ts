@@ -191,7 +191,9 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
     if( Object.keys(entityInfo).length == 1 ) {
       throw new Error(`Entity update error: No fields to update for ${entity_id}`);
     }
-    entityInfo.entity_name_lower = entity_name.trim().toLowerCase();
+    if(entity_name) {
+      entityInfo.entity_name_lower = entity_name.trim().toLowerCase();
+    }
     console.log(`Updating entity: ${entity_id}`);
     const input = entityUpdate(TableName, entityInfo).buildUpdateItemCommandInput() as UpdateItemCommandInput;
     command = new UpdateItemCommand(input);
