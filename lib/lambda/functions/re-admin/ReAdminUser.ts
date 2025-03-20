@@ -3,12 +3,13 @@ import { DelayedExecutions } from '../../../DelayedExecution';
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
 import { lookupEmail, lookupUserPoolId } from '../../_lib/cognito/Lookup';
 import { DAOEntity, DAOFactory, DAOUser } from '../../_lib/dao/dao';
-import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
+import { ENTITY_WAITING_ROOM, EntityCrud } from '../../_lib/dao/dao-entity';
 import { Entity, Invitation, Role, roleFullName, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
 import { InvitablePerson, InvitablePersonParms } from '../../_lib/invitation/InvitablePerson';
 import { UserInvitation } from '../../_lib/invitation/Invitation';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
 import { debugLog, errorResponse, invalidResponse, isOk, log, lookupCloudfrontDomain, lookupPendingInvitations, mergeResponses, okResponse } from "../../Utils";
+import { registrationFormEmailPrerequisitesAreMet } from '../cognito/PostSignup';
 import { ExhibitFormsBucketEnvironmentVariableName } from '../consenting-person/BucketItemMetadata';
 import { EntityRegistrationEmail } from './RegistrationEmail';
 
@@ -69,7 +70,7 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           return await retractInvitation(parameters.code);
         case Task.SEND_REGISTRATION:
           var { email, role, termsHref, loginHref } = parameters;
-          return await sendEntityRegistrationForm({ email, role, termsHref, loginHref });
+          return await sendEntityRegistrationForm({ email, role, termsHref, loginHref, meetsPrequisite: registrationFormEmailPrerequisitesAreMet });
         case Task.PING:
           return okResponse('Ping!', parameters)
       } 
@@ -386,23 +387,34 @@ export type SendEntityRegistrationFormData = {
 export const sendEntityRegistrationForm = async (data:SendEntityRegistrationFormData):Promise<LambdaProxyIntegrationResponse> => {
   const { email, role, termsHref, loginHref, meetsPrequisite } = data;
   log({ email, role, termsHref, loginHref }, 'sendEntityRegistrationForm');
-  const response = await lookupEntity(email, role) as LambdaProxyIntegrationResponse;
-  if( ! isOk(response)) {
-    log('Failed to lookup entity info');
-    return response;
-  }
-  if( ! response.body) {
-    log('No entity found');
-    return invalidResponse(`No entity found for ${email}`);
-  }
-  const userInfo = await _lookupEntity(email, role) as UserInfo;
-  if(meetsPrequisite && ! meetsPrequisite(userInfo)) {
-    log('Prerequisites NOT met for sending registration form');
-    return okResponse('Ok');
-  }
-  const regEmail = new EntityRegistrationEmail({ ...userInfo, termsHref, loginHref });
+  try {
+    const userInfo = await _lookupEntity(email, role) as UserInfo;
+    if( ! userInfo.email) {
+      log(`Failed to lookup entity info - no such user: ${email}`);
+      return invalidResponse(`No such user found: ${email}`);
+    }
+    if( ! userInfo.entity) {
+      log(`Failed to lookup entity info - no entity found for ${email}`);
+      return invalidResponse(`No entity found for ${email}`);
+    }
+    if(meetsPrequisite && ! meetsPrequisite(userInfo)) {
+      log('Prerequisites NOT met for sending registration form');
+      return okResponse('Ok');
+    }
+    const regEmail = new EntityRegistrationEmail({ ...userInfo, termsHref, loginHref });
 
-  await regEmail.send();
+    await regEmail.send();
+
+    if( ! userInfo.entity.registered_timestamp) {
+      // Add a timestamp to the entity to indicate its initial registration. 
+      // NOTE this won't change on user swapouts as part of amendments.
+      const { entity: { entity_id }} = userInfo;
+      await EntityCrud({ entity_id, registered_timestamp: new Date().toISOString() } as Entity).update();
+    }  
+  }
+  catch(e: any) {
+    return errorResponse(`Error looking up entity info: ${e.message}`);
+  }
 
   return okResponse('Ok');
 }
@@ -415,7 +427,7 @@ export const sendEntityRegistrationForm = async (data:SendEntityRegistrationForm
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/re-admin/ReAdminUser.ts')) {
 
-  const task = Task.INVITE_USERS as Task;
+  const task = Task.SEND_REGISTRATION as Task;
   const { DisclosureRequestReminder, HandleStaleEntityVacancy } = DelayedExecutions;
 
   (async () => {
@@ -495,6 +507,30 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
                 role: Roles.RE_AUTH_IND
               }
             }
+          }
+        } as IncomingPayload;
+        _event = {
+          headers: {
+            [AbstractRoleApi.ETTPayloadHeader]: JSON.stringify(payload)
+          },
+          requestContext: {
+            authorizer: {
+              claims: {
+                username: '718b15f0-7011-7001-2c69-41dda37a90ee',
+                sub: '718b15f0-7011-7001-2c69-41dda37a90ee'
+              }
+            }
+          }
+        } as any;
+        break;
+      case Task.SEND_REGISTRATION:
+        payload = {
+          task,
+          parameters: {
+            email: 'auth4.random.edu@warhen.work',
+            role: Roles.RE_AUTH_IND,
+            termsHref: `https://${cloudfrontDomain}/terms`,
+            loginHref: `https://${cloudfrontDomain}/login`
           }
         } as IncomingPayload;
         _event = {

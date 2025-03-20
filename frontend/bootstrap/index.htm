@@ -5771,7 +5771,7 @@
             populateRegistrationInfoCards();
           }
           const { entity } = userContext || {};
-          const { users=[], entity_id, entity_name, totalUserCount } = (entity ?? {});
+          const { users=[], entity_id, entity_name, totalUserCount, registered_timestamp } = (entity ?? {});
           const validUsers = users.filter(u => { return u.active == 'Y'; });
           const incompleteRegistration = () => totalUserCount < 3
 
@@ -5802,7 +5802,7 @@
               break;
 
             case 'RE_AUTH_IND':
-              if(incompleteRegistration()) {
+              if(incompleteRegistration() && ! registered_timestamp) {
                 dashboard.querySelector('#authNotReady').style.display = 'inline';
                 if(entity_name) {
                   dashboard.querySelector('#disclosureRequestEntityName').innerText = entity_name;
