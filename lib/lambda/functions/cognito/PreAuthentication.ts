@@ -45,9 +45,9 @@ export const handler = async (_event:any) => {
 
       const { email, email_verified, 'cognito:user_status':status } = event?.request?.userAttributes;
 
-      if(status == 'FORCE_CHANGE_PASSWORD' && role == Roles.CONSENTING_PERSON) {
-        /**
-         * In this circumstance, an existing consenter is changing their email address, which means that the
+      if(status == 'FORCE_CHANGE_PASSWORD') {
+          /**
+         * In this circumstance, an existing user/consenter is changing their email address, which means that the
          * corresponding database entry is pending and happens AFTER cognito account creation. Also:
          *   1) The cognito account will NOT be in a confirmed status. Thus we do not proceed further and run
          *      into any confirmation validation checks which are non-applicable in this scenario

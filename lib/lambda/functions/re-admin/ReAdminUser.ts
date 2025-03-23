@@ -11,6 +11,7 @@ import { SignupLink } from '../../_lib/invitation/SignupLink';
 import { debugLog, errorResponse, invalidResponse, isOk, log, lookupCloudfrontDomain, lookupPendingInvitations, mergeResponses, okResponse } from "../../Utils";
 import { registrationFormEmailPrerequisitesAreMet } from '../cognito/PostSignup';
 import { ExhibitFormsBucketEnvironmentVariableName } from '../consenting-person/BucketItemMetadata';
+import { EntityRepToCorrect } from './Correction';
 import { EntityRegistrationEmail } from './RegistrationEmail';
 
 export enum Task {
@@ -22,6 +23,7 @@ export enum Task {
   INVITE_USER = 'invite-user',
   RETRACT_INVITATION = 'retract-invitation',
   SEND_REGISTRATION = 'send-registration',
+  CORRECTION = 'correct-entity-rep',
   PING = 'ping'
 }
 
@@ -71,6 +73,8 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
         case Task.SEND_REGISTRATION:
           var { email, role, termsHref, loginHref } = parameters;
           return await sendEntityRegistrationForm({ email, role, termsHref, loginHref, meetsPrequisite: registrationFormEmailPrerequisitesAreMet });
+        case Task.CORRECTION:
+          return await correctUser(parameters);
         case Task.PING:
           return okResponse('Ping!', parameters)
       } 
@@ -419,6 +423,27 @@ export const sendEntityRegistrationForm = async (data:SendEntityRegistrationForm
   return okResponse('Ok');
 }
 
+export const correctUser = async (parameters:any):Promise<LambdaProxyIntegrationResponse> => {
+  const { 
+    entity_id, email:existing_email, new_email:email, role, fullname, title, phone_number, delegate 
+  } = parameters;
+  log(parameters, `Correcting user details`);
+
+  const user = new EntityRepToCorrect({ email:existing_email, entity_id } as User);
+  const correctedUser = { email, fullname, title, phone_number, role, entity_id } as User;
+  if(role == Roles.RE_AUTH_IND && delegate) {
+    correctedUser.delegate = delegate;
+  }
+  const updated:boolean = await user.correct(correctedUser);
+
+  if( ! updated) {
+    console.error(`Failed to correct user: ${user.getMessage()}`);
+    return errorResponse(user.getMessage())
+  }
+
+  return okResponse('Ok');
+}
+
 
 
 /**
@@ -427,7 +452,7 @@ export const sendEntityRegistrationForm = async (data:SendEntityRegistrationForm
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/re-admin/ReAdminUser.ts')) {
 
-  const task = Task.SEND_REGISTRATION as Task;
+  const task = Task.INVITE_USER as Task;
   const { DisclosureRequestReminder, HandleStaleEntityVacancy } = DelayedExecutions;
 
   (async () => {
@@ -468,8 +493,10 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         payload = {
           task,
           parameters: {
-            email: 'asp1.random.edu@warhen.work',
+            email: 'asp.ssu.edu@warhen.work',
+            entity_id: 'feab77c1-48a1-4dd3-a8ce-3b7d9dc83403',
             role: Roles.RE_ADMIN,
+            registrationUri: `https://${cloudfrontDomain}/bootstrap/index.htm`
           }
         } as IncomingPayload;
         _event = {
@@ -479,8 +506,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
           requestContext: {
             authorizer: {
               claims: {
-                username: '417bd590-f021-70f6-151f-310c0a83985c',
-                sub: '417bd590-f021-70f6-151f-310c0a83985c'
+                username: '51ebd510-10c1-703c-4507-1405ce9bc312',
+                sub: '51ebd510-10c1-703c-4507-1405ce9bc312'
               }
             }
           }

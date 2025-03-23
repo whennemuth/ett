@@ -21,7 +21,7 @@ import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureF
 import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
 import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
 import { DisclosureRequestReminderLambdaParms, RulePrefix } from "../delayed-execution/targets/SendDisclosureRequestReminder";
-import { lookupEntity, retractInvitation, sendEntityRegistrationForm } from "../re-admin/ReAdminUser";
+import { correctUser, lookupEntity, retractInvitation, sendEntityRegistrationForm } from "../re-admin/ReAdminUser";
 import { EntityToCorrect } from "./correction/EntityCorrection";
 import { Personnel } from "./correction/EntityPersonnel";
 import { DemolitionRecord, EntityToDemolish } from "./Demolition";
@@ -40,6 +40,7 @@ export enum Task {
   INVITE_USER = 'invite-user',
   RETRACT_INVITATION = 'retract-invitation',
   SEND_REGISTRATION = 'send-registration',
+  CORRECTION = 'correct-entity-rep',
   PING = 'ping'
 };
 
@@ -118,6 +119,9 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
              
         case Task.RETRACT_INVITATION:
           return await retractInvitation(parameters.code);
+
+        case Task.CORRECTION:
+          return await correctUser(parameters);
           
         case Task.PING:
           return okResponse('Ping!', parameters);
