@@ -100,17 +100,12 @@ export class LambdaFunction extends AbstractFunction {
           'EttSysAdminCognitoPolicy': new PolicyDocument({
             statements: [
               new PolicyStatement({
-                actions: [  'cognito-idp:List*'  ],
+                actions: [ 'cognito-idp:List*'  ],
                 resources: [ '*' ],
                 effect: Effect.ALLOW
               }),
               new PolicyStatement({
-                actions: [  
-                  'cognito-idp:AdminGet*', 
-                  'cognito-idp:AdminCreateUser',
-                  'cognito-idp:AdminDeleteUser', 
-                  'cognito-idp:AdminSetUserPassword' 
-                ],
+                actions: [ 'cognito-idp:*' ],
                 resources: [ userPoolArn ],
                 effect: Effect.ALLOW
               })
