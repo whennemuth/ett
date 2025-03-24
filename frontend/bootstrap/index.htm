@@ -3353,6 +3353,22 @@
         button.innerText = selectedEntity.entity_name;
         // Hide the "select one" label since there is only one entity to select.
         button.closest('#requestingEntityDropdown').querySelector('b').style.display = 'none';
+        // Trigger the event that would have fired had the user selected from the list manually.
+        const a = document.querySelector('#requestingEntityDropdownList').querySelector('a');
+        autoSelectDefaultEntity(a);
+      }
+    }
+
+    const autoSelectDefaultEntity = (a) => {
+      if(a.tagName == 'A' && a.name && a.id) {
+        const button = document.getElementById('requestingEntityDropdownButton');
+        const { entities } = consenterInfo;
+        button.innerText = a.name;
+        selectedEntity = entities.find(e => {
+          return e.entity_id == a.id;
+        });
+        populateExhibitForm();
+        toggleHighlight(document.querySelector('#requestingEntityDropdown'));
       }
     }
 
@@ -5992,16 +6008,7 @@
       // Add behavior to selection activity on the entity picklist for exhibit composition
       $('#requestingEntityDropdownButton').on('hide.bs.dropdown', function () {
         const { srcElement:a } = event;
-        if(a.tagName == 'A' && a.name && a.id) {
-          const button = document.getElementById('requestingEntityDropdownButton');
-          const { entities } = consenterInfo;
-          button.innerText = a.name;
-          selectedEntity = entities.find(e => {
-            return e.entity_id == a.id;
-          });
-          populateExhibitForm();
-          toggleHighlight(document.querySelector('#requestingEntityDropdown'));
-        }
+        autoSelectDefaultEntity(a);
       });
 
       // Add behavior to selection activity on the entity picklist for exhibit correction
