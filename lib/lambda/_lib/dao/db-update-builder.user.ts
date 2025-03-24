@@ -9,7 +9,7 @@ import { User, UserFields } from "./entity";
  * @param user 
  * @returns 
  */
-export const userUpdate = (TableName:string, user:User):Builder => {
+export const userUpdate = (TableName:string, user:User, removableDelegate:boolean=false):Builder => {
   const buildUpdateItemCommandInput = () => {
     if( ! user.update_timestamp) {
       user.update_timestamp = new Date().toISOString();
@@ -30,6 +30,10 @@ export const userUpdate = (TableName:string, user:User):Builder => {
       fieldset.push({ [`#${fld}`]: `:${fld}`})
     }
     item.UpdateExpression = `SET ${fieldset.map((o:any) => { return getFldSetStatement(o); }).join(', ')}`
+    if( ! user[UserFields.delegate] && removableDelegate) {
+      // Absence of a delegate means it should be removed if it exists
+      item.UpdateExpression +=  ` REMOVE ${UserFields.delegate}`;
+    }
     return item;
   } 
   return { buildUpdateItemCommandInput };

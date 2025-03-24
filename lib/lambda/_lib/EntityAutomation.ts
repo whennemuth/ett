@@ -131,7 +131,7 @@ export class EntityToAutomate {
     }
     user.sub = sub;
     user.entity_id = entity_id;
-    await UserCrud(user).create();
+    await UserCrud({ userinfo:user }).create();
 
     if( ! createInvitations) return;
 

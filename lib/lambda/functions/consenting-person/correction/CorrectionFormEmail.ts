@@ -23,7 +23,7 @@ export class ConsenterCorrectionEmail {
     const context:IContext = <IContext>ctx;
     const { oldConsenter: {firstname, middlename, lastname }, correctionForm } = this;
     const fullname = PdfForm.fullName(firstname, middlename, lastname);
-    const users = (await UserCrud({ entity_id } as User).read() ?? []) as User[];
+    const users = (await UserCrud({ userinfo: { entity_id } as User }).read() ?? []) as User[];
 
     // Get the first AI of the entity as the "to" addressee
     const firstAI = users.find(user => user.active == YN.Yes && user.role == Roles.RE_AUTH_IND);

@@ -8,7 +8,7 @@ jest.mock('../../_lib/dao/dao.ts', () => {
     __esModule: true,
     DAOFactory: {
       getInstance: jest.fn().mockImplementation((parms:any) => {
-        const dao = UserCrud(parms.Payload as User);
+        const dao = UserCrud({ userinfo: parms.Payload as User });
         return {
           read: async ():Promise<any> => {
             return new Promise((resolve, reject) => {

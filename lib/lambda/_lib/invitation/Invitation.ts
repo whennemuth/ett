@@ -361,7 +361,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/invi
     process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
 
     // Get the inviter
-    const inviters = await UserCrud({ email:inviterEmail } as User).read() as User[];
+    const inviters = await UserCrud({ userinfo: { email:inviterEmail } as User }).read() as User[];
     if(inviters.length == 0) {
       log(`${inviterEmail} not found!`);
       return;

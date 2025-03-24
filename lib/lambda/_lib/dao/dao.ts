@@ -60,7 +60,7 @@ export class DAOFactory {
           throw new Error(`User crud error: Invalid Y/N active field value specified in ${JSON.stringify(parms, null, 2)} as ${role}: ${active}`);
         }
         
-        return UserCrud(parms.Payload as User);
+        return UserCrud({ userinfo: parms.Payload as User });
         
       case 'entity':
         var { active } = parms.Payload as Entity;

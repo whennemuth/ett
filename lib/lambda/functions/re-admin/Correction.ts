@@ -30,7 +30,7 @@ export class EntityRepToCorrect {
          * NOTE: Make sure the default timestamp conversion to date objects is avoided - The upcoming update needs 
          * them to be ISO strings.
          */
-        const user = await UserCrud(this.correctable).read({ convertDates:false }) as User;
+        const user = await UserCrud({ userinfo: this.correctable }).read({ convertDates:false }) as User;
         if( ! user) {
           error(this.correctable, 'Lookup for user failed');
           return false;
@@ -89,10 +89,10 @@ export class EntityRepToCorrect {
         corrected.sub = sub;
 
         // Delete the old user from the database.
-        await UserCrud(correctable).Delete();
+        await UserCrud({ userinfo: correctable }).Delete();
 
         // Create a new user in the database with the new email address.
-        await UserCrud(corrected).update();
+        await UserCrud({ userinfo: corrected }).update();
       }
       else if(newPhone()) {
         const original = { email: { propname:'email', value:old_email } } as CognitoStandardAttributes;
@@ -113,14 +113,14 @@ export class EntityRepToCorrect {
         corrected = mergeUsers(correctable, corrected);
 
         // Pass on any updates to the user to the corresponding database record.
-        await UserCrud(corrected).update(correctable, true); 
+        await UserCrud({ userinfo: corrected, removableDelegate:true }).update(correctable, true); 
       }
       else if(otherChanges()) {
         // Carry over any fields from the old user that do not exist in the new user.
         corrected = mergeUsers(correctable, corrected);
 
         // Pass on any updates to the user to the corresponding database record.
-        await UserCrud(corrected).update(correctable, true);
+        await UserCrud({ userinfo: corrected, removableDelegate:true }).update(correctable, true);
       }
       else {
         // Huh? If neither the email, phone, fullname or title has changed, then there ARE NO changes.
@@ -208,7 +208,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     process.env.DEBUG = 'true';
 
     const email = 'asp2.random.edu@warhen.work';
-    const correctable = (await UserCrud({ email } as User).read({ convertDates:false }) as User[])[0];
+    const correctable = (await UserCrud({ userinfo: { email } as User }).read({ convertDates:false }) as User[])[0];
     const corrected = Object.assign({}, correctable);
     let { fullname='my full name', entity_id } = correctable;
 

@@ -109,7 +109,7 @@ export class ExhibitCorrectionEmail {
 
     // Get the email recipients
     if( ! this._users) {
-      this._users = (await UserCrud({ entity_id } as User).read() ?? []) as User[];
+      this._users = (await UserCrud({ userinfo: { entity_id } as User }).read() ?? []) as User[];
     }
 
     const { _users: users } = this;

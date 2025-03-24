@@ -76,7 +76,7 @@ export class Personnel {
       this.entity_id = replacer.entity_id;
     }
     else if(replacerEmail) {
-      const lookupResult = await UserCrud({ email:replacerEmail } as User).read() as User[];
+      const lookupResult = await UserCrud({ userinfo: { email:replacerEmail } as User }).read() as User[];
       if(lookupResult.length > 1) {
         throw new Error(`${replacerEmail} is a member of more than one registered entity: ${
           JSON.stringify(lookupResult.map(user => user.entity_id), null, 2)
@@ -95,7 +95,7 @@ export class Personnel {
 
     // Load the current users in the entity from the database
     if(users.length == 0) {
-      const _users = await UserCrud({ entity_id } as User).read() as User[];
+      const _users = await UserCrud({ userinfo: { entity_id } as User }).read() as User[];
       if(_users.length == 0) {
         throw new Error(`The following entity has no users: ${entity_id}`);
       }
@@ -184,7 +184,7 @@ export class Personnel {
         return;
       }
       const { email, entity_id } = replaceable;
-      await UserCrud({ email, entity_id, active:YN.No } as User).update();
+      await UserCrud({ userinfo: { email, entity_id, active:YN.No } as User }).update();
 
       // Remove any invitations the user may have been issued
       await InvitationCrud({ email, entity_id} as Invitation).Delete();
