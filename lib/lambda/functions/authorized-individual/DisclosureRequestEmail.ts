@@ -143,7 +143,7 @@ export class RecipientListGenerator {
   public generate = async ():Promise<Recipients> => {
     const { entity_id, affiliateEmail, emailType } = this;
     // Get all users for the entity
-    const users = (await UserCrud({ entity_id } as User).read() as User[])
+    const users = (await UserCrud({ userinfo: { entity_id } as User }).read() as User[])
       .filter(user => user.active == YN.Yes);
 
     // Construct a recipient list for the disclosure request email

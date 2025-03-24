@@ -1,19 +1,22 @@
-import { AttributeValue, DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, PutItemCommand, PutItemCommandOutput, QueryCommand, QueryCommandInput, TransactWriteItemsCommand, TransactWriteItemsCommandInput, TransactWriteItemsCommandOutput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
+import { AttributeValue, DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, QueryCommand, QueryCommandInput, TransactWriteItemsCommand, TransactWriteItemsCommandInput, TransactWriteItemsCommandOutput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
 import { marshall } from '@aws-sdk/util-dynamodb';
 import { DynamoDbConstruct, IndexBaseNames, TableBaseNames } from '../../../DynamoDb';
 import { DAOFactory, DAOUser, ReadParms } from './dao';
 import { convertFromApiObject } from './db-object-builder';
 import { userUpdate } from './db-update-builder.user';
 import { Roles, User, UserFields, YN } from './entity';
-import { userInfo } from 'os';
+
+export type UserCrudParams = {
+  userinfo:User, _dryRun?:boolean, removableDelegate?:boolean
+}
 
 /**
  * Basic CRUD operations for the dynamodb table behind the user base.
  * @param {*} userinfo 
  * @returns 
  */
-export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
-
+export function UserCrud(parms:UserCrudParams): DAOUser {
+  const { userinfo, _dryRun=false, removableDelegate=false } = parms;
   const dbclient = new DynamoDBClient({ region: process.env.REGION });
   const { getTableName } = DynamoDbConstruct;
   const { USERS } = TableBaseNames;
@@ -35,7 +38,7 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
    * and is returned instead.
    */
   const dryRun = () => {
-    return UserCrud(userinfo, true);
+    return UserCrud({ userinfo, _dryRun:true });
   }
 
   const throwMissingError = (task:string, fld:string) => {
@@ -152,7 +155,7 @@ export function UserCrud(userinfo:User, _dryRun:boolean=false): DAOUser {
       throw new Error(`User update error: No fields to update for ${entity_id}: ${email}`);
     }
     console.log(`Updating user: ${email} / ${entity_id}`);
-    const input = userUpdate(TableName, userinfo).buildUpdateItemCommandInput() as UpdateItemCommandInput;
+    const input = userUpdate(TableName, userinfo, removableDelegate).buildUpdateItemCommandInput() as UpdateItemCommandInput;
     command = new UpdateItemCommand(input);
     return await sendCommand(command);
   }
@@ -306,10 +309,10 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/dao/
   (async () => {
     switch(task) {
       case 'create':
-        await UserCrud(user).create();
+        await UserCrud({ userinfo:user }).create();
         break;
       case 'update':
-        await UserCrud(user).update();
+        await UserCrud({ userinfo:user }).update();
         break;
       case 'read':
       case 'delete':

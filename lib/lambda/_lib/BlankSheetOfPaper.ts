@@ -140,7 +140,7 @@ export const deletePendingInvitations = async (region:string, dryRun:boolean):Pr
   });
 
   // Get a list of sysadmins (these will be the only items in the users table left after the purge).
-  let sysAdmins = await UserCrud({ entity_id:ENTITY_WAITING_ROOM } as User).read() as User[];
+  let sysAdmins = await UserCrud({ userinfo: { entity_id:ENTITY_WAITING_ROOM } as User }).read() as User[];
   sysAdmins = sysAdmins.filter(user => user.role == Roles.SYS_ADMIN);
 
   /**

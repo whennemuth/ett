@@ -264,7 +264,7 @@
         padding-top:10px;
       }
 
-      #divConsenterCorrect > div {
+      #divConsenterCorrect > div, #divReAdminCorrect > div, #divAuthIndCorrect > div {
         float:left;
         margin-top: 10px;
         margin-left: 10px;
@@ -272,18 +272,23 @@
         font-size: 22px;
         max-width:60%;
       }
-      #divConsenterCorrect > div[label="true"] {
+      #divConsenterCorrect > div[label="true"], #divReAdminCorrect > div[label="true"], #divAuthIndCorrect > div[label="true"] {
         font-weight:bold;
         clear:both;
-        width: 150px;
+        width: 250px;
         text-align: right;
         font-size: 18px;
         padding-top: 4px;
       }
-      #divConsenterCorrect > div > p {
+      #divConsenterCorrect > div > p, #divReAdminCorrect > div > p, #divAuthIndCorrect > div > p {
         margin-top: 10px;
         font-style: italic;
         font-size: 16px;
+      }
+      #divConsenterCorrect > div[label="true"] > span, #divReAdminCorrect > div[label="true"] > span, #divAuthIndCorrect > div[label="true"] > span {
+        font-weight: normal;
+        font-style: italic;
+        font-size: 14px;
       }
 
       span[data-toggle="tooltip"] {
@@ -1070,7 +1075,10 @@
               <h3 class="display-7 fw-bold">Welcome <span id="RE_ADMIN_username"></span></h3>
               <ul class="nav nav-tabs" id="reAdmin" role="tablist">
                 <li class="nav-item">
-                  <a class="nav-link active" id="re-admin-entity-link" data-toggle="tab" href="#re-admin-entity" role="tab" aria-controls="re-admin-entity" aria-selected="true">Entity/Organization</a>
+                  <a class="nav-link active" id="re-admin-correct-link" data-toggle="tab" href="#re-admin-correct" role="tab" aria-controls="re-admin-correct" aria-selected="true">Your Details</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" id="re-admin-entity-link" data-toggle="tab" href="#re-admin-entity" role="tab" aria-controls="re-admin-entity" aria-selected="true">Entity/Organization</a>
                 </li>
                 <li class="nav-item">
                   <a class="nav-link" id="asp-request-disclosures-tab" data-toggle="tab" href="#asp-request-disclosures" role="tab" aria-controls="asp-request-disclosures-link" aria-selected="true">Request Disclosure Forms</a>
@@ -1085,7 +1093,66 @@
               </div>
 
               <div class="tab-content" id="reAdminContent">
-                <div class="tab-pane fade show active" id="re-admin-entity" role="tabpanel" aria-labelledby="re-admin-entity-link">
+
+                <div class="tab-pane fade show active" id="re-admin-correct" role="tabpanel" aria-labelledby="re-admin-correct-link">
+                  <h3 class="display-7 fw-bold">Your Details</h3>
+                  <div id="divReAdminCorrect" class="divSysAdminOption" style="width:100%; height:300px;">
+                    <div label="true">Full Name:</div>
+                    <div>
+                      <span id="re-admin-correct-fullname">[Insert Username]</span>
+                    </div>
+                    <div label="true">Title:</div>
+                    <div>
+                      <span id="re-admin-correct-title">[Insert Title]</span>
+                    </div>
+                    <div label="true">Email Address:</div>
+                    <div>
+                      <span id="re-admin-correct-email">[Insert Email]</span>
+                      <p>
+                        PLEASE NOTE: Corrections to your email address will trigger a signout from your account and an email sent to 
+                        your new email address with a temporary password. Login again with this password and you will be 
+                        prompted with a password reset screen. You may use your original password if you like.
+                    </p>
+                    </div>
+                    <div label="true">Phone Number:<br><span>(digits only, prepend with "+")</span></div>
+                    <div>
+                      <span id="re-admin-correct-phone">[Insert Phone]</span>
+                    </div>
+                    <div label="true">&nbsp;</div>
+                    <div style="margin-top:30px;">
+                                       
+                      <!-- Button trigger modal -->
+                      <button class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#correctReAdminBackdrop">EDIT</button>
+                      <!-- Modal -->
+                      <div class="modal fade" id="correctReAdminBackdrop" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="correctReAdminBackdropLabel" aria-hidden="true">
+                        <div class="modal-dialog  modal-dialog-scrollable">
+                          <div class="modal-content">
+                            <div class="modal-header">
+                              <h5 class="modal-title" id="correctReAdminBackdropLabel">Edit your account details</h5>
+                            </div>
+                            <div class="modal-body" style="text-align:left; overflow:auto;">
+                              <div style="clear:both; margin-top:10px;">Full Name (first middle last)</div>
+                              <div><input type="text" class="form-control" id="txtReAdminEditFullname"></div>
+                              <div style="clear:both; margin-top:10px;">Title</div>
+                              <div><input type="text" class="form-control" id="txtReAdminEditTitle"></div>
+                              <div style="clear:both; margin-top:10px;">Email Address</div>
+                              <div><input type="text" class="form-control" id="txtReAdminEditEmail"></div>
+                              <div style="clear:both; margin-top:10px;">Phone Number</div>
+                              <div><input type="text" class="form-control" id="txtReAdminEditPhone"></div>
+                            </div>
+                            <div class="modal-footer">
+                              <button id="btnReAdminCorrect" class="btn btn-primary" data-bs-dismiss="modal">SUBMIT CHANGES</button>
+                              &nbsp;
+                              <button class="btn btn-primary" data-bs-dismiss="modal">Cancel</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="tab-pane fade" id="re-admin-entity" role="tabpanel" aria-labelledby="re-admin-entity-link">
                   <div id="divCreateEntity" style="margin-top: 40px; overflow:auto;">
                     <h5 class="display-7 fw-bold" style="text-align:center; margin-top:20px;">Invite authorized individuals</h5>
                     <div id="divReAdminEntityName" class="divSysAdminOption" style="text-align: right;">
@@ -1111,6 +1178,7 @@
                     <div id="divPendingInvitations" style="padding-top:50px; float:left; clear:both;"></div>
                   </div>                  
                 </div>
+                
                 <div class="tab-pane fade" id="asp-request-disclosures" role="tabpanel" aria-labelledby="asp-request-disclosures-tab">
                   <div id="disclosureRequest" style="margin-top: 40px;">
                     <table class="disclosureRequest" style="width:fit-content; margin: 0 auto;">
@@ -1135,6 +1203,7 @@
                     </table>
                   </div>
                 </div>
+
               </div>
             </div>
 
@@ -1147,7 +1216,10 @@
 
               <ul class="nav nav-tabs" id="authInd" role="tablist">
                 <li class="nav-item">
-                  <a class="nav-link active" id="auth-request-exhibits-tab" data-toggle="tab" href="#auth-request-exhibits" role="tab" aria-controls="auth-request-exhibits-link" aria-selected="true">Request Exhibit Forms</a>
+                  <a class="nav-link active" id="auth-request-correct-tab" data-toggle="tab" href="#auth-request-correct" role="tab" aria-controls="auth-request-correct-link" aria-selected="true">Your Details</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" id="auth-request-exhibits-tab" data-toggle="tab" href="#auth-request-exhibits" role="tab" aria-controls="auth-request-exhibits-link" aria-selected="true">Request Exhibit Forms</a>
                 </li>
                 <li class="nav-item">
                   <a class="nav-link" id="auth-request-disclosures-tab" data-toggle="tab" href="#auth-request-disclosures" role="tab" aria-controls="auth-request-disclosures-link" aria-selected="true">Request Disclosure Forms</a>
@@ -1166,8 +1238,98 @@
               </div>
 
               <div class="tab-content" id="authIndContent">
-                <div class="tab-pane fade show active" id="auth-request-exhibits" role="tabpanel" aria-labelledby="auth-request-exhibits-tab">
-                  
+
+                <div class="tab-pane fade show active" id="auth-request-correct" role="tabpanel" aria-labelledby="auth-request-correct-tab">
+                  <h3 class="display-7 fw-bold">Your Details</h3>
+                  <div id="divAuthIndCorrect" class="divSysAdminOption" style="width:100%; height:450px;">
+
+                    <!-- Authorized Individual -->
+                    <div label="true">Full Name:</div>
+                    <div>
+                      <span id="re-auth-ind-correct-fullname">[Insert Username]</span>
+                    </div>
+                    <div label="true">Title:</div>
+                    <div>
+                      <span id="re-auth-ind-correct-title">[Insert Title]</span>
+                    </div>
+                    <div label="true">Email Address:</div>
+                    <div>
+                      <span id="re-auth-ind-correct-email">[Insert Email]</span>
+                      <p>
+                        PLEASE NOTE: Corrections to your email address will trigger a signout from your account and an email sent to 
+                        your new email address with a temporary password. Login again with this password and you will be 
+                        prompted with a password reset screen. You may use your original password if you like.
+                    </p>
+                    </div>
+                    <div label="true">Phone Number:<br><span>(digits only, prepend with "+")</span></div>
+                    <div>
+                      <span id="re-auth-ind-correct-phone">[Insert Phone]</span>
+                    </div>
+
+                    <!-- Delegate -->
+                    <div label="true">Delegate Full Name:</div>
+                    <div>
+                      <span id="re-auth-ind-correct-delegate-fullname">[Insert Username]</span>
+                    </div>
+                    <div label="true">Delegate Title:</div>
+                    <div>
+                      <span id="re-auth-ind-correct-delegate-title">[Insert Title]</span>
+                    </div>
+                    <div label="true">Delegate Email Address:</div>
+                    <div>
+                      <span id="re-auth-ind-correct-delegate-email">[Insert Email]</span>
+                    </div>
+                    <div label="true">Delegate Phone Number:</div>
+                    <div>
+                      <span id="re-auth-ind-correct-delegate-phone">[Insert Phone]</span>
+                    </div>
+
+
+                    <div label="true">&nbsp;</div>
+                    <div style="margin-top:30px;">
+                                       
+                      <!-- Button trigger modal -->
+                      <button class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#correctReAuthIndBackdrop">EDIT</button>
+                      <!-- Modal -->
+                      <div class="modal fade" id="correctReAuthIndBackdrop" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="correctReAuthIndBackdropLabel" aria-hidden="true">
+                        <div class="modal-dialog  modal-dialog-scrollable">
+                          <div class="modal-content">
+                            <div class="modal-header">
+                              <h5 class="modal-title" id="correctReAuthIndBackdropLabel">Edit your account details</h5>
+                            </div>
+                            <div class="modal-body" style="text-align:left; overflow:auto;">
+                              <div style="clear:both; margin-top:10px;">Full Name (first middle last)</div>
+                              <div><input type="text" class="form-control" id="txtReAuthIndEditFullname"></div>
+                              <div style="clear:both; margin-top:10px;">Title</div>
+                              <div><input type="text" class="form-control" id="txtReAuthIndEditTitle"></div>
+                              <div style="clear:both; margin-top:10px;">Email Address</div>
+                              <div><input type="text" class="form-control" id="txtReAuthIndEditEmail"></div>
+                              <div style="clear:both; margin-top:10px;">Phone Number</div>
+                              <div><input type="text" class="form-control" id="txtReAuthIndEditPhone"></div>
+
+                              <div style="clear:both; margin-top:10px;">Delegate Full Name (first middle last)</div>
+                              <div><input type="text" class="form-control" id="txtReAuthIndEditDelegateFullname"></div>
+                              <div style="clear:both; margin-top:10px;">Delegate Title</div>
+                              <div><input type="text" class="form-control" id="txtReAuthIndEditDelegateTitle"></div>
+                              <div style="clear:both; margin-top:10px;">Delegate Email Address</div>
+                              <div><input type="text" class="form-control" id="txtReAuthIndEditDelegateEmail"></div>
+                              <div style="clear:both; margin-top:10px;">Delegate Phone Number</div>
+                              <div><input type="text" class="form-control" id="txtReAuthIndEditDelegatePhone"></div>
+                              
+                            </div>
+                            <div class="modal-footer">
+                              <button id="btnReAuthIndCorrect" class="btn btn-primary" data-bs-dismiss="modal">SUBMIT CHANGES</button>
+                              &nbsp;
+                              <button class="btn btn-primary" data-bs-dismiss="modal">Cancel</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="tab-pane fade" id="auth-request-exhibits" role="tabpanel" aria-labelledby="auth-request-exhibits-tab">                  
                   <p style="margin-top:40px; margin-bottom:15px; font-weight: bold; font-size: 20px;">
                     What affiliate information are you requesting from the consenting individual?</span> 
                   </p>
@@ -1199,6 +1361,7 @@
                   </div>
 
                 </div>
+
                 <div class="tab-pane fade" id="auth-request-disclosures" role="tabpanel" aria-labelledby="auth-request-disclosures-tab">
                   <div id="disclosureRequest" style="margin-top: 40px;">
                     <table class="disclosureRequest" style="width:fit-content; margin: 0 auto;">
@@ -1223,11 +1386,12 @@
                     </table>
                   </div>
                 </div>
+
                 <div class="tab-pane fade" id="auth-amend-entity" role="tabpanel" aria-labelledby="auth-amend-entity-tab">
                   <div id="amendEntity" style="margin-top: 40px; overflow:auto;">
                     <div>
                       You can amend <span name="spanAmendEntityCurrentName" style="font-weight:bold;"></span> by modifying its name, or removing any 
-                      of its representatives, ncluding yourself. For removals, you can simply click the "Amend" button 
+                      of its representatives, including yourself. For removals, you can simply click the "Amend" button 
                       adjacent to the corresponding individual. If you do this, you can continue normal operation for 
                       30 days with the vacancy, but <span name="spanAmendEntityCurrentName" style="font-weight:bold;"></span> will be terminated in 
                       the ETT system if no replacement registers by then. Optionally, you can also type the email address 
@@ -1305,7 +1469,7 @@
                           prompted with a password reset screen. You may use your original password if you like.
                         </p>
                       </div>
-                      <div label="true">Cell Phone:</div>
+                      <div label="true">Phone Number:</div>
                       <div>
                         <span id="consenter-correct-phone">[Insert Phone]</span>
                       </div>
@@ -1329,7 +1493,7 @@
                                 <div><input type="text" class="form-control" id="txtConsentEditLastName"></div>
                                 <div style="clear:both; margin-top:10px;">Email Address</div>
                                 <div><input type="text" class="form-control" id="txtConsentEditEmail"></div>
-                                <div style="clear:both; margin-top:10px;">Cell Phone</div>
+                                <div style="clear:both; margin-top:10px;">Phone Number</div>
                                 <div><input type="text" class="form-control" id="txtConsentEditPhone"></div>
                                 <!--
                                 <div style="clear:both; margin-top:10px;">Please type your full name <span style="font-size: 10px;">(first, middle, last)</span> to digitally sign this Consent Form:</div>
@@ -3256,6 +3420,37 @@
       return consenterInfo;
     }
 
+    const setEntityRepDetails = (role1) => {
+      const { email, fullname, title, phone_number, role:role2, delegate } = userContext ?? {};
+      const { name:role3 } = AccessJwtCookie.getRole() ?? {};
+      const role = role1 || role2 || role3;
+      const prefix1 = role == 'RE_ADMIN' ? 're-admin' : 're-auth-ind';
+      const prefix2 = role == 'RE_ADMIN' ? 'ReAdmin' : 'ReAuthInd';
+      const setLabel = (id, val) => document.getElementById(id).innerHTML = val;
+      const setField = (id, val) => document.getElementById(id).value = val;
+      
+      setLabel(`${prefix1}-correct-fullname`, fullname);
+      setLabel(`${prefix1}-correct-email`, email);
+      setLabel(`${prefix1}-correct-phone`, phone_number);
+      setLabel(`${prefix1}-correct-title`, title);
+      setField(`txt${prefix2}EditFullname`, fullname);
+      setField(`txt${prefix2}EditEmail`, email);
+      setField(`txt${prefix2}EditPhone`, phone_number);
+      setField(`txt${prefix2}EditTitle`, title);
+
+      if(role == 'RE_AUTH_IND') {
+        const { fullname, email, phone_number, title } = delegate || {};
+        setLabel(`${prefix1}-correct-delegate-fullname`, fullname ?? '');
+        setLabel(`${prefix1}-correct-delegate-email`, email ?? '');
+        setLabel(`${prefix1}-correct-delegate-phone`, phone_number ?? '');
+        setLabel(`${prefix1}-correct-delegate-title`, title ?? '');
+        setField(`txt${prefix2}EditDelegateFullname`, fullname ?? '');
+        setField(`txt${prefix2}EditDelegateEmail`, email ?? '');
+        setField(`txt${prefix2}EditDelegatePhone`, phone_number ?? '');
+        setField(`txt${prefix2}EditDelegateTitle`, title ?? '');
+      }
+    }
+
     /**
      * Register consent.
      */
@@ -3315,6 +3510,16 @@
       alert('Consent form sent');
     }
 
+    const validatePhoneNumber = (phone_number) => {
+      if( ! /^\+[1-9]\d{1,14}$/.test(phone_number)) {
+        alert(`"${phone_number}" is not a valid phone number\n` +
+          'Correct format: ^\+[1-9]\d{1,14}$'
+        );
+        return false;
+      }
+      return true;
+    }
+
     /**
      * Submit corrections to the consenter consent form information. NOTE: Not implemented on the backend (pending client discussion)
      */
@@ -3326,10 +3531,7 @@
       const lastname = document.getElementById('txtConsentEditLastName').value;
       const phone_number = document.getElementById('txtConsentEditPhone').value;
 
-      if( ! /^\+[1-9]\d{1,14}$/.test(phone_number)) {
-        alert(`"${phone_number}" is not a valid phone number\n` +
-          'Correct format: ^\+[1-9]\d{1,14}$'
-        );
+      if( ! validatePhoneNumber(phone_number)) {
         return;
       }
       
@@ -3347,6 +3549,115 @@
           }
         }
       );
+    }
+
+    const correctEntityRep = async () => {
+      const { email, fullname, title, phone_number, role:role1, delegate } = userContext ?? {};
+      const { email:delegate_email, fullname:delegate_fullname, title:delegate_title, phone_number:delegate_phone_number } = delegate ?? {};
+      const { name:role2 } = AccessJwtCookie.getRole() ?? {};
+      const role = role1 || role2;
+      const prefix = role == 'RE_ADMIN' ? 'ReAdmin' : 'ReAuthInd';
+
+      const _fullname = document.getElementById(`txt${prefix}EditFullname`).value;
+      if( ! _fullname) { alert('Fullname required'); setEntityRepDetails(); return; }
+
+      const new_email = document.getElementById(`txt${prefix}EditEmail`).value;
+      if( ! new_email) { alert('Email address required'); setEntityRepDetails(); return; }
+      
+      const _phone_number = document.getElementById(`txt${prefix}EditPhone`).value;
+      if( ! _phone_number) { alert('Phone number required'); setEntityRepDetails(); return; }
+      
+      const _title = document.getElementById(`txt${prefix}EditTitle`).value;
+      if( ! _title) { alert('Title required'); setEntityRepDetails(); return; }
+
+      const _delegate_fullname = document.getElementById(`txt${prefix}EditDelegateFullname`).value;
+      const _delegate_email = document.getElementById(`txt${prefix}EditDelegateEmail`).value;     
+      const _delegate_phone_number = document.getElementById(`txt${prefix}EditDelegatePhone`).value;      
+      const _delegate_title = document.getElementById(`txt${prefix}EditDelegateTitle`).value;
+      const someDelegateEntries = () => {
+        return _delegate_fullname || _delegate_email || _delegate_phone_number || _delegate_title;
+      }
+      if(someDelegateEntries() && ! _delegate_fullname) { alert('Delegate fullname required'); setEntityRepDetails(); return; }
+      if(someDelegateEntries() && ! _delegate_email) { alert('Delegate email address required'); setEntityRepDetails(); return; }
+      if(someDelegateEntries() && ! _delegate_phone_number) { alert('Delegate phone number required'); setEntityRepDetails(); return; }
+      if(someDelegateEntries() && ! _delegate_title) { alert('Delegate title required'); setEntityRepDetails(); return; }
+      
+      if( ! validatePhoneNumber(phone_number)) { setEntityRepDetails(); return; }
+
+      let changeDetected = false;
+      changeDetected ||= _fullname != fullname;
+      changeDetected ||= new_email.toLowerCase() != email.toLowerCase();
+      changeDetected ||= _phone_number != phone_number;
+      changeDetected ||= _title != title;
+      changeDetected ||= _delegate_fullname != delegate_fullname;
+      changeDetected ||= _delegate_email != delegate_email;
+      changeDetected ||= _delegate_phone_number != delegate_phone_number;
+      changeDetected ||= _delegate_title != delegate_title;
+
+      if( ! changeDetected) { alert('No changes detected'); return; }
+
+      const submitUpdate = async (task, parameters, successCallback) => {
+        const msg = document.getElementById('apiResponse');
+        msg.innerHTML = '';
+        try {
+          const { role } = parameters
+          const response = await fetch(apiUri(role), {
+            method: 'GET',
+            mode: 'cors',
+            credentials: 'include',
+            headers: {
+              'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+              'Content-Type': 'application/json',
+              [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({ task, parameters })
+            }
+          });
+
+          const package = await response.json();
+          const { message, payload } = package;
+          if(payload.ok) {
+            if(successCallback) {
+              successCallback();
+            }
+          }
+          else {
+            msg.innerHTML = `<pre>${message}</pre>`;
+          }
+        }
+        catch(e) {
+          msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+        }
+      }
+      
+      const task = 'correct-entity-rep';
+      const parameters = { 
+        email, 
+        new_email: new_email.toLowerCase(),
+        entity_id: userContext.entity.entity_id,
+        fullname: _fullname, 
+        title: _title, 
+        phone_number: _phone_number, 
+        role
+      };
+      if(someDelegateEntries()) {
+        parameters.delegate = {
+          email: _delegate_email.toLowerCase(),
+          fullname: _delegate_fullname,
+          title: _delegate_title,
+          phone_number: _delegate_phone_number
+        }
+      }
+      const callback = () => {
+        if(new_email != email) {
+          alert('Your account has been deleted.\n\nPlease check the inbox of your new email address for an invitation to re-register.');
+          signOut();
+        }
+        else {
+          alert('Update complete');
+          location.reload();
+        }
+      }
+
+      await submitUpdate(task, parameters, callback);
     }
 
     /**
@@ -4258,15 +4569,17 @@
         const entity_id = 'abc123';
         const entity_name = 'The Hughs Corporation';
         const asp = { 
-          user: { email:'kong@skull.island.com', fullname:'King Kong', title:'Head Honcho', role:'RE_ADMIN', active:'Y' },
+          user: { email:'kong@skull.island.com', fullname:'King Kong', title:'Head Honcho', phone_number:'+16172223333', role:'RE_ADMIN', active:'Y' },
           invitation: { code:'abc123', entity_id, role:'RE_ADMIN', entity_name, email:'abc123', sent_timestamp: '2024-12-23T20:25:23.092Z' }
         };
-        const ai1 = { 
-          user: { email:'mary@disney.com', fullname:'Mary Poppins', title:'Nannie', role:'RE_AUTH_IND', active:'Y' },
+        const ai1 = {
+          user: { email:'mary@disney.com', fullname:'Mary Poppins', title:'Nannie', phone_number:'+16173334444', role:'RE_AUTH_IND', active:'Y', delegate: {
+            email:'churchill@uk.gov', fullname:'Winston Churchill', title:'Prime Minister', phone_number:'+16173334444'
+          }},
           invitation: { code:'def456', entity_id, role:'RE_AUTH_IND', entity_name, email:'def456', sent_timestamp: '2024-12-24T20:25:23.092Z' }
         };
         const ai2 = { 
-          user: { email:'mickey@disney.com', fullname:'Mickey Mouse', title:'Entertainer', role:'RE_AUTH_IND', active:'Y' },
+          user: { email:'mickey@disney.com', fullname:'Mickey Mouse', title:'Entertainer', phone_number:'+16174445555', role:'RE_AUTH_IND', active:'Y' },
           invitation: { code:'ghi789', entity_id, role:'RE_AUTH_IND', entity_name, email:'ghi789', sent_timestamp: '2024-12-24T20:25:23.438Z' }
         }
 
@@ -4288,9 +4601,9 @@
 
         if(selected_role == 'RE_ADMIN') {
           users = users.filter(u => u.role != 'RE_ADMIN');
-          const { fullname, email, title, role } = asp.user;
+          const { fullname, email, title, role, phone_number } = asp.user;
           userContext = {
-            fullname, email, title, role,          
+            fullname, email, title, role, phone_number,       
             entity: { entity_id, entity_name, users, pendingInvitations, totalUserCount:users.length+1 }
           }
           setName({ name:selected_role, fullname:'Administrative Support Person' }, { getDisplayName:() => fullname ?? email });
@@ -4301,9 +4614,9 @@
             thisAi = 'mickey';
           }
           users = users.filter(u => u.email.startsWith(thisAi) == false);
-          const { fullname, email, title, role } = ai1.user;
+          const { fullname, email, title, role, phone_number, delegate } = ai1.user;
           userContext = {
-            fullname, email, title, role,           
+            fullname, email, title, role, phone_number, delegate,         
             entity: { entity_id, entity_name, users, pendingInvitations, totalUserCount:users.length+1 }
           }
           setName({ name:selected_role, fullname:'Authorized Individual' }, { getDisplayName:() => fullname ?? email });
@@ -5632,6 +5945,12 @@
       document.getElementById('btnConsenterCorrect').addEventListener('click', () => {
         correctConsenter();
       });
+      document.getElementById('btnReAdminCorrect').addEventListener('click', () => {
+        correctEntityRep();
+      });
+      document.getElementById('btnReAuthIndCorrect').addEventListener('click', () => {
+        correctEntityRep();
+      });
       document.getElementById('txtExhibitSignature').addEventListener('keyup', () => {
         toggleHighlight(event.srcElement);
       });
@@ -5835,6 +6154,7 @@
                 dashboard.querySelectorAll(`#disclosureRequest input`).forEach(i => i.disabled = true);
                 dashboard.querySelectorAll(`#disclosureRequest button`).forEach(b => b.disabled = true);
               }
+              setEntityRepDetails();
               break;
 
             case 'RE_AUTH_IND':
@@ -5855,6 +6175,13 @@
                 dashboard.querySelectorAll(`#amendEntity button`).forEach(b => b.disabled = true);
                 dashboard.querySelectorAll(`#amendEntity input`).forEach(i => i.disabled = true);
 
+                // Re-enable the controls for the "Your Details" tab
+                dashboard.querySelector(`#auth-request-correct`).style.color = ''
+                dashboard.querySelectorAll(`#auth-request-correct input`).forEach(i => i.disabled = false);
+                dashboard.querySelectorAll(`#auth-request-correct button`).forEach(b => b.disabled = false);
+                dashboard.querySelectorAll(`#auth-request-correct div`).forEach(d => d.style.color = '');
+                dashboard.querySelectorAll(`#auth-request-correct label`).forEach(l => l.style.color = '');
+
                 // Re-enable the controls for the amend entity tab
                 dashboard.querySelector(`#auth-amend-entity`).style.color = ''
                 dashboard.querySelectorAll(`#auth-amend-entity input`).forEach(i => i.disabled = false);
@@ -5862,6 +6189,8 @@
                 dashboard.querySelectorAll(`#auth-amend-entity div`).forEach(d => d.style.color = '');
                 dashboard.querySelectorAll(`#auth-amend-entity label`).forEach(l => l.style.color = '');
               }
+
+              setEntityRepDetails();
 
               const checkConsenterListing = async () => {
                 const exhibitsTabFocus = document.getElementById('auth-request-exhibits').className.includes('show');

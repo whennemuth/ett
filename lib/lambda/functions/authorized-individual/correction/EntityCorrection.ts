@@ -59,7 +59,7 @@ export class EntityToCorrect {
     await entityCrud.update();
 
     // Obtain all users of the entity
-    const entityUsers = (await UserCrud({ entity_id:now.entity_id } as User).read() as User[])
+    const entityUsers = (await UserCrud({ userinfo: { entity_id:now.entity_id } as User }).read() as User[])
       .filter(user => user.active == YN.Yes);
 
     // Obtain the user who is making the correction
@@ -155,12 +155,12 @@ export const scheduleStaleEntityVacancyHandler = async (entity:Entity, role:Role
     const { STALE_AI_VACANCY, STALE_ASP_VACANCY } = ConfigNames;
     const { entity_id, entity_name } = entity ?? {};
     const lambdaInput = { entity_id } as StaleVacancyLambdaParms;
-    const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
+    const delayedExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
     const staleAfter = role == Roles.RE_ADMIN ? STALE_ASP_VACANCY : STALE_AI_VACANCY;
     let waitTime = (await configs.getAppConfig(staleAfter)).getDuration();
     waitTime += 60; // Event bridge seems to trigger early at times by anywhere up to 18 seconds, so tack on an extra minute.
     const timer = EggTimer.getInstanceSetFor(waitTime, PeriodType.SECONDS);
-    await delayedTestExecution.startCountdown(timer, `${RulePrefix}: ${entity_name}`);
+    await delayedExecution.startCountdown(timer, `${RulePrefix}: ${entity_name}`);
   }
   else {
     console.error(`Cannot schedule ${RulePrefix}: ${envVarName} variable is missing from the environment!`);

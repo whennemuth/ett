@@ -254,7 +254,7 @@ export const handler = async (_event:any) => {
   // that will terminate the entity if the remaining user(s) do not register within the time dictated by policy.
   if((role == Roles.RE_ADMIN || role == Roles.RE_AUTH_IND) && invitation) {
     const { entity_id, entity_name } = invitation as Invitation;
-    const activeUsers = (await UserCrud({ entity_id } as User).read() as User[]).filter(u => u.active == YN.Yes);
+    const activeUsers = (await UserCrud({ userinfo: { entity_id } as User }).read() as User[]).filter(u => u.active == YN.Yes);
     const asps = activeUsers.filter(u => u.role == Roles.RE_ADMIN);
     const ais = activeUsers.filter(u => u.role == Roles.RE_AUTH_IND);
     const configs = new Configurations();

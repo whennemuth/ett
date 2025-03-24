@@ -19,8 +19,9 @@ export class EntityToAutomate {
   private entity:Entity;
   private asps = [] as User[];
   private ais = [] as User[];
+  private createInvitations:boolean;
 
-  constructor(entityName:string, ) {
+  constructor(entityName:string, createInvitations:boolean=false) {
     this.entityName = entityName;
   }
 
@@ -82,7 +83,7 @@ export class EntityToAutomate {
   private sampledUsers = [] as User[];
 
   private createUser = async (user:User) => {
-    const { entity: { entity_id }, entityName, sampledUsers } = this;
+    const { entity: { entity_id }, entityName, sampledUsers, createInvitations } = this;
     const { email, role } = user;
 
     // This should be enough sample users
@@ -130,9 +131,11 @@ export class EntityToAutomate {
     }
     user.sub = sub;
     user.entity_id = entity_id;
-    await UserCrud(user).create();
+    await UserCrud({ userinfo:user }).create();
 
-    // Create invitations as if they had been sent, accepted, and used to mark registration date.
+    if( ! createInvitations) return;
+
+    // Create invitations as if they had been sent, accepted, and used to mark registration date.    
     const now = new Date().toISOString();
     await InvitationCrud({
       code: uuidv4(),
