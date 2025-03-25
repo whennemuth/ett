@@ -12,6 +12,11 @@ import { ExhibitFormSingleOther } from '../../_lib/pdf/ExhibitFormSingleOther';
 import { IPdfForm, PdfForm } from "../../_lib/pdf/PdfForm";
 import { FormName } from '../forms/Download';
 
+export type ExhibitEmailOverrides = {
+  subject?:string;
+  from?:string;
+  message?:string;
+}
 
 /**
  * This class represents an email issued by the system on behalf of a consenting individual to either 
@@ -24,13 +29,15 @@ import { FormName } from '../forms/Download';
 export class ExhibitEmail {
   private parms:ExhibitFormParms;
   private pdf:IPdfForm; 
+  private overrides:ExhibitEmailOverrides;
 
   /**
    * 
    * @param parms The data to build the exhibit form from and the form type.
    */
-  constructor(parms:ExhibitFormParms) {
+  constructor(parms:ExhibitFormParms, overrides?:ExhibitEmailOverrides) {
     this.parms = parms;
+    this.overrides = overrides ?? {};
   }
 
   public send = async (to:string[], cc?:string[]):Promise<boolean> => {
@@ -48,6 +55,8 @@ export class ExhibitEmail {
     if( ! constraint) {
       throw new Error('Constraint is missing');
     }
+
+    let { from, message, subject } = this.overrides;
     
     let name:string|undefined = undefined;
     switch(formType) {
@@ -60,22 +69,25 @@ export class ExhibitEmail {
             this.pdf = ExhibitFormFullCurrent.getInstance(parms);
             name = EXHIBIT_FORM_CURRENT_FULL;
             action = 'forwarding you their current employer affiliate list via ETT';
+            if(message) message = `${message} current employer affiliate list`;
             break;
           case OTHER:
             this.pdf = ExhibitFormFullOther.getInstance(parms);
             name = EXHIBIT_FORM_OTHER_FULL;
             action = 'forwarding you their full affiliate list via ETT, omitting any current employer(s)';
+            if(message) message = `${message} full affiliate list, omitting any current employer(s)`;
             break;
           case BOTH: default:
             this.pdf = ExhibitFormFullBoth.getInstance(parms);
             name = EXHIBIT_FORM_BOTH_FULL;
             action = 'forwarding you their full affiliate list via ETT';
+            if(message) message = `${message} full affiliate list`;
             break;
         }
         return await sendEmail({
-          subject: 'ETT Exhibit Form Submission',
-          from: `noreply@${context.ETT_DOMAIN}`,
-          message: `${roleFullName(Roles.CONSENTING_PERSON)} ${consenterFullname} is ${action}`,
+          subject: subject ?? 'ETT Exhibit Form Submission',
+          from: from ?? `noreply@${context.ETT_DOMAIN}`,
+          message: message ?? `${roleFullName(Roles.CONSENTING_PERSON)} ${consenterFullname} is ${action}`,
           to, cc,
           pdfAttachments: {
             pdf: this.pdf,
@@ -101,9 +113,9 @@ export class ExhibitEmail {
             break;
         }
         return await sendEmail({
-          subject: 'ETT Notice of Consent',
-          from: `noreply@${context.ETT_DOMAIN}`,
-          message: `${roleFullName(Roles.CONSENTING_PERSON)} ${consenterFullname} has named you as an affilate for disclosure to ${entity_name}`,
+          subject: subject ?? 'ETT Notice of Consent',
+          from: from ?? `noreply@${context.ETT_DOMAIN}`,
+          message: message ?? `${roleFullName(Roles.CONSENTING_PERSON)} ${consenterFullname} has named you as an affilate for disclosure to ${entity_name}`,
           to, cc,
           pdfAttachments: {
             pdf: this.pdf,

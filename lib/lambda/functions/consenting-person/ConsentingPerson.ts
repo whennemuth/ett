@@ -25,7 +25,7 @@ import { TagInspector } from "./BucketItemTag";
 import { ConsentFormEmail } from "./ConsentEmail";
 import { ConsentingPersonToCorrect } from "./correction/Correction";
 import { ExhibitCorrectionEmail } from "./correction/ExhibitCorrectionEmail";
-import { ExhibitEmail } from "./ExhibitEmail";
+import { ExhibitEmail, ExhibitEmailOverrides } from "./ExhibitEmail";
 import { deleteExhibitForm, RulePrefix as DbRulePrefix } from "../delayed-execution/targets/PurgeExhibitFormFromDatabase";
 import { RulePrefix as S3RulePrefix } from "../delayed-execution/targets/PurgeExhibitFormFromBucket"
 import { CognitoStandardAttributes, UserAccount } from "../../_lib/cognito/UserAccount";
@@ -820,7 +820,7 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
         entity,
         consentFormUrl: consentFormUrl(consenterEmail),
         data: _exhibitForm,
-      } as ExhibitFormParms).send([ consenterEmail ]);
+      } as ExhibitFormParms, { message:'Please find attached a copy of your recently submitted' } as ExhibitEmailOverrides).send([ consenterEmail ]);
     }
     catch(e) {
       error(e);
