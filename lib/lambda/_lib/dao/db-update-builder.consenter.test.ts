@@ -1,7 +1,7 @@
 import { AttributeValue, UpdateItemCommandInput } from '@aws-sdk/client-dynamodb';
 import { DynamoDbConstruct, TableBaseNames } from '../../../DynamoDb';
 import { deepEqual } from '../../Utils';
-import { consenterUpdate } from './db-update-builder.consenter';
+import { consenterUpdate, ConsenterUpdateParms } from './db-update-builder.consenter';
 import { Affiliate, AffiliateTypes, Consenter, ConsenterFields, ExhibitForm, ExhibitFormFields } from './entity';
 
 describe('getCommandInputBuilderForConsenterUpdate', () => {
@@ -163,7 +163,8 @@ describe('getCommandInputBuilderForConsenterUpdate', () => {
   it('Should produce the expected command input for non-exhibit update', () => {
     const newConsenter = getNewConsenter();
     const oldConsenter = getOldConsenter();
-    const input = consenterUpdate(TableName, newConsenter, oldConsenter).buildUpdateItemCommandInput() as UpdateItemCommandInput;
+    const parms = { TableName, _new:newConsenter, old:oldConsenter } as ConsenterUpdateParms;
+    const input = consenterUpdate(parms).buildUpdateItemCommandInput() as UpdateItemCommandInput;
 
     const expectedOutput = {
       TableName,
@@ -206,7 +207,8 @@ describe('getCommandInputBuilderForConsenterUpdate', () => {
       Object.assign(ef4, { affiliates: [ getYosemiteSam(), getFoghornLeghorn() ]})
     ];
     
-    const input = consenterUpdate(TableName, newConsenter, oldConsenter).buildUpdateItemCommandInput() as UpdateItemCommandInput;
+    const parms = { TableName, _new:newConsenter, old:oldConsenter } as ConsenterUpdateParms;
+    const input = consenterUpdate(parms).buildUpdateItemCommandInput() as UpdateItemCommandInput;
 
     expect(input).toEqual([]);
   });
@@ -218,7 +220,8 @@ describe('getCommandInputBuilderForConsenterUpdate', () => {
     newConsenter.exhibit_forms = [ getExhibitForm(1) ]
 
     // Run the builder and assert that only a SET of exhibit_form is reflected in the result.
-    const input = consenterUpdate(TableName, newConsenter, oldConsenter).buildUpdateItemCommandInput() as UpdateItemCommandInput;
+    const parms = { TableName, _new:newConsenter, old:oldConsenter } as ConsenterUpdateParms;
+    const input = consenterUpdate(parms).buildUpdateItemCommandInput() as UpdateItemCommandInput;
 
     const expectedOutput = {
       TableName,
@@ -245,7 +248,8 @@ describe('getCommandInputBuilderForConsenterUpdate', () => {
     newConsenter.exhibit_forms = [ getExhibitForm(1), getExhibitForm(2), getExhibitForm(3) ]
 
     // Run the builder and assert that only a SET of exhibit_form is reflected in the result.
-    const input = consenterUpdate(TableName, newConsenter, oldConsenter).buildUpdateItemCommandInput() as UpdateItemCommandInput;
+    const parms = { TableName, _new:newConsenter, old:oldConsenter } as ConsenterUpdateParms;
+    const input = consenterUpdate(parms).buildUpdateItemCommandInput() as UpdateItemCommandInput;
 
     const expectedOutput = {
       TableName,
@@ -271,7 +275,8 @@ describe('getCommandInputBuilderForConsenterUpdate', () => {
     newConsenter.exhibit_forms = [ Object.assign(getExhibitForm(1), { affiliates: [ getBugsBunny(), getYosemiteSam() ]}) ]
 
     // Run the builder and assert that only a SET of exhibit_form is reflected in the result.
-    const input = consenterUpdate(TableName, newConsenter, oldConsenter).buildUpdateItemCommandInput() as UpdateItemCommandInput;
+    const parms = { TableName, _new:newConsenter, old:oldConsenter } as ConsenterUpdateParms;
+    const input = consenterUpdate(parms).buildUpdateItemCommandInput() as UpdateItemCommandInput;
 
     const efApi1 = getExhibitForm(1, true);
     (efApi1 as any).M.affiliates = { L: [ getBugsBunny(true), getYosemiteSam(true) ] };
@@ -314,7 +319,8 @@ describe('getCommandInputBuilderForConsenterUpdate', () => {
     newConsenter.exhibit_forms = [ ef3, ef4 ];
     
     // Build the command input
-    const input = consenterUpdate(TableName, newConsenter, oldConsenter).buildUpdateItemCommandInput() as UpdateItemCommandInput;
+    const parms = { TableName, _new:newConsenter, old:oldConsenter } as ConsenterUpdateParms;
+    const input = consenterUpdate(parms).buildUpdateItemCommandInput() as UpdateItemCommandInput;
 
     // Build a command input that is expected to match
     const efApi1 = getExhibitForm(1, true);
@@ -374,42 +380,47 @@ describe('getCommandInputBuilderForConsenterUpdate', () => {
     // Add the same 3 exhibit forms to the modified consenter, except the middle one.
     newConsenter.exhibit_forms = [ ef1, ef3 ];
     // Build the command input
-    let input = consenterUpdate(TableName, newConsenter, oldConsenter).buildUpdateItemCommandInput() as UpdateItemCommandInput;
+    let parms = { TableName, _new:newConsenter, old:oldConsenter } as ConsenterUpdateParms;
+    let input = consenterUpdate(parms).buildUpdateItemCommandInput() as UpdateItemCommandInput;
     // Build a command input that is expected to match
     expectedOutput!.ExpressionAttributeValues![":exhibit_forms"] = { L: [ efApi1, efApi3 ] };
     // Test for equality between command input and expected command input
     expect(deepEquivalent(input, expectedOutput)).toBe(true);
     // Retry with "merge" set to true
     let mergeParms = { fieldName:ConsenterFields.exhibit_forms, merge:true };
-    input = consenterUpdate(TableName, newConsenter, oldConsenter).buildUpdateItemCommandInput(mergeParms) as UpdateItemCommandInput;
+    input = consenterUpdate(parms).buildUpdateItemCommandInput(mergeParms) as UpdateItemCommandInput;
     // Test that the output reflects the fact that an update would result in no effective changes, and so is empty.
     expect(input).toEqual([]);
 
     // Now remove another exhibit form
     newConsenter.exhibit_forms = [ ef3 ];    
     // Build the command input
-    input = consenterUpdate(TableName, newConsenter, oldConsenter).buildUpdateItemCommandInput() as UpdateItemCommandInput;  
+    parms = { TableName, _new:newConsenter, old:oldConsenter } as ConsenterUpdateParms;
+    input = consenterUpdate(parms).buildUpdateItemCommandInput() as UpdateItemCommandInput;  
     // Build a command input that is expected to match
     expectedOutput!.ExpressionAttributeValues![":exhibit_forms"] = { L: [ efApi3 ] };
     // Test for equality between command input and expected command input
     expect(deepEquivalent(input, expectedOutput)).toBe(true);
     // Retry with "merge" set to true
     mergeParms = { fieldName:ConsenterFields.exhibit_forms, merge:true };
-    input = consenterUpdate(TableName, newConsenter, oldConsenter).buildUpdateItemCommandInput(mergeParms) as UpdateItemCommandInput;
+    parms = { TableName, _new:newConsenter, old:oldConsenter } as ConsenterUpdateParms;
+    input = consenterUpdate(parms).buildUpdateItemCommandInput(mergeParms) as UpdateItemCommandInput;
     // Test that the output reflects the fact that an update would result in no effective changes, and so is empty.
     expect(input).toEqual([]);
 
     // Now remove the last exhibit form
     newConsenter.exhibit_forms = undefined;
     // Build the command input
-    input = consenterUpdate(TableName, newConsenter, oldConsenter).buildUpdateItemCommandInput() as UpdateItemCommandInput;  
+    parms = { TableName, _new:newConsenter, old:oldConsenter } as ConsenterUpdateParms;
+    input = consenterUpdate(parms).buildUpdateItemCommandInput() as UpdateItemCommandInput;  
     // Build a command input that is expected to match
     expectedOutput!.ExpressionAttributeValues![":exhibit_forms"] = { L: [ ] };
     // Test for equality between command input and expected command input
     expect(deepEquivalent(input, expectedOutput)).toBe(true);
     // Retry with "merge" set to true
     mergeParms = { fieldName:ConsenterFields.exhibit_forms, merge:true };
-    input = consenterUpdate(TableName, newConsenter, oldConsenter).buildUpdateItemCommandInput(mergeParms) as UpdateItemCommandInput;
+    parms = { TableName, _new:newConsenter, old:oldConsenter } as ConsenterUpdateParms;
+    input = consenterUpdate(parms).buildUpdateItemCommandInput(mergeParms) as UpdateItemCommandInput;
     // Test that the output reflects the fact that an update would result in no effective changes, and so is empty.
     expect(input).toEqual([]);
   });
@@ -453,7 +464,8 @@ describe('getCommandInputBuilderForConsenterUpdate', () => {
     (efApi7.M as any).affiliates = { L: [ getBugsBunny(true), getYosemiteSam(true), getFoghornLeghorn(true) ] };
 
     // Build the command input
-    let input = consenterUpdate(TableName, newConsenter, oldConsenter).buildUpdateItemCommandInput() as UpdateItemCommandInput;
+    let parms = { TableName, _new:newConsenter, old:oldConsenter } as ConsenterUpdateParms;
+    let input = consenterUpdate(parms).buildUpdateItemCommandInput() as UpdateItemCommandInput;
     
     // Build a command input that is expected to match the SET operation against on of the exhibit_forms list items
     const expectedOutput = {
@@ -483,7 +495,8 @@ describe('getCommandInputBuilderForConsenterUpdate', () => {
 
     // Retry with "merge" set to true
     const mergeParms = { fieldName:ConsenterFields.exhibit_forms, merge:true };
-    input = consenterUpdate(TableName, newConsenter, oldConsenter).buildUpdateItemCommandInput(mergeParms) as UpdateItemCommandInput;
+    parms = { TableName, _new:newConsenter, old:oldConsenter } as ConsenterUpdateParms;
+    input = consenterUpdate(parms).buildUpdateItemCommandInput(mergeParms) as UpdateItemCommandInput;
     expectedOutput!.ExpressionAttributeValues![":exhibit_forms"] = { L: [ efApi4, efApi5, efApi6, efApi7 ] };
     // Test for equality between command input and expected command input
     expect(deepEquivalent(input, expectedOutput)).toBe(true);

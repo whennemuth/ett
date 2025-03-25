@@ -30,7 +30,7 @@ export const handler = async (event:ScheduledLambdaInput, context:any) => {
     log({ consenterEmail }, `Running consenter purge check`);
 
     // Lookup consenter database record
-    const dao = ConsenterCrud({ email: consenterEmail } as Consenter);
+    const dao = ConsenterCrud({ consenterInfo: { email: consenterEmail } as Consenter });
     const consenter = await dao.read() as Consenter;
 
     if( ! consenter) {

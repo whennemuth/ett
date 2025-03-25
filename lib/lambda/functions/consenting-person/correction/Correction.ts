@@ -37,7 +37,7 @@ export class ConsentingPersonToCorrect {
        * NOTE: Make sure the default timestamp conversion to date objects is avoided - The upcoming update needs 
        * them to be ISO strings.
        */
-      const consenter = await ConsenterCrud(this.correctable).read({ convertDates:false } as ReadParms) as Consenter|null;
+      const consenter = await ConsenterCrud({ consenterInfo: this.correctable }).read({ convertDates:false } as ReadParms) as Consenter|null;
       if( ! consenter) {
         error(this.correctable, 'Lookup for consenter failed');
         return false;
@@ -103,13 +103,13 @@ export class ConsentingPersonToCorrect {
         corrected.sub = sub;
 
         // Add the new consenter to the database. NOTE: using update to create user to avoid validation checks.
-        await ConsenterCrud(corrected).update({} as Consenter);
+        await ConsenterCrud({ consenterInfo: corrected }).update({} as Consenter);
 
         // Mark the old user as inactive in the database and blank out the sub and exhibit forms
         correctable.active = YN.No;
         correctable.exhibit_forms = [];
         correctable.sub = 'DEFUNCT';
-        await ConsenterCrud(correctable).update();
+        await ConsenterCrud({ consenterInfo: correctable }).update();
 
         // Duplicate any exhibit form expiration event bridge rules, but applied against the new consenter db record.
         if(exhibit_forms.length > 0) {
@@ -134,7 +134,7 @@ export class ConsentingPersonToCorrect {
         corrected = mergeConsenters(correctable, corrected);
 
         // Pass on any updates to the consenter to the corresponding database record.
-        await ConsenterCrud(corrected).update(correctable, true);
+        await ConsenterCrud({ consenterInfo: corrected }).update(correctable, true);
       }
     }
     else {
@@ -148,7 +148,7 @@ export class ConsentingPersonToCorrect {
       corrected = mergeConsenters(correctable, corrected);
 
       // Pass on any updates to the consenter to the corresponding database record.
-      await ConsenterCrud(corrected).update(correctable, true);
+      await ConsenterCrud({ consenterInfo: corrected }).update(correctable, true);
     }
 
     // Create a correction pdf form and email it to the reps of any entities that are indicated.
@@ -261,7 +261,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     process.env.DEBUG = 'true';
 
     const email = 'cp2@warhen.work';
-    const correctable = await ConsenterCrud({ email } as Consenter).read() as Consenter;
+    const correctable = await ConsenterCrud({ consenterInfo: { email } as Consenter }).read() as Consenter;
     const _corrected = Object.assign({}, correctable);
 
     // Append an incrementing counter to the lastname field (makes multiple consecutive corrections easy). 

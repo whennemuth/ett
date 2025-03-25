@@ -248,13 +248,18 @@ export const getConsenterInfo = async (parm:string|Consenter, includeEntityList:
   return retval;
 }
 
+export type AppendTimestampParms = {
+  consenter:Consenter, timestampFldName:ConsenterFields, active:YN, removeSub?:boolean
+}
+
 /**
  * Append to one of the timestamp array fields of the consenter.
  * @param email 
  * @param timestampFldName 
  * @returns 
  */
-export const appendTimestamp = async (consenter:Consenter, timestampFldName:ConsenterFields, active:YN): Promise<LambdaProxyIntegrationResponse> => {
+export const appendTimestamp = async (parms:AppendTimestampParms): Promise<LambdaProxyIntegrationResponse> => {
+  let { active, consenter, timestampFldName, removeSub=false } = parms;
   if( ! consenter) {
     return invalidResponse(INVALID_RESPONSE_MESSAGES.noSuchConsenter)
   }
@@ -268,12 +273,14 @@ export const appendTimestamp = async (consenter:Consenter, timestampFldName:Cons
   (consenter[timestampFldName] as string[]).push(dte);
   
   // Apply the same change at the backend on the database record
-  const dao = DAOFactory.getInstance({ DAOType: 'consenter', Payload: {
-    email,
-    [timestampFldName]: consenter[timestampFldName],
-    active
-  } as unknown as Consenter });
-  await dao.update();
+  await ConsenterCrud({
+    consenterInfo: {
+      email,
+      [timestampFldName]: consenter[timestampFldName],
+      active
+    } as unknown as Consenter,
+    removeSub
+  }).update();
   
   // Return a response with an updated consenter info payload
   return getConsenterResponse(consenter, false);
@@ -293,11 +300,11 @@ export const registerConsent = async (email:string): Promise<LambdaProxyIntegrat
     return invalidResponse(INVALID_RESPONSE_MESSAGES.noSuchConsenter + ' ' + email );
   }
 
-  const response = await appendTimestamp(
-    consenterInfo.consenter, 
-    ConsenterFields.consented_timestamp,
-    YN.Yes
-  );
+  const response = await appendTimestamp({
+    consenter: consenterInfo.consenter, 
+    timestampFldName: ConsenterFields.consented_timestamp,
+    active: YN.Yes
+  });
   consenterInfo = JSON.parse(response.body ?? '{}')['payload'] as ConsenterInfo;
   const { consenter } = consenterInfo ?? {};
   if(consenter) {
@@ -328,11 +335,11 @@ export const renewConsent = async (email:string): Promise<LambdaProxyIntegration
   //   return invalidResponse(INVALID_RESPONSE_MESSAGES.missingConsent);
   // }
 
-  return appendTimestamp(
-    consenterInfo.consenter, 
-    ConsenterFields.renewed_timestamp,
-    YN.Yes
-  );
+  return appendTimestamp({
+    consenter: consenterInfo.consenter, 
+    timestampFldName: ConsenterFields.renewed_timestamp,
+    active: YN.Yes
+});
 }
 
 /**
@@ -361,12 +368,13 @@ export const rescindConsent = async (email:string): Promise<LambdaProxyIntegrati
   const userAccount = await UserAccount.getInstance(attributes, Roles.CONSENTING_PERSON);
   await userAccount.Delete();
 
-  // Flip the consenter database record to inactive and push the current timestamp to its rescinded array.
-  return appendTimestamp(
+  // Flip the consenter database record to inactive, remove the sub, and push the current timestamp to its rescinded array.
+  return appendTimestamp({
     consenter, 
-    ConsenterFields.rescinded_timestamp,
-    YN.No
-  );
+    timestampFldName: ConsenterFields.rescinded_timestamp,
+    active: YN.No,
+    removeSub: true
+  });
 };
 
 /**
@@ -446,7 +454,7 @@ export const sendConsent = async (consenter:Consenter, entityName?:string): Prom
  */
 export const sendConsenterRegistrationForm = async (consenterInfo:Consenter, entityName:string, loginHref?:string): Promise<LambdaProxyIntegrationResponse> => {
   const email = consenterInfo.email.toLowerCase();;
-  const consenter = await ConsenterCrud(consenterInfo).read() as Consenter;
+  const consenter = await ConsenterCrud({ consenterInfo }).read() as Consenter;
   if( ! consenter) {
     return errorResponse(`Cannot send registration form to ${email}: Consenter not found`);
   }
@@ -522,7 +530,7 @@ export const saveExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
   // Update the consenter record by creating/modifying the provided exhibit form.
   const newConsenter = deepClone(oldConsenter) as Consenter;
   newConsenter.exhibit_forms = [ exhibitForm ];
-  const dao = ConsenterCrud(newConsenter);
+  const dao = ConsenterCrud({ consenterInfo: newConsenter });
   await dao.update(oldConsenter, true); // NOTE: merge is set to true - means that other exhibit forms are retained.
 
   // Create a delayed execution to remove the exhibit form 2 days from now
@@ -1088,7 +1096,7 @@ export const correctExhibitData = async (consenterEmail:string, corrections:Exhi
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/ConsentingPerson.ts')) {
 
-  const task = Task.SEND_EXHIBIT_FORM as Task;
+  const task = Task.RESCIND_CONSENT as Task;
   
   const bugs = {
     affiliateType:"employer",

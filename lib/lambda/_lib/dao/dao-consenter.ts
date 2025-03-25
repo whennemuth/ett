@@ -8,8 +8,12 @@ import { Builder, MergeParms } from "./db-update-builder-utils";
 import { consenterUpdate } from "./db-update-builder.consenter";
 import { AffiliateTypes, Consenter, ConsenterFields, Roles, YN } from "./entity";
 
-export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): DAOConsenter {
+export type UserCrudParams = {
+  consenterInfo:Consenter, _dryRun?:boolean, removeSub?:boolean
+}
 
+export function ConsenterCrud(parms:UserCrudParams): DAOConsenter {
+  const { consenterInfo, _dryRun=false, removeSub=false } = parms;
   const dbclient = new DynamoDBClient({ region: process.env.REGION });
   const docClient = DynamoDBDocumentClient.from(dbclient);
   const { getTableName } = DynamoDbConstruct;
@@ -33,7 +37,7 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
   * and is returned instead.
   */
   const dryRun = () => {
-    return ConsenterCrud(consenterInfo, true);
+    return ConsenterCrud({consenterInfo, _dryRun:true });
   }
 
   const throwMissingError = (task:string, fld:string) => {
@@ -177,7 +181,9 @@ export function ConsenterCrud(consenterInfo:Consenter, _dryRun:boolean=false): D
 
     // Perform the update
     console.log(`Updating consenter: ${email}`);
-    const builder = consenterUpdate(TableName, consenterInfo, oldConsenterInfo) as Builder;
+    const builder = consenterUpdate({
+      TableName, _new:consenterInfo, old:oldConsenterInfo, removeSub
+    }) as Builder;
     const mergeParms = { fieldName: ConsenterFields.exhibit_forms, merge:mergeExhibitForms } as MergeParms;
     const input = builder.buildUpdateItemCommandInput(mergeParms) as UpdateItemCommandInput;
     const command = new UpdateItemCommand(input);
@@ -283,7 +289,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/dao/
   };
   switch(task as TASK) {
     case TASK.create:
-      dao = ConsenterCrud({
+      dao = ConsenterCrud({ consenterInfo:{
         email,
         firstname: 'Daffy',
         middlename: 'D',
@@ -291,7 +297,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/dao/
         title: 'Aquatic fowl',
         consented_timestamp: [ '2024-10-03T20:26:53.762Z' ],
         phone_number: '617-333-5555',        
-      } as Consenter);
+      } as Consenter });
       // execute(dao.create, task);
       execute(dao.update, task, {} as Consenter);
       break;
@@ -361,16 +367,16 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/dao/
           }
           break;
       }
-      dao = ConsenterCrud(consenter);
+      dao = ConsenterCrud({ consenterInfo:consenter });
       execute(dao.update, task);
       break;
     case TASK.read:
       // dao = ConsenterCrud({ email });
-      dao = ConsenterCrud({ active: YN.Yes } as Consenter);
+      dao = ConsenterCrud({ consenterInfo: { active: YN.Yes } as Consenter });
       execute(dao.read, task);
     break;
     case TASK.Delete:
-      dao = ConsenterCrud({ email } as Consenter);
+      dao = ConsenterCrud({ consenterInfo: { email } as Consenter });
       execute(dao.Delete, task);
       break;
   }

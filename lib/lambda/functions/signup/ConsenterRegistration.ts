@@ -47,7 +47,9 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
     const active = YN.No
 
     // Lookup the consenter in case registration was interrupted and is being retried
-    let dao = ConsenterCrud({ email, firstname, middlename, lastname, create_timestamp, active } as Consenter);
+    let dao = ConsenterCrud({ consenterInfo: { 
+      email, firstname, middlename, lastname, create_timestamp, active } as Consenter 
+    });
     const existingConsenter = await dao.read() as Consenter;
 
     if(existingConsenter) {

@@ -104,7 +104,7 @@ export class RulesCache implements IRulesCache {
     if(foundConsenterEmails.includes(consenterEmail)) {
       return false;
     }
-    const consenter = await ConsenterCrud({ email:consenterEmail } as Consenter).read() as Consenter;
+    const consenter = await ConsenterCrud({ consenterInfo: { email:consenterEmail } as Consenter }).read() as Consenter;
     if(consenter) {
       foundConsenterEmails.push(consenterEmail);
       return false;

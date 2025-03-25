@@ -85,7 +85,7 @@ export class DAOFactory {
         if( active && ! validator.isYesNo(active)) {
           throw new Error(`Consenter crud error: Invalid Y/N active field value specified in ${JSON.stringify(parms, null, 2)}: ${active}`);
         }
-        return ConsenterCrud(parms.Payload as Consenter);
+        return ConsenterCrud({ consenterInfo: parms.Payload as Consenter });
 
       case 'config':
         return ConfigCrud(parms.Payload as Config);

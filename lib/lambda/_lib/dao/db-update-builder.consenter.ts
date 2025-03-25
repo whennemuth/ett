@@ -4,6 +4,10 @@ import { convertToApiObject, wrap } from './db-object-builder';
 import { Builder, getBlankCommandInput, getFldSetStatement, MergeParms } from "./db-update-builder-utils";
 import { Consenter, ConsenterFields, ExhibitForm } from "./entity";
 
+export type ConsenterUpdateParms = {
+  TableName:string, _new:Consenter, old?:Consenter, removeSub?:boolean
+};
+
 /**
  * Modify an existing consenter in the target table by adding, removing, or updating fields at 
  * the top level, and/or the exhibit_form level.
@@ -20,7 +24,9 @@ import { Consenter, ConsenterFields, ExhibitForm } from "./entity";
  * @param old 
  * @returns 
  */
-export const consenterUpdate = (TableName:string, _new:Consenter, old:Consenter={} as Consenter):Builder => {
+export const consenterUpdate = (parms:ConsenterUpdateParms):Builder => {
+
+  let { TableName, _new, old={} as Consenter, removeSub=false } = parms;
 
   const buildUpdateItemCommandInput = (mergeParms:MergeParms={ fieldName: ConsenterFields.exhibit_forms, merge:false }) => {
     const { fieldName, merge } = mergeParms
@@ -84,6 +90,11 @@ export const consenterUpdate = (TableName:string, _new:Consenter, old:Consenter=
     let updateExpr = `SET ${updates.map((o:any) => { return getFldSetStatement(o); }).join(', ')}`;
 
     const inputs = [] as UpdateItemCommandInput[];
+
+    if(removeSub) {
+      input.ExpressionAttributeNames![`#${ConsenterFields.sub}`] = ConsenterFields.sub;
+      updateExpr += ` REMOVE #${ConsenterFields.sub}`;
+    }
 
     if(updateExpr != 'SET #update_timestamp = :update_timestamp') {
       // To add the SET input, it must be for the update timestamp, AND at least one other field

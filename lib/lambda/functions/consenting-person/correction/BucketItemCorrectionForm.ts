@@ -238,7 +238,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     process.env.REGION = REGION;
     process.env[ExhibitFormsBucketEnvironmentVariableName] = `${prefix}-exhibit-forms`;
 
-    const oldConsenter = await ConsenterCrud({ email:'cp2@warhen.work' } as Consenter).read() as Consenter;
+    const oldConsenter = await ConsenterCrud({ consenterInfo: { email:'cp2@warhen.work' } as Consenter }).read() as Consenter;
     const newConsenter = Object.assign({}, oldConsenter);
     newConsenter.email = 'cp1@warhen.work';
     newConsenter.lastname = `${oldConsenter.lastname} (corrected)`;

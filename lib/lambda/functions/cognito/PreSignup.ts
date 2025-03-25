@@ -80,7 +80,7 @@ export const handler = async (_event:any) => {
     
     if(role == Roles.CONSENTING_PERSON) {
       // Lookup the consenter in the database to ensure they already exist.
-      let dao = ConsenterCrud({ email } as Consenter);
+      let dao = ConsenterCrud({ consenterInfo: { email } as Consenter });
       console.log(`Checking ${email} already exists as a consenter in the database`);
       let consenter = await dao.read();
       if( ! consenter) {

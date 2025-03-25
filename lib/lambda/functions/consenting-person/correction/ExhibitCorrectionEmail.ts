@@ -35,7 +35,7 @@ export class ExhibitCorrectionEmail {
   private initialize = async ():Promise<void> => {
     const { consenterEmail, corrections:{ entity_id } } = this;
     if( ! this._consenter) {
-      this._consenter = await ConsenterCrud({ email:consenterEmail} as Consenter).read() as Consenter;
+      this._consenter = await ConsenterCrud({ consenterInfo: { email:consenterEmail} as Consenter }).read() as Consenter;
     }
     if( ! this._entity) {
       this._entity = await EntityCrud({ entity_id } as Entity).read() as Entity;
