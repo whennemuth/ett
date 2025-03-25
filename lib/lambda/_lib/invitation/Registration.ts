@@ -17,8 +17,27 @@ export class Registration {
 
   public getInvitation = async (): Promise<Invitation|null> => {
     if(this.invitation == undefined) {
-      const dao = DAOFactory.getInstance({ DAOType: 'invitation', Payload: { code: this.code } }) as DAOInvitation;
+      const { code } = this;
+      let dao = DAOFactory.getInstance({ DAOType: 'invitation', Payload: { code } }) as DAOInvitation;
       this.invitation = await dao.read() as Invitation|null;
+
+      // Hack attack! Account for the slim possibility that the code is mangled by the client due to th
+
+      if( ! this.invitation && code.startsWith('3D')) {
+        /**
+         * Hack attack! Invitation emails are sent with "Content-Transfer-Encoding: quoted-printable" as a
+         * header. This means that the email client will encode the email body in quoted-printable format.
+         * This means that the "=" character is encoded as "=3D". The raw text of emails is composed of lines
+         * that are 76 characters long, ended by an "=" sign to indicate end of line. If the "=" character in
+         * "=3D" lands exactly at this 76th spot, it is interpreted to indicate a newline. When this happens,
+         * the "3D" portion of the "=3D" is interpreted literally. Hence a "code=xyz..." parameter in a 
+         * querystring is reformed to "code=3Dxyz...". This is a hack to account for this possibility.
+         */
+        dao = DAOFactory.getInstance({ DAOType: 'invitation', Payload: { 
+          code: code.slice(2)
+        }}) as DAOInvitation;
+        this.invitation = await dao.read() as Invitation|null;
+      }
     }
     return this.invitation;    
   }
