@@ -17,7 +17,7 @@ import { FormName } from '../forms/Download';
  * This class represents an email issued by the system on behalf of a consenting individual to either 
  *   1) An authorized individual, where the email contains a pdf attachment that includes all affiliates 
  *      provided by the consenting individual. 
- *   2) An affliate where the email contains a pdf attachment that includes the details of the recipient
+ *   2) An affiliate where the email contains a pdf attachment that includes the details of the recipient
  *      only, as excerpted from the full exhibit form.
  *   3) The consenting person themselves, where the email contains a pdf attachment that includes all affiliates.
  */
@@ -69,13 +69,13 @@ export class ExhibitEmail {
           case BOTH: default:
             this.pdf = ExhibitFormFullBoth.getInstance(parms);
             name = EXHIBIT_FORM_BOTH_FULL;
-            action = 'forwarding you their full affliate list via ETT';
+            action = 'forwarding you their full affiliate list via ETT';
             break;
         }
         return await sendEmail({
           subject: 'ETT Exhibit Form Submission',
           from: `noreply@${context.ETT_DOMAIN}`,
-          message: `${roleFullName(Roles.CONSENTING_PERSON)} ${consenterFullname} is forwarding you their full affliate list via ETT`,
+          message: `${roleFullName(Roles.CONSENTING_PERSON)} ${consenterFullname} is ${action}`,
           to, cc,
           pdfAttachments: {
             pdf: this.pdf,
