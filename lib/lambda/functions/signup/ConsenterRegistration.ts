@@ -27,31 +27,44 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
       return invalidResponse(`Bad Request: Missing parameters parameter for consenter registration`);
     }
 
-    const { email, firstname, middlename, lastname } = parameters;
+    const { 
+      email, 
+      firstname: _firstname, 
+      middlename: _middlename, 
+      lastname: _lastname, 
+      phone_number: _phone_number 
+    } = parameters;
 
     if( ! email) {
       return invalidResponse('Bad Request: Missing email parameter');
     }
 
-    if( ! firstname) {
+    if( ! _firstname) {
       return invalidResponse('Bad Request: Missing firstname parameter');
     }
 
-    if( ! lastname) {
+    if( ! _lastname) {
       return invalidResponse('Bad Request: Missing lastname parameter');
     }
 
     log(`Registering ${email}`);
 
     const create_timestamp = new Date().toISOString();
+
     // Set as inactive pending submission of consent form.
     const active = YN.No
 
-    // Lookup the consenter in case registration was interrupted and is being retried
-    let dao = ConsenterCrud({ consenterInfo: { 
-      email, firstname, middlename, lastname, create_timestamp, active } as Consenter 
+    // Lookup the consenter (regardless of active status) in case registration was interrupted and is being retried
+    let dao = ConsenterCrud({ consenterInfo: { email } as Consenter });
+    let existingConsenter = await dao.read() as (Consenter|null)|Consenter[];
+    if(Array.isArray(existingConsenter)) {
+      existingConsenter = existingConsenter[0];
+    }
+
+    // Carry over any changes made during the registration process to the existing consenter record for updates below.
+    dao = ConsenterCrud({ consenterInfo: { 
+      email, firstname: _firstname, middlename: _middlename, lastname: _lastname, create_timestamp, active } as Consenter 
     });
-    const existingConsenter = await dao.read() as Consenter;
 
     if(existingConsenter) {
       const { sub } = existingConsenter;
@@ -67,6 +80,8 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         }
       }
       console.log(`Consenter ${email} already exists in database (no cognito account yet), updating...`);
+
+      // Update the consenter record
       await dao.update(existingConsenter);
     }
     else {

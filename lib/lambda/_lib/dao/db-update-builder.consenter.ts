@@ -92,8 +92,13 @@ export const consenterUpdate = (parms:ConsenterUpdateParms):Builder => {
     const inputs = [] as UpdateItemCommandInput[];
 
     if(removeSub) {
+      // "sub" is a reserved word and so it must be aliased with an expression attribute name
       input.ExpressionAttributeNames![`#${ConsenterFields.sub}`] = ConsenterFields.sub;
       updateExpr += ` REMOVE #${ConsenterFields.sub}`;
+    }
+
+    if( ! _new.middlename) {
+      updateExpr += removeSub ? `, ${ConsenterFields.middlename}` : ` REMOVE ${ConsenterFields.middlename}`;
     }
 
     if(updateExpr != 'SET #update_timestamp = :update_timestamp') {
