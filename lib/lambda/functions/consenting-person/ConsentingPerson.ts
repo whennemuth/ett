@@ -1,20 +1,24 @@
 import { DeleteObjectsCommandOutput } from "@aws-sdk/client-s3";
-import { CONFIG, IContext } from "../../../../contexts/IContext";
 import * as ctx from '../../../../contexts/context.json';
+import { CONFIG, IContext } from "../../../../contexts/IContext";
 import { DelayedExecutions } from "../../../DelayedExecution";
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
+import { CognitoStandardAttributes, UserAccount } from "../../_lib/cognito/UserAccount";
 import { Configurations } from "../../_lib/config/Config";
 import { DAOFactory } from "../../_lib/dao/dao";
 import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
 import { Affiliate, AffiliateTypes, ConfigNames, Consenter, ConsenterFields, Entity, ExhibitForm, ExhibitFormConstraints, FormTypes, Roles, User, YN } from "../../_lib/dao/entity";
 import { ConsentFormData } from "../../_lib/pdf/ConsentForm";
+import { ExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
 import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
-import { ComparableDate, debugLog, deepClone, error, errorResponse, getMostRecent, invalidResponse, log, lookupCloudfrontDomain, okResponse, warn } from "../../Utils";
+import { debugLog, deepClone, error, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse, warn } from "../../Utils";
 import { sendDisclosureRequest } from "../authorized-individual/AuthorizedIndividual";
+import { RulePrefix as S3RulePrefix } from "../delayed-execution/targets/PurgeExhibitFormFromBucket";
+import { RulePrefix as DbRulePrefix, deleteExhibitForm } from "../delayed-execution/targets/PurgeExhibitFormFromDatabase";
 import { BucketInventory } from "./BucketInventory";
 import { BucketItem, DisclosureItemsParms, Tags } from "./BucketItem";
 import { BucketDisclosureForm } from "./BucketItemDisclosureForm";
@@ -23,14 +27,11 @@ import { ExhibitBucket } from "./BucketItemExhibitForms";
 import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "./BucketItemMetadata";
 import { TagInspector } from "./BucketItemTag";
 import { ConsentFormEmail } from "./ConsentEmail";
+import { ConsentStatus, consentStatus } from "./ConsentStatus";
 import { ConsentingPersonToCorrect } from "./correction/Correction";
 import { ExhibitCorrectionEmail } from "./correction/ExhibitCorrectionEmail";
 import { ExhibitEmail, ExhibitEmailOverrides } from "./ExhibitEmail";
-import { deleteExhibitForm, RulePrefix as DbRulePrefix } from "../delayed-execution/targets/PurgeExhibitFormFromDatabase";
-import { RulePrefix as S3RulePrefix } from "../delayed-execution/targets/PurgeExhibitFormFromBucket"
-import { CognitoStandardAttributes, UserAccount } from "../../_lib/cognito/UserAccount";
 import { IndividualRegistrationFormData, IndividualRegistrationFormEmail } from "./RegistrationEmail";
-import { ExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
 
 export enum Task {
   SAVE_EXHIBIT_FORM = 'save-exhibit-form',
@@ -173,36 +174,6 @@ export const getConsenterResponse = async (parm:string|Consenter, includeEntityL
 }
 
 /**
- * Determine from consent, renew, and rescind dates what the consent status for a consenter is.
- * @param consenter 
- * @returns 
- */
-export const isActiveConsent = (consenter:Consenter):boolean => {
-
-  const { consented_timestamp, rescinded_timestamp, renewed_timestamp, active } = consenter;
-  const consented = getMostRecent(consented_timestamp);
-  let activeConsent:boolean = false;
-  if(consented && `${active}` == YN.Yes) {
-    const rescinded = getMostRecent(rescinded_timestamp);
-    const renewed = getMostRecent(renewed_timestamp);
-    const consentedDate = ComparableDate(consented);
-    const rescindedDate = ComparableDate(rescinded);
-    const renewedDate = ComparableDate(renewed);
-
-    if(consentedDate.after(rescindedDate) && consentedDate.after(renewedDate)) {
-      activeConsent = true; // Consent was given
-    }
-    if(renewedDate.after(consentedDate) && renewedDate.after(rescindedDate)) {
-      activeConsent = true; // Consent was rescinded but later restored
-    }
-    if(rescindedDate.after(consentedDate) && rescindedDate.after(renewedDate)) {
-      activeConsent = false; // Consent was rescinded
-    }
-  }
-  return activeConsent;
-}
-
-/**
  * Get a consenters database record and wrap it in extra computed data.
  * @param parm 
  * @returns 
@@ -219,7 +190,7 @@ export const getConsenterInfo = async (parm:string|Consenter, includeEntityList:
   if( ! consenter) {
     return null;
   }
-  const activeConsent = isActiveConsent(consenter);
+  const activeConsent = consentStatus(consenter) == ConsentStatus.ACTIVE;
   let entities:Entity[] = [];
   if(includeEntityList && activeConsent) {
     const entityDao = DAOFactory.getInstance({ DAOType: 'entity', Payload: { active:YN.Yes }});
@@ -410,7 +381,7 @@ export const sendForm = async (consenter:Consenter, callback:(consenterInfo:Cons
       consenterInfo = { 
         consenter, 
         fullName: PdfForm.fullName(firstname, middlename, lastname),
-        activeConsent:isActiveConsent(consenter) 
+        activeConsent:consentStatus(consenter) == ConsentStatus.ACTIVE
       };
     }
     else {
@@ -422,7 +393,7 @@ export const sendForm = async (consenter:Consenter, callback:(consenterInfo:Cons
     consenterInfo = { 
       consenter, 
       fullName: PdfForm.fullName(firstname, middlename, lastname),
-      activeConsent:isActiveConsent(consenter)
+      activeConsent:consentStatus(consenter) == ConsentStatus.ACTIVE
     };
   }
 

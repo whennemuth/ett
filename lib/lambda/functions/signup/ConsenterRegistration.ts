@@ -6,6 +6,7 @@ import { ConfigNames, Consenter, YN } from "../../_lib/dao/entity";
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, error, errorResponse, invalidResponse, log, okResponse } from "../../Utils";
+import { ConsentStatus, consentStatus } from "../consenting-person/ConsentStatus";
 import { RulePrefix as PcRulePrefix } from "../delayed-execution/targets/PurgeConsenter";
 
 /**
@@ -54,9 +55,16 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
 
     if(existingConsenter) {
       const { sub } = existingConsenter;
-      if(sub) {
-        // If the consenter record has a cognito sub, then they have already signed up and been established as a user in the userpool.
-        return invalidResponse(`Cannot sign up ${email} - this account already exists with ETT. Please login instead.`);
+      if(sub && consentStatus(existingConsenter) != ConsentStatus.RESCINDED) {
+        const status = consentStatus(existingConsenter);
+        switch(status) {
+          case ConsentStatus.ACTIVE: case ConsentStatus.FORTHCOMING:
+            log(`Consenter ${email} has a cognito userpool account and is NOT rescinded, so is already registered.`);
+            return invalidResponse(`Cannot sign up ${email} - this account is already registered with ETT. Please login instead.`);
+          case ConsentStatus.RESCINDED:
+            log(`Consenter ${email} has rescinded consent, but is re-registering.`);
+            break;
+        }
       }
       console.log(`Consenter ${email} already exists in database (no cognito account yet), updating...`);
       await dao.update(existingConsenter);

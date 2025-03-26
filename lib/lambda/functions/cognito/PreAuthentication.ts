@@ -1,10 +1,10 @@
-import { Consenter, ConsenterFields, Role, Roles, User, UserFields, YN } from "../../_lib/dao/entity";
-import { DAOUser, DAOFactory, DAOConsenter } from '../../_lib/dao/dao';
-import { PreAuthenticationEventType } from "./PreAuthenticationEventType";
-import { lookupRole } from '../../_lib/cognito/Lookup';
-import { DynamoDbConstruct, TableBaseNames } from "../../../DynamoDb";
 import { AdminUpdateUserAttributesCommand, AdminUpdateUserAttributesCommandOutput, AdminUpdateUserAttributesRequest, AttributeType, CognitoIdentityProviderClient } from "@aws-sdk/client-cognito-identity-provider";
+import { DynamoDbConstruct, TableBaseNames } from "../../../DynamoDb";
+import { lookupRole } from '../../_lib/cognito/Lookup';
+import { DAOConsenter, DAOFactory, DAOUser } from '../../_lib/dao/dao';
+import { Consenter, ConsenterFields, Role, Roles, User, UserFields, YN } from "../../_lib/dao/entity";
 import { debugLog, isOkStatusCode, log } from "../../Utils";
+import { PreAuthenticationEventType } from "./PreAuthenticationEventType";
 
 export enum Messages {
   ACCOUNT_UNCONFIRMED = 'Your account has not attained confirmation status',
@@ -86,10 +86,11 @@ export const handler = async (_event:any) => {
         }}) as DAOConsenter;
 
         matchingPerson = await daoConsenter.read({ convertDates: false }) as Consenter;
-        const { consented_timestamp, active } = matchingPerson;
-        if(consented_timestamp.length == 0 && `${active}` != YN.Yes ) {
-          // The consenter has not consented yet, hence not active, but pretend they are so login is possible.
-          matchingPerson.active = YN.Yes;
+        const { active } = matchingPerson;
+        if(`${active}` != YN.Yes) {
+          log(`Consenter ${email} is inactivated, but that can mean they have no active consent, ` +
+            `so let them attempt to login. If successful, they can then provide consent.`);
+          return event
         }
       }
       else {
@@ -153,7 +154,7 @@ function getUpdateableUserAccount(UserPoolId:string, Username:string, region:str
   return {
     updateAttribute, updateAttributes
   }
-} 
+}
 
 
 /**

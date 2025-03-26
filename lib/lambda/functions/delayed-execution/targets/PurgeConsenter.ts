@@ -10,7 +10,7 @@ import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../
 import { humanReadableFromSeconds } from "../../../_lib/timer/DurationConverter";
 import { EggTimer, PeriodType } from "../../../_lib/timer/EggTimer";
 import { debugLog, log } from "../../../Utils";
-import { isActiveConsent } from "../../consenting-person/ConsentingPerson";
+import { ConsentStatus, consentStatus } from '../../consenting-person/ConsentStatus';
 
 export const RulePrefix = 'Consenter purge';
 
@@ -38,7 +38,7 @@ export const handler = async (event:ScheduledLambdaInput, context:any) => {
       return;
     }
 
-    if(isActiveConsent(consenter)) {
+    if(consentStatus(consenter) == ConsentStatus.ACTIVE) {
       log(`Consenter ${consenterEmail} has active consent, skipping purge`);
       return;
     }
