@@ -3586,10 +3586,10 @@
       const _title = document.getElementById(`txt${prefix}EditTitle`).value;
       if( ! _title) { alert('Title required'); setEntityRepDetails(); return; }
 
-      const _delegate_fullname = document.getElementById(`txt${prefix}EditDelegateFullname`).value;
-      const _delegate_email = document.getElementById(`txt${prefix}EditDelegateEmail`).value;     
-      const _delegate_phone_number = document.getElementById(`txt${prefix}EditDelegatePhone`).value;      
-      const _delegate_title = document.getElementById(`txt${prefix}EditDelegateTitle`).value;
+      const _delegate_fullname = (document.getElementById(`txt${prefix}EditDelegateFullname`) ?? { value:'' }).value;
+      const _delegate_email = (document.getElementById(`txt${prefix}EditDelegateEmail`) ?? { value:'' }).value;     
+      const _delegate_phone_number = (document.getElementById(`txt${prefix}EditDelegatePhone`) ?? { value:'' }).value;      
+      const _delegate_title = (document.getElementById(`txt${prefix}EditDelegateTitle`) ?? { value:'' }).value;
       const someDelegateEntries = () => {
         return _delegate_fullname || _delegate_email || _delegate_phone_number || _delegate_title;
       }
