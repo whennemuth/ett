@@ -1,7 +1,7 @@
 import { Rule } from "@aws-sdk/client-eventbridge";
 import { Filter, SelectionParms } from "./Cleanup";
 import { IRulesCache } from "./Cache";
-import { RulePrefix, StaleInvitationLambdaParms } from "../../../functions/delayed-execution/targets/RemoveStaleInvitations";
+import { RulePrefix, StaleInvitationLambdaParms } from "../../../functions/delayed-execution/RemoveStaleInvitations";
 import { log } from "../../../Utils";
 
 

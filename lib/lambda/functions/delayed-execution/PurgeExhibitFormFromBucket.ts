@@ -1,15 +1,15 @@
 import { DeleteObjectCommandOutput, S3 } from "@aws-sdk/client-s3";
-import { IContext } from "../../../../../contexts/IContext";
-import { DelayedExecutions } from "../../../../DelayedExecution";
-import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../../_lib/timer/DelayedExecution";
-import { EggTimer, PeriodType } from "../../../_lib/timer/EggTimer";
-import { debugLog, log } from "../../../Utils";
-import { DisclosureItemsParms, Tags } from "../../consenting-person/BucketItem";
-import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../../consenting-person/BucketItemMetadata";
+import { IContext } from "../../../../contexts/IContext";
+import { DelayedExecutions } from "../../../DelayedExecution";
+import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../_lib/timer/DelayedExecution";
+import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
+import { debugLog, log } from "../../Utils";
+import { DisclosureItemsParms, Tags } from "../consenting-person/BucketItem";
+import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
 import { getTestItem } from "./TestBucketItem";
-import { TagInspector } from "../../consenting-person/BucketItemTag";
-import { ExhibitBucket } from "../../consenting-person/BucketItemExhibitForms";
-import { Consenter } from "../../../_lib/dao/entity";
+import { TagInspector } from "../consenting-person/BucketItemTag";
+import { ExhibitBucket } from "../consenting-person/BucketItemExhibitForms";
+import { Consenter } from "../../_lib/dao/entity";
 
 export const RulePrefix = 'S3 exhibit form purge';
 
@@ -133,7 +133,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
   const { EXHIBIT, DISCLOSURE } = ItemType;
 
   (async () => {
-    const context:IContext = await require('../../../../../contexts/context.json');
+    const context:IContext = await require('../../../../contexts/context.json');
     const { STACK_ID, REGION, ACCOUNT, TAGS: { Landscape }} = context;
     const prefix = `${STACK_ID}-${Landscape}`;
     const bucketName = `${prefix}-exhibit-forms`;

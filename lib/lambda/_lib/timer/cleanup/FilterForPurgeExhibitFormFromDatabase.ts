@@ -1,5 +1,5 @@
 import { Rule } from "@aws-sdk/client-eventbridge";
-import { RulePrefix } from "../../../functions/delayed-execution/targets/PurgeExhibitFormFromDatabase";
+import { RulePrefix } from "../../../functions/delayed-execution/PurgeExhibitFormFromDatabase";
 import { log } from "../../../Utils";
 import { IRulesCache } from "./Cache";
 import { CleanupParms, Filter, SelectionParms } from "./Cleanup";

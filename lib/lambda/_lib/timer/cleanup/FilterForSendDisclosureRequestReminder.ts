@@ -1,5 +1,5 @@
 import { Rule } from "@aws-sdk/client-eventbridge";
-import { DisclosureRequestReminderLambdaParms, RulePrefix } from "../../../functions/delayed-execution/targets/SendDisclosureRequestReminder";
+import { DisclosureRequestReminderLambdaParms, RulePrefix } from "../../../functions/delayed-execution/SendDisclosureRequestReminder";
 import { IRulesCache } from "./Cache";
 import { CleanupParms, Filter, SelectionParms } from "./Cleanup";
 import { BucketItemMetadata } from "../../../functions/consenting-person/BucketItemMetadata";

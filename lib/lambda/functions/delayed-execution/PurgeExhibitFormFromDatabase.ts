@@ -1,11 +1,11 @@
 import { UpdateItemCommandOutput } from "@aws-sdk/client-dynamodb";
-import { DAOFactory } from "../../../_lib/dao/dao";
-import { Consenter } from "../../../_lib/dao/entity";
-import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../../_lib/timer/DelayedExecution";
-import { debugLog, deepClone, log, warn } from "../../../Utils";
-import { EggTimer, PeriodType } from "../../../_lib/timer/EggTimer";
-import { IContext } from "../../../../../contexts/IContext";
-import { DelayedExecutions } from "../../../../DelayedExecution";
+import { DAOFactory } from "../../_lib/dao/dao";
+import { Consenter } from "../../_lib/dao/entity";
+import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../_lib/timer/DelayedExecution";
+import { debugLog, deepClone, log, warn } from "../../Utils";
+import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
+import { IContext } from "../../../../contexts/IContext";
+import { DelayedExecutions } from "../../../DelayedExecution";
 
 export const RulePrefix = 'Dynamodb exhibit form purge';
 
@@ -112,7 +112,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         await deleteExhibitForm(consenterEmail, entity_id, 0);
         break;
       case "scheduled":
-        const context:IContext = await require('../../../../../contexts/context.json');
+        const context:IContext = await require('../../../../contexts/context.json');
         const { STACK_ID, REGION, ACCOUNT, TAGS: { Landscape }} = context;
         const prefix = `${STACK_ID}-${Landscape}`;
         process.env.PREFIX = prefix;

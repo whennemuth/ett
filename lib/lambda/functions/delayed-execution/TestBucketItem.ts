@@ -1,14 +1,14 @@
 import { v4 as uuidv4 } from 'uuid';
-import { IContext } from "../../../../../contexts/IContext";
-import { AffiliateTypes, Consenter, YN } from "../../../_lib/dao/entity";
-import { BucketCorrectionForm } from '../../consenting-person/correction/BucketItemCorrectionForm';
-import { BucketDisclosureForm } from "../../consenting-person/BucketItemDisclosureForm";
-import { BucketExhibitForm } from "../../consenting-person/BucketItemExhibitForm";
-import { ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../../consenting-person/BucketItemMetadata";
+import { IContext } from "../../../../contexts/IContext";
+import { AffiliateTypes, Consenter, YN } from "../../_lib/dao/entity";
+import { BucketCorrectionForm } from '../consenting-person/correction/BucketItemCorrectionForm';
+import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureForm";
+import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
+import { ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
 
 export const getConsenter = (dummyDate:string=new Date().toISOString()) => {
   return {
-    email: 'cp1@warhen.work',
+    email: 'cp2@warhen.work',
     active: YN.Yes,
     consented_timestamp: [ dummyDate ],
     create_timestamp: dummyDate,
@@ -39,7 +39,7 @@ export const getTestItem = async () => {
   const dummyDate = new Date().toISOString();
   const consenter = getConsenter(dummyDate);
   const { EXHIBIT, DISCLOSURE, CORRECTION_FORM } = ItemType;
-  const context:IContext = await require('../../../../../contexts/context.json');
+  const context:IContext = await require('../../../../contexts/context.json');
   const { STACK_ID, REGION, TAGS: { Landscape } } = context;
   const prefix = `${STACK_ID}-${Landscape}`;
   const bucketName = `${prefix}-exhibit-forms`;

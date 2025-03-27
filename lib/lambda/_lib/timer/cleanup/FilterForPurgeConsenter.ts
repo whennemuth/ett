@@ -1,6 +1,6 @@
 import { Rule } from "@aws-sdk/client-eventbridge";
 import { CleanupParms, Filter, SelectionParms } from "./Cleanup";
-import { RulePrefix } from "../../../functions/delayed-execution/targets/PurgeConsenter";
+import { RulePrefix } from "../../../functions/delayed-execution/PurgeConsenter";
 import { IRulesCache } from "./Cache";
 import { log } from "../../../Utils";
 

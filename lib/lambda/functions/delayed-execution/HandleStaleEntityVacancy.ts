@@ -1,20 +1,20 @@
 import { SendEmailCommand, SendEmailCommandInput, SendEmailResponse, SESv2Client } from "@aws-sdk/client-sesv2";
-import * as ctx from '../../../../../contexts/context.json';
-import { CONFIG, IContext } from "../../../../../contexts/IContext";
-import { DelayedExecutions } from "../../../../DelayedExecution";
-import { lookupUserPoolId } from "../../../_lib/cognito/Lookup";
-import { Configurations, IAppConfig } from "../../../_lib/config/Config";
-import { EntityCrud } from "../../../_lib/dao/dao-entity";
-import { ConfigNames, Entity, Invitation, roleFullName, Roles, User, YN } from "../../../_lib/dao/entity";
-import { EntityToAutomate } from "../../../_lib/EntityAutomation";
-import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../../_lib/timer/DelayedExecution";
-import { humanReadableFromSeconds } from "../../../_lib/timer/DurationConverter";
-import { EggTimer, PeriodType } from "../../../_lib/timer/EggTimer";
-import { debugLog, log } from "../../../Utils";
-import { Personnel } from "../../authorized-individual/correction/EntityPersonnel";
-import { EntityState } from "../../authorized-individual/correction/EntityState";
-import { EntityToDemolish } from "../../authorized-individual/Demolition";
-import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName } from "../../consenting-person/BucketItemMetadata";
+import * as ctx from '../../../../contexts/context.json';
+import { CONFIG, IContext } from "../../../../contexts/IContext";
+import { DelayedExecutions } from "../../../DelayedExecution";
+import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
+import { Configurations, IAppConfig } from "../../_lib/config/Config";
+import { EntityCrud } from "../../_lib/dao/dao-entity";
+import { ConfigNames, Entity, Invitation, roleFullName, Roles, User, YN } from "../../_lib/dao/entity";
+import { EntityToAutomate } from "../../_lib/EntityAutomation";
+import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../_lib/timer/DelayedExecution";
+import { humanReadableFromSeconds } from "../../_lib/timer/DurationConverter";
+import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
+import { debugLog, log } from "../../Utils";
+import { Personnel } from "../authorized-individual/correction/EntityPersonnel";
+import { EntityState } from "../authorized-individual/correction/EntityState";
+import { EntityToDemolish } from "../authorized-individual/Demolition";
+import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName } from "../consenting-person/BucketItemMetadata";
 import { sendEndOfRegistrationEmail } from "./RemoveStaleInvitations";
 
 export type StaleVacancyLambdaParms = {
@@ -231,7 +231,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
 
   (async () => {
     // Get values from the context and lookups
-    const context:IContext = await require('../../../../../contexts/context.json');
+    const context:IContext = await require('../../../../contexts/context.json');
     const { STACK_ID, REGION, ACCOUNT, TAGS: { Landscape }} = context;
     const prefix = `${STACK_ID}-${Landscape}`;
     const bucketName = `${prefix}-exhibit-forms`;

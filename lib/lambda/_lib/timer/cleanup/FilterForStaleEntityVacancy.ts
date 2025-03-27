@@ -1,5 +1,5 @@
 import { Rule } from "@aws-sdk/client-eventbridge";
-import { RulePrefix, StaleVacancyLambdaParms } from "../../../functions/delayed-execution/targets/HandleStaleEntityVacancy";
+import { RulePrefix, StaleVacancyLambdaParms } from "../../../functions/delayed-execution/HandleStaleEntityVacancy";
 import { log } from "../../../Utils";
 import { IRulesCache } from "./Cache";
 import { Filter, SelectionParms } from "./Cleanup";

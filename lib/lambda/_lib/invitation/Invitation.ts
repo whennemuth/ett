@@ -4,7 +4,7 @@ import { IContext } from '../../../../contexts/IContext';
 import * as ctx from '../../../../contexts/context.json';
 import { DelayedExecutions } from '../../../DelayedExecution';
 import { error, log, lookupCloudfrontDomain } from '../../Utils';
-import { RulePrefix as dsicPrefix, StaleInvitationLambdaParms } from '../../functions/delayed-execution/targets/RemoveStaleInvitations';
+import { RulePrefix as dsicPrefix, StaleInvitationLambdaParms } from '../../functions/delayed-execution/RemoveStaleInvitations';
 import { sendEmail } from '../EmailWithAttachments';
 import { Configurations } from '../config/Config';
 import { DAOFactory, DAOInvitation } from '../dao/dao';

@@ -10,7 +10,7 @@ import { EmailParms, sendEmail } from '../../../_lib/EmailWithAttachments';
 import { DelayedLambdaExecution } from "../../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../../_lib/timer/EggTimer";
 import { log, lookupCloudfrontDomain } from "../../../Utils";
-import { RulePrefix, StaleVacancyLambdaParms } from "../../delayed-execution/targets/HandleStaleEntityVacancy";
+import { RulePrefix, StaleVacancyLambdaParms } from "../../delayed-execution/HandleStaleEntityVacancy";
 import { Personnel } from "./EntityPersonnel";
 
 export type CorrectEntityParms = {

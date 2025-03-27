@@ -7,7 +7,7 @@ import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, error, errorResponse, invalidResponse, log, okResponse } from "../../Utils";
 import { ConsentStatus, consentStatus } from "../consenting-person/ConsentStatus";
-import { RulePrefix as PcRulePrefix } from "../delayed-execution/targets/PurgeConsenter";
+import { RulePrefix as PcRulePrefix } from "../delayed-execution/PurgeConsenter";
 
 /**
  * Handles the public steps of registration for consenting individual
