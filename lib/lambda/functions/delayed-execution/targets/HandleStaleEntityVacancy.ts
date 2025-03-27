@@ -1,3 +1,5 @@
+import { SendEmailCommand, SendEmailCommandInput, SendEmailResponse, SESv2Client } from "@aws-sdk/client-sesv2";
+import * as ctx from '../../../../../contexts/context.json';
 import { CONFIG, IContext } from "../../../../../contexts/IContext";
 import { DelayedExecutions } from "../../../../DelayedExecution";
 import { lookupUserPoolId } from "../../../_lib/cognito/Lookup";
@@ -12,7 +14,7 @@ import { debugLog, log } from "../../../Utils";
 import { Personnel } from "../../authorized-individual/correction/EntityPersonnel";
 import { EntityState } from "../../authorized-individual/correction/EntityState";
 import { EntityToDemolish } from "../../authorized-individual/Demolition";
-import { ExhibitFormsBucketEnvironmentVariableName } from "../../consenting-person/BucketItemMetadata";
+import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName } from "../../consenting-person/BucketItemMetadata";
 import { sendEndOfRegistrationEmail } from "./RemoveStaleInvitations";
 
 export type StaleVacancyLambdaParms = {
@@ -101,9 +103,11 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
             message: `This email is notification that the period for registration of "${entity_name}" ` +
               `in the Ethical Training Tool (ETT) has expired due to a prolonged vacancy of one or more of ` +
               `its representatives. Your role as, or pending invitation to become ${roleFullName(role)} has ` +
-              `been cancelled.`,
+              `been cancelled`,
           });
         }
+
+        notifyConsentersOfEntityTermination(entity_name, entityToDemolish.deletedBucketKeys);
       }
       else {
         const limit = config.getDuration ? config.getDuration() : 0;
@@ -129,6 +133,91 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
     else {
       await PostExecution().cleanup(eventBridgeRuleName, targetId);
     }    
+  }
+}
+
+/**
+ * Send an email to a consenter informing them that the entity they submitted exhibit forms to has been terminated.
+ * @param entity_name 
+ * @param consenterEmail 
+ */
+export const notifySingleConsenterOfEntityTermination = async (entity_name:string, consenterEmail:string) => {
+  
+  const client = new SESv2Client({
+    region: process.env.REGION
+  });
+
+  const context:IContext = <IContext>ctx;
+
+  log(`Sending email to ${consenterEmail} about termination of ${entity_name}`);
+
+  const command = new SendEmailCommand({
+    Destination: {
+      ToAddresses: [ consenterEmail ],
+    },
+    FromEmailAddress: `noreply@${context.ETT_DOMAIN}`,
+    Content: {
+      Simple: {
+        Subject: {
+          Charset: 'utf-8',
+          Data: 'NOTIFICATION: Ethical Transparency Tool (ETT) - notice of entity cancellation',
+        },
+        Body: {
+          Html: {
+            Charset: 'utf-8',
+            Data: `
+              <style>
+                div { float: initial; clear: both; padding: 20px; width: 500px; }
+                hr { height: 1px; background-color: black; margin-bottom:20px; margin-top: 20px; border: 0px; }
+                .content { max-width: 500px; margin: auto; }
+                .heading1 { font: 16px Georgia, serif; background-color: #ffd780; text-align: center; }
+                .body1 { font: italic 14px Georgia, serif; background-color: #ffe7b3; text-align: justify;}
+              </style>
+              <div class="content">
+                <div class="heading1">Notice of entity cancellation</div>
+                <div class="body1" style="padding:20px;">
+                  <hr>
+                  This email is notification that ${entity_name} is not using ETT at this time and any Exhibit 
+                  Form(s) you may have submitted have been deleted.
+                </div>
+              </div>`
+          }
+        }
+      }
+    }
+  } as SendEmailCommandInput);
+
+  const response:SendEmailResponse = await client.send(command);
+  const messageId = response?.MessageId;
+  if( ! messageId) {
+    console.error(`No message ID in SendEmailResponse for ${consenterEmail}`);
+  }
+  if(response) {
+    log(response);
+  }
+}
+
+/**
+ * Since the entity is now deleted, we need to notify any consenters with any exhibit forms they had
+ * submitted to the entity will not be followed up on with disclosure requests if they have not already.
+ * @param s3Keys The s3 keys of exhibit forms that were submitted to the entity and are possibly still
+ * pending because the 2nd disclosure request reminder time has not yet arrived.
+ */
+export const notifyConsentersOfEntityTermination = async (entity_name:string, s3Keys:string[]) => {
+  const { fromBucketObjectKey } = BucketItemMetadata;
+  const notifiedConsenters:string[] = [];
+    
+  for(const key of s3Keys) {
+    const form = fromBucketObjectKey(key);
+    const { consenterEmail } = form;
+
+    if(notifiedConsenters.includes(consenterEmail)) {
+      continue;
+    }
+    
+    await notifySingleConsenterOfEntityTermination(entity_name, consenterEmail);
+
+    notifiedConsenters.push(consenterEmail);
   }
 }
 
