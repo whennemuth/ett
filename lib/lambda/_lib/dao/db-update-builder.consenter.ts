@@ -1,11 +1,11 @@
 import { AttributeValue, UpdateItemCommandInput } from "@aws-sdk/client-dynamodb";
-import { deepClone, deepEqual, fieldsAreEqual } from '../../Utils';
+import { deepClone, deepEqual, fieldsAreEqual, log } from '../../Utils';
 import { convertToApiObject, wrap } from './db-object-builder';
 import { Builder, getBlankCommandInput, getFldSetStatement, MergeParms } from "./db-update-builder-utils";
 import { Consenter, ConsenterFields, ExhibitForm } from "./entity";
 
 export type ConsenterUpdateParms = {
-  TableName:string, _new:Consenter, old?:Consenter, removeSub?:boolean
+  TableName:string, _new:Consenter, old?:Consenter, removeSub?:boolean, removeEmptyMiddleName?:boolean
 };
 
 /**
@@ -26,7 +26,7 @@ export type ConsenterUpdateParms = {
  */
 export const consenterUpdate = (parms:ConsenterUpdateParms):Builder => {
 
-  let { TableName, _new, old={} as Consenter, removeSub=false } = parms;
+  let { TableName, _new, old={} as Consenter, removeSub=false, removeEmptyMiddleName=false } = parms;
 
   const buildUpdateItemCommandInput = (mergeParms:MergeParms={ fieldName: ConsenterFields.exhibit_forms, merge:false }) => {
     const { fieldName, merge } = mergeParms
@@ -97,7 +97,7 @@ export const consenterUpdate = (parms:ConsenterUpdateParms):Builder => {
       updateExpr += ` REMOVE #${ConsenterFields.sub}`;
     }
 
-    if( ! _new.middlename) {
+    if( ! _new.middlename && removeEmptyMiddleName) {
       updateExpr += removeSub ? `, ${ConsenterFields.middlename}` : ` REMOVE ${ConsenterFields.middlename}`;
     }
 

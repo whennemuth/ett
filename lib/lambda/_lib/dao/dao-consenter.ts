@@ -9,11 +9,11 @@ import { consenterUpdate } from "./db-update-builder.consenter";
 import { AffiliateTypes, Consenter, ConsenterFields, Roles, YN } from "./entity";
 
 export type UserCrudParams = {
-  consenterInfo:Consenter, _dryRun?:boolean, removeSub?:boolean
+  consenterInfo:Consenter, _dryRun?:boolean, removeSub?:boolean, removeEmptyMiddleName?:boolean
 }
 
 export function ConsenterCrud(parms:UserCrudParams): DAOConsenter {
-  const { consenterInfo, _dryRun=false, removeSub=false } = parms;
+  const { consenterInfo, _dryRun=false, removeSub=false, removeEmptyMiddleName=false } = parms;
   const dbclient = new DynamoDBClient({ region: process.env.REGION });
   const docClient = DynamoDBDocumentClient.from(dbclient);
   const { getTableName } = DynamoDbConstruct;
@@ -182,7 +182,7 @@ export function ConsenterCrud(parms:UserCrudParams): DAOConsenter {
     // Perform the update
     console.log(`Updating consenter: ${email}`);
     const builder = consenterUpdate({
-      TableName, _new:consenterInfo, old:oldConsenterInfo, removeSub
+      TableName, _new:consenterInfo, old:oldConsenterInfo, removeSub, removeEmptyMiddleName
     }) as Builder;
     const mergeParms = { fieldName: ConsenterFields.exhibit_forms, merge:mergeExhibitForms } as MergeParms;
     const input = builder.buildUpdateItemCommandInput(mergeParms) as UpdateItemCommandInput;

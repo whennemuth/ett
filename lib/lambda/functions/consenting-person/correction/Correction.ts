@@ -39,7 +39,8 @@ export class ConsentingPersonToCorrect {
        */
       const consenter = await ConsenterCrud({ consenterInfo: this.correctable }).read({ convertDates:false } as ReadParms) as Consenter|null;
       if( ! consenter) {
-        error(this.correctable, 'Lookup for consenter failed');
+        this.message = `Consenter ${this.correctable.email} lookup found no matches`;
+        error(this.message);
         return false;
       }
       this.correctable = consenter;
@@ -50,9 +51,9 @@ export class ConsentingPersonToCorrect {
     const { email:new_email, phone_number:new_phone_number } = corrected;
 
     const changed = (fldname:ConsenterFields):boolean => {
-      const old = correctable[fldname];
-      const _new = corrected[fldname];
-      return (_new && _new != old) as boolean;
+      const old = correctable[fldname] ?? '';
+      const _new = corrected[fldname] ?? '';
+      return (_new != old) as boolean;
     };
     const { firstname, middlename, lastname, title } = ConsenterFields;
     const newEmail = () => changed(ConsenterFields.email);
@@ -103,13 +104,12 @@ export class ConsentingPersonToCorrect {
         corrected.sub = sub;
 
         // Add the new consenter to the database. NOTE: using update to create user to avoid validation checks.
-        await ConsenterCrud({ consenterInfo: corrected }).update({} as Consenter);
+        await ConsenterCrud({ consenterInfo:corrected, removeEmptyMiddleName:true }).update({} as Consenter);
 
         // Mark the old user as inactive in the database and blank out the sub and exhibit forms
         correctable.active = YN.No;
         correctable.exhibit_forms = [];
-        correctable.sub = 'DEFUNCT';
-        await ConsenterCrud({ consenterInfo: correctable }).update();
+        await ConsenterCrud({ consenterInfo: correctable, removeSub:true }).update();
 
         // Duplicate any exhibit form expiration event bridge rules, but applied against the new consenter db record.
         if(exhibit_forms.length > 0) {
@@ -134,13 +134,14 @@ export class ConsentingPersonToCorrect {
         corrected = mergeConsenters(correctable, corrected);
 
         // Pass on any updates to the consenter to the corresponding database record.
-        await ConsenterCrud({ consenterInfo: corrected }).update(correctable, true);
+        await ConsenterCrud({ consenterInfo: corrected, removeEmptyMiddleName:true }).update(correctable, true);
       }
     }
     else {
       if( ! newNameOrTitle()) {
         // Huh? If neither the email, phone, name or title has changed, then there ARE NO changes.
-        log(`INVALID STATE: Correction triggered for ${email}, but no changes detected.`);
+        this.message = `INVALID STATE: Correction triggered for ${email}, but no changes detected.`;
+        log(this.message);
         return false;
       }
 
@@ -148,7 +149,7 @@ export class ConsentingPersonToCorrect {
       corrected = mergeConsenters(correctable, corrected);
 
       // Pass on any updates to the consenter to the corresponding database record.
-      await ConsenterCrud({ consenterInfo: corrected }).update(correctable, true);
+      await ConsenterCrud({ consenterInfo: corrected, removeEmptyMiddleName:true }).update(correctable, true);
     }
 
     // Create a correction pdf form and email it to the reps of any entities that are indicated.
@@ -168,7 +169,8 @@ export class ConsentingPersonToCorrect {
 
   /**
    * With the exception of the email field, apply all attributes from the source consenter to
-   * the corresponding attributes of the target consenter if those target attributes are not already set.
+   * the corresponding attributes of the target consenter if those target attributes are not already set
+   * (unless it is the middlename field).
    * @param source 
    * @param target 
    * @returns 
@@ -176,7 +178,12 @@ export class ConsentingPersonToCorrect {
   private mergeConsenters = (source:Consenter, target:Consenter):Consenter => {
     let fld: keyof typeof ConsenterFields;
     for(fld in ConsenterFields) {
-      if( ! source[fld]) continue;
+      if(fld == ConsenterFields.middlename && ! target[fld]) {
+        continue; // The middlename field is the only one that can be blanked out.
+      }
+      if( ! source[fld]) {
+        continue;
+      }
       switch(fld) {
         case ConsenterFields.email:
           continue;
@@ -281,6 +288,9 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
 
     // Remove the firstname field from the corrections (should make no difference to the output form)
     delete _corrected.firstname;
+
+    // Remove the middlename field from the corrections (SHOULD make a difference to the output form)
+    delete _corrected.middlename;
 
     // 2) Execute the update
     await new ConsentingPersonToCorrect({

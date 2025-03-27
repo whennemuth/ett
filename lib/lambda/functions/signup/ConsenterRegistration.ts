@@ -62,8 +62,10 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
     }
 
     // Carry over any changes made during the registration process to the existing consenter record for updates below.
-    dao = ConsenterCrud({ consenterInfo: { 
-      email, firstname: _firstname, middlename: _middlename, lastname: _lastname, create_timestamp, active } as Consenter 
+    dao = ConsenterCrud({ 
+      consenterInfo: { 
+        email, firstname: _firstname, middlename: _middlename, lastname: _lastname, create_timestamp, active 
+    } as Consenter, removeEmptyMiddleName: true
     });
 
     if(existingConsenter) {
