@@ -320,10 +320,11 @@ export class DelayedExecutionLambdas extends Construct {
     const functionName = `${prefix}-${DelayedExecutions.HandleStaleEntityVacancy.coreName}`;
     const description = 'Function for handling entity termination for vacancies in entity roles that have lasted too long';
 
+    // Configure this with extra time for the lambda to run - If there are lots of event bridge rules to delete, the rule target lookups could take a while.
     this._handleStaleEntityVacancyLambda = new class extends AbstractFunction { }(this, baseId, {
       runtime: Runtime.NODEJS_18_X,
       // memorySize: 1024,
-      timeout: Duration.seconds(15),
+      timeout: Duration.minutes(5),
       entry: 'lib/lambda/functions/delayed-execution/targets/HandleStaleEntityVacancy.ts',
       // handler: 'handler',
       functionName,
