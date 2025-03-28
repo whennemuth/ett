@@ -41,6 +41,7 @@ export class EntityToDemolish {
   private _deletedUsers = [] as User[];
   private _dryRun = false;
   private _deletedRules = [] as string[];
+  private _deletedBucketKeys = [] as string[];
 
   constructor(entityId:string, purgeBucket:boolean=true) {
     this.entityId = entityId;
@@ -150,6 +151,7 @@ export class EntityToDemolish {
     const { entity: { entity_id } } = this;
     const inventory = await BucketInventory.getInstanceForEntity(entity_id);
     const keys = inventory.getKeys();
+    this._deletedBucketKeys.push(...keys);
     const objIds = keys.map(Key => ({ Key })) as ObjectIdentifier[];
     const deleteResult:DeleteObjectsCommandOutput = await new BucketItem().deleteMultipleItems(objIds);
 
@@ -249,6 +251,9 @@ export class EntityToDemolish {
   }
   public get deletedRules(): string[] {
     return this._deletedRules;
+  }
+  public get deletedBucketKeys(): string[] {
+    return this._deletedBucketKeys;
   }
 }
 

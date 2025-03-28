@@ -212,7 +212,7 @@ export class BucketInventory {
  */
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/BucketInventory.ts')) {
-  const inventoryType = 'entity' as 'consenter' | 'entity';
+  const inventoryType = 'consenter' as 'consenter' | 'entity' | 'consenter-entity';
 
   (async() => {
     const context:IContext = await require('../../../../contexts/context.json');
@@ -228,7 +228,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     entityId = '13376a3d-12d8-40e1-8dee-8c3d099da1b2';
 
     switch(inventoryType) {
-      case "consenter":
+      case "consenter-entity":
         inventory = await BucketInventory.getInstance('cp3@warhen.work', entityId);
         // log(inventory.getKeys());
         // log(inventory.getAffiliateEmails());
@@ -238,6 +238,14 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
       case "entity":
         inventory = await BucketInventory.getInstanceForEntity(entityId);
         log(inventory.getKeys());
+        break;
+      case "consenter":
+        inventory = await BucketInventory.getInstance('cp2@warhen.work');
+        // log(inventory.getKeys());
+        // log(inventory.getAllFormsOfType(ItemType.CORRECTION_FORM));
+        if(inventory.getKeys().length == inventory.getAllFormsOfType(ItemType.CORRECTION_FORM).length) {
+          log('All forms are correction forms');
+        }
         break;
     }
   })();

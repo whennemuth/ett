@@ -107,7 +107,7 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
           });
         }
 
-        notifyConsentersOfEntityTermination(entity_name, entityToDemolish.deletedBucketKeys);
+        await notifyConsentersOfEntityTermination(entity_name, entityToDemolish.deletedBucketKeys);
       }
       else {
         const limit = config.getDuration ? config.getDuration() : 0;
@@ -168,17 +168,13 @@ export const notifySingleConsenterOfEntityTermination = async (entity_name:strin
             Data: `
               <style>
                 div { float: initial; clear: both; padding: 20px; width: 500px; }
-                hr { height: 1px; background-color: black; margin-bottom:20px; margin-top: 20px; border: 0px; }
                 .content { max-width: 500px; margin: auto; }
                 .heading1 { font: 16px Georgia, serif; background-color: #ffd780; text-align: center; }
-                .body1 { font: italic 14px Georgia, serif; background-color: #ffe7b3; text-align: justify;}
               </style>
               <div class="content">
-                <div class="heading1">Notice of entity cancellation</div>
-                <div class="body1" style="padding:20px;">
-                  <hr>
-                  This email is notification that ${entity_name} is not using ETT at this time and any Exhibit 
-                  Form(s) you may have submitted have been deleted.
+                <div class="heading1" style="padding:20px;>
+                  This email is notification that ${entity_name} is not using ETT at this 
+                  time and any Exhibit Form(s) you may have submitted have been deleted.
                 </div>
               </div>`
           }
@@ -194,6 +190,9 @@ export const notifySingleConsenterOfEntityTermination = async (entity_name:strin
   }
   if(response) {
     log(response);
+  }
+  else {
+    console.error(`No response from SESv2Client.send() for ${consenterEmail}`);
   }
 }
 
@@ -230,6 +229,7 @@ const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/delayed-execution/HandleStaleEntityVacancy.ts')) {
 
   (async () => {
+
     // Get values from the context and lookups
     const context:IContext = await require('../../../../contexts/context.json');
     const { STACK_ID, REGION, ACCOUNT, TAGS: { Landscape }} = context;
@@ -242,6 +242,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     process.env.USERPOOL_ID = userpoolId;
     process.env.PREFIX = prefix;
     process.env.REGION = REGION;
+
+await notifySingleConsenterOfEntityTermination('MY ENTITY', 'cp2@warhen.work')
 
     // Create a reduced app config just for this test
     const { STALE_AI_VACANCY, STALE_ASP_VACANCY } = ConfigNames;

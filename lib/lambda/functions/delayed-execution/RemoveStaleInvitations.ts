@@ -73,8 +73,6 @@ export const sendEndOfRegistrationEmail = async (parms:EndOfRegistrationEmailPar
   const { RE_ADMIN, RE_AUTH_IND, SYS_ADMIN } = Roles;
   const context:IContext = <IContext>ctx;
 
-  log(parms, 'Notifying user of stale invitation and end of registration period');
-
   try {
     subject = subject ?? 'ETT Invitation Expiration Notification';
     message = message ?? 'This email is notification that your invitation to register in the Ethical ' +
@@ -88,6 +86,8 @@ export const sendEndOfRegistrationEmail = async (parms:EndOfRegistrationEmailPar
         message = message + '.';
         break;
     }
+
+    log({ email, role, message, subject }, 'Sending email');
 
     return sendEmail({ subject, from: `noreply@${context.ETT_DOMAIN}`, message, to: [ email ] } as EmailParms);  
   }
