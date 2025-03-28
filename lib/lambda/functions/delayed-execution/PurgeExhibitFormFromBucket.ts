@@ -1,15 +1,16 @@
 import { DeleteObjectCommandOutput, S3 } from "@aws-sdk/client-s3";
 import { IContext } from "../../../../contexts/IContext";
 import { DelayedExecutions } from "../../../DelayedExecution";
+import { Consenter } from "../../_lib/dao/entity";
 import { DelayedLambdaExecution, PostExecution, ScheduledLambdaInput } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, log } from "../../Utils";
+import { BucketInventory } from "../consenting-person/BucketInventory";
 import { DisclosureItemsParms, Tags } from "../consenting-person/BucketItem";
-import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
-import { getTestItem } from "./TestBucketItem";
-import { TagInspector } from "../consenting-person/BucketItemTag";
 import { ExhibitBucket } from "../consenting-person/BucketItemExhibitForms";
-import { Consenter } from "../../_lib/dao/entity";
+import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
+import { TagInspector } from "../consenting-person/BucketItemTag";
+import { getTestItem } from "./TestBucketItem";
 
 export const RulePrefix = 'S3 exhibit form purge';
 
@@ -39,8 +40,10 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
 
     if(purgedExhibitForm && purgedDisclosureForm) {
       // No sense in keeping around any correction forms that existed in the same directory since they are now redundant
-      await purgeCorrectionForms(s3ObjectKeyForExhibitForm);
+      await purgeExhibitCorrectionForms(s3ObjectKeyForExhibitForm);
     }
+
+    await checkConsenterCorrectionForms(s3ObjectKeyForExhibitForm);
   }
   catch(e:any) {    
     log(e);
@@ -66,13 +69,33 @@ export const checkAbort = async (s3ObjectKey:string):Promise<boolean> => {
  * Remove all correction forms from a consenter/entity/affiliate bucket directory.
  * @param s3ObjectKeyForExhibitForm 
  */
-export const purgeCorrectionForms = async (s3ObjectKeyForExhibitForm:string):Promise<void> => {
+export const purgeExhibitCorrectionForms = async (s3ObjectKeyForExhibitForm:string):Promise<void> => {
   const { fromBucketObjectKey } = BucketItemMetadata;
   const parms = fromBucketObjectKey(s3ObjectKeyForExhibitForm);
   const { entityId, affiliateEmail, consenterEmail } = parms;
   const metadata = { consenterEmail, entityId, affiliateEmail, correction:true } as BucketItemMetadataParms;
   const bucket = new ExhibitBucket({ email:consenterEmail } as Consenter);
   await bucket.deleteAll(metadata);
+}
+
+/**
+ * If there are no exhibit forms, disclosure forms, and exhibit correction (correction of affiliates) forms 
+ * in the bucket for a consenter, then purge all correction forms (correction of the consenter themselves) 
+ * for that consenter.
+ * @param s3ObjectKeyForExhibitForm 
+ */
+export const checkConsenterCorrectionForms = async (s3ObjectKeyForExhibitForm:string):Promise<void> => {
+  const { fromBucketObjectKey } = BucketItemMetadata;
+  const parms = fromBucketObjectKey(s3ObjectKeyForExhibitForm);
+  const { consenterEmail } = parms;
+  const inventory = await BucketInventory.getInstance(consenterEmail);
+  const correctionForms = inventory.getAllFormsOfType(ItemType.CORRECTION_FORM);
+  if(correctionForms.length == inventory.getKeys().length) {
+    log(`Deleting all consenter correction forms (${correctionForms.length} form(s)) for ${consenterEmail}`);
+    for(const key of inventory.getKeys()) {
+      await purgeFormFromBucket(ItemType.CORRECTION_FORM, key);
+    }
+  }
 }
 
 /**
@@ -128,7 +151,7 @@ const validateLambdaInput = (lambdaInput:DisclosureItemsParms):void => {
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/delayed-execution/PurgeExhibitFormFromBucket.ts')) {
 
-  const task = 'scheduled' as 'immediate'|'scheduled';
+  const task = 'immediate' as 'immediate'|'scheduled';
   const { MINUTES } = PeriodType;
   const { EXHIBIT, DISCLOSURE } = ItemType;
 

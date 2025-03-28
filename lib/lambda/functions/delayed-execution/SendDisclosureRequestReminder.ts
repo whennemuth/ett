@@ -6,7 +6,7 @@ import { debugLog, error, log } from "../../Utils";
 import { DisclosureEmailParms, DisclosureRequestReminderEmail, RecipientListGenerator } from "../authorized-individual/DisclosureRequestEmail";
 import { BucketInventory } from "../consenting-person/BucketInventory";
 import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
-import { purgeCorrectionForms, purgeFormFromBucket } from "./PurgeExhibitFormFromBucket";
+import { checkConsenterCorrectionForms, purgeExhibitCorrectionForms, purgeFormFromBucket } from "./PurgeExhibitFormFromBucket";
 import { getTestItem } from "./TestBucketItem";
 
 export const RulePrefix = 'Disclosure request reminder';
@@ -60,7 +60,9 @@ export const handler = async (event:ScheduledLambdaInput, context:any) => {
 
       await purgeFormFromBucket(DISCLOSURE, s3ObjectKeyForDisclosureForm);
            
-      await purgeCorrectionForms(s3ObjectKeyForExhibitForm);
+      await purgeExhibitCorrectionForms(s3ObjectKeyForExhibitForm);
+
+      await checkConsenterCorrectionForms(s3ObjectKeyForExhibitForm);
     }
   }
   catch(e:any) {    
