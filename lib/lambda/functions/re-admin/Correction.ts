@@ -2,11 +2,9 @@ import { UserType } from "@aws-sdk/client-cognito-identity-provider";
 import { IContext } from "../../../../contexts/IContext";
 import { DelayedExecutions } from "../../../DelayedExecution";
 import { CognitoStandardAttributes, UserAccount } from "../../_lib/cognito/UserAccount";
-import { EntityCrud } from "../../_lib/dao/dao-entity";
 import { UserCrud } from "../../_lib/dao/dao-user";
-import { Delegate, DelegateFields, Entity, Roles, User, UserFields } from "../../_lib/dao/entity";
+import { DelegateFields, Roles, User, UserFields } from "../../_lib/dao/entity";
 import { error, log, lookupCloudfrontDomain } from "../../Utils";
-import { scheduleStaleEntityVacancyHandler } from "../authorized-individual/correction/EntityCorrection";
 
 export class EntityRepToCorrect {
   private correctable:User;
