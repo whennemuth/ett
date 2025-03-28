@@ -3471,7 +3471,7 @@
      * Register consent.
      */
     const registerConsent = async () => {
-      const { email, phone_number } = IDJwtCookie.getUser() ?? {};
+      const { consenter: { email, phone_number}} = consenterInfo ?? {};
       const getFldVal = fldname => document.getElementById(fldname).value ?? '';
       const parms = { 
         signature:getFldVal('txtConsentSignature'),
@@ -3493,7 +3493,7 @@
         return;
       }
 
-      await doConsentTask('register-consent', parms);
+      await doConsentTask('register-consent', parms, () => alert('Consent registered'));
 
       // Retrieve the consenter info that was just saved to the backend to get the list of entities 
       // that accompanies it in order to populate the related picklists that must now be presented.
@@ -3505,7 +3505,7 @@
      */
     const renewConsent = async () => {
       const { email } = IDJwtCookie.getUser() ?? {};
-      await doConsentTask('renew-consent', { email });
+      await doConsentTask('renew-consent', { email }, () => alert('Consent renewed'));
     }
 
     /**
@@ -3522,8 +3522,7 @@
      */
     const sendConsent = async () => {
       const { email } = IDJwtCookie.getUser() ?? {};
-      await doConsentTask('send-consent', { email, entityName: 'unknown entity' });
-      alert('Consent form sent');
+      await doConsentTask('send-consent', { email, entityName: 'unknown entity' }, () => alert('Consent form sent'));
     }
 
     const validatePhoneNumber = (phone_number) => {
