@@ -41,7 +41,7 @@ const PoolMock = class extends AbstractPool {
       loadRule(rule, busName);
     }
   }
-  public loadEventBus = (index: number):AbstractEventBus => {
+  public loadEventBus = async (index: number):Promise<AbstractEventBus> => {
     const bus = new EventBusMock(index);
     this.busesInventory.set(bus.getName(), bus);
     return bus;
@@ -72,11 +72,11 @@ const EventBusMock = class extends AbstractEventBus {
 };
 
 const RuleMock = class extends AbstractEventBusRule {
-  public create = async (parentBus: AbstractEventBus): Promise<AbstractEventBusRule> =>{
+  public create = async (parentBus: AbstractEventBus): Promise<void> =>{
     this.parentBus = parentBus;
     parentBus.setRule(this);
     // CLI would be called here to create the rule
-    return this;
+    return;
   }
   public getName = ():string => {
     if( ! this.ruleName) {

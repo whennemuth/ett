@@ -18,7 +18,7 @@ export abstract class AbstractPool {
 
   public abstract loadInventory():Promise<void>
 
-  public abstract loadEventBus(index:number):AbstractEventBus
+  public abstract loadEventBus(index:number):Promise<AbstractEventBus>
 
   public abstract createEventBus(index:number):Promise<AbstractEventBus>
 
@@ -29,9 +29,10 @@ export abstract class AbstractPool {
     return this.busesInventory.size;
   }
 
-  public loadRule = (rule:AbstractEventBusRule, busName:string):void => {
-    const { getLoadedEventBus: getEventBus, loadEventBus } = this;
-    let bus = getEventBus(busName) ?? loadEventBus(parseInt(busName.split('-')[2]));
+  public loadRule = async (rule:AbstractEventBusRule, busName:string):Promise<void> => {
+    const { getLoadedEventBus, loadEventBus } = this;
+    const { getIndexFromName} = AbstractEventBus;
+    let bus = getLoadedEventBus(busName) ?? (await loadEventBus(getIndexFromName(busName)));
     bus.setRule(rule);
   }
 
@@ -82,7 +83,7 @@ export abstract class AbstractPool {
     }
 
     // Create the rule on the target bus
-    await rule.create(targetBus);
+    await rule.create(targetBus, true);
     console.log(`Created rule ${rule.getName()} on event bus: ${targetBus.getName()}`);
 
     // Delete the buses that were found to be empty of rules.
@@ -108,6 +109,18 @@ export abstract class AbstractEventBus {
     this.index = index;
   }
 
+  /**
+   * The index of the bus is always the last part of the bus name, which is a number (delimited by a hyphen).
+   * @param busName 
+   * @returns 
+   */
+  public static getIndexFromName = (busName?:string):number => {
+    if( ! busName) {
+      return 0
+    }
+    return parseInt(busName.split('-').pop() ?? '0');
+  }
+
   public getIndex = ():number => {
     return this.index;
   }
@@ -129,7 +142,7 @@ export abstract class AbstractEventBusRule {
   protected parentBus:AbstractEventBus;
   protected ruleName:string;
 
-  public abstract create(eventBus:AbstractEventBus):Promise<AbstractEventBusRule>
+  public abstract create(eventBus:AbstractEventBus, putInvokePrivileges:boolean):Promise<void>
 
   public abstract getName():string
 

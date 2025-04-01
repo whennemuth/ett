@@ -1,33 +1,48 @@
-import { EventBridgeClient, PutRuleCommand, PutRuleCommandOutput, PutTargetsCommand } from "@aws-sdk/client-eventbridge";
-import { AbstractEventBus, AbstractEventBusRule } from "./Abstract";
+import { EventBridgeClient, PutRuleCommand, PutRuleCommandOutput, PutTargetsCommand, Rule } from "@aws-sdk/client-eventbridge";
+import { AddPermissionCommand, LambdaClient } from "@aws-sdk/client-lambda";
+import { v4 as uuidv4 } from 'uuid';
 import { IContext } from "../../../../../contexts/IContext";
 import * as ctx from '../../../../../contexts/context.json';
-import { v4 as uuidv4 } from 'uuid';
-import { AddPermissionCommand, LambdaClient } from "@aws-sdk/client-lambda";
+import { log } from "../../../Utils";
 import { ScheduledLambdaInput } from "../DelayedExecution";
+import { AbstractEventBus, AbstractEventBusRule } from "./Abstract";
+import { deleteRuleAndTarget, lookupTarget } from "./Utils";
 
-export type RuleParms = {
-  Description:string,
-  ScheduleExpression:string,
-  lambdaArn:string,
-  lambdaInput:any,
-  putInvokePrivileges:boolean
+export type EttRuleData = Rule & {
+  lambdaArn?:string,
+  lambdaInput?:any
 }
-export class Rule extends AbstractEventBusRule {
-  private parms:RuleParms;
+export class EttRule extends AbstractEventBusRule {
+  private data:EttRuleData;
+  private region:string;
 
-  constructor(parms:RuleParms) {
+  public constructor(data:EttRuleData) {
     super();
-    this.parms = parms;
-  }
-
-  public create = async (eventBus:AbstractEventBus): Promise<AbstractEventBusRule> => {
-    const { getName, parms: {
-      Description, ScheduleExpression, lambdaArn, lambdaInput, putInvokePrivileges
-    }} = this;
+    this.data = data;
     let { REGION: region } = process.env
     const { REGION } = ctx as IContext;
-    region = region ?? REGION;
+    this.region = region ?? REGION;
+  }
+
+  public getData = async ():Promise<EttRuleData> => {
+    const { data, data: { Name, lambdaArn, lambdaInput }, region } = this;
+    if(lambdaArn && lambdaInput) return data;
+    const target = await lookupTarget(Name!, region);
+    if(target) {
+      data.lambdaArn = target.Arn;
+      data.lambdaInput = JSON.parse(target.Input!).lambdaInput;
+    }
+    return data;
+  }
+
+  public getLambdaArn = async ():Promise<string> =>  (await this.getData()).lambdaArn!;
+
+  public getLambdaInput = async ():Promise<any> =>  (await this.getData()).lambdaInput;
+
+  public create = async (eventBus:AbstractEventBus, putInvokePrivileges:boolean): Promise<void> => {
+    const { getName, region, data: {
+      Description, ScheduleExpression, lambdaArn, lambdaInput
+    }} = this;
     const targetId = `${getName()}-targetId`;
     
     // 1) Create the event bridge rule
@@ -40,6 +55,8 @@ export class Rule extends AbstractEventBusRule {
       State: "ENABLED",
     })) as PutRuleCommandOutput;
     const { RuleArn } = response;
+    this.data.Arn = RuleArn;
+    this.data.Name = getName();
 
     // 2) Put a lambda target to the event bridge rule
     const lambdaClient = new LambdaClient({ region });
@@ -73,13 +90,20 @@ export class Rule extends AbstractEventBusRule {
       await lambdaClient.send(addPermissionCommand);
     }
 
-    return this;
+  }
+
+  public Delete = async ():Promise<void> => {
+    const { region, data: { Name } } = this;
+    if( ! Name) {
+      log(`Cannot delete rule, missing Name`);
+      return;
+    }
+    await deleteRuleAndTarget(Name!, `${Name}-targetId`, region);
   }
 
   public getName = ():string => {
-    if( ! this.ruleName) {
-      this.ruleName = `${this.parentBus.getName()}-rule-${uuidv4()}`
-    }
+    this.ruleName = this.ruleName ?? this.data.Name;
+    this.ruleName = this.ruleName ?? `${this.parentBus.getName()}-rule-${uuidv4()}`;
     return this.ruleName;
   }
 }

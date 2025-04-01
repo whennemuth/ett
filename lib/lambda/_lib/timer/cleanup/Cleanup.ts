@@ -1,9 +1,10 @@
-import { EventBridgeClient, ListTargetsByRuleCommand, ListTargetsByRuleCommandInput, Rule, Target } from "@aws-sdk/client-eventbridge";
+import { Rule, Target } from "@aws-sdk/client-eventbridge";
 import { IContext } from "../../../../../contexts/IContext";
 import { log } from "../../../Utils";
 import { PostExecution, ScheduledLambdaInput } from "../DelayedExecution";
 import { humanReadableFromMilliseconds } from "../DurationConverter";
 import { EggTimer } from "../EggTimer";
+import { lookupTarget } from "../event-bus/Utils";
 import { IRulesCache, RulesCache } from "./Cache";
 import { FilterForStaleEntityVacancy } from "./FilterForStaleEntityVacancy";
 
@@ -68,7 +69,7 @@ export class Cleanup {
    * @returns 
    */
   private selectApplicableRules = async (selectionParms:SelectionParms): Promise<SelectionResult[]> => {
-    const { lookupTarget, cache: { getAllRules }, cleanupParms: { landscape } } = this;
+    const { cache: { getAllRules }, cleanupParms: { landscape } } = this;
     const { region, rulefilter, targetFilter } = selectionParms;
     const selectionResults = [] as SelectionResult[];
     const rules = await getAllRules(landscape);
@@ -106,23 +107,6 @@ export class Cleanup {
     }
 
     return selectionResults;
-  }
-
-  /**
-   * Use the SDK to lookup the target for the specified rule.
-   * @param Rule 
-   * @param region 
-   * @returns 
-   */
-  private lookupTarget = async (Rule:string, region:string):Promise<Target|void> => {
-    log(`Looking up target for rule: ${Rule}`);
-    const client = new EventBridgeClient({ region });
-    const commandInput = { Rule } as ListTargetsByRuleCommandInput;
-    const command = new ListTargetsByRuleCommand(commandInput);
-    const response = await client.send(command);
-    // Should be only one target and it will start with the rule name `${Rule}-targetId`.
-    const target = (response.Targets?? [{}] as Target[]).find((target:Target):boolean => (target.Id ?? '').startsWith(Rule));
-    if(target) return target;
   }
 
   /**

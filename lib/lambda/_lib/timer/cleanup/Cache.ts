@@ -3,6 +3,7 @@ import { error, log } from "../../../Utils";
 import { EntityCrud } from "../../dao/dao-entity";
 import { Consenter, Entity } from "../../dao/entity";
 import { ConsenterCrud } from "../../dao/dao-consenter";
+import { lookupRules } from "../event-bus/Utils";
 
 export interface IRulesCache {
   getAllRules(landscape:string|undefined):Promise<Rule[]>
@@ -48,28 +49,9 @@ export class RulesCache implements IRulesCache {
     if(landscape) {
       NamePrefix = NamePrefix + landscape + '-';
     }
-    const client = new EventBridgeClient({ region });
-    const pageSize = 10;
-    const allRules = [] as Rule[];
-    let next_token:string|undefined = 'START';
-    while(next_token) {
-      console.log(`Getting ${next_token == 'START' ? 'first' : 'next'} set of ${pageSize} rules...`);
-      const input = { NamePrefix, Limit: Number(pageSize) } as ListRulesCommandInput;
-      if(next_token !== 'START') {
-        input.NextToken = next_token;
-      }
-      const command = new ListRulesCommand(input);
-      const response = await client.send(command) as ListRulesCommandOutput;
-      const { NextToken:token, Rules } = response;
-      next_token = token;
-      if(Rules) {
-        for(const rule of Rules) {
-          allRules.push(rule);
-        };
-      }
-    }
-    rulesCache.set(landscape, allRules);
-    return allRules;
+    const rules = await lookupRules(NamePrefix, region);
+    rulesCache.set(landscape, rules);
+    return rules;
   }
 
   /**

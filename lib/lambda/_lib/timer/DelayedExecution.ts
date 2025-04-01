@@ -1,8 +1,9 @@
-import { DeleteRuleCommand, DeleteRuleRequest, EventBridgeClient, PutRuleCommand, PutRuleCommandOutput, PutTargetsCommand, RemoveTargetsCommand, RemoveTargetsCommandInput, RemoveTargetsResponse } from "@aws-sdk/client-eventbridge";
+import { EventBridgeClient, PutRuleCommand, PutRuleCommandOutput, PutTargetsCommand } from "@aws-sdk/client-eventbridge";
 import { AddPermissionCommand, LambdaClient } from "@aws-sdk/client-lambda";
-import { EggTimer, PeriodType } from "./EggTimer";
 import { v4 as uuidv4 } from 'uuid';
 import { log } from "../../Utils";
+import { EggTimer, PeriodType } from "./EggTimer";
+import { deleteRuleAndTarget } from "./event-bus/Utils";
 
 export interface DelayedExecution {
   startCountdown(timer:EggTimer, Description?:string):Promise<void>
@@ -110,54 +111,10 @@ export class DelayedLambdaExecution implements DelayedExecution {
  * @returns 
  */
 export const PostExecution = () => {
-  const cleanup = async (eventBridgeRuleName:string, targetId:string) => {
+  const cleanup = async (eventBridgeRuleName:string, targetId:string):Promise<void> => {
     try {
       const { REGION:region } = process.env;
-      const client = new EventBridgeClient({ region });
-
-      if( ! targetId ) {
-        log({ eventBridgeRuleName, targetId }, `ERROR: Cannot delete rule, missing targetId`);
-        return;
-      }
-
-      if( ! eventBridgeRuleName) {
-        log({ eventBridgeRuleName, targetId }, 'Cannot delete rule, missing eventBridgeRuleName');
-        return;
-      }
-
-      // 1) Remove the lambda target from the rule
-      const removeRequest = {
-        Rule: eventBridgeRuleName,
-        Ids: [ targetId ],        
-      } as RemoveTargetsCommandInput;
-      log(removeRequest, 'Removing lambda target from event bridge rule');
-      try {
-        const removeResponse:RemoveTargetsResponse = await client.send(new RemoveTargetsCommand(removeRequest));
-        if((removeResponse.FailedEntries ?? []).length > 0) {
-          log(removeResponse, `ERROR: Failed to remove lambda target from event bridge rule`)
-        }
-      }
-      catch(e) {
-        log(e, `Failed to remove lambda target from event bridge rule`);
-      }
-
-      // 2) Delete the rule
-      const deleteRequest = {
-        Name:eventBridgeRuleName,
-        Force:true
-      } as DeleteRuleRequest;
-      log(deleteRequest, `Deleting event bridge rule`);
-      try {
-        await client.send(new DeleteRuleCommand(deleteRequest));
-      }
-      catch(e) {
-        if((e as Error).name == 'ResourceNotFoundException') {
-          log(e, `Event bridge rule ${eventBridgeRuleName} not found`);
-        }
-        else {
-          log(e, `Failed to delete event bridge rule`);
-        }
-      }
+      deleteRuleAndTarget(eventBridgeRuleName, targetId, region!);
     }
     catch(e) {
       log(e, `Failed to delete ${eventBridgeRuleName}`);
