@@ -61,7 +61,8 @@ export class AuthorizedIndividualApi extends AbstractRole {
 export class LambdaFunction extends AbstractFunction {
   constructor(scope: Construct, constructId: string, parms:ApiConstructParms) {
     const context:IContext = scope.node.getContext('stack-parms');
-    const { STACK_ID, ACCOUNT, REGION, CONFIG } = context;
+    const { STACK_ID, ACCOUNT, REGION, CONFIG, TAGS: { Landscape } } = context;
+    const scheduleGroupName = `${STACK_ID}-${Landscape}-scheduler-group`;
     const { 
       userPool, cloudfrontDomain, landscape, exhibitFormsBucket, 
       disclosureRequestReminderLambdaArn, 
@@ -116,17 +117,15 @@ export class LambdaFunction extends AbstractFunction {
           'EttAuthIndEventBridgePolicy': new PolicyDocument({
             statements: [
               new PolicyStatement({
-                actions: [ 'events:DeleteRule', 'events:DisableRule', 'events:EnableRule', 'events:PutRule', 'events:PutTargets', 'events:RemoveTargets' ],
+                actions: [ 'scheduler:DeleteSchedule', 'scheduler:CreateSchedule', 'scheduler:Get*' ],
                 resources: [
-                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/ett-*`
+                  `arn:aws:scheduler:${REGION}:${ACCOUNT}:schedule/${scheduleGroupName}/${prefix}-*`
                 ],
                 effect: Effect.ALLOW
               }),
               new PolicyStatement({
-                actions: [ 'events:List*', 'events:Describe*' ],
-                resources: [
-                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/*`
-                ],
+                actions: [ 'scheduler:List*' ],
+                resources: [ '*' ],
                 effect: Effect.ALLOW
               }),
               new PolicyStatement({
@@ -136,6 +135,16 @@ export class LambdaFunction extends AbstractFunction {
                   `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${prefix}-${DelayedExecutions.HandleStaleEntityVacancy.coreName}`
                 ],
                 effect: Effect.ALLOW
+              }),
+              new PolicyStatement({
+                actions: [ 'iam:PassRole' ],
+                resources: [ `arn:aws:iam::${ACCOUNT}:role/${prefix}-scheduler-role` ],
+                effect: Effect.ALLOW,
+                conditions: {                  
+                  StringEquals: {
+                    'iam:PassedToService': 'scheduler.amazonaws.com'
+                  }
+                }
               })
             ]
           }),

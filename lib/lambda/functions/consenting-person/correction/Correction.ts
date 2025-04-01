@@ -111,7 +111,7 @@ export class ConsentingPersonToCorrect {
         correctable.exhibit_forms = [];
         await ConsenterCrud({ consenterInfo: correctable, removeSub:true }).update();
 
-        // Duplicate any exhibit form expiration event bridge rules, but applied against the new consenter db record.
+        // Duplicate any exhibit form expiration event bridge schedules, but applied against the new consenter db record.
         if(exhibit_forms.length > 0) {
           for(let i=0; i<exhibit_forms.length; i++) {
             const { create_timestamp:dateStr } = exhibit_forms[i];

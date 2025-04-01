@@ -1,24 +1,25 @@
-import { EventBridgeClient, ListRulesCommand, ListRulesCommandInput, ListRulesCommandOutput, Rule } from "@aws-sdk/client-eventbridge";
-import { error, log } from "../../../Utils";
+import { ListSchedulesCommand, ListSchedulesCommandInput, ListSchedulesCommandOutput, SchedulerClient, ScheduleSummary } from "@aws-sdk/client-scheduler";
+import { error } from "../../../Utils";
+import { ConsenterCrud } from "../../dao/dao-consenter";
 import { EntityCrud } from "../../dao/dao-entity";
 import { Consenter, Entity } from "../../dao/entity";
-import { ConsenterCrud } from "../../dao/dao-consenter";
+import { getGroupName } from "../DelayedExecution";
 
-export interface IRulesCache {
-  getAllRules(landscape:string|undefined):Promise<Rule[]>
-  getDeletedRules():string[]
+export interface ISchedulesCache {
+  getAllSchedules(landscape:string|undefined):Promise<ScheduleSummary[]>
+  getDeletedSchedules():string[]
   entityDoesNotExist(entityId:string):Promise<boolean>
   consenterDoesNotExist(consenterEmail:string):Promise<boolean>
-  deleteRule(ruleName:string):void
-  ruleIsDeleted(ruleName:string):boolean
+  deleteSchedule(scheduleName:string):void
+  scheduleIsDeleted(scheduleName:string):boolean
 }
 
 /**
- * This class is used to cache rules, entities, and consenters so as to avoid making extraneous repeat SDK calls.
+ * This class is used to cache schedules, entities, and consenters so as to avoid making extraneous repeat SDK calls.
  */
-export class RulesCache implements IRulesCache {
-  private rulesCache:Map<string, Rule[]> = new Map();
-  private deletedRules:string[] = [] as string[];
+export class SchedulesCache implements ISchedulesCache {
+  private schedulesCache:Map<string, ScheduleSummary[]> = new Map();
+  private deletedSchedules:string[] = [] as string[];
   private entityIdCache:string[] = [];
   private missingConsenterEmails:string[] = [];
   private foundConsenterEmails:string[] = [];
@@ -29,47 +30,52 @@ export class RulesCache implements IRulesCache {
   }
 
   /**
-   * Get all rules for the specified landscape (rule name begins with ett-${landscape}-).
+   * Get all schedules for the specified landscape and group name (schedule name begins with ett-${landscape}-).
    * First time call for a landscape will trigger a SDK lookup and a cache of the results.
    * Subsequent calls for the same landscape will use the cache.
    * @param region 
    * @returns 
    */
-  public getAllRules = async (landscape:string|undefined):Promise<Rule[]> => {
-    const { rulesCache, region } = this;
+  public getAllSchedules = async (landscape:string|undefined):Promise<ScheduleSummary[]> => {
+    const { schedulesCache, region } = this;
     if( ! landscape) {
       error(`Landscape not set`);
       return [];
     }
-    if(rulesCache.has(landscape)) {
-      return rulesCache.get(landscape) as Rule[];
+    if(schedulesCache.has(landscape)) {
+      return schedulesCache.get(landscape) as ScheduleSummary[];
     }
     let NamePrefix = 'ett-';
+    let groupName:string|undefined = undefined;
     if(landscape) {
+      groupName = getGroupName(`${NamePrefix}${landscape}`)
       NamePrefix = NamePrefix + landscape + '-';
     }
-    const client = new EventBridgeClient({ region });
+    const client = new SchedulerClient({ region });
     const pageSize = 10;
-    const allRules = [] as Rule[];
+    const allSchedules = [] as ScheduleSummary[];
     let next_token:string|undefined = 'START';
+
+
     while(next_token) {
-      console.log(`Getting ${next_token == 'START' ? 'first' : 'next'} set of ${pageSize} rules...`);
-      const input = { NamePrefix, Limit: Number(pageSize) } as ListRulesCommandInput;
+      console.log(`Getting ${next_token == 'START' ? 'first' : 'next'} set of ${pageSize} schedule summaries...`);
+      const input = { NamePrefix, Limit: Number(pageSize) } as ListSchedulesCommandInput;
+      if(groupName) input.GroupName = groupName;
       if(next_token !== 'START') {
         input.NextToken = next_token;
       }
-      const command = new ListRulesCommand(input);
-      const response = await client.send(command) as ListRulesCommandOutput;
-      const { NextToken:token, Rules } = response;
+      const command = new ListSchedulesCommand(input);
+      const response = await client.send(command) as ListSchedulesCommandOutput;
+      const { NextToken:token, Schedules } = response;
       next_token = token;
-      if(Rules) {
-        for(const rule of Rules) {
-          allRules.push(rule);
+      if(Schedules) {
+        for(const schedule of Schedules) {
+          allSchedules.push(schedule);
         };
       }
     }
-    rulesCache.set(landscape, allRules);
-    return allRules;
+    schedulesCache.set(landscape, allSchedules);
+    return allSchedules;
   }
 
   /**
@@ -113,15 +119,15 @@ export class RulesCache implements IRulesCache {
     return true;
   }
 
-  public getDeletedRules = ():string[] => {
-    return this.deletedRules;
+  public getDeletedSchedules = ():string[] => {
+    return this.deletedSchedules;
   }
   
-  public deleteRule = (ruleName:string):void => {
-    this.deletedRules.push(ruleName);
+  public deleteSchedule = (scheduleName:string):void => {
+    this.deletedSchedules.push(scheduleName);
   }
 
-  public ruleIsDeleted = (ruleName:string):boolean => {
-    return this.deletedRules.includes(ruleName);
+  public scheduleIsDeleted = (scheduleName:string):boolean => {
+    return this.deletedSchedules.includes(scheduleName);
   }
 }

@@ -8,6 +8,7 @@ import { TableBaseNames } from "./DynamoDb";
 import { Configurations } from "./lambda/_lib/config/Config";
 import { ExhibitFormsBucketEnvironmentVariableName } from "./lambda/functions/consenting-person/BucketItemMetadata";
 import { Duration } from "aws-cdk-lib";
+import { ScheduleGroup } from "aws-cdk-lib/aws-scheduler";
 
 export type DelayedExecutionNames = {
   coreName: string, targetArnEnvVarName: string
@@ -49,6 +50,7 @@ export class DelayedExecutionLambdas extends Construct {
   private constructId:string;
   private context:IContext;
   private parms:DelayedExecutionLambdaParms;
+  private scheduleGroupName:string;
   private _databaseExhibitFormPurgeLambda:AbstractFunction;
   private _disclosureRequestReminderLambda:AbstractFunction;
   private _bucketExhibitFormPurgeLambda:AbstractFunction;
@@ -63,6 +65,8 @@ export class DelayedExecutionLambdas extends Construct {
     this.context = scope.node.getContext('stack-parms');
     this.constructId = constructId;
     this.parms = parms;
+    const { context: { STACK_ID, TAGS: { Landscape }}} = this;
+    this.scheduleGroupName = `${STACK_ID}-${Landscape}-scheduler-group`;
 
     this.createDatabaseExhibitFormPurgeLambda();
 
@@ -75,10 +79,17 @@ export class DelayedExecutionLambdas extends Construct {
     this.createConsenterPurgeLambda();
 
     this.createStaleInvitationsLambda();
+
+    this.createEventSchedulerGroup();
+
+    this.createSchedulesRole();
   }
 
   private createDatabaseExhibitFormPurgeLambda = () => {
-    const { constructId, parms: { cloudfrontDomain }, context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } } = this;
+    const { 
+      constructId, parms: { cloudfrontDomain }, scheduleGroupName,
+      context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } 
+    } = this;
     const baseId = `${constructId}DatabaseExhibitFormPurge`;
     const prefix = `${STACK_ID}-${landscape}`
     const functionName = `${prefix}-${DelayedExecutions.ExhibitFormDbPurge.coreName}`;
@@ -87,7 +98,7 @@ export class DelayedExecutionLambdas extends Construct {
     // Create the lambda function
     this._databaseExhibitFormPurgeLambda = new class extends AbstractFunction { }(this, baseId, {
       runtime: Runtime.NODEJS_18_X,
-      // memorySize: 1024,
+      memorySize: 256,
       timeout: Duration.seconds(5),
       entry: 'lib/lambda/functions/delayed-execution/PurgeExhibitFormFromDatabase.ts',
       // handler: 'handler',
@@ -115,12 +126,12 @@ export class DelayedExecutionLambdas extends Construct {
               })
             ]
           }),
-          [`${functionName}-eventbridge-policy`]: new PolicyDocument({
+          [`${functionName}-scheduler-policy`]: new PolicyDocument({
             statements: [
               new PolicyStatement({
-                actions: [ 'events:DeleteRule', 'events:RemoveTargets' ],
+                actions: [ 'scheduler:DeleteSchedule' ],
                 resources: [
-                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
+                  `arn:aws:scheduler:${REGION}:${ACCOUNT}:schedule/${scheduleGroupName}/${prefix}-*`
                 ],
                 effect: Effect.ALLOW
               })
@@ -135,17 +146,13 @@ export class DelayedExecutionLambdas extends Construct {
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });
-
-    // Grant event bridge permission to invoke the lambda function.
-    this._databaseExhibitFormPurgeLambda.addPermission(`${functionName}-invoke-permission`, {
-      principal: new ServicePrincipal('events.amazonaws.com'),
-      action: 'lambda:InvokeFunction',
-      sourceArn: `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
-    });
   }
 
   private createDisclosureRequestReminderLambda = () => {
-    const { constructId, parms: { cloudfrontDomain, exhibitFormsBucket: { bucketArn, bucketName } }, context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } } = this;
+    const { 
+      constructId, parms: { cloudfrontDomain, exhibitFormsBucket: { bucketArn, bucketName } }, 
+      context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID }, scheduleGroupName
+    } = this;
     const baseId = `${constructId}DisclosureRequestReminder`;
     const prefix = `${STACK_ID}-${landscape}`
     const functionName = `${prefix}-${DelayedExecutions.DisclosureRequestReminder.coreName}`;
@@ -202,12 +209,12 @@ export class DelayedExecutionLambdas extends Construct {
               })
             ]
           }),
-          [`${functionName}-eventbridge-policy`]: new PolicyDocument({
+          [`${functionName}-scheduler-policy`]: new PolicyDocument({
             statements: [
               new PolicyStatement({
-                actions: [ 'events:DeleteRule', 'events:RemoveTargets' ],
+                actions: [ 'scheduler:DeleteSchedule' ],
                 resources: [
-                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
+                  `arn:aws:scheduler:${REGION}:${ACCOUNT}:schedule/${scheduleGroupName}/${prefix}-*`
                 ],
                 effect: Effect.ALLOW
               })
@@ -223,17 +230,13 @@ export class DelayedExecutionLambdas extends Construct {
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });
-
-    // Grant event bridge permission to invoke the lambda function.
-    this._disclosureRequestReminderLambda.addPermission(`${functionName}-invoke-permission`, {
-      principal: new ServicePrincipal('events.amazonaws.com'),
-      action: 'lambda:InvokeFunction',
-      sourceArn: `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
-    })
   }
 
   private createBucketExhibitFormPurgeLambda = () => {
-    const { constructId, parms: { cloudfrontDomain, exhibitFormsBucket: { bucketArn, bucketName } }, context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } } = this;
+    const { 
+      constructId, parms: { cloudfrontDomain, exhibitFormsBucket: { bucketArn, bucketName } }, 
+      context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID }, scheduleGroupName 
+    } = this;
     const baseId = `${constructId}BucketPurge`;
     const prefix = `${STACK_ID}-${landscape}`
     const functionName = `${prefix}-${DelayedExecutions.ExhibitFormBucketPurge.coreName}`;
@@ -241,7 +244,7 @@ export class DelayedExecutionLambdas extends Construct {
     
     this._bucketExhibitFormPurgeLambda = new class extends AbstractFunction { }(this, baseId, {
       runtime: Runtime.NODEJS_18_X,
-      // memorySize: 1024,
+      memorySize: 256,
       timeout: Duration.seconds(5),
       entry: 'lib/lambda/functions/delayed-execution/PurgeExhibitFormFromBucket.ts',
       // handler: 'handler',
@@ -278,12 +281,12 @@ export class DelayedExecutionLambdas extends Construct {
               })
             ]
           }),
-          [`${functionName}-eventbridge-policy`]: new PolicyDocument({
+          [`${functionName}-scheduler-policy`]: new PolicyDocument({
             statements: [
               new PolicyStatement({
-                actions: [ 'events:DeleteRule', 'events:RemoveTargets' ],
+                actions: [ 'scheduler:DeleteSchedule' ],
                 resources: [
-                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
+                  `arn:aws:scheduler:${REGION}:${ACCOUNT}:schedule/${scheduleGroupName}/${prefix}-*`
                 ],
                 effect: Effect.ALLOW
               })
@@ -299,20 +302,13 @@ export class DelayedExecutionLambdas extends Construct {
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });
-
-    // Grant event bridge permission to invoke the lambda function.
-    this._bucketExhibitFormPurgeLambda.addPermission(`${functionName}-invoke-permission`, {
-      principal: new ServicePrincipal('events.amazonaws.com'),
-      action: 'lambda:InvokeFunction',
-      sourceArn: `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
-    })
   }
 
   private createHandleStaleEntityVacancyLambda = () => {
     const { constructId, parms: { 
       cloudfrontDomain, 
       userPoolId, 
-      exhibitFormsBucket: { bucketArn, bucketName } }, 
+      exhibitFormsBucket: { bucketArn, bucketName } }, scheduleGroupName,
       context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } 
     } = this;
     const baseId = `${constructId}HandleStaleEntityVacancy`;
@@ -320,10 +316,10 @@ export class DelayedExecutionLambdas extends Construct {
     const functionName = `${prefix}-${DelayedExecutions.HandleStaleEntityVacancy.coreName}`;
     const description = 'Function for handling entity termination for vacancies in entity roles that have lasted too long';
 
-    // Configure this with extra time for the lambda to run - If there are lots of event bridge rules to delete, the rule target lookups could take a while.
+    // Configure this with extra time for the lambda to run - If there are lots of event bridge schedules to delete, the schedule detail lookups could take a while.
     this._handleStaleEntityVacancyLambda = new class extends AbstractFunction { }(this, baseId, {
       runtime: Runtime.NODEJS_18_X,
-      // memorySize: 1024,
+      memorySize: 256,
       timeout: Duration.minutes(5),
       entry: 'lib/lambda/functions/delayed-execution/HandleStaleEntityVacancy.ts',
       // handler: 'handler',
@@ -371,20 +367,18 @@ export class DelayedExecutionLambdas extends Construct {
               })
             ]
           }),
-          [`${functionName}-eventbridge-policy`]: new PolicyDocument({
+          [`${functionName}-scheduler-policy`]: new PolicyDocument({
             statements: [
               new PolicyStatement({
-                actions: [ 'events:DeleteRule', 'events:DisableRule', 'events:RemoveTargets' ],
+                actions: [ 'scheduler:DeleteSchedule', 'scheduler:GetSchedule' ],
                 resources: [
-                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/ett-*`
+                  `arn:aws:scheduler:${REGION}:${ACCOUNT}:schedule/${scheduleGroupName}/${prefix}-*`
                 ],
                 effect: Effect.ALLOW
               }),
               new PolicyStatement({
-                actions: [ 'events:List*', 'events:Describe*' ],
-                resources: [
-                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/*`
-                ],
+                actions: [ 'scheduler:List*' ],
+                resources: [ '*' ],
                 effect: Effect.ALLOW
               })
             ]
@@ -409,17 +403,10 @@ export class DelayedExecutionLambdas extends Construct {
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });
-
-    // Grant event bridge permission to invoke the lambda function.
-    this._handleStaleEntityVacancyLambda.addPermission(`${functionName}-invoke-permission`, {
-      principal: new ServicePrincipal('events.amazonaws.com'),
-      action: 'lambda:InvokeFunction',
-      sourceArn: `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
-    });
   }
 
   private createConsenterPurgeLambda = () => {
-    const { constructId, parms: { cloudfrontDomain, userPoolId }, 
+    const { constructId, parms: { cloudfrontDomain, userPoolId }, scheduleGroupName,
       context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } 
     } = this;
     const baseId = `${constructId}PurgeConsenter`;
@@ -429,7 +416,7 @@ export class DelayedExecutionLambdas extends Construct {
     
     this._consenterPurgeLambda = new class extends AbstractFunction { }(this, baseId, {
       runtime: Runtime.NODEJS_18_X,
-      // memorySize: 1024,
+      memorySize: 256,
       timeout: Duration.seconds(15),
       entry: 'lib/lambda/functions/delayed-execution/PurgeConsenter.ts',
       // handler: 'handler',
@@ -457,12 +444,12 @@ export class DelayedExecutionLambdas extends Construct {
               })
             ]
           }),
-          [`${functionName}-eventbridge-policy`]: new PolicyDocument({
+          [`${functionName}-scheduler-policy`]: new PolicyDocument({
             statements: [
               new PolicyStatement({
-                actions: [ 'events:*' ],
+                actions: [ 'scheduler:DeleteSchedule' ],
                 resources: [
-                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
+                  `arn:aws:scheduler:${REGION}:${ACCOUNT}:schedule/${scheduleGroupName}/${prefix}-*`
                 ],
                 effect: Effect.ALLOW
               })
@@ -498,17 +485,10 @@ export class DelayedExecutionLambdas extends Construct {
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });
-
-    // Grant event bridge permission to invoke the lambda function.
-    this._consenterPurgeLambda.addPermission(`${functionName}-invoke-permission`, {
-      principal: new ServicePrincipal('events.amazonaws.com'),
-      action: 'lambda:InvokeFunction',
-      sourceArn: `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
-    });
   }
 
   private createStaleInvitationsLambda = () => {
-    const { constructId, parms: { cloudfrontDomain, userPoolId },
+    const { constructId, parms: { cloudfrontDomain, userPoolId }, scheduleGroupName,
       context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID }
     } = this;
     const baseId = `${constructId}RemoveStaleInvitations`;
@@ -518,7 +498,7 @@ export class DelayedExecutionLambdas extends Construct {
 
     this._removeStaleInvitationsLambda = new class extends AbstractFunction { }(this, baseId, {
       runtime: Runtime.NODEJS_18_X,
-      // memorySize: 1024,
+      memorySize: 256,
       timeout: Duration.seconds(15),
       entry: 'lib/lambda/functions/delayed-execution/RemoveStaleInvitations.ts',
       // handler: 'handler',
@@ -546,12 +526,12 @@ export class DelayedExecutionLambdas extends Construct {
               })
             ]
           }),
-          [`${functionName}-eventbridge-policy`]: new PolicyDocument({
+          [`${functionName}-scheduler-policy`]: new PolicyDocument({
             statements: [
               new PolicyStatement({
-                actions: [ 'events:*' ],
+                actions: [ 'scheduler:*' ],
                 resources: [
-                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
+                  `arn:aws:scheduler:${REGION}:${ACCOUNT}:schedule/${scheduleGroupName}/${prefix}-*`
                 ],
                 effect: Effect.ALLOW
               })
@@ -578,12 +558,35 @@ export class DelayedExecutionLambdas extends Construct {
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });
+  }
 
-    // Grant event bridge permission to invoke the lambda function.
-    this._removeStaleInvitationsLambda.addPermission(`${functionName}-invoke-permission`, {
-      principal: new ServicePrincipal('events.amazonaws.com'),
-      action: 'lambda:InvokeFunction',
-      sourceArn: `arn:aws:events:${REGION}:${ACCOUNT}:rule/${prefix}-*`
+  private createEventSchedulerGroup = () => {
+    const { context: { TAGS: { Landscape:landscape }, STACK_ID }, constructId } = this;
+    const prefix = `${STACK_ID}-${landscape}`;
+    const baseId = `${constructId}SchedulerGroup`;
+    new ScheduleGroup(this, baseId, { scheduleGroupName: `${prefix}-scheduler-group` });
+  }
+
+  private createSchedulesRole = () => {
+    const { context: { TAGS: { Landscape:landscape }, STACK_ID, REGION, ACCOUNT }, constructId } = this;
+    const prefix = `${STACK_ID}-${landscape}`;
+    new Role(this, 'EventBridgeSchedulerRole', {
+      roleName: `${prefix}-scheduler-role`,
+      assumedBy: new ServicePrincipal('scheduler.amazonaws.com'), // Trust policy for EventBridge Scheduler
+      description: 'Role for EventBridge Scheduler to invoke ETT Lambda functions',
+      inlinePolicies: {
+        'EventBridgeSchedulerPolicy': new PolicyDocument({
+          statements: [
+            new PolicyStatement({
+              actions: ['lambda:InvokeFunction'],
+              resources: [
+                `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${prefix}-*`
+              ],
+              effect: Effect.ALLOW
+            })
+          ]
+        })
+      }
     });
   }
 

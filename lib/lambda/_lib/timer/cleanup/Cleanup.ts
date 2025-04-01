@@ -1,10 +1,10 @@
-import { EventBridgeClient, ListTargetsByRuleCommand, ListTargetsByRuleCommandInput, Rule, Target } from "@aws-sdk/client-eventbridge";
+import { GetScheduleCommand, GetScheduleCommandInput, GetScheduleOutput, SchedulerClient, ScheduleSummary } from "@aws-sdk/client-scheduler";
 import { IContext } from "../../../../../contexts/IContext";
 import { log } from "../../../Utils";
-import { PostExecution, ScheduledLambdaInput } from "../DelayedExecution";
+import { getPrefix, PostExecution, ScheduledLambdaInput } from "../DelayedExecution";
 import { humanReadableFromMilliseconds } from "../DurationConverter";
 import { EggTimer } from "../EggTimer";
-import { IRulesCache, RulesCache } from "./Cache";
+import { ISchedulesCache, SchedulesCache } from "./Cache";
 import { FilterForStaleEntityVacancy } from "./FilterForStaleEntityVacancy";
 
 export type CleanupParms = {
@@ -16,33 +16,37 @@ export type CleanupParms = {
 
 export type SelectionParms = {
   region:string,
-  rulefilter:(rule:Rule) => boolean,
-  targetFilter: (lambdaInput:any) => Promise<boolean>
+  scheduleFilter:(schedule:ScheduleSummary) => boolean,
+  inputFilter: (lambdaInput:any) => Promise<boolean>
 }
 
 export type SelectionResult = {
-  rule:Rule,
-  target:Target,
+  schedule:ScheduleSummary,
   lambdaInput:ScheduledLambdaInput,
   timeRemaining:number,
 }
 
 export type Filter = {
-  getFilter: (cache:IRulesCache) => Promise<SelectionParms>
-  matchForRule: (rule:Rule) => boolean
+  getFilter: (cache:ISchedulesCache) => Promise<SelectionParms>
+  matchForSchedule: (schedule:ScheduleSummary) => boolean
+}
+
+export const defaultMatchForSchedule = (schedule:ScheduleSummary, scheduleId:string):boolean => {
+  const startOfName = `${getPrefix()}-${scheduleId}-`;
+  return schedule.Name ? schedule.Name.startsWith(startOfName) : false;
 }
 
 /**
- * This class is used to clean up event bridge rules that have become orphaned because the corresponding
+ * This class is used to clean up event bridge schedules that have become orphaned because the corresponding
  * entity, landscape, or consenter have been purged from the system.
  */
 export class Cleanup {
   private cleanupParms: CleanupParms;
   private dryrun: boolean;
-  private cache: IRulesCache;
+  private cache: ISchedulesCache;
   private filters: Filter[];
 
-  constructor(cleanupParms:CleanupParms, filters:Filter[], cache:IRulesCache = new RulesCache(cleanupParms.region)) {
+  constructor(cleanupParms:CleanupParms, filters:Filter[], cache:ISchedulesCache = new SchedulesCache(cleanupParms.region)) {
     this.cleanupParms = cleanupParms;
     this.cache = cache;
     this.filters = filters;
@@ -58,90 +62,91 @@ export class Cleanup {
   public getFilters = ():Filter[] => {
     return this.filters;
   }
-  public getDeletedRules = ():string[] => {
-    return this.cache.getDeletedRules();
+  public getDeletedSchedules = ():string[] => {
+    return this.cache.getDeletedSchedules();
   }
 
   /**
-   * Apply provided filters to the rules for the specific landscape and target and return the resulting subset.
+   * Apply provided filters to the schedules for the specific landscape and target and return the resulting subset.
    * @param selectionParms 
    * @returns 
    */
-  private selectApplicableRules = async (selectionParms:SelectionParms): Promise<SelectionResult[]> => {
-    const { lookupTarget, cache: { getAllRules }, cleanupParms: { landscape } } = this;
-    const { region, rulefilter, targetFilter } = selectionParms;
+  private selectApplicableSchedules = async (selectionParms:SelectionParms): Promise<SelectionResult[]> => {
+    const { lookupScheduleDetails, cache: { getAllSchedules }, cleanupParms: { landscape } } = this;
+    const { region, scheduleFilter, inputFilter } = selectionParms;
     const selectionResults = [] as SelectionResult[];
-    const rules = await getAllRules(landscape);
+    const schedules = await getAllSchedules(landscape);
 
-    for(const rule of rules) {
-      if( ! rule.Name) continue;
-      if( ! rulefilter(rule)) continue;
-      const target = await lookupTarget(rule.Name, region);
-      if( ! target) continue;
-      const { Input } = target;
+    for(const schedule of schedules) {
+      if( ! schedule.Name) continue;
+      if( ! scheduleFilter(schedule)) continue;
+      const { Name, GroupName } = schedule;
+      const details = await lookupScheduleDetails(Name, region, GroupName);
+      if( ! details) continue;
+      const { Target, ScheduleExpression } = details;
+      if( ! Target) continue;
+      const { Input } = Target;
       if( ! Input) continue;
       const input = JSON.parse(Input) as ScheduledLambdaInput;
       const { lambdaInput } = input;
       if( ! lambdaInput) continue;
-      if( ! await targetFilter(lambdaInput)) continue;
-      const { ScheduleExpression } = rule;
+      if( ! await inputFilter(lambdaInput)) continue;
       let timeRemaining:number = -1;
       if(ScheduleExpression) {
         const date = EggTimer.fromCronExpression(ScheduleExpression);
         timeRemaining = date.getTime() - Date.now();
       }
-      selectionResults.push({ rule, target, lambdaInput, timeRemaining });
+      selectionResults.push({ schedule, lambdaInput, timeRemaining });
     };
 
     return selectionResults;
   }
 
-  private getRulesToDelete = async ():Promise<SelectionResult[]> => {
-    const { cache, filters, selectApplicableRules} = this;
+  private getSchedulesToDelete = async ():Promise<SelectionResult[]> => {
+    const { cache, filters, selectApplicableSchedules} = this;
     const selectionResults = [] as SelectionResult[];
 
     for(const filter of filters) {
       const selectionParms = await filter.getFilter(cache);
-      selectionResults.push(...(await selectApplicableRules(selectionParms)));
+      selectionResults.push(...(await selectApplicableSchedules(selectionParms)));
     }
 
     return selectionResults;
   }
 
   /**
-   * Use the SDK to lookup the target for the specified rule.
-   * @param Rule 
+   * Use the SDK to lookup the specified schedule.
+   * @param Name 
    * @param region 
+   * @param GroupName 
    * @returns 
    */
-  private lookupTarget = async (Rule:string, region:string):Promise<Target|void> => {
-    log(`Looking up target for rule: ${Rule}`);
-    const client = new EventBridgeClient({ region });
-    const commandInput = { Rule } as ListTargetsByRuleCommandInput;
-    const command = new ListTargetsByRuleCommand(commandInput);
-    const response = await client.send(command);
-    // Should be only one target and it will start with the rule name `${Rule}-targetId`.
-    const target = (response.Targets?? [{}] as Target[]).find((target:Target):boolean => (target.Id ?? '').startsWith(Rule));
-    if(target) return target;
+  private lookupScheduleDetails = async (Name:string, region:string, GroupName?:string):Promise<GetScheduleOutput> => {
+    log({ Name, GroupName }, `Looking up target for schedule`);
+    const client = new SchedulerClient({ region });
+    const commandInput = { Name, GroupName } as GetScheduleCommandInput;
+    const command = new GetScheduleCommand(commandInput);
+    const response = await client.send(command) as GetScheduleOutput;
+    return response;
   }
 
   /**
-   * Delete the specified rule.
+   * Delete the specified schedule.
    * @param selectionResult 
    * @returns 
    */
-  private deleteRule = async (selectionResult:SelectionResult):Promise<void> => {
+  private deleteSchedule = async (selectionResult:SelectionResult):Promise<void> => {
     const { dryrun } = this;
-    const { rule, target, timeRemaining:milliseconds } = selectionResult;
+    const { lambdaInput, schedule: { Name, GroupName }, timeRemaining:milliseconds } = selectionResult;
     const timeRemaining = { milliseconds: -1, humanReadable: 'unknown' };
     if(milliseconds > 0) {
       timeRemaining.milliseconds = milliseconds;
       timeRemaining.humanReadable = humanReadableFromMilliseconds(milliseconds);
     }
-    const logItem = { timeRemaining, ruleName: rule.Name, target } as any;
+    const logItem = { timeRemaining, Name, lambdaInput } as any;
   
-    if(this.cache.ruleIsDeleted(rule.Name!)) {
-      log(rule.Name, `Rule already deleted`);
+    if(this.cache.scheduleIsDeleted(Name!)) {
+      log(Name, `Schedule already deleted`);
       return;
     }
     if(dryrun) {
@@ -150,33 +155,29 @@ export class Cleanup {
     }
 
     log(logItem, 'Deleting');
-    if( ! rule.Name) {
-      console.log('Rule name not found!');
+    if( ! Name) {
+      console.log('Schedule name not found!');
       return;
     }
-    if( ! target.Id) {
-      console.log('Target ID not found!');
-      return;
-    }
-    await PostExecution().cleanup(rule.Name, target.Id);
-    this.cache.deleteRule(rule.Name);
+    await PostExecution().cleanup(Name, GroupName!);
+    this.cache.deleteSchedule(Name);
   }
 
   /**
-   * Remove any event bridge rules whose lambda targets receive input that specify entities that no longer exist.
+   * Remove any event bridge schedules whose lambda targets receive input that specify entities that no longer exist.
    * @param _dryrun 
    */
   public cleanup = async (_dryrun:boolean=false):Promise<any> => {
     this.dryrun = _dryrun;
-    const { getRulesToDelete, deleteRule, cache: { getAllRules }, cleanupParms: { landscape }, filters } = this;
-    const rulesToDelete = await getRulesToDelete();
-    const candidates = (await getAllRules(landscape)).filter((rule:Rule):boolean => {
-      return filters.find((filter:Filter):boolean => filter.matchForRule(rule)) ? true : false;
+    const { getSchedulesToDelete, deleteSchedule, cache: { getAllSchedules }, cleanupParms: { landscape }, filters } = this;
+    const schedulesToDelete = await getSchedulesToDelete();
+    const candidates = (await getAllSchedules(landscape)).filter((schedule:ScheduleSummary):boolean => {
+      return filters.find((filter:Filter):boolean => filter.matchForSchedule(schedule)) ? true : false;
     });
-    log( `Found ${rulesToDelete.length} rules out of ${candidates.length} to delete`);
-    const sorted = rulesToDelete.sort((a:SelectionResult, b:SelectionResult):number => a.timeRemaining - b.timeRemaining);
-    for(const rule of sorted) {
-      await deleteRule(rule);
+    log( `Found ${schedulesToDelete.length} schedules out of ${candidates.length} to delete`);
+    const sorted = schedulesToDelete.sort((a:SelectionResult, b:SelectionResult):number => a.timeRemaining - b.timeRemaining);
+    for(const schedule of sorted) {
+      await deleteSchedule(schedule);
     };
   }
 }
@@ -184,7 +185,7 @@ export class Cleanup {
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/timer/cleanup/Cleanup.ts')) {
   (async () => {
-    // Cleanup orphaned event bridge rules for the current landscape and specific target.
+    // Cleanup orphaned event bridge schedules for the current landscape and specific target.
     const context:IContext = await require('../../../../../contexts/context.json');
     const { REGION:region, TAGS: { Landscape:landscape }} = context;
     const dryrun:boolean = true;

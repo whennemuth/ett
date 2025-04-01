@@ -6,7 +6,7 @@ import { FilterForPurgeExhibitFormFromBucket } from "./FilterForPurgeExhibitForm
 import { FilterForPurgeExhibitFormFromDatabase } from "./FilterForPurgeExhibitFormFromDatabase";
 import { FilterForSendDisclosureRequestReminder } from "./FilterForSendDisclosureRequestReminder";
 
-// If true, the cleanup will only list the rules that would be deleted.
+// If true, the cleanup will only list the schedules that would be deleted.
 const dryrun:boolean = true;
 
 export type CleanupLandscapeParms = {
@@ -37,7 +37,7 @@ export const cleanupLandscape = async (parms:CleanupLandscapeParms):Promise<void
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/timer/cleanup/CleanupRunner.ts')) {
   /**
-   * This method will perform a global cleanup of all orphaned event bridge rules for every landscape.
+   * This method will perform a global cleanup of all orphaned event bridge schedules for every landscape.
    */
   (async () => {
     const context:IContext = await require('../../../../../contexts/context.json');

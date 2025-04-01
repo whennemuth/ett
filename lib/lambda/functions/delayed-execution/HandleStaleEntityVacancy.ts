@@ -21,20 +21,21 @@ export type StaleVacancyLambdaParms = {
   entity_id: string
 }
 
-export const RulePrefix = 'Stale entity vacancy handler';
+export const ID = 'SEVH';
+export const Description = 'Stale entity vacancy handler';
 
 /**
- * This lambda is triggered by one-time event bridge rules to check an entity for having a vacancy in one of
+ * This lambda is triggered by one-time event bridge schedules to check an entity for having a vacancy in one of
  * its roles that has lasted longer than the allowable duration. If an entity is found to be in such a state,
  * it is terminated as an entity.
  * @param event 
  * @param context 
  */
 export const handler = async(event:ScheduledLambdaInput, context:any) => {
-  const { lambdaInput, eventBridgeRuleName, targetId } = event;
+  const { lambdaInput, groupName, scheduleName } = event;
   const { entity_id } = lambdaInput as StaleVacancyLambdaParms;
   const dryrun:boolean = process.env.DRYRUN === 'true';
-  const deletedRules:string[] = [];
+  const deletedSchedules:string[] = [];
 
   try {
     debugLog({ event, context });
@@ -89,7 +90,7 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
         const entityToDemolish = new EntityToDemolish(entity_id);
         entityToDemolish.dryRun = dryrun;
         await entityToDemolish.demolish();
-        deletedRules.push(...entityToDemolish.deletedRules);
+        deletedSchedules.push(...entityToDemolish.deletedSchedules);
         const { deletedUsers } = entityToDemolish;
         for(const user of deletedUsers) {
           const { role, email, active } = user;
@@ -127,11 +128,11 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
     log(e);
   }
   finally {
-    if(deletedRules.includes(eventBridgeRuleName)) {
-      log(`Rule ${eventBridgeRuleName} was already deleted during execution`);
+    if(deletedSchedules.includes(scheduleName)) {
+      log(`Schedule ${scheduleName} was already deleted during execution`);
     }
     else {
-      await PostExecution().cleanup(eventBridgeRuleName, targetId);
+      await PostExecution().cleanup(scheduleName, groupName);
     }    
   }
 }
@@ -243,8 +244,6 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     process.env.PREFIX = prefix;
     process.env.REGION = REGION;
 
-await notifySingleConsenterOfEntityTermination('MY ENTITY', 'cp2@warhen.work')
-
     // Create a reduced app config just for this test
     const { STALE_AI_VACANCY, STALE_ASP_VACANCY } = ConfigNames;
     const configs = { useDatabase:false, configs: [
@@ -296,7 +295,7 @@ await notifySingleConsenterOfEntityTermination('MY ENTITY', 'cp2@warhen.work')
             callback = async (lambdaArn:string, lambdaInput:StaleVacancyLambdaParms) => {
               const delayedTestExecution = new DelayedLambdaExecution(lambdaArn, lambdaInput);
               const timer = EggTimer.getInstanceSetFor(2, MINUTES); 
-              await delayedTestExecution.startCountdown(timer, `${RulePrefix} (TESTING)`);
+              await delayedTestExecution.startCountdown(timer, ID, `${Description}-(TESTING)`);
             };
             await createDelayedExecutionToHandleStaleVacancy(lambdaInput, callback);
             break;

@@ -12,7 +12,8 @@ export type StaleInvitationLambdaParms = {
   invitationCode:string, email:string, entity_id?:string
 }
 
-export const RulePrefix = 'Remove stale invitations';
+export const ID = 'RSI';
+export const Description = 'Remove stale invitations';
 
 /**
  * After an invitation has been sent to a user, this lambda will be triggered to remove the invitation
@@ -21,7 +22,7 @@ export const RulePrefix = 'Remove stale invitations';
  * @param context 
  */
 export const handler = async (event:ScheduledLambdaInput, context:any) => {
-  const { lambdaInput, eventBridgeRuleName, targetId } = event;
+  const { lambdaInput, groupName, scheduleName } = event;
   try {
     debugLog({ event, context });
 
@@ -59,7 +60,7 @@ export const handler = async (event:ScheduledLambdaInput, context:any) => {
     log(e);
   }
   finally {
-    await PostExecution().cleanup(eventBridgeRuleName, targetId);
+    await PostExecution().cleanup(scheduleName, groupName);
   }
 }
 
@@ -138,7 +139,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         callback = async (lambdaArn:string, lambdaInput:any) => {
           const delayedTestExecution = new DelayedLambdaExecution(lambdaArn, lambdaInput);
           const timer = EggTimer.getInstanceSetFor(2, MINUTES); 
-          await delayedTestExecution.startCountdown(timer, `${RulePrefix} (TESTING)`);
+          await delayedTestExecution.startCountdown(timer, ID, `${Description} (TESTING)`);
         };
         await createDelayedExecutionToRemoveStaleInvitation(lambdaInput, callback);
         break;

@@ -7,7 +7,7 @@ import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, error, errorResponse, invalidResponse, log, okResponse } from "../../Utils";
 import { ConsentStatus, consentStatus } from "../consenting-person/ConsentStatus";
-import { RulePrefix as PcRulePrefix } from "../delayed-execution/PurgeConsenter";
+import { ID as scheduleId, Description as scheduleDescription } from "../delayed-execution/PurgeConsenter";
 
 /**
  * Handles the public steps of registration for consenting individual
@@ -103,7 +103,7 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
 export const sheduleConsenterPurge = async (consenterEmail:string) => {
   const envVarName = DelayedExecutions.ConsenterPurge.targetArnEnvVarName;
   const functionArn = process.env[envVarName];
-  const description = `${PcRulePrefix} (${consenterEmail})`;
+  const description = `${scheduleDescription} (${consenterEmail})`;
   if(functionArn) {
     const configs = new Configurations();
     const waitTime = (await configs.getAppConfig(ConfigNames.DELETE_CONSENTER_AFTER)).getDuration();
@@ -111,7 +111,7 @@ export const sheduleConsenterPurge = async (consenterEmail:string) => {
     const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
     const { SECONDS } = PeriodType;
     const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
-    await delayedTestExecution.startCountdown(timer, description);
+    await delayedTestExecution.startCountdown(timer, scheduleId, description);
   }
   else {
     console.error(`Cannot schedule ${description}: ${envVarName} variable is missing from the environment!`);

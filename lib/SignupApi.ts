@@ -34,6 +34,7 @@ export class SignupApiConstruct extends Construct {
   private registerConsenterLambda:AbstractFunction;
   private context:IContext;
   private parms:SignupApiConstructParms;
+  private scheduleGroupName:string;
 
   constructor(scope:Construct, constructId:string, parms:SignupApiConstructParms) {
     super(scope, constructId);
@@ -41,7 +42,9 @@ export class SignupApiConstruct extends Construct {
     this.constructId = constructId;
     this.parms = parms;
     this.context = scope.node.getContext('stack-parms');
-    this.stageName = this.context.TAGS.Landscape;
+    const { context: { STACK_ID, TAGS: { Landscape }}} = this;
+    this.stageName = Landscape;
+    this.scheduleGroupName = `${STACK_ID}-${Landscape}-scheduler-group`;
 
     this.createRegisterEntityApi();
 
@@ -52,7 +55,8 @@ export class SignupApiConstruct extends Construct {
    * Create the lambda function and api for for checking invitation code and registering a new user has signed and registered.
    */
   private createRegisterEntityApi = () => {
-    const { constructId, context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID }, 
+    const { 
+      constructId, context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID }, scheduleGroupName,
       parms: { cloudfrontDomain, userPool: { userPoolArn, userPoolId }, exhibitFormsBucket }, stageName 
     } = this;
     const basename = `${constructId}RegisterEntity`;
@@ -105,17 +109,15 @@ export class SignupApiConstruct extends Construct {
           'EttEntitySignupEventBridgePolicy': new PolicyDocument({
             statements: [
               new PolicyStatement({
-                actions: [ 'events:DeleteRule', 'events:DisableRule', 'events:RemoveTargets' ],
+                actions: [ 'scheduler:DeleteSchedule', 'scheduler:GetSchedule' ],
                 resources: [
-                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/ett-*`
+                  `arn:aws:scheduler:${REGION}:${ACCOUNT}:schedule/${scheduleGroupName}/${prefix}-*`
                 ],
                 effect: Effect.ALLOW
               }),
               new PolicyStatement({
-                actions: [ 'events:List*', 'events:Describe*' ],
-                resources: [
-                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/*`
-                ],
+                actions: [ 'scheduler:List*' ],
+                resources: [ '*' ],
                 effect: Effect.ALLOW
               }),
               new PolicyStatement({
@@ -187,7 +189,7 @@ export class SignupApiConstruct extends Construct {
   private createRegisterConsenterApi = () => {
     const { 
       constructId, parms: { cloudfrontDomain, purgeConsenterLambdaArn }, stageName, 
-      context: { REGION, ACCOUNT, TAGS: { Landscape:landscape }, STACK_ID } 
+      context: { REGION, ACCOUNT, TAGS: { Landscape:landscape }, STACK_ID }, scheduleGroupName, 
     } = this;
     const basename = `${constructId}RegisterConsenter`;
     const description = `for the first stage of public registration of a ${roleFullName(Roles.CONSENTING_PERSON)}`;
@@ -213,17 +215,15 @@ export class SignupApiConstruct extends Construct {
           'EttEntitySignupEventBridgePolicy': new PolicyDocument({
             statements: [
               new PolicyStatement({
-                actions: [ 'events:DeleteRule', 'events:DisableRule', 'events:EnableRule', 'events:PutRule', 'events:PutTargets', 'events:RemoveTargets' ],
+                actions: [ 'scheduler:DeleteSchedule', 'scheduler:CreateSchedule', 'scheduler:Get*' ],
                 resources: [
-                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/ett-*`
+                  `arn:aws:scheduler:${REGION}:${ACCOUNT}:schedule/${scheduleGroupName}/${prefix}-*`
                 ],
                 effect: Effect.ALLOW
               }),
               new PolicyStatement({
-                actions: [ 'events:List*', 'events:Describe*' ],
-                resources: [
-                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/*`
-                ],
+                actions: [ 'scheduler:List*' ],
+                resources: [ '*' ],
                 effect: Effect.ALLOW
               }),
               new PolicyStatement({

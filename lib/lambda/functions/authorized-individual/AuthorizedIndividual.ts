@@ -20,7 +20,7 @@ import { sendRegistrationForm } from "../cognito/PostSignup";
 import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureForm";
 import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
 import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
-import { DisclosureRequestReminderLambdaParms, RulePrefix } from "../delayed-execution/SendDisclosureRequestReminder";
+import { DisclosureRequestReminderLambdaParms, ID as scheduleId, Description as scheduleDescription } from "../delayed-execution/SendDisclosureRequestReminder";
 import { correctUser, lookupEntity, retractInvitation, sendEntityRegistrationForm } from "../re-admin/ReAdminUser";
 import { EntityToCorrect } from "./correction/EntityCorrection";
 import { Personnel } from "./correction/EntityPersonnel";
@@ -434,10 +434,10 @@ export const sendDisclosureRequest = async (consenterEmail:string, entity_id:str
       const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
       const waitTime = (await configs.getAppConfig(configName)).getDuration();
       const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
-      await delayedTestExecution.startCountdown(timer, `${RulePrefix}: ${configName} (${disclosureEmailParms.consenterEmail})`);
+      await delayedTestExecution.startCountdown(timer, scheduleId, `${scheduleDescription}: ${configName} (${disclosureEmailParms.consenterEmail})`);
     }
     else {
-      console.error(`Cannot schedule ${configName} ${RulePrefix}: ${envVarName} variable is missing from the environment!`);
+      console.error(`Cannot schedule ${configName} ${scheduleDescription}: ${envVarName} variable is missing from the environment!`);
     }
   }
 
@@ -460,7 +460,7 @@ export const sendDisclosureRequest = async (consenterEmail:string, entity_id:str
     return errorResponse(`Email failure for disclosure request: ${JSON.stringify(parms, null, 2)}`);
   }
 
-  // Tag the pdfs so that they are skipped over by the event bridge stale pdf database purging rule:
+  // Tag the pdfs so that they are skipped over by the event bridge stale pdf database purging schedule:
   const exhibitForm = new BucketExhibitForm(s3ObjectKeyForExhibitForm);
   const disclosureForm = new BucketDisclosureForm({ metadata: s3ObjectKeyForDisclosureForm });
   let tagged = false;

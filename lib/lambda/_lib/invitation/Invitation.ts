@@ -4,7 +4,7 @@ import { IContext } from '../../../../contexts/IContext';
 import * as ctx from '../../../../contexts/context.json';
 import { DelayedExecutions } from '../../../DelayedExecution';
 import { error, log, lookupCloudfrontDomain } from '../../Utils';
-import { RulePrefix as dsicPrefix, StaleInvitationLambdaParms } from '../../functions/delayed-execution/RemoveStaleInvitations';
+import { ID as scheduleId, Description as scheduleDescription, StaleInvitationLambdaParms } from '../../functions/delayed-execution/RemoveStaleInvitations';
 import { sendEmail } from '../EmailWithAttachments';
 import { Configurations } from '../config/Config';
 import { DAOFactory, DAOInvitation } from '../dao/dao';
@@ -266,7 +266,7 @@ export class UserInvitation {
     const { ASP_INVITATION_EXPIRE_AFTER, STALE_AI_VACANCY } = ConfigNames;
     const envVarName = DelayedExecutions.RemoveStaleInvitations.targetArnEnvVarName;
     const functionArn = process.env[envVarName];
-    const description = `${dsicPrefix} (invitation code:${_code})`;
+    const description = `${scheduleDescription} (invitation code:${_code})`;
     const configName = role == Roles.RE_ADMIN ? ASP_INVITATION_EXPIRE_AFTER : STALE_AI_VACANCY
 
     if(functionArn) {
@@ -280,7 +280,7 @@ export class UserInvitation {
       const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
       const { SECONDS } = PeriodType;
       const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
-      await delayedTestExecution.startCountdown(timer, description);
+      await delayedTestExecution.startCountdown(timer, scheduleId, description);
     }
     else {
       console.error(`Cannot schedule ${description}: ${envVarName} variable is missing from the environment!`);

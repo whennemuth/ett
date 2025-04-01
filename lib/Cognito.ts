@@ -1,16 +1,16 @@
+import { Duration, RemovalPolicy } from 'aws-cdk-lib';
+import { AccountRecovery, UserPool, UserPoolDomain } from 'aws-cdk-lib/aws-cognito';
+import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { Runtime } from 'aws-cdk-lib/aws-lambda';
+import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import { IContext } from '../contexts/IContext';
-import { UserPool, UserPoolDomain, AccountRecovery, StringAttribute } from 'aws-cdk-lib/aws-cognito';
-import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { AbstractFunction } from './AbstractFunction';
-import { Runtime } from 'aws-cdk-lib/aws-lambda';
-import path = require('path');
-import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { DelayedExecutions } from './DelayedExecution';
 import { DynamoDbConstruct, TableBaseNames } from './DynamoDb';
 import { Configurations } from './lambda/_lib/config/Config';
 import { ExhibitFormsBucketEnvironmentVariableName } from './lambda/functions/consenting-person/BucketItemMetadata';
-import { DelayedExecutions } from './DelayedExecution';
-import { Bucket } from 'aws-cdk-lib/aws-s3';
+import path = require('path');
 
 export type CognitoConstructParms = {
   scope:Construct, 
@@ -31,6 +31,7 @@ export class CognitoConstruct extends Construct {
   private handleStaleEntityVacancyLambdaArn:string;
   private prefix:string;
   private cloudfrontDomain:string;
+  private scheduleGroupName:string;
 
   constructor(parms:CognitoConstructParms) {
     const { scope, constructId, exhibitFormsBucket, handleStaleEntityVacancyLambdaArn, cloudfrontDomain } = parms;
@@ -42,16 +43,17 @@ export class CognitoConstruct extends Construct {
     const { TAGS: { Landscape }, STACK_ID } = this.context;
     this.landscape = Landscape;
     this.prefix = `${STACK_ID}-${Landscape}`;
+    this.scheduleGroupName = `${this.prefix}-scheduler-group`;
     this.exhibitFormsBucket = exhibitFormsBucket;
     this.handleStaleEntityVacancyLambdaArn = handleStaleEntityVacancyLambdaArn;
-    this.userPoolName = `${STACK_ID}-${Landscape}-${this.constructId.toLowerCase()}-userpool`;
+    this.userPoolName = `${this.prefix}-${this.constructId.toLowerCase()}-userpool`;
     this.cloudfrontDomain = cloudfrontDomain;
     this.buildResources();
   }
 
   buildResources(): void {
     const { 
-      prefix, context: { REGION, ACCOUNT, CONFIG:config, STACK_ID:stackId }, 
+      prefix, context: { REGION, ACCOUNT, CONFIG:config, STACK_ID:stackId }, scheduleGroupName,
       context: { CONSENTING_PERSON_PATH, RE_ADMIN_PATH, RE_AUTH_IND_PATH, TERMS_OF_USE_PATH },
       constructId, landscape, exhibitFormsBucket, handleStaleEntityVacancyLambdaArn, cloudfrontDomain
     } = this;
@@ -181,9 +183,9 @@ export class CognitoConstruct extends Construct {
           'EttPostSignupEventBridgePolicy': new PolicyDocument({
             statements: [
               new PolicyStatement({
-                actions: [ 'events:PutRule', 'events:PutTargets' ],
+                actions: [ 'scheduler:CreateSchedule' ],
                 resources: [
-                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/*`
+                  `arn:aws:scheduler:${REGION}:${ACCOUNT}:schedule/${scheduleGroupName}/*`
                 ],
                 effect: Effect.ALLOW
               }),
@@ -193,6 +195,16 @@ export class CognitoConstruct extends Construct {
                   `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${stackId}-${DelayedExecutions.HandleStaleEntityVacancy.coreName}`
                 ],
                 effect: Effect.ALLOW
+              }),
+              new PolicyStatement({
+                actions: [ 'iam:PassRole' ],
+                resources: [ `arn:aws:iam::${ACCOUNT}:role/${prefix}-scheduler-role` ],
+                effect: Effect.ALLOW,
+                conditions: {                  
+                  StringEquals: {
+                    'iam:PassedToService': 'scheduler.amazonaws.com'
+                  }
+                }
               })
             ]
           }),
