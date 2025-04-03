@@ -67,6 +67,7 @@ export class LambdaFunction extends AbstractFunction {
     const { userPoolArn, userPoolId } = userPool;
     const redirectUri = `https://${(cloudfrontDomain + '/' + redirectPath).replace('//', '/')}`;
     const prefix = `${STACK_ID}-${landscape}`;
+    const scheduleGroupName = `${prefix}-scheduler-group`;
 
     super(scope, constructId, {
       runtime: Runtime.NODEJS_18_X,
@@ -132,19 +133,27 @@ export class LambdaFunction extends AbstractFunction {
           'EttSysAdminEventBridgePolicy': new PolicyDocument({
             statements: [
               new PolicyStatement({
-                actions: [ 'events:DeleteRule', 'events:DisableRule', 'events:EnableRule', 'events:PutRule', 'events:PutTargets', 'events:RemoveTargets' ],
+                actions: [ 'scheduler:DeleteSchedule', 'scheduler:CreateSchedule', 'scheduler:Get*' ],
                 resources: [
-                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/ett-*`
+                  `arn:aws:scheduler:${REGION}:${ACCOUNT}:schedule/${scheduleGroupName}/${prefix}-*`
                 ],
                 effect: Effect.ALLOW
               }),
               new PolicyStatement({
-                actions: [ 'events:List*', 'events:Describe*' ],
-                resources: [
-                  `arn:aws:events:${REGION}:${ACCOUNT}:rule/*`
-                ],
+                actions: [ 'scheduler:List*' ],
+                resources: [ '*' ],
                 effect: Effect.ALLOW
               }),
+              new PolicyStatement({
+                actions: [ 'iam:PassRole' ],
+                resources: [ `arn:aws:iam::${ACCOUNT}:role/${prefix}-scheduler-role` ],
+                effect: Effect.ALLOW,
+                conditions: {                  
+                  StringEquals: {
+                    'iam:PassedToService': 'scheduler.amazonaws.com'
+                  }
+                }
+              })
             ]
           }),             
         }

@@ -1,11 +1,12 @@
-import { Rule } from "@aws-sdk/client-eventbridge";
-import { RulePrefix } from "../../../functions/delayed-execution/PurgeExhibitFormFromDatabase";
+import { ScheduleSummary } from "@aws-sdk/client-scheduler";
+import { ID as scheduleId } from "../../../functions/delayed-execution/PurgeExhibitFormFromDatabase";
 import { log } from "../../../Utils";
-import { IRulesCache } from "./Cache";
+import { getPrefix } from "../DelayedExecution";
+import { ISchedulesCache } from "./Cache";
 import { CleanupParms, Filter, SelectionParms } from "./Cleanup";
 
 /**
- * This class is used to filter for database exhibit form purge rules that are "orphaned".
+ * This class is used to filter for database exhibit form purge schedules that are "orphaned".
  */
 export class FilterForPurgeExhibitFormFromDatabase implements Filter {
   private cleanupParms:CleanupParms;
@@ -14,20 +15,21 @@ export class FilterForPurgeExhibitFormFromDatabase implements Filter {
     this.cleanupParms = cleanupParms;
   }
 
-  public matchForRule = (rule: Rule):boolean => {
-    return rule.Description ? rule.Description.startsWith(RulePrefix) : false;
+  public matchForSchedule = (schedule:ScheduleSummary):boolean => {
+    const startOfName = `${getPrefix()}-${scheduleId}-`;
+    return schedule.Name ? schedule.Name.startsWith(startOfName) : false;
   };
 
-  public getFilter = async (cache:IRulesCache):Promise<SelectionParms> => {
-    const { cleanupParms, matchForRule } = this;
+  public getFilter = async (cache:ISchedulesCache):Promise<SelectionParms> => {
+    const { cleanupParms, matchForSchedule } = this;
     const { entityDoesNotExist, consenterDoesNotExist } = cache; 
      
-    log(`Getting selection criteria for: ${RulePrefix}`);
+    log(`Getting selection criteria for: ${scheduleId}`);
     
     return {
       region: cleanupParms.region,
-      rulefilter: (rule:Rule):boolean => matchForRule(rule),
-      targetFilter: async (lambdaInput:any):Promise<boolean> => {
+      scheduleFilter: (schedule:ScheduleSummary):boolean => matchForSchedule(schedule),
+      inputFilter: async (lambdaInput:any):Promise<boolean> => {
         const { consenterEmail, entity_id:entityId } = lambdaInput;
         if(await entityDoesNotExist(entityId)) {
           return true;

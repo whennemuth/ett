@@ -40,7 +40,7 @@ export class EntityToDemolish {
   private _entity: Entity;
   private _deletedUsers = [] as User[];
   private _dryRun = false;
-  private _deletedRules = [] as string[];
+  private _deletedSchedules = [] as string[];
   private _deletedBucketKeys = [] as string[];
 
   constructor(entityId:string, purgeBucket:boolean=true) {
@@ -172,16 +172,16 @@ export class EntityToDemolish {
   }
 
   /**
-   * Delete any event bridge rules related to the entity.
+   * Delete any event bridge schedules related to the entity.
    */
-  public deleteEventBridgeRulesForEntity = async () => {
+  public deleteEventBridgeSchedulesForEntity = async () => {
     const region = process.env.REGION;
     if( ! region) throw new Error('REGION environment variable not set');
     const prefix = process.env.PREFIX;
     if( ! prefix) throw new Error('PREFIX environment variable not set');
     const landscape = prefix.split('-')[1];
     log(' ');
-    log(`--------- BEGIN CLEANING UP RULES FOR "${landscape}" LANDSCAPE ---------`);
+    log(`--------- BEGIN CLEANING UP SCHEDULES FOR "${landscape}" LANDSCAPE ---------`);
     const { entity } = this;
     if( ! entity) {
       this._entity = await EntityCrud({ entity_id:this.entityId } as Entity ).read() as Entity;
@@ -198,8 +198,8 @@ export class EntityToDemolish {
     ]);
 
     await cleanup.cleanup();
-    this._deletedRules.push(...cleanup.getDeletedRules());
-    log(`--------- END CLEANING UP RULES FOR "${landscape}" LANDSCAPE ---------`);
+    this._deletedSchedules.push(...cleanup.getDeletedSchedules());
+    log(`--------- END CLEANING UP SCHEDULES FOR "${landscape}" LANDSCAPE ---------`);
   }
 
   /**
@@ -221,7 +221,7 @@ export class EntityToDemolish {
       log(`Demolition of entity ${this.entityId} will NOT affect related exhibit form content in S3`);
     }
 
-    await this.deleteEventBridgeRulesForEntity();
+    await this.deleteEventBridgeSchedulesForEntity();
     log('------------------------------------------');
     log(`              END DEMOLITION              `);
     log('------------------------------------------');
@@ -249,8 +249,8 @@ export class EntityToDemolish {
   public set dryRun(_dryRun:boolean) {
     this._dryRun = _dryRun;
   }
-  public get deletedRules(): string[] {
-    return this._deletedRules;
+  public get deletedSchedules(): string[] {
+    return this._deletedSchedules;
   }
   public get deletedBucketKeys(): string[] {
     return this._deletedBucketKeys;

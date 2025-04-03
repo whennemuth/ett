@@ -17,8 +17,8 @@ import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, deepClone, error, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse, warn } from "../../Utils";
 import { sendDisclosureRequest } from "../authorized-individual/AuthorizedIndividual";
-import { RulePrefix as S3RulePrefix } from "../delayed-execution/PurgeExhibitFormFromBucket";
-import { RulePrefix as DbRulePrefix, deleteExhibitForm } from "../delayed-execution/PurgeExhibitFormFromDatabase";
+import { ID as S3ScheduleId, Description as S3ScheduleDescription } from "../delayed-execution/PurgeExhibitFormFromBucket";
+import { ID as DbScheduleId, Description as DbScheduleDescription, deleteExhibitForm } from "../delayed-execution/PurgeExhibitFormFromDatabase";
 import { BucketInventory } from "./BucketInventory";
 import { BucketItem, DisclosureItemsParms, Tags } from "./BucketItem";
 import { BucketDisclosureForm } from "./BucketItemDisclosureForm";
@@ -525,10 +525,10 @@ export const scheduleExhibitFormPurgeFromDatabase = async (newConsenter:Consente
     const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
     const { SECONDS } = PeriodType;
     const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
-    await delayedTestExecution.startCountdown(timer, DbRulePrefix);
+    await delayedTestExecution.startCountdown(timer, DbScheduleId, DbScheduleDescription);
   }
   else {
-    console.error(`Cannot schedule ${DbRulePrefix}: ${envVarName} variable is missing from the environment!`);
+    console.error(`Cannot schedule ${DbScheduleDescription}: ${envVarName} variable is missing from the environment!`);
   }
 }
 
@@ -703,10 +703,10 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
           const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
           const waitTime = (await configs.getAppConfig(deleteAfter)).getDuration();
           const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
-          await delayedTestExecution.startCountdown(timer, `${S3RulePrefix} (${consenter.email})`);
+          await delayedTestExecution.startCountdown(timer, S3ScheduleId, `${S3ScheduleDescription} (${consenter.email})`);
         }
         else {
-          console.error(`Cannot schedule ${deleteAfter} ${S3RulePrefix}: ${envVarName} variable is missing from the environment!`);
+          console.error(`Cannot schedule ${deleteAfter} ${S3ScheduleDescription}: ${envVarName} variable is missing from the environment!`);
         }
       }
       catch(e) {
@@ -910,7 +910,7 @@ export const correctExhibitData = async (consenterEmail:string, corrections:Exhi
   /**
    * If disclosure requests have already been sent to the updated affiliates, reissue them and schedule
    * 2 new reminders. Any existing schedules will defer to these new ones - a corresponding check in the
-   * event bridge rule lambda function ensures this).
+   * event bridge schedule lambda function ensures this).
    * @param EF_S3ObjectKey 
    * @param DR_S3ObjectKey 
    * @param affiliateEmail 
@@ -975,9 +975,9 @@ export const correctExhibitData = async (consenterEmail:string, corrections:Exhi
       }
 
       // Delete the affiliate "directory" for the specified consenter/exhibit path in the bucket.
-      // NOTE: Any event bridge rules that schedule disclosure requests/reminders for the deleted items 
+      // NOTE: Any event bridge schedules that schedule disclosure requests/reminders for the deleted items 
       // will search for them by key(s), fail to find them, error silently, and eventually themselves 
-      // be deleted (if final reminder). This is easier than trying to find those rules and delete them here.
+      // be deleted (if final reminder). This is easier than trying to find those schedules and delete them here.
       const result:DeleteObjectsCommandOutput|void = await new ExhibitBucket({ email:consenterEmail } as Consenter).deleteAll({
         consenterEmail,
         entityId:entity_id,
@@ -1026,7 +1026,7 @@ export const correctExhibitData = async (consenterEmail:string, corrections:Exhi
     const consenter = { email:consenterEmail, exhibit_forms:[ { entity_id, affiliates:appends } ] } as Consenter;
     for(let i=0; i<appends.length; i++) {
       // Send out an automatic disclosure request to the new affiliates (even though the AI did not get a 
-      // chance to review them) and create the customary reminder event bridge rules.
+      // chance to review them) and create the customary reminder event bridge schedules.
       const { email:affiliateEmail } = appends[i];
       
       // Add a new single exhibit form to the bucket for the new affiliate.

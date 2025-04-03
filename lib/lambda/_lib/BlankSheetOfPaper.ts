@@ -77,8 +77,8 @@ export const wipeClean = async (dryRun=true) => {
   }
   await (new BucketToEmpty(bucketName)).empty(dryRun);
 
-  // 8) Remove all orphaned event bridge rules
-  await removeOrphanedEventBridgeRules(REGION, dryRun);
+  // 8) Remove all orphaned event bridge schedules
+  await removeOrphanedEventBridgeSchedules(REGION, dryRun);
 }
 
 /**
@@ -166,12 +166,12 @@ export const deletePendingInvitations = async (region:string, dryRun:boolean):Pr
 }
 
 /**
- * Remove all orphaned event bridge rules.
+ * Remove all orphaned event bridge schedules.
  * @param region 
  * @param dryrun 
  * @returns 
  */
-export const removeOrphanedEventBridgeRules = async (region:string, dryrun:boolean=false):Promise<any> => {
+export const removeOrphanedEventBridgeSchedules = async (region:string, dryrun:boolean=false):Promise<any> => {
   const prefix = process.env.PREFIX;
   if( ! prefix) {
     console.error('PREFIX environment variable missing!');

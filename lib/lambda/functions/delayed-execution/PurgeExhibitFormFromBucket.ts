@@ -12,17 +12,18 @@ import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironm
 import { TagInspector } from "../consenting-person/BucketItemTag";
 import { getTestItem } from "./TestBucketItem";
 
-export const RulePrefix = 'S3 exhibit form purge';
+export const ID = 'S3EFP';
+export const Description = 'S3 exhibit form purge';
 
 /**
- * This lambda is triggered by one-time event bridge rules to issue disclosure request email
+ * This lambda is triggered by one-time event bridge schedules to issue disclosure request email
  * reminders to affiliate recipients.
  * @param event 
  * @param context 
  * @returns 
  */
-export const handler = async(event:ScheduledLambdaInput, context:any) => {
-  const { lambdaInput, eventBridgeRuleName, targetId } = event;
+export const handler = async (event:ScheduledLambdaInput, context:any) => {
+  const { lambdaInput, groupName, scheduleName } = event;
   const { DISCLOSURE, EXHIBIT } = ItemType;
 
   try {
@@ -49,7 +50,7 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
     log(e);
   }
   finally { 
-    await PostExecution().cleanup(eventBridgeRuleName, targetId);
+    await PostExecution().cleanup(scheduleName, groupName);
   }
 }
 
@@ -198,7 +199,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         callback = async (lambdaArn:string, lambdaInput:DisclosureItemsParms) => {
           const delayedTestExecution = new DelayedLambdaExecution(lambdaArn, lambdaInput);
           const timer = EggTimer.getInstanceSetFor(2, MINUTES); 
-          await delayedTestExecution.startCountdown(timer, `${RulePrefix} (TESTING)`);
+          await delayedTestExecution.startCountdown(timer, ID, `${Description} (TESTING)`);
         };
         await createDelayedExectionToRemoveBucketItem(lambdaInput, callback);
         break;

@@ -9,7 +9,8 @@ import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName, ItemType
 import { checkConsenterCorrectionForms, purgeExhibitCorrectionForms, purgeFormFromBucket } from "./PurgeExhibitFormFromBucket";
 import { getTestItem } from "./TestBucketItem";
 
-export const RulePrefix = 'Disclosure request reminder';
+export const ID = 'DRR';
+export const Description = 'Disclosure request reminder';
 
 export type DisclosureRequestReminderLambdaParms = {
   disclosureEmailParms: DisclosureEmailParms,
@@ -17,14 +18,14 @@ export type DisclosureRequestReminderLambdaParms = {
 }
 
 /**
- * This lambda is triggered by one-time event bridge rules to issue disclosure request email
+ * This lambda is triggered by one-time event bridge schedules to issue disclosure request email
  * reminders to affiliate recipients.
  * @param event 
  * @param context 
  * @returns 
  */
 export const handler = async (event:ScheduledLambdaInput, context:any) => {
-  const { lambdaInput={}, eventBridgeRuleName, targetId } = event;
+  const { lambdaInput={}, groupName, scheduleName } = event;
   const { DISCLOSURE, EXHIBIT } = ItemType;
 
   try {
@@ -69,7 +70,7 @@ export const handler = async (event:ScheduledLambdaInput, context:any) => {
     log(e);
   }
   finally { 
-    await PostExecution().cleanup(eventBridgeRuleName, targetId);
+    await PostExecution().cleanup(scheduleName, groupName);
   }
 }
 
@@ -78,7 +79,7 @@ export const handler = async (event:ScheduledLambdaInput, context:any) => {
  * matches the s3ObjectKey provided. This function determines if that is the case. If so, then s3ObjectKey is 
  * an older "version" and should not be sent in the disclosure request reminder. 
  * 
- * NOTE: The older copy could be deleted here, but an event bridge rule will do that anyway per the standard schedule.
+ * NOTE: The older copy could be deleted here, but an event bridge schedule will do that anyway per the standard schedule.
  * @param Key 
  * @returns 
  */
@@ -232,7 +233,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         callback = async (lambdaArn:string, lambdaInput:DisclosureRequestReminderLambdaParms) => {
           const delayedTestExecution = new DelayedLambdaExecution(lambdaArn, lambdaInput);
           const timer = EggTimer.getInstanceSetFor(2, MINUTES); 
-          await delayedTestExecution.startCountdown(timer, `${RulePrefix} with s3 cleanup (TESTING)`);
+          await delayedTestExecution.startCountdown(timer, ID, `${Description} with s3 cleanup (TESTING)`);
         };
         await scheduleDisclosureRequestReminder(lambdaInput!, callback, purgeForms);
         break;

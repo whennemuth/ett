@@ -1,30 +1,28 @@
-import { DeleteRuleCommand, DeleteRuleRequest, EventBridgeClient, PutRuleCommand, PutRuleCommandOutput, PutTargetsCommand, RemoveTargetsCommand, RemoveTargetsCommandInput, RemoveTargetsResponse } from "@aws-sdk/client-eventbridge";
-import { AddPermissionCommand, LambdaClient } from "@aws-sdk/client-lambda";
-import { EggTimer, PeriodType } from "./EggTimer";
+import { CreateScheduleCommand, CreateScheduleCommandInput, DeleteScheduleCommand, DeleteScheduleCommandInput, SchedulerClient, ScheduleState, Target } from "@aws-sdk/client-scheduler";
 import { v4 as uuidv4 } from 'uuid';
+import { IContext } from "../../../../contexts/IContext";
+import * as ctx from '../../../../contexts/context.json';
 import { log } from "../../Utils";
+import { EggTimer, PeriodType } from "./EggTimer";
+
 
 export interface DelayedExecution {
-  startCountdown(timer:EggTimer, Description?:string):Promise<void>
+  startCountdown(timer:EggTimer, Name:string, Description?:string):Promise<void>
 }
 
 /**
  * An interface for the input a lambda function must expect if it is triggered by an
- * event bridge rule created through the DelayedLambdaExecution class.
+ * event bridge schedule created through the DelayedLambdaExecution class.
  */
 export interface ScheduledLambdaInput {
   /** Parameters for the task the lambda function must perform */
   lambdaInput:any,
   /**
-   * The lambda function must also be provided the name of the one-time event bridge rule that invoked it
-   * in order to delete it as a final secondary cleanup task.
+   * The lambda function must also be provided the name of the one-time event bridge schedule that invoked it
+   * in order to delete it as a final secondary cleanup task (include the groupName).
    */
-  eventBridgeRuleName:string,
-  /** 
-   * The lambda function must also be provided the ID of the target event bridge identifies the lambda
-   * function by. This is needed to remove the target from the event bridge rule as a prerequisite to deleting it.
-   */
-  targetId:string
+  scheduleName:string,
+  groupName:string
 }
 
 /**
@@ -33,138 +31,113 @@ export interface ScheduledLambdaInput {
 export class DelayedLambdaExecution implements DelayedExecution {
   private lambdaArn:string;
   private lambdaInput:any;
-  private putInvokePrivileges:boolean;
 
   // private scheduledLambdaInput:ScheduledLambdaInput;
   private uuid:string;
 
-  constructor(lambdaArn:string, lambdaInput:any, putInvokePrivileges:boolean=false) {
+  constructor(lambdaArn:string, lambdaInput:any) {
     this.lambdaArn = lambdaArn;
     this.lambdaInput = lambdaInput;
-    this.putInvokePrivileges = putInvokePrivileges;
     this.uuid = uuidv4();
     // this.scheduledLambdaInput = scheduledLambdaInput;
   }
 
-  public startCountdown = async (timer:EggTimer, Description:string='Event bridge rule'):Promise<any> => {
+  public startCountdown = async (timer:EggTimer, Name:string, Description?:string):Promise<any> => {
     return timer.startTimer(async () => {
-      const { lambdaArn, lambdaInput, putInvokePrivileges, uuid } = this;
-      const { REGION:region, PREFIX } = process.env
-      const eventBridgeRuleName = `${PREFIX}-${uuid}`
-      const targetId = `${eventBridgeRuleName}-targetId`; 
+      const { lambdaArn, lambdaInput, uuid } = this;
+      const context:IContext = <IContext>ctx;
+      const { ACCOUNT, REGION:region } = context;
+      const scheduleName = `${getPrefix()}-${Name}-${uuid}` // 64 character limit;
+      Description = Description || `${getPrefix()}-${Name}`;
 
       if(timer.getMilliseconds() == 0) {
         console.log(`${Description} NOT SCHEDULED (the corresponding cron has been deactivated)`);
         return;
       }
 
-      // 1) Create the event bridge rule
-      const eventBridgeClient = new EventBridgeClient({ region });
-      const response = await eventBridgeClient.send(new PutRuleCommand({
-        Name: eventBridgeRuleName,
-        Description,
+      // Create the event bridge schedule
+      const schedulerClient = new SchedulerClient({ region });
+      const createScheduleCommand = new CreateScheduleCommand({
+        Name: scheduleName,
+        GroupName: getGroupName(),
         ScheduleExpression: timer.getCronExpression(),
-        State: "ENABLED",
-      })) as PutRuleCommandOutput;
-      const { RuleArn } = response;
-
-      // 2) Put a lambda target to the event bridge rule
-      const lambdaClient = new LambdaClient({ region });
-      const putTargetsCommand = new PutTargetsCommand({
-        Rule: eventBridgeRuleName,
-        Targets: [{ 
-          Id: targetId, 
+        State: ScheduleState.ENABLED,
+        Description,
+        Target: {
           Arn: lambdaArn,
-          Input: JSON.stringify({
-            lambdaInput,
-            eventBridgeRuleName,
-            targetId
-          } as ScheduledLambdaInput)
-        }],
-      });
-      await eventBridgeClient.send(putTargetsCommand);
+          RoleArn: `arn:aws:iam::${ACCOUNT}:role/${getPrefix()}-scheduler-role`,
+          Input: JSON.stringify({ lambdaInput, scheduleName, groupName:getGroupName() } as ScheduledLambdaInput),
+        } as Target,
+        FlexibleTimeWindow: { Mode: "OFF" },
+      } as CreateScheduleCommandInput);
+      const response = await schedulerClient.send(createScheduleCommand);
 
-      /** 
-       * 3) Add a permission to the lambda for the event bridge rule to invoke it
-       * NOTE: Set putInvokePrivileges to true only if the target lambda does not already grant invoke  
-       * privileges to the events service principal through a role or inline policy statement
-       */
-      if(putInvokePrivileges) {
-        const addPermissionCommand = new AddPermissionCommand({
-          FunctionName: lambdaArn,
-          StatementId: `allow-eventbridge-invoke-${Date.now()}`,
-          Action: "lambda:InvokeFunction",
-          Principal: "events.amazonaws.com",
-          SourceArn: RuleArn,
-        });
-        await lambdaClient.send(addPermissionCommand);
-      }
-
-      console.log(`${Description} scheduled: ${timer.getCronExpression()}`);
+      // Log the result
+      const { ScheduleArn } = response;
+      log({ 
+        scheduleName, 
+        ScheduleArn, 
+        scheduleExpression: timer.getCronExpression(),
+        lambdaArn,
+        lambdaInput,
+        groupName:getGroupName(),
+      }, `Created event bridge schedule`);
     })
   }
 }
 
+export const getPrefix = ():string => {
+  let prefix = process.env.PREFIX;
+  if( ! prefix) {
+    const context:IContext = <IContext>ctx;
+    const { STACK_ID, TAGS: { Landscape } } = context;
+    prefix = `${STACK_ID}-${Landscape}`;
+  }
+  return prefix;
+}
+
+export const getGroupName = (prefix?:string):string => {
+  return `${prefix || getPrefix()}-scheduler-group`;
+}
+
 /**
- * Provide a function to delete the one-time event bridge rule that triggers the lambda 
+ * Provide a function to delete the one-time event bridge schedule that triggers the lambda 
  * @returns 
  */
 export const PostExecution = () => {
-  const cleanup = async (eventBridgeRuleName:string, targetId:string) => {
+  const cleanup = async (scheduleName:string, groupName:string) => {
     try {
       const { REGION:region } = process.env;
-      const client = new EventBridgeClient({ region });
+      const client = new SchedulerClient({ region });
 
-      if( ! targetId ) {
-        log({ eventBridgeRuleName, targetId }, `ERROR: Cannot delete rule, missing targetId`);
+      if( ! scheduleName) {
+        log({ scheduleName }, 'Cannot delete schedule, missing scheduleName');
         return;
       }
 
-      if( ! eventBridgeRuleName) {
-        log({ eventBridgeRuleName, targetId }, 'Cannot delete rule, missing eventBridgeRuleName');
-        return;
-      }
-
-      // 1) Remove the lambda target from the rule
-      const removeRequest = {
-        Rule: eventBridgeRuleName,
-        Ids: [ targetId ],        
-      } as RemoveTargetsCommandInput;
-      log(removeRequest, 'Removing lambda target from event bridge rule');
+      // 2) Delete the schedule
+      const commandInput = { Name: scheduleName, GroupName: groupName } as DeleteScheduleCommandInput;
+      log(commandInput, `Deleting event bridge schedule`);
       try {
-        const removeResponse:RemoveTargetsResponse = await client.send(new RemoveTargetsCommand(removeRequest));
-        if((removeResponse.FailedEntries ?? []).length > 0) {
-          log(removeResponse, `ERROR: Failed to remove lambda target from event bridge rule`)
-        }
-      }
-      catch(e) {
-        log(e, `Failed to remove lambda target from event bridge rule`);
-      }
-
-      // 2) Delete the rule
-      const deleteRequest = {
-        Name:eventBridgeRuleName,
-        Force:true
-      } as DeleteRuleRequest;
-      log(deleteRequest, `Deleting event bridge rule`);
-      try {
-        await client.send(new DeleteRuleCommand(deleteRequest));
+        await client.send(new DeleteScheduleCommand(commandInput));
       }
       catch(e) {
         if((e as Error).name == 'ResourceNotFoundException') {
-          log(e, `Event bridge rule ${eventBridgeRuleName} not found`);
+          log(e, `Event bridge schedule ${scheduleName} in group ${groupName} not found`);
         }
         else {
-          log(e, `Failed to delete event bridge rule`);
+          log(e, `Failed to delete event bridge schedule ${scheduleName} in group ${groupName}`);
         }
       }
     }
     catch(e) {
-      log(e, `Failed to delete ${eventBridgeRuleName}`);
+      log(e, `Failed to delete ${scheduleName} from group ${groupName}`);
     }
   }
   return { cleanup };
 }
+
+
 
 
 /**
@@ -173,7 +146,7 @@ export const PostExecution = () => {
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/timer/DelayedExecution.ts')) {
 
-  const task = 'test' as 'test'|'lambda';
+  const task = 'lambda' as 'test'|'lambda';
   const { SECONDS, MINUTES } = PeriodType;
   switch(task) {
 
@@ -183,36 +156,38 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/time
       const timer = EggTimer.getInstanceSetFor(howManySeconds, SECONDS);
       (async () => {
         const delayedTestExecution = new class implements DelayedExecution {
-          startCountdown(timer:EggTimer, Description?:string): Promise<any> {
+          startCountdown(timer:EggTimer, Name:string, Description?:string): Promise<any> {
             return new Promise(resolve => setTimeout(resolve, timer.getMilliseconds()));
           }
         }();
 
         console.log(`Start waiting for ${howManySeconds} seconds...`);
-        await delayedTestExecution.startCountdown(timer, 'Testing 123...');    
+        await delayedTestExecution.startCountdown(timer, 'testing-one-two-three', 'Testing one two three');    
         console.log(`${howManySeconds} seconds have passed!`);
       })();
       break;
 
     case 'lambda':
       // Start an egg timer that "delegates" the countdown to some other entity - in this case, event bridge.
-      // Thus the egg timer returns immediately and the real egg timer is an event bridge rule.
+      // Thus the egg timer returns immediately and the real egg timer is an event bridge schedule.
       (async () => {
-        // Define the name of the event bridge rule that will get created by the delayed execution instance.
-        const eventBridgeRuleName = `ett-dev-TestRule-${Date.now()}`;
+        const context:IContext = await require('../../../../contexts/context.json');
+        const { REGION, STACK_ID, TAGS: { Landscape }, ACCOUNT } = context;
+        const prefix = `${STACK_ID}-${Landscape}`;
+        process.env.REGION = REGION;
+        process.env.PREFIX = prefix;
+
+        // Define the name of the event bridge schedule that will get created by the delayed execution instance.
+        const scheduleName = `${prefix}-TestSchedule-${Date.now()}`;
 
         // Set the arn of an existing lambda function that "expects" the ScheduledLambdaInput type for its event object.
-        // This lambda should also perform cleanup by deleting the event bridge rule.
-        const lambdaArn = 'Set something here';
+        // This lambda should also perform cleanup by deleting the event bridge schedule.
+        const lambdaArn = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${prefix}-handle-stale-entity-vacancy`;
 
         // Create a delayed execution instance set to target an existing lambda
-        const delayedTestExecution = new DelayedLambdaExecution(lambdaArn, {
-          lambdaParms: {},
-          eventBridgeRuleName,
-          targetId: `${eventBridgeRuleName}-targetId`
-        });
+        const delayedTestExecution = new DelayedLambdaExecution(lambdaArn, {} as ScheduledLambdaInput);
         const timer = EggTimer.getInstanceSetFor(2, MINUTES); 
-        await delayedTestExecution.startCountdown(timer, 'Testing 123...');
+        await delayedTestExecution.startCountdown(timer, 'testing-one-two-three', 'Testing one two three');
         // If the lambda is one that sends you an email after the timeout, check your inbox.
       })();
       break;

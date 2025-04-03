@@ -7,17 +7,18 @@ import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { IContext } from "../../../../contexts/IContext";
 import { DelayedExecutions } from "../../../DelayedExecution";
 
-export const RulePrefix = 'Dynamodb exhibit form purge';
+export const ID = 'DEFP';
+export const Description = 'DynamoDB exhibit form purge';
 
 /**
  * Exhibit forms are prohibited from being stored in the database for longer than a configured period of time.
- * This lambda is triggered by one-time event bridge rules that are scheduled accordingly and will remove the
+ * This lambda is triggered by one-time event bridge schedules that are scheduled accordingly and will remove the
  * corresponding exhibit forms from the consenter database record.
  * @param event 
  * @param context 
  */
 export const handler = async(event:ScheduledLambdaInput, context:any) => {
-  const { lambdaInput, eventBridgeRuleName, targetId } = event;
+  const { lambdaInput, groupName, scheduleName } = event;
   try {
     debugLog({ event, context });
 
@@ -35,7 +36,7 @@ export const handler = async(event:ScheduledLambdaInput, context:any) => {
     log(e);
   }
   finally {
-    await PostExecution().cleanup(eventBridgeRuleName, targetId);
+    await PostExecution().cleanup(scheduleName, groupName);
   }
 }
 
@@ -122,7 +123,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         const lambdaInput = { consenterEmail, entity_id };
         const delayedTestExecution = new DelayedLambdaExecution(lambdaArn, lambdaInput);
         const timer = EggTimer.getInstanceSetFor(2, MINUTES);
-        await delayedTestExecution.startCountdown(timer, `${RulePrefix} (TESTING)`);
+        await delayedTestExecution.startCountdown(timer, ID, `${Description} (TESTING)`);
         break;
       default:
         log(`Unknown task "${task}" specified!`);

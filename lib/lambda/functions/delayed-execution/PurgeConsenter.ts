@@ -12,7 +12,8 @@ import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, log } from "../../Utils";
 import { ConsentStatus, consentStatus } from '../consenting-person/ConsentStatus';
 
-export const RulePrefix = 'Consenter purge';
+export const ID = 'CP';
+export const Description = 'Consenter purge';
 
 /**
  * After a consenter has registered and the first data related to them has been stored in the database,
@@ -21,7 +22,7 @@ export const RulePrefix = 'Consenter purge';
  * @param event 
  * @param context  */
 export const handler = async (event:ScheduledLambdaInput, context:any) => {
-  const { lambdaInput, eventBridgeRuleName, targetId } = event;
+  const { lambdaInput, groupName, scheduleName } = event;
   try {
     debugLog({ event, context });
 
@@ -76,7 +77,7 @@ export const handler = async (event:ScheduledLambdaInput, context:any) => {
     log(e);
   }
   finally {
-    await PostExecution().cleanup(eventBridgeRuleName, targetId);
+    await PostExecution().cleanup(scheduleName, groupName);
   }
 }
 
@@ -118,7 +119,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         callback = async (lambdaArn:string, lambdaInput:any) => {
           const delayedTestExecution = new DelayedLambdaExecution(lambdaArn, lambdaInput);
           const timer = EggTimer.getInstanceSetFor(2, MINUTES); 
-          await delayedTestExecution.startCountdown(timer, `${RulePrefix} (TESTING)`);
+          await delayedTestExecution.startCountdown(timer, ID, `${Description} (TESTING)`);
         };
         await createDelayedExecutionToRemoveConsenter(lambdaInput, callback);
         break;
