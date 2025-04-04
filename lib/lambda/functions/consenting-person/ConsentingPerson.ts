@@ -56,6 +56,7 @@ export const INVALID_RESPONSE_MESSAGES = {
   missingExhibitFormIssuerEmail: 'Missing email of exhibit form issuer!',
   missingEntityId: 'Missing entity_id!',
   missingConsent: 'Consent is required before the requested operation can be performed',
+  expiredConsent: 'Your consent has expired. Please renew your consent before proceeding.',
   invalidAffiliateRecords: 'Affiliate item with missing/invalid value',
   inactiveConsenter: 'Consenter is inactive',
   noSuchConsenter: 'No such consenter',
@@ -64,7 +65,7 @@ export const INVALID_RESPONSE_MESSAGES = {
 }
 
 export type ConsenterInfo = {
-  consenter:Consenter, fullName:string, activeConsent:boolean, entities?:Entity[]
+  consenter:Consenter, fullName:string, consentStatus:ConsentStatus, entities?:Entity[]
 }
 
 export type ExhibitFormCorrection = {
@@ -142,7 +143,7 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
         case Task.CORRECT_EXHIBIT_FORM:
           return await correctExhibitData(email, corrections);
         case Task.GET_CORRECTABLE_AFFILIATES:
-          return await getCorrectableAffiliates(email, entity_id);
+          return await getCorrectableAffiliates(email, entity_id, true);
         case Task.PING:
           return okResponse('Ping!', parameters); 
       }
@@ -190,7 +191,8 @@ export const getConsenterInfo = async (parm:string|Consenter, includeEntityList:
   if( ! consenter) {
     return null;
   }
-  let activeConsent = consentStatus(consenter) == ConsentStatus.ACTIVE;
+  let status = await consentStatus(consenter);
+  let activeConsent = status == ConsentStatus.ACTIVE;
   if(consenter.active != YN.Yes) activeConsent = false;
   let entities:Entity[] = [];
   if(includeEntityList && activeConsent) {
@@ -212,7 +214,7 @@ export const getConsenterInfo = async (parm:string|Consenter, includeEntityList:
   const retval = { 
     consenter, 
     fullName:PdfForm.fullName(firstname, middlename, lastname), 
-    activeConsent, 
+    consentStatus:status, 
     entities 
   } as ConsenterInfo;
   debugLog(retval, `Returning`);
@@ -301,7 +303,7 @@ export const renewConsent = async (email:string): Promise<LambdaProxyIntegration
 
   // Abort if the consenter has not yet consented
   // if( ! consenterInfo?.activeConsent) {
-  //   if(consenterInfo?.consenter?.active == YN.No) {
+  //   if(consenterInfo?.consenter?.active != YN.Yes) {
   //     return invalidResponse(INVALID_RESPONSE_MESSAGES.inactiveConsenter);
   //   }
   //   return invalidResponse(INVALID_RESPONSE_MESSAGES.missingConsent);
@@ -311,7 +313,7 @@ export const renewConsent = async (email:string): Promise<LambdaProxyIntegration
     consenter: consenterInfo.consenter, 
     timestampFldName: ConsenterFields.renewed_timestamp,
     active: YN.Yes
-});
+  });
 }
 
 /**
@@ -382,7 +384,7 @@ export const sendForm = async (consenter:Consenter, callback:(consenterInfo:Cons
       consenterInfo = { 
         consenter, 
         fullName: PdfForm.fullName(firstname, middlename, lastname),
-        activeConsent:consentStatus(consenter) == ConsentStatus.ACTIVE && consenter.active == YN.Yes
+        consentStatus:(await consentStatus(consenter))
       };
     }
     else {
@@ -394,7 +396,7 @@ export const sendForm = async (consenter:Consenter, callback:(consenterInfo:Cons
     consenterInfo = { 
       consenter, 
       fullName: PdfForm.fullName(firstname, middlename, lastname),
-      activeConsent:consentStatus(consenter) == ConsentStatus.ACTIVE && consenter.active == YN.Yes
+      consentStatus:(await consentStatus(consenter))
     };
   }
 
@@ -459,9 +461,15 @@ export const saveExhibitData = async (email:string, exhibitForm:ExhibitForm): Pr
     return invalidResponse(INVALID_RESPONSE_MESSAGES.noSuchConsenter + ' ' + email );
   }
 
+  const { consentStatus } = consenterInfo;
+  const { ACTIVE, EXPIRED } = ConsentStatus;
+
   // Abort if the consenter has not yet consented
-  if( ! consenterInfo?.activeConsent) {
-    if(consenterInfo?.consenter?.active == YN.No) {
+  if(consentStatus != ACTIVE) {
+    if(consentStatus == EXPIRED) {
+      return invalidResponse(INVALID_RESPONSE_MESSAGES.expiredConsent);
+    }
+    if(consenterInfo?.consenter?.active != YN.Yes) {
       return invalidResponse(INVALID_RESPONSE_MESSAGES.inactiveConsenter);
     }
     return invalidResponse(INVALID_RESPONSE_MESSAGES.missingConsent);
@@ -631,7 +639,8 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
   const loadInfoFromDatabase = async () => {
     // Get the consenter
     const consenterInfo = await getConsenterInfo(consenterEmail, false) as ConsenterInfo;
-    const { consenter: _consenter, activeConsent } = consenterInfo ?? {};
+    const { consenter: _consenter, consentStatus } = consenterInfo ?? {};
+    const { ACTIVE, EXPIRED } = ConsentStatus;
 
     // Abort if there is no matching consenter found
     if( ! consenter) {
@@ -639,7 +648,10 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
     }
 
     // Abort if the consenter has not yet consented
-    if( ! activeConsent) {
+    if(consentStatus != ACTIVE) {
+      if(consentStatus == EXPIRED) {
+        throwError(INVALID_RESPONSE_MESSAGES.expiredConsent);
+      }
       throwError(INVALID_RESPONSE_MESSAGES.missingConsent);
     }
 
@@ -876,7 +888,25 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
  * @param email 
  * @param entity_id 
  */
-const getCorrectableAffiliates = async (email:string, entityId:string):Promise<LambdaProxyIntegrationResponse> => {
+const getCorrectableAffiliates = async (email:string, entityId:string, checkConsentStatus:boolean=false):Promise<LambdaProxyIntegrationResponse> => {
+  if(checkConsentStatus) {
+    const consenterInfo = await getConsenterInfo(email, false) as ConsenterInfo;
+    if( ! consenterInfo) {
+      return invalidResponse(INVALID_RESPONSE_MESSAGES.noSuchConsenter);
+    }
+    const { consentStatus } = consenterInfo;
+    const { ACTIVE, EXPIRED } = ConsentStatus;
+    if(consentStatus != ACTIVE) {
+      if(consentStatus == EXPIRED) {
+        return invalidResponse(INVALID_RESPONSE_MESSAGES.expiredConsent);
+      }
+      if(consenterInfo?.consenter?.active != YN.Yes) {
+        return invalidResponse(INVALID_RESPONSE_MESSAGES.inactiveConsenter);
+      }
+      return invalidResponse(INVALID_RESPONSE_MESSAGES.missingConsent);
+    }
+  }
+
   const inventory = await BucketInventory.getInstance(email, entityId); 
   inventory.getAffiliateEmails();
   return okResponse('Ok', { affiliateEmails: inventory.getAffiliateEmails() });
@@ -896,6 +926,23 @@ export const correctExhibitData = async (consenterEmail:string, corrections:Exhi
   const inventory = await BucketInventory.getInstance(consenterEmail, entity_id);
   const emails = inventory.getAffiliateEmails();  
   const disclosuresRequestCache = [] as string[]; // Cache the output of any s3 object tag lookups
+
+  const consenterInfo = await getConsenterInfo(consenterEmail, false) as ConsenterInfo;
+  if( ! consenterInfo) {
+    return invalidResponse(INVALID_RESPONSE_MESSAGES.noSuchConsenter);
+  }
+
+  const { consentStatus } = consenterInfo;
+  const { ACTIVE, EXPIRED } = ConsentStatus;
+  if(consentStatus != ACTIVE) {
+    if(consentStatus == EXPIRED) {
+      return invalidResponse(INVALID_RESPONSE_MESSAGES.expiredConsent);
+    }
+    if(consenterInfo?.consenter?.active != YN.Yes) {
+      return invalidResponse(INVALID_RESPONSE_MESSAGES.inactiveConsenter);
+    }
+    return invalidResponse(INVALID_RESPONSE_MESSAGES.missingConsent);
+  }
 
   // Validate that no existing affiliate from the bucket matches any affiliate being submitted as new.
   const invalidAppend = appends.find(affiliate => emails.includes(affiliate.email));
@@ -1069,7 +1116,7 @@ export const correctExhibitData = async (consenterEmail:string, corrections:Exhi
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/ConsentingPerson.ts')) {
 
-  const task = Task.RESCIND_CONSENT as Task;
+  const task = Task.GET_CONSENTER as Task;
   
   const bugs = {
     affiliateType:"employer",
@@ -1143,14 +1190,10 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
           break;
 
         case Task.SEND_EXHIBIT_FORM:
-          // Create a reduced app config just for this test
-          const { DELETE_EXHIBIT_FORMS_AFTER } = ConfigNames;
-          const configs = { useDatabase: false, configs: [
-            { name:DELETE_EXHIBIT_FORMS_AFTER, value:'120', config_type:'duration', description:'testing' }
-          ]} as CONFIG;
-
           // Set the config as an environment variable
-          process.env[Configurations.ENV_VAR_NAME] = JSON.stringify(configs);
+          process.env[Configurations.ENV_VAR_NAME] = JSON.stringify({ useDatabase:false, configs: [{
+            name:ConfigNames.DELETE_EXHIBIT_FORMS_AFTER, value:'120', config_type:'duration', description:'testing'
+          }]} as CONFIG);
 
           // Set the payload
           payload.parameters = {
@@ -1214,6 +1257,12 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
           break;
 
         case Task.GET_CONSENTER:
+          // Set the config consent expiration environment variable
+          process.env[Configurations.ENV_VAR_NAME] = JSON.stringify({ useDatabase:false, configs: [{
+            name:ConfigNames.CONSENT_EXPIRATION, value:'315360000', config_type:'duration', description:'testing'
+          }]} as CONFIG);          
+          payload.parameters = { email: 'cp2@warhen.work' };
+          break;
         case Task.SEND_CONSENT:
           payload.parameters = { email: 'cp1@warhen.work' };
           break;

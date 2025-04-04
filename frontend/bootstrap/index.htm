@@ -3160,7 +3160,7 @@
         const { message, payload } = package;
         if(payload.ok) {
           consenterInfo = payload;
-          const { consenter, entities } = payload;
+          const { consenter, entities, consentStatus } = payload;
           const { active, consented_timestamp, renewed_timestamp, rescinded_timestamp, email } = consenter ?? {};
 
           /** Get the most recent date from an array of iso formatted date strings */
@@ -3177,6 +3177,9 @@
           }
 
           const lastAction = () => {
+            if(consentStatus == 'expired') {
+              return consentStatus;
+            }
             const consented = getMostRecent(consented_timestamp);
             const rescinded = getMostRecent(rescinded_timestamp);
             const renewed = getMostRecent(renewed_timestamp);
@@ -3221,12 +3224,34 @@
           // Show the buttons used to renew, rescind, or edit consent
           showPostConsentFields = (lastAction) => {
             const timestamp = getMostRecent(renewed_timestamp) ?? getMostRecent(consented_timestamp);
-            const consentMsg = `Consent ${lastAction} at: ${timestamp}`;
-            const color = lastAction == 'rescinded' ? 'red' : 'green';
+            let consentMsg = `Consent ${lastAction}`;
+            if(lastAction != 'expired') {
+              consentMsg += ` at ${timestamp}`;
+            }
+            const color = (lastAction == 'rescinded' || lastAction == 'expired') ? 'red' : 'green';
             show('consentRescind');
             show('consentRenew');
             show('consentSend');
+
+
             if(exhibitsPath.isMatch()) {
+              const removeOption = (options, id) => {
+                const opt = options.namedItem(id);
+                if(opt) {
+                  opt.remove();
+                }
+              }
+
+              const addOption = (options, id, text) => {
+                let opt = options.namedItem(id);
+                if(opt) return;
+                opt = document.createElement('option');
+                opt.id = id;
+                opt.value = id;
+                opt.text = text;
+                options.add(opt);
+              }
+
               show('consenter-exhibit-compose-link');
               show('consenter-exhibit-amend-link');
               populateExhibitFormSignoffFields();
@@ -3237,25 +3262,18 @@
 
                 case 'current':
 
-                  affiliateTypes.namedItem('EMPLOYER').remove();
-                  affiliateTypes.namedItem('EMPLOYER_PRIOR').remove();
-                  affiliateTypes.namedItem('ACADEMIC').remove();
-                  affiliateTypes.namedItem('OTHER').remove();
-                  const optPrimary = document.createElement('option');
-                  optPrimary.value = 'EMPLOYER_PRIMARY';
-                  optPrimary.text = '1) Primary current employer';
-                  affiliateTypes.add(optPrimary);
-                  optSecondary = document.createElement('option');
-                  optSecondary.value = 'EMPLOYER';
-                  optSecondary.text = '2) Secondary current employer';
-                  affiliateTypes.add(optSecondary);
-
+                  removeOption(affiliateTypes, 'EMPLOYER');
+                  removeOption(affiliateTypes, 'EMPLOYER_PRIOR');
+                  removeOption(affiliateTypes, 'ACADEMIC');
+                  removeOption(affiliateTypes, 'OTHER');
+                  addOption(affiliateTypes, 'EMPLOYER_PRIMARY', '1) Primary current employer');
+                  addOption(affiliateTypes, 'EMPLOYER', '2) Secondary current employer');
                   const allOrgTypePicklists = document.querySelectorAll('select[name=org-type]');
                   Array.from(allOrgTypePicklists).forEach(picklist => picklist.addEventListener('change', validatePocType));
                   break;
 
                 case 'other':
-                  affiliateTypes.namedItem('EMPLOYER').remove();
+                  removeOption(affiliateTypes, 'EMPLOYER');
                   break;
 
                 case 'both': default:
@@ -3301,6 +3319,14 @@
               hide('consentRescind');
               hide('consentSend');
               hide('consenter-exhibit-compose-link');
+              break;
+            case 'expired':
+              showPostConsentFields(_lastAction);
+              hide('consentRescind');
+              hide('consentSend');
+              hide('consenter-exhibit-compose-link');
+              hide('consenter-exhibit-amend-link');
+              document.getElementById('consenter-consent-link').click();
               break;
             case 'deactivated':
               hidePostConsentFields();
@@ -3350,9 +3376,11 @@
       if(requestingEntityId) {
         // Make the dropdown button reflect the selected entity.
         const button = document.querySelector('#requestingEntityDropdownButton');
-        button.innerText = selectedEntity.entity_name;
+        const entityName =  (selectedEntity ?? {}).entity_name;
+        button.innerText = entityName ?? 'NO ENTITIES RETURNED FROM LOOKUP';
         // Hide the "select one" label since there is only one entity to select.
         button.closest('#requestingEntityDropdown').querySelector('b').style.display = 'none';
+        if( ! entityName) return;
         // Trigger the event that would have fired had the user selected from the list manually.
         const a = document.querySelector('#requestingEntityDropdownList').querySelector('a');
         autoSelectDefaultEntity(a);
@@ -3747,7 +3775,7 @@
         // Call the tooltip activation command globally to enable tooltips for the new fields of the new row.
         $('[data-toggle="tooltip"]').tooltip({ 
           html:true,
-        })
+        });
       }
       if(task == 'remove') {
         const tb = button.closest('#tbPoc');

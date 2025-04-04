@@ -39,7 +39,7 @@ export const handler = async (event:ScheduledLambdaInput, context:any) => {
       return;
     }
 
-    if(consentStatus(consenter) == ConsentStatus.ACTIVE) {
+    if((await consentStatus(consenter)) == ConsentStatus.ACTIVE) {
       log(`Consenter ${consenterEmail} has active consent, skipping purge`);
       return;
     }

@@ -70,18 +70,28 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
 
     if(existingConsenter) {
       const { sub } = existingConsenter;
-      if(sub && consentStatus(existingConsenter) != ConsentStatus.RESCINDED) {
-        const status = consentStatus(existingConsenter);
-        switch(status) {
-          case ConsentStatus.ACTIVE: case ConsentStatus.FORTHCOMING:
-            log(`Consenter ${email} has a cognito userpool account and is NOT rescinded, so is already registered.`);
-            return invalidResponse(`Cannot sign up ${email} - this account is already registered with ETT. Please login instead.`);
-          case ConsentStatus.RESCINDED:
-            log(`Consenter ${email} has rescinded consent, but is re-registering.`);
-            break;
-        }
+      const { ACTIVE, EXPIRED, FORTHCOMING, RESCINDED } = ConsentStatus;
+      const status = await consentStatus(existingConsenter);
+
+      if(sub && (status == ACTIVE || status == FORTHCOMING)) {
+        log(`Consenter ${email} has a cognito userpool account and is NOT rescinded, so is already registered.`);
+        return invalidResponse(`Cannot sign up ${email} - this account is already registered with ETT. Please login instead.`);
       }
-      console.log(`Consenter ${email} already exists in database (no cognito account yet), updating...`);
+
+      if(status == RESCINDED) {
+        log(`Consenter ${email} has rescinded consent, but is re-registering.`);
+      }
+      
+      if(status == EXPIRED) {
+        log(`Consenter ${email} consent has expired, but they are re-registering.`);
+      }
+      
+      if(sub) {
+        log(`Consenter ${email} already exists in database and has a cognito account, updating...`);
+      }
+      else {
+        log(`Consenter ${email} already exists in database (no cognito account yet), updating...`);
+      }
 
       // Update the consenter record
       await dao.update(existingConsenter);

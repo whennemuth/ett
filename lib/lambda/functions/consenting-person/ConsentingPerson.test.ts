@@ -21,6 +21,8 @@ const disclosureFormMock = jest.mock('../../_lib/pdf/DisclosureForm.ts', () => {
 
 import { mockEvent } from './MockEvent';
 import { Task, handler, INVALID_RESPONSE_MESSAGES as msgs } from './ConsentingPerson';
+import { Config, ConfigNames } from "../../_lib/dao/entity";
+import { Configurations } from "../../_lib/config/Config";
 
 describe('Consenting Person lambda trigger: handler', () => {
   it('Should handle a simple ping test as expected', async () => {
@@ -38,6 +40,20 @@ describe('Consenting Person lambda trigger: handler', () => {
 
 describe(`Consenting Person lambda trigger: ${Task.SEND_EXHIBIT_FORM}`, () => {
   const task = Task.SEND_EXHIBIT_FORM;
+
+  const tenYearsOfSeconds = '315360000';
+  const testConfigSet = { 
+    useDatabase: false, 
+    configs: [{
+      name: ConfigNames.CONSENT_EXPIRATION,
+      value: tenYearsOfSeconds,
+      config_type: 'duration',
+      description: 'Duration an individuals consent is valid for before it automatically expires'
+    }] as Config[],
+  };
+
+  process.env[Configurations.ENV_VAR_NAME] = JSON.stringify(testConfigSet);
+  
   it('Should return invalid response if exhibit data is missing', async () => {
     await SendAffiliateData.missingExhibitData(handler, mockEvent, task, msgs.missingExhibitData); 
   });
