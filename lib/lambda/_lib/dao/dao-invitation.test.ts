@@ -1,7 +1,7 @@
 import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest';
 import { DAOFactory, DAOInvitation } from './dao';
-import { DynamoDBClient, GetItemCommand, QueryCommand, UpdateItemCommand } from '@aws-sdk/client-dynamodb';
+import { DeleteItemCommand, DynamoDBClient, GetItemCommand, QueryCommand, UpdateItemCommand } from '@aws-sdk/client-dynamodb';
 import { InvitationFields, Invitation, Roles } from './entity';
 
 const dbMockClient = mockClient(DynamoDBClient);
@@ -184,14 +184,14 @@ const testUpdate = () => {
 
 const testDelete = () => {
   describe('Dao invitation delete', () => {
-    it('Should error if code is missing (no bulk deletes)', async () => {
-      expect(async () => {
-        const dao = DAOFactory.getInstance({
-          DAOType: 'invitation', Payload: {
-            [InvitationFields.email]: email,
-        }});
-        await dao.Delete();
-      }).rejects.toThrow(/^Invitation delete error: Missing code in/);
+    it('Should NOT error if code is missing', async () => {
+      const dao = DAOFactory.getInstance({
+        DAOType: 'invitation', Payload: {
+          [InvitationFields.email]: email,
+          [InvitationFields.entity_id]: entityId,
+      }});
+      await dao.Delete();
+      expect(dbMockClient).toHaveReceivedCommandTimes(DeleteItemCommand, 1);
     });
   });
 }

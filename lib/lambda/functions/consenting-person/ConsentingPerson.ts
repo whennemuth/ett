@@ -190,7 +190,8 @@ export const getConsenterInfo = async (parm:string|Consenter, includeEntityList:
   if( ! consenter) {
     return null;
   }
-  const activeConsent = consentStatus(consenter) == ConsentStatus.ACTIVE;
+  let activeConsent = consentStatus(consenter) == ConsentStatus.ACTIVE;
+  if(consenter.active != YN.Yes) activeConsent = false;
   let entities:Entity[] = [];
   if(includeEntityList && activeConsent) {
     const entityDao = DAOFactory.getInstance({ DAOType: 'entity', Payload: { active:YN.Yes }});
@@ -381,7 +382,7 @@ export const sendForm = async (consenter:Consenter, callback:(consenterInfo:Cons
       consenterInfo = { 
         consenter, 
         fullName: PdfForm.fullName(firstname, middlename, lastname),
-        activeConsent:consentStatus(consenter) == ConsentStatus.ACTIVE
+        activeConsent:consentStatus(consenter) == ConsentStatus.ACTIVE && consenter.active == YN.Yes
       };
     }
     else {
@@ -393,7 +394,7 @@ export const sendForm = async (consenter:Consenter, callback:(consenterInfo:Cons
     consenterInfo = { 
       consenter, 
       fullName: PdfForm.fullName(firstname, middlename, lastname),
-      activeConsent:consentStatus(consenter) == ConsentStatus.ACTIVE
+      activeConsent:consentStatus(consenter) == ConsentStatus.ACTIVE && consenter.active == YN.Yes
     };
   }
 
@@ -540,7 +541,6 @@ export const scheduleExhibitFormPurgeFromDatabase = async (newConsenter:Consente
  * @returns 
  */
 export const sendExhibitData = async (consenterEmail:string, exhibitForm:ExhibitForm): Promise<LambdaProxyIntegrationResponse> => {
-  consenterEmail = consenterEmail.toLowerCase();
   const emailSendFailures = [] as string[];
   const emailFailures = () => { return emailSendFailures.length > 0; }
 
@@ -560,7 +560,6 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
   }
 
   const validatePayload = () => {
-
     // Validate incoming data
     if( ! exhibitForm) {
       throwError(INVALID_RESPONSE_MESSAGES.missingExhibitData);
@@ -573,6 +572,9 @@ export const sendExhibitData = async (consenterEmail:string, exhibitForm:Exhibit
     if( ! consenterEmail) {
       throwError(INVALID_RESPONSE_MESSAGES.missingExhibitFormIssuerEmail);
     }
+
+    // Emails with upper case letters are not valid in the database, so convert to lower case.
+    consenterEmail = consenterEmail.toLowerCase();
 
     // Validate incoming affiliate data
     if(_affiliates && _affiliates.length > 0) {

@@ -10,6 +10,11 @@ export type EmailParms = {
   pdfAttachments?:PdfAttachment|PdfAttachment[]
   pngAttachments?:PngAttachment|PngAttachment[]
 };
+export const makeSafeHtml = (html:string):string => {
+  return html
+    .replace(/&/g, "&amp;")
+    .replace(/=/g, "=3D");  // Ensure '=' is properly handled in quoted-printable
+}
 
 export const sendEmail = async (parms:EmailParms):Promise<boolean> => {
   

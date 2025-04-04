@@ -1,4 +1,5 @@
 import { Consenter, YN } from "../../_lib/dao/entity";
+import { error } from "../../Utils";
 
 export enum ConsentStatus {
   ACTIVE = 'active',
@@ -7,12 +8,12 @@ export enum ConsentStatus {
 }
 
 export const consentStatus = (consenter:Consenter):ConsentStatus => {
-  const { active, consented_timestamp, rescinded_timestamp, renewed_timestamp } = consenter;
+  const { active=YN.No, consented_timestamp=[], rescinded_timestamp=[], renewed_timestamp=[] } = consenter;
   const { ACTIVE, FORTHCOMING, RESCINDED } = ConsentStatus;
 
-  if(active == YN.Yes) {
-    return ACTIVE;
-  }
+  // if(active == YN.Yes) {
+  //   return ACTIVE;
+  // }
 
   if(consented_timestamp.length == 0) {
     return FORTHCOMING;
@@ -26,7 +27,15 @@ export const consentStatus = (consenter:Consenter):ConsentStatus => {
     return ACTIVE;
   }
 
-  return latestRescind > latestConsent ? ( latestRescind > latestRenew ? RESCINDED : ACTIVE ) : ACTIVE;  
+  if(latestRescind > latestConsent) {
+    if( latestRescind > latestRenew) {
+      return RESCINDED;
+    }
+  }
+  if(active != YN.Yes) {
+    error({ consenter }, `Invalid state: Consenters consent status is active, but active is not "${YN.Yes}"`);
+  }
+  return ACTIVE; 
 }
 
 export const getLatestDate = (datesArray:string[]|Date[]=[]):Date|void => {

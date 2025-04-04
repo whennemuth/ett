@@ -30,11 +30,11 @@ export function ExhibitEmailMock() {
   return {
     ExhibitEmail: jest.fn().mockImplementation((parms:ExhibitFormParms) => {
       return {
-        send: async (email:string):Promise<boolean> => {
+        send: async (to:string[], cc?:string[]):Promise<boolean> => {
           const { formType } = parms.data;
           mockCalls.update(`email.send`);
-          mockCalls.update(`email.send.${formType}.${email}`);
-          return email != BAD_EXHIBIT_RECIPIENT_EMAIL;
+          mockCalls.update(`email.send.${formType}.${to[0]}`);
+          return (to.includes(BAD_EXHIBIT_RECIPIENT_EMAIL) || cc?.includes(BAD_EXHIBIT_RECIPIENT_EMAIL)) ? false : true;
         },
         getAttachment: ():IPdfForm => {
           return {} as IPdfForm;
@@ -167,6 +167,7 @@ export function DaoMock(originalModule: any) {
                     break;
                   case ConsentState.NONE:
                     consenter = Object.assign(consenter, sylvesterTheCat);
+                    consenter.active = YN.No;
                     break;
                   case ConsentState.RESCINDED:
                     consented = new Date(retracted.getTime() - day);
@@ -482,10 +483,10 @@ export const SendAffiliateData = {
       expectedResponse: {
         statusCode: 500,
         outgoingBody: {
-          message: `${message.replace('INSERT_EMAIL', `${ConsentState.OK}-${sylvesterTheCat.email}`)}`,
+          message: `${message.replace('INSERT_EMAIL', `${ConsentState.OK}-${sylvesterTheCat.email.toLowerCase()}`)}`,
           payload: { 
             error: true,
-            failedEmails: [ 'error@warnerbros.org' ]
+            failedEmails: [ daffyduck.email, BAD_EXHIBIT_RECIPIENT_EMAIL, bugsbunny.email ]
           }
         }
       },
@@ -517,12 +518,14 @@ export const SendAffiliateData = {
     expect(mockCalls.called(`consenter.read`)).toEqual(1);
     expect(mockCalls.called(`entity.read.${entity1.entity_id}`)).toEqual(1);
     expect(mockCalls.called(`user.read`)).toEqual(1);
-    // badUser should throw an error when email is sent, but this should not halt email sending
-    // and both bugs bunny and daffyduck should have attempts to email registered.
+    // badUser should throw an error when email is sent, but this should not halt email execution
+    // and further calls to send emails should proceed.
+    expect(mockCalls.called(`email.send`)).toEqual(2);
     expect(mockCalls.called(`email.send.${FormTypes.FULL}.${daffyduck.email}`)).toEqual(1);
-    expect(mockCalls.called(`email.send.${FormTypes.FULL}.${bugsbunny.email}`)).toEqual(1);
-    expect(mockCalls.called(`email.send.${FormTypes.FULL}.${badUser.email}`)).toEqual(1);
+    expect(mockCalls.called(`email.send.${FormTypes.FULL}.${ConsentState.OK}-${sylvesterTheCat.email.toLowerCase()}`)).toEqual(1);
+    expect(mockCalls.called(`email.send.${FormTypes.FULL}.${badUser.email}`)).toEqual(0);
     expect(mockCalls.called(`email.send.${FormTypes.FULL}.${porkypig.email}`)).toEqual(0);
+    expect(mockCalls.called(`email.send.${FormTypes.FULL}.${bugsbunny.email}`)).toEqual(0);
     expect(s3ClientMock.calls().length).toEqual(2);
 
     // _affiliates = deepClone(affiliates);
@@ -578,9 +581,9 @@ export const SendAffiliateData = {
       expect(mockCalls.called(`consenter.read`)).toEqual(3);
       expect(mockCalls.called(`entity.read.${entity1.entity_id}`)).toEqual(1);
       expect(mockCalls.called(`user.read`)).toEqual(1);
+      expect(mockCalls.called(`email.send`)).toEqual(2);
       expect(mockCalls.called(`email.send.${FormTypes.FULL}.${daffyduck.email}`)).toEqual(1);
-      expect(mockCalls.called(`email.send.${FormTypes.FULL}.${bugsbunny.email}`)).toEqual(1);
-      expect(mockCalls.called(`email.send.${FormTypes.FULL}.${porkypig.email}`)).toEqual(1);
+      expect(mockCalls.called(`email.send.${FormTypes.FULL}.${parms.incomingPayload.parameters.email.toLowerCase()}`)).toEqual(1);
       expect(mockCalls.called(`bucket.add.exhibit.${foghorLeghorn.email}`)).toEqual(1);
       expect(mockCalls.called(`bucket.add.exhibit.${wileECoyote.email}`)).toEqual(1);
       expect(mockCalls.called(`consenter.update`)).toEqual(1);

@@ -89,7 +89,8 @@ jest.mock('../../_lib/timer/cleanup/Cleanup.ts', () => {
   return {
     Cleanup: jest.fn().mockImplementation(() => {
       return {
-        cleanup: mockCleanup
+        cleanup: mockCleanup,
+        getDeletedSchedules: jest.fn(() => []) as any,
       }
     })
   }

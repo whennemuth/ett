@@ -1,12 +1,11 @@
-import 'aws-sdk-client-mock-jest';
-import { DAOEntity, DAOInvitation, DAOUser, ReadParms } from '../../_lib/dao/dao';
-import { ConfigName, ConfigNames, ConfigTypes, Entity, Invitation, Role, Roles, User, YN } from '../../_lib/dao/entity';
-import { handler } from './PostSignup';
-import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
 import { AdminDeleteUserCommandOutput } from '@aws-sdk/client-cognito-identity-provider';
 import { UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
+import 'aws-sdk-client-mock-jest';
 import { AppConfig, Configurations, IAppConfig } from '../../_lib/config/Config';
-import { CONFIG } from '../../../../contexts/IContext';
+import { DAOEntity, DAOInvitation, DAOUser, ReadParms } from '../../_lib/dao/dao';
+import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
+import { ConfigName, ConfigNames, ConfigTypes, Entity, Invitation, Role, Roles, User, YN } from '../../_lib/dao/entity';
+import { handler } from './PostSignup';
 
 // ---------------------- EVENT DETAILS ----------------------
 const clientId = '6s4a2ilv9e5solo78f4d75hlp8';
@@ -364,9 +363,9 @@ describe('Post signup lambda trigger: handler', () => {
 
     invitationRole = Roles.RE_ADMIN;
     invitationScenario = 'match';
-    await handler(event);     
+    await handler(event);  
     expect(role_lookup_attempts).toEqual(1);
-    expect(invitation_lookup_attempts).toEqual(3);
+    expect(invitation_lookup_attempts).toEqual(2);
     expect(create_user_attempts).toEqual(1);
     expect(remove_user_attempts).toEqual(0);
     expect(delayed_executions_scheduled).toEqual(0);
@@ -376,7 +375,7 @@ describe('Post signup lambda trigger: handler', () => {
     invitationScenario = 'match';
     await handler(event);     
     expect(role_lookup_attempts).toEqual(1);
-    expect(invitation_lookup_attempts).toEqual(3);
+    expect(invitation_lookup_attempts).toEqual(2);
     expect(create_user_attempts).toEqual(1);
     expect(remove_user_attempts).toEqual(0);
     expect(delayed_executions_scheduled).toEqual(0);
@@ -386,7 +385,7 @@ describe('Post signup lambda trigger: handler', () => {
     invitationScenario = 'match';
     await handler(event);     
     expect(role_lookup_attempts).toEqual(1);
-    expect(invitation_lookup_attempts).toEqual(3);
+    expect(invitation_lookup_attempts).toEqual(2);
     expect(create_user_attempts).toEqual(1);
     expect(remove_user_attempts).toEqual(0);
     expect(delayed_executions_scheduled).toEqual(0);

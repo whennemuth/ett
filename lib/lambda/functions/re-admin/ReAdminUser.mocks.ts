@@ -370,20 +370,21 @@ export const UserInvitationTests = {
     });
   },
   alreadyAccepted: async (_handler:any, eventMock:any, taskName:string) => {
+    const entity_id = 'id_for_active_entity';
     await invokeAndAssert({
       _handler, mockEvent:eventMock,
       incomingPayload: {
         task: taskName,
         parameters: {
           email: "exists@gmail.com", 
-          entity_id: "id_for_active_entity", 
+          entity_id, 
           role: Roles.RE_AUTH_IND
         }
       },
       expectedResponse: {
         statusCode: 400,
         outgoingBody: { 
-          message: `Invitee exists@gmail.com has already accepted invitation for entity id_for_active_entity`,
+          message: `Invitee exists@gmail.com has already accepted invitation for entity Name for ${entity_id}`,
           payload: { invalid: true  }
         }
       },

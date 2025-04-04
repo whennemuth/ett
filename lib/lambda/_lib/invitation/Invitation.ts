@@ -5,7 +5,7 @@ import * as ctx from '../../../../contexts/context.json';
 import { DelayedExecutions } from '../../../DelayedExecution';
 import { error, log, lookupCloudfrontDomain } from '../../Utils';
 import { ID as scheduleId, Description as scheduleDescription, StaleInvitationLambdaParms } from '../../functions/delayed-execution/RemoveStaleInvitations';
-import { sendEmail } from '../EmailWithAttachments';
+import { makeSafeHtml, sendEmail } from '../EmailWithAttachments';
 import { Configurations } from '../config/Config';
 import { DAOFactory, DAOInvitation } from '../dao/dao';
 import { EntityCrud } from '../dao/dao-entity';
@@ -60,16 +60,10 @@ export class UserInvitation {
     this._domain = process.env.CLOUDFRONT_DOMAIN ?? new URL(this._link).hostname;
   }
 
-  private makeSafeHtml = (html:string):string => {
-    return html
-      .replace(/&/g, "&amp;")
-      .replace(/=/g, "=3D");  // Ensure '=' is properly handled in quoted-printable
-  }
-
   public send = async (parms:SendParms):Promise<boolean> => {
     const { expires=true, persist=true } = parms;
     const context:IContext = <IContext>ctx;
-    let { invitation, entity_name, _link, messageId, persist:_persist, setDelayedExecutionToPurge, makeSafeHtml } = this;
+    let { invitation, entity_name, _link, messageId, persist:_persist, setDelayedExecutionToPurge } = this;
     let { role, email } = invitation;
 
     let heading:string = `Welcome to the Ethical Transparency Tool (ETT)!<br>`;

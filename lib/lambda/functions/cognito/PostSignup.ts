@@ -425,7 +425,7 @@ export const sendRegistrationForm = async (person:User|Consenter, role:Role, ent
            */
           // loginHref: getLoginHref(role), 
           meetsPrequisite: registrationFormEmailPrerequisitesAreMet
-    });
+        });
         break;
     }
     if(isOk(response)) {
