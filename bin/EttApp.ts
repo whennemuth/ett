@@ -3,7 +3,7 @@ import { App, CfnOutput, RemovalPolicy, StackProps, Tags } from 'aws-cdk-lib';
 import { BlockPublicAccess, Bucket } from 'aws-cdk-lib/aws-s3';
 import { BuildOptions, build } from 'esbuild';
 import 'source-map-support/register';
-import { IContext, SCENARIO } from '../contexts/IContext';
+import { IContext } from '../contexts/IContext';
 import * as ctx from '../contexts/context.json';
 import { AbstractStack } from '../lib/AbstractStack';
 import { ApiConstruct, ApiConstructParms } from '../lib/Api';
@@ -25,7 +25,7 @@ export const StackDescription = 'Ethical transparency tool';
 const app = new App();
 app.node.setContext('stack-parms', context);
 const { 
-  STACK_ID, ACCOUNT:account, REGION:region, TAGS: { Function, Landscape, Service }, SCENARIO:scenario, REDIRECT_PATH_WEBSITE
+  STACK_ID, ACCOUNT:account, REGION:region, TAGS: { Function, Landscape, Service }, REDIRECT_PATH_WEBSITE
 } = context;
 const stackName = `${STACK_ID}-${Landscape}`;
 
@@ -220,18 +220,6 @@ const buildAll = () => {
   });
 }
 
-const buildDynamoDb = (): DynamoDbConstruct => {
-  const db = new DynamoDbConstruct(stack, 'Dynamodb');
-  return db;
-}
-
-switch(scenario) {
-  case SCENARIO.DEFAULT:
-    buildAll();
-    break;
-  case SCENARIO.DYNAMODB:
-    buildDynamoDb();
-    break;
-}
+buildAll();
 
 

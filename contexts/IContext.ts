@@ -1,7 +1,6 @@
 import { Config, ConfigNames } from "../lib/lambda/_lib/dao/entity";
 
 export interface IContext {
-  SCENARIO: SCENARIO;
   STACK_ID: string;
   ACCOUNT:  string;
   REGION:   string;
@@ -20,11 +19,6 @@ export interface IContext {
   DEFAULT_ROOT_OBJECT:string;
   CONFIG: CONFIG;
   TAGS:     Tags;
-}
-
-export enum SCENARIO {
-  DEFAULT = 'default',
-  DYNAMODB = 'dynamodb',
 }
 
 export interface CONFIG {

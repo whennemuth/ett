@@ -24,7 +24,6 @@ Build the entire application and AWS infrastructure from scratch.
 
    ```
    {
-     "SCENARIO": "default",
      "STACK_ID": "ett",
      "ACCOUNT": "[Your account ID]",
      "REGION": "[Your desired region]",
