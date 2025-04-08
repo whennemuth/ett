@@ -79,7 +79,6 @@ export class UserInvitation {
           `Your University, College, or Society is being invited to register to use ETT. You are one of the ` +
           `three representatives of your University, College, or Society that is being invited to register ` +
           `to use ETT.<br>Follow this link to begin registration:` + 
-          `<p>${makeSafeHtml(_link)}</p>` +
           `<p>${makeSafeHtml('<a href="' + _link + '">' + _link + '</a>')}</p>` +
           `You are the Administrative Support Professional, who, with two senior Authorized Individuals, ` +
           `will represent your organization in using this tool.` +
@@ -92,7 +91,6 @@ export class UserInvitation {
           `senior Authorized Individuals who will represent your organization in using this tool, authorize ` +
           `initiation of Disclosure Requests, directly receive completed Disclosure Forms, and decide who at ` +
           `the organization needs the disclosed information.<br>Follow this link to complete registration:` +
-          `<p>${makeSafeHtml(_link)}</p>` +
           `<p>${makeSafeHtml('<a href="' + _link + '">' + _link + '</a>')}</p>` +
           `More information on ETT is here:</b>`;
           break;
