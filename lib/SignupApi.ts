@@ -127,6 +127,16 @@ export class SignupApiConstruct extends Construct {
                   `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${prefix}-${DelayedExecutions.HandleStaleEntityVacancy.coreName}`
                 ],
                 effect: Effect.ALLOW
+              }),
+              new PolicyStatement({
+                actions: [ 'iam:PassRole' ],
+                resources: [ `arn:aws:iam::${ACCOUNT}:role/${prefix}-scheduler-role` ],
+                effect: Effect.ALLOW,
+                conditions: {                  
+                  StringEquals: {
+                    'iam:PassedToService': 'scheduler.amazonaws.com'
+                  }
+                }
               })
             ]
           }),
@@ -233,6 +243,16 @@ export class SignupApiConstruct extends Construct {
                   `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${prefix}-${DelayedExecutions.HandleStaleEntityVacancy.coreName}`
                 ],
                 effect: Effect.ALLOW
+              }),
+              new PolicyStatement({
+                actions: [ 'iam:PassRole' ],
+                resources: [ `arn:aws:iam::${ACCOUNT}:role/${prefix}-scheduler-role` ],
+                effect: Effect.ALLOW,
+                conditions: {                  
+                  StringEquals: {
+                    'iam:PassedToService': 'scheduler.amazonaws.com'
+                  }
+                }
               })
             ]
           }),
@@ -277,11 +297,15 @@ export class SignupApiConstruct extends Construct {
   }
 
   public grantPermissionsTo = (dynamodb:DynamoDbConstruct) => {
+    // Grant the entity registration lambda function permissions to dynamodb tables
     dynamodb.getInvitationsTable().grantReadWriteData(this.registerEntityLambda);
     dynamodb.getEntitiesTable().grantReadWriteData(this.registerEntityLambda);
     dynamodb.getUsersTable().grantReadWriteData(this.registerEntityLambda);
-    dynamodb.getConsentersTable().grantReadWriteData(this.registerConsenterLambda);
+    dynamodb.getConsentersTable().grantReadWriteData(this.registerEntityLambda);
     dynamodb.getConfigTable().grantReadData(this.registerEntityLambda);
+
+    // Grant the consenter registration lambda function permissions to dynamodb tables
+    dynamodb.getConsentersTable().grantReadWriteData(this.registerConsenterLambda);
     dynamodb.getConfigTable().grantReadData(this.registerConsenterLambda);
   }
 
