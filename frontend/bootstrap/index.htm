@@ -4154,7 +4154,11 @@
         }
         affiliates.push(affiliate);
       })
-      const { entity_id } = selectedEntity;
+      const { entity_id } = selectedEntity ?? {};
+      if( ! entity_id) {
+        alert('No entity_id value is available');
+        return;
+      }
       const payload = { email, exhibit_data: { 
         entity_id, 
         constraint: exhibitsPath.getConstraint(),
@@ -4206,6 +4210,7 @@
      */
     const saveExhibitForm = async () => {
       const payload = getExhibitFormPayload('full');
+      if( ! payload) console.log('Cancelling saveExhibitForm due to no payload');
       await sendExhibitFormPayload('save-exhibit-form', payload, () => {
         alert('Exhibit form saved.');
         populateConsenterEntityLists();
@@ -4218,6 +4223,7 @@
      */
     const submitExhibitForm = async () => {
       const payload = getExhibitFormPayload('full');
+      if( ! payload) console.log('Cancelling saveExhibitForm due to no payload');
       await sendExhibitFormPayload('send-exhibit-form', payload, () => {
         alert('Exhibit form submitted.');
         populateConsenterEntityLists();
