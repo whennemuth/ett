@@ -71,8 +71,9 @@ export class EntityToAutomate {
     if(entity) return;
 
     // No entity found in the database by specified name, so create it.
-    log(`Creating entity \"${entityName}\"...`)
-    const entityCrud = EntityCrud({ entity_name:entityName, description:entityName } as Entity);
+    log(`Creating entity \"${entityName}\"...`);
+    const registered_timestamp = new Date().toISOString();
+    const entityCrud = EntityCrud({ entity_name:entityName, description:entityName, registered_timestamp } as Entity);
     await entityCrud.create();
 
     // Read in the created entity.
