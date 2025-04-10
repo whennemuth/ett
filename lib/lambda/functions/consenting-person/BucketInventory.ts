@@ -3,6 +3,10 @@ import { log } from "../../Utils";
 import { BucketItem } from "./BucketItem";
 import { BucketItemMetadata, BucketItemMetadataParms, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "./BucketItemMetadata";
 
+export type HierarchicalStructure = {
+  [key: string]: HierarchicalStructure | BucketItemMetadataParms;
+};
+
 /**
  * This class represents all items in the exhibit forms bucket for a particular consenting individual, 
  * A lookup to list ALL items for that consenter is performed against the bucket, but querying and 
@@ -202,6 +206,39 @@ export class BucketInventory {
     return contents.filter(metadata => {
       return metadata.itemType == itemType;
     })
+  }
+
+  public getContentsAsHierarchy = (): HierarchicalStructure => {
+    const root: HierarchicalStructure = {};
+  
+    this.contents.forEach((metadata) => {
+      const { consenterEmail, entityId, affiliateEmail, itemType, savedDate=new Date(), correction, constraint } = metadata;
+      const pathSegments = [ consenterEmail, entityId, affiliateEmail, itemType, savedDate.toISOString() ].filter(Boolean); // Filter out undefined/null values
+  
+      let currentLevel = root;
+  
+      pathSegments.forEach((segment, index) => {
+        if ( ! currentLevel[segment as string]) {
+          // If it's the last segment, assign the item as a "leaf"
+          currentLevel[`${segment}`] = index === pathSegments.length - 1 ? {
+            correction, constraint
+          } as BucketItemMetadataParms : {} as HierarchicalStructure;
+        }
+  
+        // Move deeper into the hierarchy
+        currentLevel = currentLevel[`${segment}`] as HierarchicalStructure;
+      });
+    });
+  
+    return root;
+  };
+
+  public toString = ():string => {
+    return JSON.stringify(this.getContentsAsHierarchy());
+  }
+
+  public toHierarchicalString = ():string => {
+    return JSON.stringify(this.getContentsAsHierarchy(), null, 2);
   }
 }
 

@@ -931,7 +931,7 @@
                   <div style="overflow:auto;">
                     <div class="divSysAdminOption2">
 
-                      <table class="sysAdminShortcuts">
+                      <table id="tblSysAdminShortcutsCreateEntity" class="sysAdminShortcuts">
                         <tr class="open">
                           <th colspan="3">Setup a new Entity</th>
                         </tr>
@@ -1012,6 +1012,7 @@
                         </tr>
                         <tr>
                           <td style="align-items: end;" colspan="3">
+                            <button id="btnShortcutsClearEntity" class="btn btn-primary" onclick="clearSysAdminEntitySetupFields();">Clear</button>
                             <button id="btnShortcutsCreateEntity" class="btn btn-success" style="width:200px;">CREATE & STAFF ENTITY</button> 
                           </td>
                         </tr>
@@ -1037,7 +1038,48 @@
                             <button id="btnShortcutsRemoveEntity" class="btn btn-danger" style="width:200px;">TEAR DOWN ENTITY</button> 
                           </td>
                         </tr>
+                        <tr>
+                          <td colspan="3" style="border-style:none;">&nbsp;</td>
+                        </tr>
+                        <tr class="open">
+                          <th colspan="3">Tear down a consenter</th>
+                        </tr>
+                        <tr>
+                          <td>Consenter</td>
+                          <td>
+                            <div style="overflow: auto;">
+                              <div style="width:400px; margin:10px; display:inline;">
+                                <input id="txtConsenterFilter2" type="text" style="font-size:16px; float:left;" class="form-control dropdown-toggle" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" placeholder="Type here to search . . .">
+                                <div id="consentersDropdownList2" class="dropdown-menu" aria-labelledby="txtConsenterFilter2">
+                                </div>
+                              </div>
+                            </div>
+                            <!-- Button trigger modal -->          
+                            <button id="btnShortcutsShowConsenterForms" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#shortcutsDisplayConsenterForms" style="margin-top: 10px; display:none;">View exhibit forms</button>
+                          </td> 
+                          <td style="align-items: end; text-align:right;">
+                            <button id="btnShortcutsRemoveConsenter" class="btn btn-danger" style="width:200px;">DELETE CONSENTER</button> 
+                          </td>
+                        </tr>
                       </table>
+
+                      <!-- Modal -->
+                      <div class="modal fade  modal-lg" id="shortcutsDisplayConsenterForms" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="correctReAdminBackdropLabel" aria-hidden="true">
+                        <div class="modal-dialog  modal-dialog-scrollable modal-dialog-centered">
+                          <div class="modal-content">
+                            <div class="modal-header">
+                              <h5 class="modal-title" id="shortcutsDisplayConsenterFormsTitle"></h5>
+                            </div>
+                            <div class="modal-body" style="text-align:left; overflow:auto;">
+                              <pre id="shortcutsDisplayConsenterFormsContent" style="white-space: pre-wrap; overflow: auto; max-height: 400px; background-color: white; color:black;"></pre>
+                            </div>
+                            <div class="modal-footer">
+                              <button class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                            </div>      
+                          </div>
+                        </div>
+                      </div>
+
                     </div>
                   </div>
                 </div>
@@ -1354,7 +1396,7 @@
                     <div style="width:400px; margin:10px; display:inline;">
                       <div style="margin-left:10px; font-size:26px;">Consenting Individuals:</div>
                       <input id="txtConsenterFilter" type="text" style="height:66px; width:493px; font-size:26px; float:left;" class="form-control dropdown-toggle" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" placeholder="Type here to search . . .">
-                      <div id="consentersDropdownList" class="dropdown-menu" aria-labelledby="txtConsenterFilter">
+                      <div id="consentersDropdownList1" class="dropdown-menu" aria-labelledby="txtConsenterFilter">
                       </div>
                     </div>
                     <button id="btnSendExhibitsRequest" style="display:inline;" class="btn btn-primary btn-lg" type="button">Send <i class="bi-send-check"></i></button>
@@ -2952,6 +2994,13 @@
       }
     }
 
+    const clearSysAdminEntitySetupFields = () => {
+      const flds = document.querySelectorAll('#tblSysAdminShortcutsCreateEntity input[type="text"]');
+      flds.forEach(fld => {
+        if(fld) fld.value = '';
+      });
+    }
+
     const sendSysAdminEntityTeardownRequest = async () => {
       const msg = document.getElementById('apiResponse');
       msg.innerHTML = '';
@@ -2977,6 +3026,91 @@
         const { message, payload: { ok } } = package;
         if(ok) {
           alert('Entity teardown successful');
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
+    const sendSysAdminConsenterTeardownRequest = async () => {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      if( ! selectedConsenter) {
+        alert('Consenter selection required');
+        return;
+      }
+      try {
+        const outgoingPayload = { task: 'shortcut-consenter-teardown', parameters: { email: selectedConsenter }};
+        const response = await fetch(apiUri('SYS_ADMIN'), {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify(outgoingPayload)
+          }
+        });
+
+        const package = await response.json();
+        const { message, payload: { ok } } = package;
+        if(ok) {
+          alert('Consenter deletion successful');
+        }
+        else {
+          msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+    }
+
+    const showConsenterExhibitForms = async () => {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      if( ! selectedConsenter) {
+        alert('Consenter selection required');
+        return;
+      }
+      try {
+        const outgoingPayload = { task: 'get-consenter-forms', parameters: { email: selectedConsenter }};
+        if(localTesting()) {
+          document.getElementById('shortcutsDisplayConsenterFormsTitle').innerHTML = selectedConsenter;
+          document.getElementById('shortcutsDisplayConsenterFormsContent').innerText = `
+            "abc123": {
+              "affiliate@gmail.com": {
+                "exhibit": {
+                  "Wed Apr 09 2025 12:31:08 GMT-0400 (Eastern Daylight Time)": {
+                    "correction": "false"
+                  }
+                }
+              }
+            }`;
+            return false;
+        }
+
+        const response = await fetch(apiUri('SYS_ADMIN'), {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
+            'Content-Type': 'application/json',
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify(outgoingPayload)
+          }
+        });
+
+        const package = await response.json();
+        const { message, payload: { ok } } = package;
+        if(ok) {
+          const { inventory } = package.payload;
+          document.getElementById('shortcutsDisplayConsenterFormsTitle').innerHTML = selectedConsenter;
+          document.getElementById('shortcutsDisplayConsenterFormsContent').innerText = inventory;
         }
         else {
           msg.innerHTML = `<pre>${JSON.stringify(package, null, 2)}</pre>`;
@@ -4934,7 +5068,7 @@
      * Populate the picklist that is available for authorized individuals to select from when
      * choosing a consenting individual to whom they want to prompt via email for exhibit forms.
      */
-    const populateConsenters = async (fragment) => {
+    const populateConsenters = async (fragment, listId) => {
       const msg = document.getElementById('apiResponse');
       msg.innerHTML = '';
       try {
@@ -4976,7 +5110,7 @@
 
         const { message, payload } = package;
         if(payload.ok) {
-          const lbx = document.getElementById('consentersDropdownList');
+          const lbx = document.getElementById(listId);
           lbx.innerHTML = '';
           payload.consenters.forEach(consenter => {
             const { email, fullname } = consenter;
@@ -6090,6 +6224,14 @@
         await sendSysAdminEntityTeardownRequest();
       });
 
+      $('#btnShortcutsRemoveConsenter').on('click', async () => {
+        await sendSysAdminConsenterTeardownRequest();
+      });
+
+      $('#btnShortcutsShowConsenterForms').on('click', async () => {
+        await showConsenterExhibitForms();
+      });
+
       // Add behavior to selection activity on the consenter picklist for exhibit form requests
       $('#txtConsenterFilter').on('hide.bs.dropdown', function () {
         const a = event.srcElement.parentElement;
@@ -6100,8 +6242,28 @@
         }
       });
 
+      // Add behavior to selection activity on the consenter picklist for sysadmin consenter deletions
+      $('#txtConsenterFilter2').on('hide.bs.dropdown', function () {
+        const a = event.srcElement.parentElement;
+        const txt = document.getElementById('txtConsenterFilter2');
+        document.getElementById('shortcutsDisplayConsenterFormsTitle').innerHTML = '';
+        document.getElementById('shortcutsDisplayConsenterFormsContent').innerText = '';
+        if(a.tagName == 'A' && a.name && a.id) {
+          txt.value = a.id;
+          selectedConsenter = a.name;
+          document.getElementById('btnShortcutsShowConsenterForms').style.display = 'inline';
+          return;
+        }
+        selectedConsenter = undefined;
+        document.getElementById('btnShortcutsShowConsenterForms').style.display = 'none';
+      });
+
       $('#txtConsenterFilter').on('keyup', async () => {
-        populateConsenters(event.srcElement.value);
+        populateConsenters(event.srcElement.value, 'consentersDropdownList1');
+      });
+
+      $('#txtConsenterFilter2').on('keyup', async () => {
+        populateConsenters(event.srcElement.value, 'consentersDropdownList2');
       });
 
       // Add an event handler for the button to send exhibit form requests to consenters.
@@ -6235,7 +6397,7 @@
               const checkConsenterListing = async () => {
                 const exhibitsTabFocus = document.getElementById('auth-request-exhibits').className.includes('show');
                 if(exhibitsTabFocus) {
-                  const items = document.querySelectorAll('consentersDropdownList a');
+                  const items = document.querySelectorAll('consentersDropdownList1 a');
                   if( !items || items.length == 0) {
                     await populateConsenters();
                   }

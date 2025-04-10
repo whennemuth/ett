@@ -10,7 +10,9 @@ import { EntityToAutomate } from '../../_lib/EntityAutomation';
 import { InvitablePerson, InvitablePersonParms } from '../../_lib/invitation/InvitablePerson';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
 import { debugLog, error, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
+import { getConsenterList } from '../authorized-individual/AuthorizedIndividual';
 import { EntityToDemolish } from '../authorized-individual/Demolition';
+import { deleteConsenter, getConsenterForms } from '../consenting-person/ConsentingPerson';
 import { Task as ReAdminTasks, correctUser, createEntity, deactivateEntity, inviteUsers, lookupEntity, retractInvitation, sendEntityRegistrationForm, updateEntity } from '../re-admin/ReAdminUser';
 import { DynamoDbTableOutput } from './DynamoDbTableOutput';
 import { HtmlTableView } from './view/HtmlTableView';
@@ -23,8 +25,11 @@ export enum Task {
   SET_APP_CONFIG = 'set-app-config',
   CLEAN_SHEET_OF_PAPER = 'clean-sheet',
   GET_ENTITY_LIST = 'get-entity-list',
+  GET_CONSENTER_LIST = 'get-consenter-list',
+  GET_CONSENTER_FORMS = 'get-consenter-forms',
   SHORTCUT_ENTITY_SETUP = 'shortcut-entity-setup',
-  SHORTCUT_ENTITY_TEARDOWN = 'shortcut-entity-teardown'
+  SHORTCUT_ENTITY_TEARDOWN = 'shortcut-entity-teardown',
+  SHORTCUT_CONSENTER_TEARDOWN = 'shortcut-consenter-teardown',
 }
 
 /**
@@ -93,10 +98,16 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           return await cleanSheet();
         case Task.GET_ENTITY_LIST:
           return await getEntityList();
+        case Task.GET_CONSENTER_LIST:
+          return await getConsenterList();
+        case Task.GET_CONSENTER_FORMS:
+          return await getConsenterForms(email);
         case Task.SHORTCUT_ENTITY_SETUP:
           return await entitySetup(parameters);
         case Task.SHORTCUT_ENTITY_TEARDOWN:
           return await entityTeardown(parameters);
+        case Task.SHORTCUT_CONSENTER_TEARDOWN:
+          return await consenterTeardown(parameters);
       } 
     }
   }
@@ -221,6 +232,7 @@ export const getEntityList = async ():Promise<LambdaProxyIntegrationResponse> =>
   return okResponse('Ok', { entities });
 }
 
+
 /**
  * Create and staff an entity
  * @param parms 
@@ -264,6 +276,16 @@ export const entityTeardown = async (parms:any):Promise<LambdaProxyIntegrationRe
 }
 
 
+export const consenterTeardown = async (parms:any):Promise<LambdaProxyIntegrationResponse> => {
+  const { email } = parms;
+  try {
+    return deleteConsenter(email);
+  }
+  catch(e:any) {
+    log(e);
+    return errorResponse(`Internal server error: ${e.message}`);
+  }
+}
 
 
 
@@ -276,8 +298,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
   (async () => {
 
     try {
-      const task = ReAdminTasks.INVITE_USER as ReAdminTasks | Task;
-      // const task = Task.GET_ENTITY_LIST as ReAdminTasks | Task;
+      // const task = ReAdminTasks.INVITE_USER as ReAdminTasks | Task;
+      const task = Task.GET_CONSENTER_FORMS as ReAdminTasks | Task;
       let payload: IncomingPayload;
       let _event: any;
       let retval: LambdaProxyIntegrationResponse;
@@ -305,6 +327,21 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
           break;
         case Task.SHORTCUT_ENTITY_SETUP: break;
         case Task.SHORTCUT_ENTITY_TEARDOWN: break;
+        case Task.GET_CONSENTER_FORMS:
+          payload = {"task":"get-consenter-forms","parameters":{"email":"cp1@warhen.work"}}
+          _event = { headers: { [AbstractRoleApi.ETTPayloadHeader]: JSON.stringify(payload) } };
+          retval = await handler(_event);
+          const { body:json2 } = retval;
+          if(json2) {
+            const body = JSON.parse(json2);
+            const { payload: { inventory } } = body;
+            log(inventory, `${task} complete. Form metadata returned`)
+          }
+          else {
+            log('No body returned');
+          }
+          break;
+
         case ReAdminTasks.CREATE_ENTITY: break;
         case ReAdminTasks.UPDATE_ENTITY: break;
         case ReAdminTasks.DEACTIVATE_ENTITY: break;

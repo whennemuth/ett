@@ -7,7 +7,7 @@ import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { CognitoStandardAttributes, UserAccount } from "../../_lib/cognito/UserAccount";
 import { Configurations } from "../../_lib/config/Config";
 import { DAOFactory } from "../../_lib/dao/dao";
-import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
+import { ConsenterCrud, UserCrudParams } from "../../_lib/dao/dao-consenter";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
 import { Affiliate, AffiliateTypes, ConfigNames, Consenter, ConsenterFields, Entity, ExhibitForm, ExhibitFormConstraints, FormTypes, Roles, User, YN } from "../../_lib/dao/entity";
 import { ConsentFormData } from "../../_lib/pdf/ConsentForm";
@@ -17,8 +17,8 @@ import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, deepClone, error, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse, warn } from "../../Utils";
 import { sendDisclosureRequest } from "../authorized-individual/AuthorizedIndividual";
-import { ID as S3ScheduleId, Description as S3ScheduleDescription } from "../delayed-execution/PurgeExhibitFormFromBucket";
-import { ID as DbScheduleId, Description as DbScheduleDescription, deleteExhibitForm } from "../delayed-execution/PurgeExhibitFormFromDatabase";
+import { Description as S3ScheduleDescription, ID as S3ScheduleId } from "../delayed-execution/PurgeExhibitFormFromBucket";
+import { Description as DbScheduleDescription, ID as DbScheduleId, deleteExhibitForm } from "../delayed-execution/PurgeExhibitFormFromDatabase";
 import { BucketInventory } from "./BucketInventory";
 import { BucketItem, DisclosureItemsParms, Tags } from "./BucketItem";
 import { BucketDisclosureForm } from "./BucketItemDisclosureForm";
@@ -38,6 +38,7 @@ export enum Task {
   CORRECT_EXHIBIT_FORM = 'correct-exhibit-form',
   SEND_EXHIBIT_FORM = 'send-exhibit-form',
   GET_CONSENTER = 'get-consenter',
+  GET_CONSENTER_FORMS = 'get-consenter-forms',
   REGISTER_CONSENT = 'register-consent',
   RENEW_CONSENT = 'renew-consent',
   RESCIND_CONSENT = 'rescind-consent',
@@ -126,6 +127,8 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
       switch(task as Task) {
         case Task.GET_CONSENTER:
           return await getConsenterResponse(email);
+        case Task.GET_CONSENTER_FORMS:
+          return await getConsenterForms(email);
         case Task.REGISTER_CONSENT:
           return await registerConsent(email);
         case Task.RENEW_CONSENT:
@@ -220,6 +223,11 @@ export const getConsenterInfo = async (parm:string|Consenter, includeEntityList:
   debugLog(retval, `Returning`);
 
   return retval;
+}
+
+export const getConsenterForms = async (email:string): Promise<LambdaProxyIntegrationResponse> => {
+  const inventory = await BucketInventory.getInstance(email);
+  return okResponse('Ok', { inventory: inventory.toHierarchicalString() });
 }
 
 export type AppendTimestampParms = {
@@ -321,7 +329,7 @@ export const renewConsent = async (email:string): Promise<LambdaProxyIntegration
  * @param email 
  * @returns 
  */
-export const rescindConsent = async (email:string): Promise<LambdaProxyIntegrationResponse> => {
+export const rescindConsent = async (email:string, totalDeletion:boolean=false): Promise<LambdaProxyIntegrationResponse> => {
   log(`Rescinding consent for ${email}`);
   
   // Abort if consenter lookup fails
@@ -342,14 +350,46 @@ export const rescindConsent = async (email:string): Promise<LambdaProxyIntegrati
   const userAccount = await UserAccount.getInstance(attributes, Roles.CONSENTING_PERSON);
   await userAccount.Delete();
 
-  // Flip the consenter database record to inactive, remove the sub, and push the current timestamp to its rescinded array.
-  return appendTimestamp({
-    consenter, 
-    timestampFldName: ConsenterFields.rescinded_timestamp,
-    active: YN.No,
-    removeSub: true
-  });
+  if(totalDeletion) {
+    // Delete the consenter from the database.
+    await ConsenterCrud({ consenterInfo: { email }} as UserCrudParams).Delete();
+    
+    // Delete all exhibit forms belonging to the consenter from the s3 bucket.
+    const exhibitFormBucket = process.env[ExhibitFormsBucketEnvironmentVariableName];
+    if(exhibitFormBucket) {
+      const bucketItem = new ExhibitBucket({ email } as Consenter);
+      const output:DeleteObjectsCommandOutput|void = await bucketItem.deleteAll({
+        consenterEmail: email
+      } as BucketItemMetadataParms);
+      log(output, `Deleted exhibit forms from bucket for ${email}`);
+    }
+    else {
+      error({ 
+        consenter: email,
+        envVarName: ExhibitFormsBucketEnvironmentVariableName,
+      }, `Cannot delete exhibit forms from bucket - missing environment variable ${ExhibitFormsBucketEnvironmentVariableName}`);
+    }
+    return okResponse('Ok', { message: `Deleted consenter ${email} from the dynamodb, cognito, and s3` });
+  }
+  else {
+    // Flip the consenter database record to inactive, remove the sub, and push the current timestamp to its rescinded array.
+    return appendTimestamp({
+      consenter, 
+      timestampFldName: ConsenterFields.rescinded_timestamp,
+      active: YN.No,
+      removeSub: true
+    });
+  }
+
 };
+
+/**
+ * TOTAL deletion of consenter: database record, cognito account, and any exhibit forms they may have in s3.
+ * @param email 
+ */
+export const deleteConsenter = async (email:string): Promise<LambdaProxyIntegrationResponse> => {
+  return rescindConsent(email, true);
+}
 
 /**
  * Correct consenter details.

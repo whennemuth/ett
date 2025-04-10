@@ -1,4 +1,4 @@
-import { BucketInventory } from "./BucketInventory";
+import { BucketInventory, HierarchicalStructure } from "./BucketInventory";
 import { ListKeysOutput } from "./BucketItem";
 import { BucketItemMetadata, BucketItemMetadataParms, ItemType } from "./BucketItemMetadata";
 
@@ -129,4 +129,99 @@ describe('BucketInventory.getAllLatestForms', () => {
     expect(forms.find(m => m.entityId=='entity2' && m.affiliateEmail==aff2)).toBeDefined();
     expect(forms.find(m => m.entityId=='entity2' && m.affiliateEmail==aff3)).toBeDefined();
   })
-})
+});
+
+describe('BucketInventory.unflattenBucketItems', () => {
+  it('Should convert to a hierarchical structure correctly', async () => {
+    const isDate = (dateStr:string) =>  ! isNaN(new Date(dateStr).getTime());
+
+    const inventory = await BucketInventory.getInstance(sam);
+    const hierarchy:HierarchicalStructure = inventory.getContentsAsHierarchy();
+    expect(hierarchy).toBeDefined();
+    const samObj = hierarchy[sam] as HierarchicalStructure;
+    expect(Object.keys(hierarchy).length).toEqual(1);
+    expect(Object.keys(hierarchy)[0]).toEqual(sam);
+    expect(Object.keys(samObj).length).toEqual(2);
+
+    const entity1Obj = samObj['entity1'] as HierarchicalStructure
+    const aff1Obj = entity1Obj[aff1] as HierarchicalStructure;
+    const aff2Obj = entity1Obj[aff2] as HierarchicalStructure;
+    const aff3Obj = entity1Obj[aff3] as HierarchicalStructure;
+    expect(Object.keys(samObj)[0]).toEqual('entity1');
+    expect(Object.keys(entity1Obj).length).toEqual(3);
+    expect(Object.keys(entity1Obj)[0]).toEqual(aff1);
+    expect(Object.keys(entity1Obj)[1]).toEqual(aff2);
+    expect(Object.keys(entity1Obj)[2]).toEqual(aff3);
+
+    expect(Object.keys(aff1Obj).length).toEqual(1);
+    expect(Object.keys(aff1Obj)[0]).toEqual(EXHIBIT);
+    expect(Object.keys(aff1Obj[EXHIBIT]).length).toEqual(3);
+    expect(isDate(Object.keys(aff1Obj[EXHIBIT])[0])).toBeTruthy();
+    expect(isDate(Object.keys(aff1Obj[EXHIBIT])[1])).toBeTruthy();
+    expect(isDate(Object.keys(aff1Obj[EXHIBIT])[2])).toBeTruthy();
+    expect(Object.values(aff1Obj[EXHIBIT])[0]['correction']).toEqual(false);
+    expect(Object.values(aff1Obj[EXHIBIT])[1]['correction']).toEqual(true);
+    expect(Object.values(aff1Obj[EXHIBIT])[2]['correction']).toEqual(true);
+
+    expect(Object.keys(aff2Obj).length).toEqual(1);
+    expect(Object.keys(aff2Obj)[0]).toEqual(EXHIBIT);
+    expect(Object.keys(aff2Obj[EXHIBIT]).length).toEqual(3);
+    expect(isDate(Object.keys(aff2Obj[EXHIBIT])[0])).toBeTruthy();
+    expect(isDate(Object.keys(aff2Obj[EXHIBIT])[1])).toBeTruthy();
+    expect(isDate(Object.keys(aff2Obj[EXHIBIT])[2])).toBeTruthy();
+    expect(Object.values(aff2Obj[EXHIBIT])[0]['correction']).toEqual(false);
+    expect(Object.values(aff2Obj[EXHIBIT])[1]['correction']).toEqual(true);
+    expect(Object.values(aff2Obj[EXHIBIT])[2]['correction']).toEqual(true);
+
+    expect(Object.keys(aff3Obj).length).toEqual(1);
+    expect(Object.keys(aff3Obj)[0]).toEqual(EXHIBIT);
+    expect(Object.keys(aff3Obj[EXHIBIT]).length).toEqual(3);
+    expect(isDate(Object.keys(aff3Obj[EXHIBIT])[0])).toBeTruthy();
+    expect(isDate(Object.keys(aff3Obj[EXHIBIT])[1])).toBeTruthy();
+    expect(isDate(Object.keys(aff3Obj[EXHIBIT])[2])).toBeTruthy();
+    expect(Object.values(aff3Obj[EXHIBIT])[0]['correction']).toEqual(false);
+    expect(Object.values(aff3Obj[EXHIBIT])[1]['correction']).toEqual(true);
+    expect(Object.values(aff3Obj[EXHIBIT])[2]['correction']).toEqual(true);
+    
+    
+    const entity2Obj = samObj['entity1'] as HierarchicalStructure
+    const aff4Obj = entity2Obj[aff1] as HierarchicalStructure;
+    const aff5Obj = entity2Obj[aff2] as HierarchicalStructure;
+    const aff6Obj = entity2Obj[aff3] as HierarchicalStructure;
+    expect(Object.keys(samObj)[0]).toEqual('entity1');
+    expect(Object.keys(entity2Obj).length).toEqual(3);
+    expect(Object.keys(entity2Obj)[0]).toEqual(aff1);
+    expect(Object.keys(entity2Obj)[1]).toEqual(aff2);
+    expect(Object.keys(entity2Obj)[2]).toEqual(aff3);
+
+    expect(Object.keys(aff4Obj).length).toEqual(1);
+    expect(Object.keys(aff4Obj)[0]).toEqual(EXHIBIT);
+    expect(Object.keys(aff4Obj[EXHIBIT]).length).toEqual(3);
+    expect(isDate(Object.keys(aff4Obj[EXHIBIT])[0])).toBeTruthy();
+    expect(isDate(Object.keys(aff4Obj[EXHIBIT])[1])).toBeTruthy();
+    expect(isDate(Object.keys(aff4Obj[EXHIBIT])[2])).toBeTruthy();
+    expect(Object.values(aff4Obj[EXHIBIT])[0]['correction']).toEqual(false);
+    expect(Object.values(aff4Obj[EXHIBIT])[1]['correction']).toEqual(true);
+    expect(Object.values(aff4Obj[EXHIBIT])[2]['correction']).toEqual(true);
+
+    expect(Object.keys(aff5Obj).length).toEqual(1);
+    expect(Object.keys(aff5Obj)[0]).toEqual(EXHIBIT);
+    expect(Object.keys(aff5Obj[EXHIBIT]).length).toEqual(3);
+    expect(isDate(Object.keys(aff5Obj[EXHIBIT])[0])).toBeTruthy();
+    expect(isDate(Object.keys(aff5Obj[EXHIBIT])[1])).toBeTruthy();
+    expect(isDate(Object.keys(aff5Obj[EXHIBIT])[2])).toBeTruthy();
+    expect(Object.values(aff5Obj[EXHIBIT])[0]['correction']).toEqual(false);
+    expect(Object.values(aff5Obj[EXHIBIT])[1]['correction']).toEqual(true);
+    expect(Object.values(aff5Obj[EXHIBIT])[2]['correction']).toEqual(true);
+
+    expect(Object.keys(aff6Obj).length).toEqual(1);
+    expect(Object.keys(aff6Obj)[0]).toEqual(EXHIBIT);
+    expect(Object.keys(aff6Obj[EXHIBIT]).length).toEqual(3);
+    expect(isDate(Object.keys(aff6Obj[EXHIBIT])[0])).toBeTruthy();
+    expect(isDate(Object.keys(aff6Obj[EXHIBIT])[1])).toBeTruthy();
+    expect(isDate(Object.keys(aff6Obj[EXHIBIT])[2])).toBeTruthy();
+    expect(Object.values(aff6Obj[EXHIBIT])[0]['correction']).toEqual(false);
+    expect(Object.values(aff6Obj[EXHIBIT])[1]['correction']).toEqual(true);
+    expect(Object.values(aff6Obj[EXHIBIT])[2]['correction']).toEqual(true);
+  });
+});
