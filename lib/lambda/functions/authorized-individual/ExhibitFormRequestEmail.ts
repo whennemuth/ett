@@ -10,7 +10,8 @@ export type ExhibitFormRequestEmailParms = {
   consenterEmail:string;
   entity_id:string;
   linkUri:string;
-  constraint: ExhibitFormConstraints;
+  constraint: ExhibitFormConstraints,
+  lookback?:string
 }
 
 export class ExhibitFormRequestEmail {
@@ -21,7 +22,7 @@ export class ExhibitFormRequestEmail {
   }
 
   public send = async ():Promise<boolean> => {
-    let { parms: { consenterEmail, entity_id, linkUri, constraint }} = this;
+    let { parms: { consenterEmail, entity_id, linkUri, constraint, lookback }} = this;
     if((linkUri ?? '').endsWith('/')) {
       linkUri = linkUri.substring(0, linkUri.length -1); // Clip off trailing '/'
     }
@@ -53,12 +54,22 @@ export class ExhibitFormRequestEmail {
     linkUri = linkUri
       .replace(/&/g, "&amp;")
       .replace(/=/g, "=3D");  // Ensure '=' is properly handled in quoted-printable
+
+    // Prepare verbiage for the lookback period
+    let lookbackMsg = '';
+    if(/^\d+$/.test(`${lookback}`)) {
+      lookbackMsg = `Please limit the individuals you list to those you have had an association with in the last ${lookback} years`;
+    }
+    else {
+      lookbackMsg = `Please note, there is no limit for how far back your association with the individuals you list can go`;
+    }
     
     return sendEmail({
       subject: `ETT Exhibit Form Request`,
       to: [ consenterEmail ],
       message: `Thankyou ${consenterFullName} for registering with the Ethical Tranparency Tool.<br>` +
         `${entity_name} is requesting you take the next step and fill out a current/prior contacts or "exhibit" form.<br>` +
+        `<p><b>${lookbackMsg}.</b></p>` +
         `Follow the link provided below to log in to your ETT account and to access the form:` + 
         `<p>${linkUri}</p>`,
       from,
@@ -77,7 +88,7 @@ const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/authorized-individual/ExhibitFormRequestEmail.ts')) {
 
   const consenterEmail = 'cp1@warhen.work';
-  const entity_id = '2c0c4086-1bc0-4876-b7db-ed4244b16a6b';
+  const entity_id = 'dcf85d75-fcc8-4139-be47-463193adcb08';
 
   (async() => {
     // 1) Get context variables
@@ -96,7 +107,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
       consenterEmail, 
       entity_id, 
       linkUri:`https://${cloudfrontDomain}`, 
-      constraint:"both" 
+      constraint:"both",
+      lookback: '5'
     } as ExhibitFormRequestEmailParms).send();
 
     console.log('Email sent!');

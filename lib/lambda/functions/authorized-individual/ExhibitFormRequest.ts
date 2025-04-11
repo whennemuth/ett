@@ -5,7 +5,7 @@ import { ExhibitFormRequestEmail } from "./ExhibitFormRequestEmail";
 
 
 export type SendExhibitFormRequestParms = {
-  consenterEmail:string, entity_id:string, constraint:ExhibitFormConstraint, linkUri?:string
+  consenterEmail:string, entity_id:string, constraint:ExhibitFormConstraint, linkUri?:string, lookback?:string
 }
 
 export class ExhibitFormRequest {
@@ -91,7 +91,7 @@ export class ExhibitFormRequest {
    * @returns 
    */
   public sendEmail = async ():Promise<LambdaProxyIntegrationResponse> => {
-    let { parms: { consenterEmail, constraint, entity_id }, getLink } = this;
+    let { parms: { consenterEmail, constraint, entity_id, lookback }, getLink } = this;
 
     const linkUri = getLink();
   
@@ -106,7 +106,8 @@ export class ExhibitFormRequest {
           consenterEmail, 
           entity_id, 
           linkUri, 
-          constraint 
+          constraint,
+          lookback
         }).send();
   
         // Bail out if the email failed

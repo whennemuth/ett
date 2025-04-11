@@ -1391,6 +1391,20 @@
                       </label>
                     </form>
                   </div>
+
+                  <p style="margin-top:40px; margin-bottom:15px; font-weight: bold; font-size: 20px;">
+                    What is the look-back period you want to instruct the consenter to limit affiliates to?</span> 
+                  </p>
+                  <div style="overflow: auto; border-top:1px solid #cccccc; padding-top:15px;">
+                    <select id="lookbackPeriod" class="form-control" style="width:fit-content; display:inline; font-weight: bold; font-size: 20px;">
+                      <option value="unlimited" selected>Unlimited</option>
+                      <script>
+                        for (let i = 1; i <= 50; i++) {
+                          document.write('<option value="' + i + '">' + i + '</option>');
+                        }
+                      </script>
+                    </select> <span style="font-weight: bold; font-size: 20px;">years</span>
+                  </div>
                 
                   <div id="exhibitsRequest" style="margin-top: 20px; overflow: auto;">
                     <div style="width:400px; margin:10px; display:inline;">
@@ -5604,7 +5618,8 @@
                 entity_id, 
                 constraint, 
                 linkUri:redirectUri(),
-                filename: 'index.htm'
+                filename: 'index.htm',
+                lookback: document.getElementById('lookbackPeriod').value
               } 
             })
           }
@@ -6374,6 +6389,8 @@
                 dashboard.querySelectorAll(`#authIndContent div`).forEach(d => d.style.color = '#cccccc');
                 dashboard.querySelectorAll(`#authIndContent label`).forEach(l => l.style.color = '#cccccc');
                 dashboard.querySelectorAll(`#authIndContent button`).forEach(b => b.disabled = true);
+                dashboard.querySelectorAll(`#authIndContent select`).forEach(s => s.disabled = true);                
+                dashboard.querySelectorAll(`#authIndContent select`).forEach(s => s.style.color = '#cccccc');                
                 dashboard.querySelectorAll(`#amendEntity button`).forEach(b => b.disabled = true);
                 dashboard.querySelectorAll(`#amendEntity input`).forEach(i => i.disabled = true);
 
