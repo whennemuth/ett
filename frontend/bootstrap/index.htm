@@ -392,7 +392,37 @@
         border-style: solid;
         border-color:#e6e5e5;
       }
-
+      #affiliatePositions input[type="checkbox"] {
+        float: left;
+        clear:both;
+        margin-right: 4px;
+      }
+      #affiliatePositions label {
+        float: left;
+      }
+      #formAffiliateConstraint div {
+        margin: 10px;
+        padding-left: 40px;
+        font-size: 20px;
+        display: none;
+      }
+      #formAffiliateConstraint div input[type="text"], #formAffiliateConstraint div select {
+        width:fit-content; 
+        display:inline-block;
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 8px;
+      }
+      #formAffiliateConstraint div input[type="text"] {
+        display: none;
+      }
+      #formAffiliateConstraint div p {
+        font-size: 16px;
+        font-style: italic;
+        margin-left: 20px;
+        margin-bottom: 0px;
+        padding-bottom: 0px;
+      }
       #authNotReady {
         display:none; padding:5px; margin-top:80px; width:100%; 
       }
@@ -1377,18 +1407,170 @@
                   </p>
                   <div id="divAffiliateConstraint" style="overflow: auto; border-top:1px solid #cccccc; padding-top:15px;">
                     <form id="formAffiliateConstraint" name="formAffiliateConstraint">
+
+                      <script>
+                        const affiliateConstraintChange = (event) => {
+                          const selectedValue = event.target.value;
+                          [ { constraint:'current', divId:'divAffiliatePositionsCurrent' },
+                            { constraint:'other', divId:'divAffiliatePositionsOther' },
+                            { constraint:'both', divId:'divAffiliatePositionsBoth' }
+                          ].forEach(choices => {
+                            const { constraint, divId } = choices;
+                            const div = document.getElementById(divId);
+                            if(constraint === selectedValue) {
+                              div.style.display = 'inline-block';
+                            } 
+                            else {
+                              div.querySelectorAll('select').forEach(select => select.value = '');
+                              div.querySelectorAll('input[type="text"]').forEach((input) => {
+                                input.value = '';
+                                input.style.display = 'none';
+                              });
+                              div.style.display = 'none';
+                            }
+                          });
+                        };
+
+                        const affiliatePositionChange = (event) => {
+                          const selectedValue = event.target.value;
+                          const txtOther = event.target.closest('span').querySelector('input[type="text"]');
+                          if(selectedValue === 'custom') {
+                            txtOther.style.display = 'inline';
+                          }
+                          else {
+                            txtOther.style.display = 'none';
+                            txtOther.value = '';
+                          }
+                        };
+                      </script>
+
+                      <!-- Current employer -->
                       <label class="containerRDO">Current Employer(s) only
-                        <input type="radio" name="affiliateConstraint" value="current">
+                        <input type="radio" name="affiliateConstraint" value="current" onchange="affiliateConstraintChange(event)">
                         <span class="checkmark"></span>
                       </label>
+                      <div id="divAffiliatePositionsCurrent">
+                        <p>What position held by the affiliates at the consenters current employer are you are interested in?</p>
+                        <span>
+                          <select id="lbxAffiliatePositionsCurrent" class="form-control" onchange="affiliatePositionChange(event)">
+                            <option value=""><- Select One -></option>
+                            <option value="hr">HR Professional</option>
+                            <option value="mg">Manager / Direct Report</option>
+                            <option value="co">Co-worker / Peer</option>
+                            <option value="custom">Other</option>
+                          </select>
+                          <input id="txtAffiliatePositionsCurrentCustom" type="text" placeholder='Type "Other" entry here...' class="form-control">
+                        </span>
+                      </div>
+
+                      <!-- Other -->
                       <label class="containerRDO">Other affiliates & Prior Employer(s)
-                        <input type="radio" name="affiliateConstraint" value="other">
+                        <input type="radio" name="affiliateConstraint" value="other" onchange="affiliateConstraintChange(event)">
                         <span class="checkmark"></span>
                       </label>
+                      <div id="divAffiliatePositionsOther">
+
+                        <p>What position held by affiliates of the consenters prior employers are you are interested in?</p>
+                        <span>
+                          <select id="lbxAffiliatePositionsOtherEmployer" class="form-control" onchange="affiliatePositionChange(event)">
+                            <option value=""><- Select One -></option>
+                            <option value="hr">HR Professional</option>
+                            <option value="mg">Manager / Direct Report</option>
+                            <option value="co">Colleague / Co-worker</option>
+                            <option value="custom">Other</option>
+                          </select>
+                          <input id="txtAffiliatePositionsOtherEmployerCustom" type="text" placeholder='Type "Other" entry here...' class="form-control">                        
+                        </span>
+
+                        <p>What position held by affiliates of the consenter at Academic / Professional Societies & Organizations are you are interested in?</p>
+                        <span>
+                          <select id="lbxAffiliatePositionsOtherAcademic" class="form-control" onchange="affiliatePositionChange(event)">
+                            <option value=""><- Select One -></option>
+                            <option value="ao">Academic Officer</option>
+                            <option value="vp">Vice Provost / Associate Provost for Academic Affairs</option>
+                            <option value="df">Dean of Faculty / Associate Dean</option>
+                            <option value="dc">Department Chair / Head</option>
+                            <option value="fc">Faculty Affairs Coordinator</option>
+                            <option value="ro">Institutional Research Officer</option>
+                            <option value="gs">Graduate Studies Coordinator</option>
+                            <option value="at">Affiliations or Titles Administrator</option>
+                            <option value="custom">Other</option>
+                          </select>
+                          <input id="txtAffiliatePositionsOtherAcademicCustom" type="text" placeholder='Type "Other" entry here...' class="form-control">                        
+                        </span>
+                        <p>What position held by affiliates of the consenter at other organizations are you are interested in?</p>
+                        <span>
+                          <select id="lbxAffiliatePositionsOtherOther" class="form-control" onchange="affiliatePositionChange(event)">
+                            <option value=""><- Select One -></option>
+                            <option value="pr">President / Vice President</option>
+                            <option value="ed">Executive Director</option>
+                            <option value="bm">Board Member / Chair</option>
+                            <option value="sb">Secretary of the Board</option>
+                            <option value="sc">Steering Committee Member</option>
+                            <option value="mc">Membership Chair / Officer</option>
+                            <option value="nc">Nominations Committee Member / Chair</option>
+                            <option value="cc">Fellowship Committee Chair (e.g., in scholarly societies)</option>
+                            <option value="ac">Advisory Council Member</option>
+                            <option value="custom">Other</option>
+                          </select>
+                          <input id="txtAffiliatePositionsOtherOtherCustom" type="text" placeholder='Type "Other" entry here...' class="form-control">                        
+                        </span>
+                      </div>
+
+                      <!-- Both -->
                       <label class="containerRDO">Both - Any of the above
-                        <input type="radio" name="affiliateConstraint" value="both" checked="checked">
+                        <input type="radio" name="affiliateConstraint" value="both" onchange="affiliateConstraintChange(event)">
                         <span class="checkmark"></span>
                       </label>
+                      <div id="divAffiliatePositionsBoth">
+
+                        <p>What position held by affiliates of the consenters prior employers are you are interested in?</p>
+                        <span>
+                          <select id="lbxAffiliatePositionsBothCurrent" class="form-control" onchange="affiliatePositionChange(event)">
+                            <option value=""><- Select One -></option>
+                            <option value="hr">HR Professional</option>
+                            <option value="mg">Manager / Direct Report</option>
+                            <option value="co">Co-worker / Peer</option>
+                            <option value="custom">Other</option>
+                          </select>
+                          <input id="txtAffiliatePositionsBothCurrentCustom" type="text" placeholder='Type "Other" entry here...' class="form-control">                        
+                        </span>
+
+                        <p>What position held by affiliates of the consenter at Academic / Professional Societies & Organizations are you are interested in?</p>
+                        <span>
+                          <select id="lbxAffiliatePositionsBothAcademic" class="form-control" onchange="affiliatePositionChange(event)">
+                            <option value=""><- Select One -></option>
+                            <option value="ao">Academic Officer</option>
+                            <option value="vp">Vice Provost / Associate Provost for Academic Affairs</option>
+                            <option value="df">Dean of Faculty / Associate Dean</option>
+                            <option value="dc">Department Chair / Head</option>
+                            <option value="fc">Faculty Affairs Coordinator</option>
+                            <option value="ro">Institutional Research Officer</option>
+                            <option value="gs">Graduate Studies Coordinator</option>
+                            <option value="at">Affiliations or Titles Administrator</option>
+                            <option value="custom">Other</option>
+                          </select>
+                          <input id="txtAffiliatePositionsBothAcademicCustom" type="text" placeholder='Type "Other" entry here...' class="form-control">                        
+                        </span>
+
+                        <p>What position held by affiliates of the consenter at other organizations are you are interested in?</p>
+                        <span>
+                          <select id="lbxAffiliatePositionsBothOther" class="form-control" onchange="affiliatePositionChange(event)">
+                            <option value=""><- Select One -></option>
+                            <option value="pr">President / Vice President</option>
+                            <option value="ed">Executive Director</option>
+                            <option value="bm">Board Member / Chair</option>
+                            <option value="sb">Secretary of the Board</option>
+                            <option value="sc">Steering Committee Member</option>
+                            <option value="mc">Membership Chair / Officer</option>
+                            <option value="nc">Nominations Committee Member / Chair</option>
+                            <option value="cc">Fellowship Committee Chair (e.g., in scholarly societies)</option>
+                            <option value="ac">Advisory Council Member</option>
+                            <option value="custom">Other</option>
+                          </select>
+                          <input id="txtAffiliatePositionsBothOtherCustom" type="text" placeholder='Type "Other" entry here...' class="form-control">                        
+                        </span>
+                      </div>
                     </form>
                   </div>
 
@@ -4782,8 +4964,8 @@
 
         // let users = [ asp.user ];
         // let users = [ ai1.user ];
-        let users = [ asp.user, ai1.user ];
-        // let users = [ asp.user, ai1.user, ai2.user ];
+        // let users = [ asp.user, ai1.user ];
+        let users = [ asp.user, ai1.user, ai2.user ];
 
         const pendingInvitations = [];
         if( ! users.find(u => u.email.startsWith('kong'))) {
@@ -5591,7 +5773,7 @@
     }
 
     const sendExhibitFormRequest = async () => {
-      if( ! selectedConsenter) {
+      if( ! (selectedConsenter ?? document.getElementById('txtConsenterFilter').value)) {
         alert('Please select a consenting individual');
         return;
       }
@@ -5602,7 +5784,69 @@
         const { entity } = userContext;
         const { entity_id, entity_name } = (entity ?? {});
         const constraint = document.forms.formAffiliateConstraint.affiliateConstraint.value;
+        const positions = [];
+        let picklistPosition, customPosition;
+         switch(constraint) {
+          case 'current':
+            picklistPosition = document.getElementById('lbxAffiliatePositionsCurrent').value;
+            customPosition = document.getElementById('txtAffiliatePositionsCurrentCustom').value;
+            positions.push(picklistPosition == 'custom' ? 
+              { id: 'custom-employer', value: customPosition } : { id: picklistPosition }
+            );
+            break;
+          case 'other':
+            picklistPosition = document.getElementById('lbxAffiliatePositionsOtherEmployer').value;
+            customPosition = document.getElementById('txtAffiliatePositionsOtherEmployerCustom').value;
+            positions.push(picklistPosition == 'custom' ? 
+              { id: 'custom-employer', value: customPosition } : { id: picklistPosition }
+            );
 
+            picklistPosition = document.getElementById('lbxAffiliatePositionsOtherAcademic').value;
+            customPosition = document.getElementById('txtAffiliatePositionsOtherAcademicCustom').value;
+            positions.push(picklistPosition == 'custom' ? 
+              { id: 'custom-academic', value: customPosition } : { id: picklistPosition }
+            );
+
+            picklistPosition = document.getElementById('lbxAffiliatePositionsOtherOther').value;
+            customPosition = document.getElementById('txtAffiliatePositionsOtherOtherCustom').value;
+            positions.push(picklistPosition == 'custom' ? 
+              { id: 'custom-other', value: customPosition } : { id: picklistPosition }
+            );
+            break;
+          case 'both':
+            picklistPosition = document.getElementById('lbxAffiliatePositionsBothCurrent').value;
+            customPosition = document.getElementById('txtAffiliatePositionsBothCurrentCustom').value;
+            positions.push(picklistPosition == 'custom' ? 
+              { id: 'custom-employer', value: customPosition } : { id: picklistPosition }
+            );
+            
+            picklistPosition = document.getElementById('lbxAffiliatePositionsBothAcademic').value;
+            customPosition = document.getElementById('txtAffiliatePositionsBothAcademicCustom').value;
+            positions.push(picklistPosition == 'custom' ? 
+              { id: 'custom-academic', value: customPosition } : { id: picklistPosition }
+            );
+            
+            picklistPosition = document.getElementById('lbxAffiliatePositionsBothOther').value;
+            customPosition = document.getElementById('txtAffiliatePositionsBothOtherCustom').value;
+            positions.push(picklistPosition == 'custom' ? 
+              { id: 'custom-other', value: customPosition } : { id: picklistPosition }
+            );
+            break;
+        }
+
+        const payload = { 
+          task: 'send-exhibit-form-request', 
+          parameters: { 
+            consenterEmail:selectedConsenter, 
+            entity_id, 
+            constraint, 
+            linkUri: redirectUri(),
+            filename: 'index.htm',
+            lookback: document.getElementById('lookbackPeriod').value,
+            positions
+          } 
+        }    
+       
         document.body.style.cursor = 'progress';
         const response = await fetch(apiUri(role), {
           method: 'GET',
@@ -5611,25 +5855,15 @@
           headers: {
             'Authorization': `Bearer ${AccessJwtCookie.getJwt()}`,
             'Content-Type': 'application/json',
-            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify({ 
-              task: 'send-exhibit-form-request', 
-              parameters: { 
-                consenterEmail:selectedConsenter, 
-                entity_id, 
-                constraint, 
-                linkUri:redirectUri(),
-                filename: 'index.htm',
-                lookback: document.getElementById('lookbackPeriod').value
-              } 
-            })
+            [STATIC_PARAMETERS.PAYLOAD_HEADER]: JSON.stringify(payload)
           }
         });
 
         const package = await response.json();
         document.body.style.cursor = 'default';
 
-        const { message, payload } = package;
-        if(payload.ok) {
+        const { message, payload:payload2 } = package;
+        if(payload2.ok) {
           alert('Request sent!');
         }
         else {

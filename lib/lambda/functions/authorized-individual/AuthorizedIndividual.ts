@@ -79,9 +79,9 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           return await demolishEntity(entity_id, notify, dryRun);
 
         case Task.SEND_EXHIBIT_FORM_REQUEST:
-          var { consenterEmail, entity_id, constraint, linkUri, lookback } = parameters;
+          var { consenterEmail, entity_id, constraint, linkUri, lookback, positions } = parameters;
           return await sendExhibitFormRequest( { 
-            consenterEmail, entity_id, constraint, linkUri, lookback
+            consenterEmail, entity_id, constraint, linkUri, lookback, positions
           } as SendExhibitFormRequestParms);
 
         case Task.SEND_DISCLOSURE_REQUEST:

@@ -5,6 +5,7 @@ import { Consenter, Entity, ExhibitFormConstraints, YN } from "../../_lib/dao/en
 import { EmailParms, sendEmail } from "../../_lib/EmailWithAttachments";
 import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { lookupCloudfrontDomain } from "../../Utils";
+import { AffilatePositionAcademic, AffilatePositionAcademicStrings, AffiliatePosition, AffiliatePositionCategory, AffiliatePositionCustom, AffiliatePositionEmployer, AffiliatePositionEmployerStrings, AffiliatePositionOther, AffiliatePositionOtherStrings, AffiliatePositionsCustom } from "./ExhibitFormRequest";
 
 export type ExhibitFormRequestEmailParms = {
   consenterEmail:string;
@@ -12,6 +13,7 @@ export type ExhibitFormRequestEmailParms = {
   linkUri:string;
   constraint: ExhibitFormConstraints,
   lookback?:string
+  positions?:AffiliatePosition[]
 }
 
 export class ExhibitFormRequestEmail {
@@ -22,7 +24,8 @@ export class ExhibitFormRequestEmail {
   }
 
   public send = async ():Promise<boolean> => {
-    let { parms: { consenterEmail, entity_id, linkUri, constraint, lookback }} = this;
+    let { parms: { consenterEmail, entity_id, linkUri, constraint, lookback, positions=[] }} = this;
+    const { BOTH, CURRENT, OTHER } = ExhibitFormConstraints;
     if((linkUri ?? '').endsWith('/')) {
       linkUri = linkUri.substring(0, linkUri.length -1); // Clip off trailing '/'
     }
@@ -58,18 +61,68 @@ export class ExhibitFormRequestEmail {
     // Prepare verbiage for the lookback period
     let lookbackMsg = '';
     if(/^\d+$/.test(`${lookback}`)) {
-      lookbackMsg = `Please limit the individuals you list to those you have had an association with in the last ${lookback} years`;
+      lookbackMsg = `Please limit the individuals you list to those you have had an association with in the last <b>${lookback} years</b>.`;
     }
     else {
-      lookbackMsg = `Please note, there is no limit for how far back your association with the individuals you list can go`;
+      lookbackMsg = `Please note, there is no limit for how far back your association with the individuals you list can go.`;
     }
+
+    // Prepare verbiage for the positions of interest
+    let positionsMsg = '';
+    type PositionData = { category:AffiliatePositionCategory, value:string }
+    const getPositionData = (position:AffiliatePosition):PositionData => {
+      const { id } = position;
+      if(Object.keys(AffiliatePositionEmployer).includes(id.toString())) {
+        return { 
+          category:AffiliatePositionCategory.EMPLOYER, 
+          value:AffiliatePositionEmployer[id as unknown as AffiliatePositionEmployerStrings]
+        };
+      }
+      else if(Object.keys(AffilatePositionAcademic).includes(id.toString())) {
+        return { 
+          category:AffiliatePositionCategory.ACADEMIC, 
+          value:AffilatePositionAcademic[id as unknown as AffilatePositionAcademicStrings]
+        };
+      }
+      else if(Object.keys(AffiliatePositionOther).includes(id.toString())) {
+        return { 
+          category:AffiliatePositionCategory.OTHER, 
+          value:AffiliatePositionOther[id as unknown as AffiliatePositionOtherStrings]
+        };
+      }
+      else {
+        switch(position.id as AffiliatePositionsCustom) {
+          case AffiliatePositionsCustom.ACADEMIC:
+            return { 
+              category: AffiliatePositionCategory.ACADEMIC, value: position.value as AffilatePositionAcademicStrings 
+            };
+          case AffiliatePositionsCustom.EMPLOYER:
+            return {
+              category: AffiliatePositionCategory.EMPLOYER, value: position.value as AffiliatePositionEmployerStrings
+            }
+          case AffiliatePositionsCustom.OTHER:
+            return {
+              category: AffiliatePositionCategory.OTHER, value: position.value as AffiliatePositionOtherStrings
+            }
+        }
+      }
+    }
+
+    positionsMsg = 'Please note, we are interested in individuals who hold/held the following positions:';
+    positionsMsg += `<ul>`;
+    positions.forEach((position) => {
+      const { category, value } = getPositionData(position);
+      positionsMsg += `<li><b>${category}:</b> ${value}</li>`;
+    });
+    positionsMsg += `</ul>`;
     
     return sendEmail({
       subject: `ETT Exhibit Form Request`,
       to: [ consenterEmail ],
       message: `Thankyou ${consenterFullName} for registering with the Ethical Tranparency Tool.<br>` +
         `${entity_name} is requesting you take the next step and fill out a current/prior contacts or "exhibit" form.<br>` +
-        `<p><b>${lookbackMsg}.</b></p>` +
+        `<p><b>${lookbackMsg}</b></p>` +
+        `<p><b>${positionsMsg}</b></p>` +
         `Follow the link provided below to log in to your ETT account and to access the form:` + 
         `<p>${linkUri}</p>`,
       from,
@@ -88,7 +141,7 @@ const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/authorized-individual/ExhibitFormRequestEmail.ts')) {
 
   const consenterEmail = 'cp1@warhen.work';
-  const entity_id = 'dcf85d75-fcc8-4139-be47-463193adcb08';
+  const entity_id = '8398e6c6-8e47-42d7-9bd6-9b6db54bd19c';
 
   (async() => {
     // 1) Get context variables
@@ -108,7 +161,12 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
       entity_id, 
       linkUri:`https://${cloudfrontDomain}`, 
       constraint:"both",
-      lookback: '5'
+      lookback: '5',
+      positions: [ 
+        { id:AffiliatePositionsCustom.EMPLOYER, value:'Manager of things and stuff' },
+        { id:'fc' },
+        { id:'nc' }
+      ]
     } as ExhibitFormRequestEmailParms).send();
 
     console.log('Email sent!');

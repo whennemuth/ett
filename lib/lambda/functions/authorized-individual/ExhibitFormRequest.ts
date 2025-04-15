@@ -3,10 +3,62 @@ import { ExhibitFormConstraint, ExhibitFormConstraints } from "../../_lib/dao/en
 import { errorResponse, invalidResponse, okResponse } from "../../Utils";
 import { ExhibitFormRequestEmail } from "./ExhibitFormRequestEmail";
 
-
-export type SendExhibitFormRequestParms = {
-  consenterEmail:string, entity_id:string, constraint:ExhibitFormConstraint, linkUri?:string, lookback?:string
+export enum AffiliatePositionEmployer {
+  hr = 'HR professional',
+  mg = 'Manager / Direct Report',
+  co = 'Colleague / Coworker',
 }
+export enum AffilatePositionAcademic {
+  ao = 'Academic Officer', 
+  vp = 'Vice Provost / Associate Provost for Academic Affairs', 
+  df = 'Dean of Faculty / Associate Dean', 
+  dc = 'Department Chair / Head', 
+  fc = 'Faculty Affairs Coordinator', 
+  ro = 'Institutional Research Officer', 
+  gs = 'Graduate Studies Coordinator', 
+  at = 'Affiliations or Titles Administrator'
+}
+export enum AffiliatePositionOther {
+  pr = 'President / Vice President',
+  ed = 'Executive Director',
+  bm = 'Board Member / Chair',
+  sb = 'Secretary of the Board',
+  sc = 'Steering Committee Member',
+  mc = 'Membership Chair / Officer',
+  nc = 'Nominations Committee Member / Chair',
+  cc = 'Fellowship Committee Chair (e.g., in scholarly societies)',
+  ac = 'Advisory Council Member'
+}
+export enum AffiliatePositionsCustom {
+  EMPLOYER = 'custom-employer',
+  ACADEMIC = 'custom-academic',
+  OTHER = 'custom-other'
+}
+export type AffiliatePositionCustom = {
+  [ key in AffiliatePositionsCustom ]: string
+}
+export type AffiliatePosition = {
+  id: AffiliatePositionEmployer | AffilatePositionAcademic | AffiliatePositionOther | AffiliatePositionsCustom,
+  value?: string
+}
+export enum AffiliatePositionCategory {
+  EMPLOYER = 'Employers',
+  ACADEMIC = 'Current and Prior Academic / Professional Societies & Organizations',
+  OTHER = 'Other Organizations Where You Formerly Had Appointments'
+}
+export type SendExhibitFormRequestParms = {
+  consenterEmail:string, 
+  entity_id:string, 
+  constraint:ExhibitFormConstraint, 
+  linkUri?:string, 
+  lookback?:string,
+  positions?:AffiliatePosition[]
+}
+
+
+export type AffilatePositionAcademicStrings = keyof typeof AffilatePositionAcademic;
+export type AffiliatePositionEmployerStrings = keyof typeof AffiliatePositionEmployer;
+export type AffiliatePositionOtherStrings = keyof typeof AffiliatePositionOther;
 
 export class ExhibitFormRequest {
   private parms: SendExhibitFormRequestParms;
@@ -91,7 +143,7 @@ export class ExhibitFormRequest {
    * @returns 
    */
   public sendEmail = async ():Promise<LambdaProxyIntegrationResponse> => {
-    let { parms: { consenterEmail, constraint, entity_id, lookback }, getLink } = this;
+    let { parms: { consenterEmail, constraint, entity_id, lookback, positions }, getLink } = this;
 
     const linkUri = getLink();
   
@@ -107,7 +159,8 @@ export class ExhibitFormRequest {
           entity_id, 
           linkUri, 
           constraint,
-          lookback
+          lookback,
+          positions
         }).send();
   
         // Bail out if the email failed
