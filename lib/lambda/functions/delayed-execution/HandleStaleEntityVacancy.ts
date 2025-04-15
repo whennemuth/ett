@@ -173,7 +173,7 @@ export const notifySingleConsenterOfEntityTermination = async (entity_name:strin
                 .heading1 { font: 16px Georgia, serif; background-color: #ffd780; text-align: center; }
               </style>
               <div class="content">
-                <div class="heading1" style="padding:20px;>
+                <div class="heading1" style="padding:20px;">
                   This email is notification that ${entity_name} is not using ETT at this 
                   time and any Exhibit Form(s) you may have submitted have been deleted.
                 </div>
