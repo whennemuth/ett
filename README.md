@@ -2,7 +2,13 @@
 
 This repository comprises a cloud-based implementation of the [Ethical Transparency Tool for The Societies Consortium on Sexual Harassment in STEMM](https://societiesconsortium.com/ett/) as described in the [Overview Briefing Packet](https://societiesconsortium.com/wp-content/uploads/2022/12/Ethical-Transparency-Tool-Briefing-Packet-Without-Forms.pdf). This implementation is designed for hosting on [AWS](https://aws.amazon.com/) and built completely around [AWS serverless technologies](https://aws.amazon.com/serverless/).
 
-### Prerequisites
+### Topology
+
+This diagram depicts the basic arrangement of services and the sequencing a request made by a single page app client makes in order to access backend services (database, emailing, events, etc.)
+
+![./topology.png](./docs/topology.png)
+
+### Setup - Prerequisites
 
 - [AWS CDK](https://docs.aws.amazon.com/cdk/v2/guide/home.html)
 - [AWS CLI](https://aws.amazon.com/cli/)
@@ -11,57 +17,15 @@ This repository comprises a cloud-based implementation of the [Ethical Transpare
 - [Visual Studio Code](https://code.visualstudio.com/download)
 - Admin role for target account *(ie: Shibboleth-InfraMgt/yourself@bu.edu, for the BU CSS account)*
 
-### Steps
+### Setup - Steps
 
 Build the entire application and AWS infrastructure from scratch.
 
 1. Clone this repository
   
-1. Create a `./context/context.json` file.
-   This file will contain all parameters that the cdk will use when generating the Cloudformation template it later deploys. Most of these parameters correspond to something one might otherwise use as values being supplied to Cloudformation if it were being invoked directly, but they will appear "hard-coded" in the stack template. [From CDK docs on parameters](https://docs.aws.amazon.com/cdk/v2/guide/parameters.html):
+1. Modify the `./context/context.json` file.
+   You will probably only adjust 2 or 3 of the attributes in this file - a breakdown of all attributes are [**here**](./docs/Context.md)
 
-   > *In general, we recommend against using AWS CloudFormation parameters with the AWS CDK. The usual ways to pass values into AWS CDK apps are [context values](https://docs.aws.amazon.com/cdk/v2/guide/context.html) and environment variables. Because they are not available at synthesis time, parameter values cannot be easily used for flow control and other purposes in your CDK app.*
-
-   ```
-   {
-     "STACK_ID": "ett",
-     "ACCOUNT": "[Your account ID]",
-     "REGION": "[Your desired region]",
-     "CONFIG": {
-       "useDatabase": true,
-       "configs": [
-         { 
-           "name": "auth-ind-nbr", 
-           "value": "2",
-           "config_type": "number",
-           "description": "Number of authorized individuals per entity"
-         },
-         more configurations...
-       ]
-     },
-     "TAGS": {
-       "Service": "client",
-       "Function": "ett",
-       "Landscape": "dev"
-     }
-   }
-   ```
-   
-   The "CONFIG" entry is a collection of settings the app will use for reference when carrying out certain business rules. These are mostly duration or timeout thresholds. There is a "useDatabase" setting provided
-   
-   - "true": These configuration values will be loaded into a database table and the lambda functions that drive the app logic will obtain them from there. Also, the sysadmin user will be provided a tab that can be used to modify these values *(useful for testing - no stack update necessary)*.
-   - "false": These configuration values are "hard-coded" into the lambda functions as a single json environment variable.
-      Modification of any of the configurations would require one modifies the context.json file and perform a stack update.
-   
-   The full configuration listing is as follows:
-   
-   - **auth-ind-nbr:** Number of authorized individuals per entity
-   - **first-reminder:** Duration between an initial disclosure request and the 1st automated reminder (seconds)
-   - **second-reminder:** Duration between an initial disclosure request and the second automated reminder (seconds)
-   - **delete-exhibit-forms-after:** Duration exhibit forms, once submitted, can survive in the ETT system before failure to send disclosure request(s) will result their deletion (seconds)
-   - **delete-drafts-after:** Duration that partially complete exhibit forms can survive in the ETT system before failure to submit them will result in their deletion (seconds)
-   - **consent-expiration:** Duration an individuals consent is valid for before it automatically expires (seconds)
-   
 3. Obtain [security credentials](https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds.html?icmpid=docs_homepage_genref) for the admin-level [IAM role](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html) you will be using for accessing the aws account to lookup and/or deploy resources.
    Create a [named profile](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html#cli-configure-files-using-profiles) out of these credentials in your [`~/.aws/credentials`](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html#cli-configure-files-where) file.
 
@@ -88,7 +52,7 @@ Build the entire application and AWS infrastructure from scratch.
    *NOTE: The synth command will create a .json file, but will also output yaml to stdout. The command above redirects that output to a yaml file alongside the json file.*
 
 7. [OPTIONAL] Debug synthesis with breakpoints:
-   If developing in vscode, add the following debug configuration to the `${workspaceFolder}/.vscode/launch.json` file:
+   If developing in vscode, add the following debug configuration to the `${workspaceFolder}/.vscode/launch.json` file if it does not already exist:
 
    ```
    {
