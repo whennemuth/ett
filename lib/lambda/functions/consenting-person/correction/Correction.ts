@@ -7,10 +7,10 @@ import { Consenter, ConsenterFields, Roles, YN } from "../../../_lib/dao/entity"
 import { CorrectionForm } from "../../../_lib/pdf/CorrectionForm";
 import { BucketCorrectionForm } from "./BucketItemCorrectionForm";
 import { BucketInventory } from "../BucketInventory";
-import { scheduleExhibitFormPurgeFromDatabase } from "../ConsentingPerson";
 import { ConsenterCorrectionEmail } from "./CorrectionFormEmail";
 import { ExhibitFormsBucketEnvironmentVariableName } from "../BucketItemMetadata";
 import { error, log } from "../../../Utils";
+import { scheduleExhibitFormPurgeFromDatabase } from "../ConsentingPersonUtils";
 
 /**
  * This class performs modifications to a consenting person that affect email and/or phone. In the case 

@@ -1,13 +1,13 @@
 import { CloudFrontClient, DistributionSummary, ListDistributionsCommand, ListDistributionsResult } from "@aws-sdk/client-cloudfront";
 import { exec } from "child_process";
-import { DAOEntity, DAOFactory, DAOInvitation, DAOUser } from "./_lib/dao/dao";
-import { Entity, Invitation, User, YN } from "./_lib/dao/entity";
-import assert = require("assert");
 import { writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import * as ctx from '../../contexts/context.json';
 import { IContext } from "../../contexts/IContext";
-import { LambdaProxyIntegrationResponse } from "../role/AbstractRole";
+import { AbstractRoleApi, LambdaProxyIntegrationResponse } from "../role/AbstractRole";
+import { DAOEntity, DAOFactory, DAOUser } from "./_lib/dao/dao";
+import { Entity, Invitation, User, YN } from "./_lib/dao/entity";
+import assert = require("assert");
 
 /**
  * https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-output-format
@@ -125,6 +125,9 @@ export const errorResponse = (message:string, payload?:any): LambdaProxyIntegrat
 export const debugLog = (o:any, msg?:string) => {
   if(process.env.DEBUG == 'true') {
     log(o, msg);
+  }
+  else if(o?.headers?.[AbstractRoleApi.ETTPayloadHeader]) {
+    log(o.headers[AbstractRoleApi.ETTPayloadHeader], 'Payload');
   }
 }
 

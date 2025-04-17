@@ -1,16 +1,15 @@
-import { S3Client } from "@aws-sdk/client-s3";
-import { mockClient } from "aws-sdk-client-mock";
 import 'aws-sdk-client-mock-jest';
-import { IncomingPayload, OutgoingBody } from "../../../role/AbstractRole";
+import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { DAOConsenter, DAOEntity, DAOInvitation, DAOUser, FactoryParms } from "../../_lib/dao/dao";
-import { Affiliate, AffiliateTypes, Config, Consenter, Entity, ExhibitFormConstraints, ExhibitForm as ExhibitFormData, FormType, FormTypes, Roles, User, YN } from "../../_lib/dao/entity";
-import { DisclosureFormData } from "../../_lib/pdf/DisclosureForm";
+import { Affiliate, AffiliateTypes, Config, Consenter, Entity, ExhibitFormConstraints, ExhibitForm as ExhibitFormData, FormTypes, Roles, User, YN } from "../../_lib/dao/entity";
+import { ExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
 import { IPdfForm } from "../../_lib/pdf/PdfForm";
 import { deepClone } from "../../Utils";
 import { MockCalls, TestParms, invokeAndAssert } from "../../UtilsTest";
 import { BucketDisclosureFormParms } from "./BucketItemDisclosureForm";
 import { BucketItemMetadata, BucketItemMetadataParms } from "./BucketItemMetadata";
-import { ExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
+import { ConsentStatus } from "./ConsentStatus";
+import { ExhibitDataSender } from "./ExhibitSend";
 
 /**
  * Keeps track of how many times any method of any mock has been called.
@@ -20,83 +19,9 @@ const mockCalls = new MockCalls();
 /**
  * Designate what mocked consenter lookups are expected to return in terms of consent.
  */
-enum ConsentState { OK, NONE, RESCINDED, RESTORED, INACTIVE }
+enum ConsentState { OK, NONE, RESCINDED, RESTORED, INACTIVE,  }
 
-/**
- * Define a mock for the es6 ExhibitEmail class
- * @returns 
- */
-export function ExhibitEmailMock() {
-  return {
-    ExhibitEmail: jest.fn().mockImplementation((parms:ExhibitFormParms) => {
-      return {
-        send: async (to:string[], cc?:string[]):Promise<boolean> => {
-          const { formType } = parms.data;
-          mockCalls.update(`email.send`);
-          mockCalls.update(`email.send.${formType}.${to[0]}`);
-          return (to.includes(BAD_EXHIBIT_RECIPIENT_EMAIL) || cc?.includes(BAD_EXHIBIT_RECIPIENT_EMAIL)) ? false : true;
-        },
-        getAttachment: ():IPdfForm => {
-          return {} as IPdfForm;
-        }
-      }
-    })
-  }
-}
-
-/**
- * 
- * @returns Define a mock for the es6 ExhibitBucket class
- */
-export function ExhibitFormBucketItemsMock() {
-  return {
-    BucketExhibitForm: jest.fn().mockImplementation((metadata:BucketItemMetadataParms|string) => {
-      return {
-        add: async (consenter:Consenter, _correction:boolean=false):Promise<string> => {
-          const { affiliateEmail } = metadata as BucketItemMetadataParms;
-          mockCalls.update(`bucket.add.exhibit.${affiliateEmail}`);
-          return BucketItemMetadata.toBucketFileKey(metadata as BucketItemMetadataParms);
-        }
-      }
-    })
-  }
-}
-
-/**
- * 
- * @returns Define a mock for the es6 ExhibitBucket class
- */
-export function DisclosureFormBucketItemsMock() {
-  return {
-    BucketDisclosureForm: jest.fn().mockImplementation((parms:BucketDisclosureFormParms) => {
-      const { metadata } = parms;
-      const { affiliateEmail } = metadata as BucketItemMetadataParms;
-      return {
-        add: async (consenter:Consenter, _correction:boolean=false):Promise<string> => {
-          mockCalls.update(`bucket.add.disclosure.${affiliateEmail}`);
-          return BucketItemMetadata.toBucketFileKey(metadata as BucketItemMetadataParms);
-        }        
-      }
-    })
-  }
-}
-
-export function DisclosureFormMock() {
-  return {
-    DisclosureForm: jest.fn().mockImplementation((data:DisclosureFormData) => {
-      return {
-        getBytes: async ():Promise<Uint8Array> => {
-          return new Uint8Array();
-        }
-      }
-    })
-  }
-}
-
-
-/**
- * Define a mock for the es6 DAOFactory class
- */
+const now = new Date().toISOString();
 export const ERROR_MESSAGE = 'Test error, assert proper handling';
 export const BAD_ENTITY_ID1 = 'bad_entity1'; // Error when looking up entity
 export const BAD_ENTITY_ID2 = 'bad_entity2'; // Error when looking up users in the entity
@@ -111,7 +36,74 @@ export const sylvesterTheCat = { email: 'sylvester@looneyTunes.com', firstname: 
 export const foghorLeghorn = { email: 'foghorn@looneyTunes.com', affiliateType: AffiliateTypes.ACADEMIC, fullname: 'Foghorn Leghorn', org: 'Looney Tunes', phone_number: '781-444-6666', title:'Head Rooster' } as Affiliate;
 export const wileECoyote = { email: 'coyote@acme.com', affiliateType: AffiliateTypes.EMPLOYER, fullname: 'Wile E. Coyote', org: 'ACME', phone_number: '617-333-5555', title:'Acme. tester' } as Affiliate;
 export const affiliates = [ foghorLeghorn, wileECoyote ] as Affiliate[];
-export function DaoMock(originalModule: any) {
+
+/**
+ * Create a mock for the es6 ExhibitEmail class
+ * @returns 
+ */
+jest.mock('../../functions/consenting-person/ExhibitEmail.ts', () => {
+  return {
+    ExhibitEmail: jest.fn().mockImplementation((parms:ExhibitFormParms) => {
+      return {
+        send: async (to:string[], cc?:string[]):Promise<boolean> => {
+          const { formType } = parms.data;
+          mockCalls.update(`email.send`);
+          mockCalls.update(`email.send.${formType}.${to[0]}`);
+          return (to.includes(BAD_EXHIBIT_RECIPIENT_EMAIL) || cc?.includes(BAD_EXHIBIT_RECIPIENT_EMAIL)) ? false : true;
+        },
+        getAttachment: ():IPdfForm => {
+          return {} as IPdfForm;
+        }
+      }
+    })
+  };
+});
+
+
+/**
+ * Create a mock for the es6 ExhibitBucket class
+ * @returns 
+ */
+jest.mock('../../functions/consenting-person/BucketItemExhibitForm.ts', () => {
+  return {
+    BucketExhibitForm: jest.fn().mockImplementation((metadata:BucketItemMetadataParms|string) => {
+      return {
+        add: async (consenter:Consenter, _correction:boolean=false):Promise<string> => {
+          const { affiliateEmail } = metadata as BucketItemMetadataParms;
+          mockCalls.update(`bucket.add.exhibit.${affiliateEmail}`);
+          return BucketItemMetadata.toBucketFileKey(metadata as BucketItemMetadataParms);
+        }
+      }
+    })
+  };
+});
+
+
+/**
+ * Create a mock for the es6 ExhibitBucket class
+ * @returns 
+ */
+jest.mock('../../functions/consenting-person/BucketItemDisclosureForm.ts', () => {
+  return {
+    BucketDisclosureForm: jest.fn().mockImplementation((parms:BucketDisclosureFormParms) => {
+      const { metadata } = parms;
+      const { affiliateEmail } = metadata as BucketItemMetadataParms;
+      return {
+        add: async (consenter:Consenter, _correction:boolean=false):Promise<string> => {
+          mockCalls.update(`bucket.add.disclosure.${affiliateEmail}`);
+          return BucketItemMetadata.toBucketFileKey(metadata as BucketItemMetadataParms);
+        }        
+      }
+    })
+  };
+});
+
+
+/**
+ * Define a mock for the es6 DAOFactory class
+ */
+jest.mock('../../_lib/dao/dao.ts', () => {
+  const originalModule = jest.requireActual('../../_lib/dao/dao.ts');
   return {
     __esModule: true,
     ...originalModule,
@@ -152,9 +144,9 @@ export function DaoMock(originalModule: any) {
             mockCalls.update('invitation.read');
             return {} as DAOInvitation;
           case "consenter":
-            mockCalls.update('consenter.read');
             return { 
               read: async ():Promise<Consenter|Consenter[]> => {
+                mockCalls.update('consenter.read');
                 let consenter = {} as Consenter;
                 let consented;
                 const day = 1000 * 60 * 60 * 24;
@@ -163,7 +155,7 @@ export function DaoMock(originalModule: any) {
                 switch(consentState) {
                   case ConsentState.OK:
                     consenter = Object.assign(consenter, sylvesterTheCat);
-                    consenter.consented_timestamp = [ new Date().toISOString() ];
+                    consenter.consented_timestamp = [ now ];
                     break;
                   case ConsentState.NONE:
                     consenter = Object.assign(consenter, sylvesterTheCat);
@@ -183,9 +175,10 @@ export function DaoMock(originalModule: any) {
                     break;
                   case ConsentState.INACTIVE:
                     consenter = Object.assign(consenter, sylvesterTheCat);
-                    consenter.consented_timestamp = [ new Date().toISOString() ];
+                    consenter.consented_timestamp = [ now ];
                     consenter.active = YN.No;
                     break;
+                  
                   default:
                     consenter = Object.assign(consenter, sylvesterTheCat);
                     break;                  
@@ -205,56 +198,23 @@ export function DaoMock(originalModule: any) {
         }
       })
     }
-  }
+  };
+});
+
+
+const _handler = async (event:any):Promise<LambdaProxyIntegrationResponse> => {
+  const payloadJson = event.headers[AbstractRoleApi.ETTPayloadHeader];
+  const payload = payloadJson ? JSON.parse(payloadJson) as IncomingPayload : null;
+  const { task, parameters: { email, exhibit_data } } = payload || {};
+  return new ExhibitDataSender(email, exhibit_data).send();
 }
 
-/**
- * Define the lambda function parameter validation tests.
- */
-export const ParameterValidationTests = {
-  pingTest: async (_handler:any, eventMock:any, task:string) => {
-    await invokeAndAssert({
-      expectedResponse: { 
-        statusCode: 200, 
-        outgoingBody:{ message: 'Ping!', payload: { ok:true, ping:true }} as OutgoingBody 
-      },
-      _handler, mockEvent: eventMock,
-      incomingPayload: { task, parameters: { ping: true } } as IncomingPayload
-    });  
-  },
-  missingPayload: async (_handler:any, eventMock:any, task:string, message:string) => {
-    await invokeAndAssert({
-      expectedResponse: {
-        statusCode: 400, 
-        outgoingBody: { 
-          message, 
-          payload: { invalid: true  }
-        }
-      }, 
-      _handler, mockEvent: eventMock,
-      incomingPayload: { task } as IncomingPayload
-    });
-  },
-  bogusTask: async (_handler:any, eventMock:any, task:string, message:string) => {
-    await invokeAndAssert({
-      expectedResponse: {
-        statusCode: 400,
-        outgoingBody: { 
-          message,
-          payload: { invalid: true  }
-        }
-      }, 
-      _handler, mockEvent: eventMock,
-      incomingPayload: { task } as IncomingPayload      
-    })
-  }
-}
 
 /**
  * Define the lambda function exhibit form submission tests.
  */
 export const SendAffiliateData = {
-  missingExhibitData: async(_handler:any, mockEvent:any, task:string, message:string) => {
+  missingExhibitData: async (mockEvent:any, task:string, message:string) => {
     await invokeAndAssert({
       expectedResponse: {
         statusCode: 400,
@@ -267,7 +227,7 @@ export const SendAffiliateData = {
       incomingPayload: { task, parameters: { randomProperty: 'random' } } as IncomingPayload
     })
   },
-  missingAffiliateRecords: async(_handler:any, mockEvent:any, task:string, message:string) => {
+  missingAffiliateRecords: async (mockEvent:any, task:string, message:string) => {
     await invokeAndAssert({
       expectedResponse: {
         statusCode: 400,
@@ -283,7 +243,7 @@ export const SendAffiliateData = {
       } as IncomingPayload
     });
   },
-  missingEntityId: async(_handler:any, mockEvent:any, task:string, message:string) => {
+  missingEntityId: async (mockEvent:any, task:string, message:string) => {
     await invokeAndAssert({
       expectedResponse: {
         statusCode: 400,
@@ -299,7 +259,7 @@ export const SendAffiliateData = {
       } as IncomingPayload
     });
   },
-  missingEmail: async(_handler:any, mockEvent:any, task:string, message:string) => {
+  missingEmail: async (mockEvent:any, task:string, message:string) => {
     await invokeAndAssert({
       expectedResponse: {
         statusCode: 400,
@@ -318,7 +278,7 @@ export const SendAffiliateData = {
       } as IncomingPayload
     });
   },
-  missingConsent: async(_handler:any, mockEvent:any, task:string, message:string) => {
+  missingConsent: async (mockEvent:any, task:string, message:string) => {
     mockCalls.reset();
     let _affiliates = deepClone(affiliates);
     await invokeAndAssert({
@@ -348,9 +308,9 @@ export const SendAffiliateData = {
     expect(mockCalls.called(`consenter.read`)).toEqual(1);
     expect(mockCalls.called(`entity.read`)).toEqual(0);
     expect(mockCalls.called(`user.read`)).toEqual(0);
-    expect(mockCalls.called('email.send')).toEqual(0);
+    expect(mockCalls.called('email.send')).toEqual(0);    
   },
-  rescindedConsent: async(_handler:any, mockEvent:any, task:string, message:string) => {
+  rescindedConsent: async (mockEvent:any, task:string, message:string) => {
     mockCalls.reset();
     let _affiliates = deepClone(affiliates);
     await invokeAndAssert({
@@ -382,22 +342,33 @@ export const SendAffiliateData = {
     expect(mockCalls.called(`user.read`)).toEqual(0);
     expect(mockCalls.called('email.send')).toEqual(0);
   },
-  consenterInactive: async(_handler:any, mockEvent:any, task:string, message:string) => {
+  consenterInactive: async (mockEvent:any, task:string) => {
     mockCalls.reset();
+    const email = `${ConsentState.INACTIVE}-${sylvesterTheCat.email}`;
     let _affiliates = deepClone(affiliates);
+    let sylvester = Object.assign({}, sylvesterTheCat);
+    sylvester.email = email.toLocaleLowerCase();
+    sylvester.active = YN.No;
+    sylvester.consented_timestamp = [ now ];
     await invokeAndAssert({
       expectedResponse: {
-        statusCode: 400,
+        statusCode: 200,
         outgoingBody: {
-          message,
-          payload: { invalid: true }
-        }
+          message: `Ok`,
+          payload: {
+            consentStatus: ConsentStatus.ACTIVE,
+            consenter: sylvester,
+            entities: [],
+            fullName: 'Sylvester the Cat',
+            ok: true 
+          }
+      }
       },
       _handler, mockEvent,
       incomingPayload: { 
         task, 
         parameters: {
-          email: `${ConsentState.INACTIVE}-${sylvesterTheCat.email}`,
+          email,
           exhibit_data: {
             formType: FormTypes.FULL,
             constraint: ExhibitFormConstraints.BOTH,
@@ -409,12 +380,12 @@ export const SendAffiliateData = {
       } 
       } as IncomingPayload
     } as TestParms);
-    expect(mockCalls.called(`consenter.read`)).toEqual(1);
-    expect(mockCalls.called(`entity.read`)).toEqual(0);
-    expect(mockCalls.called(`user.read`)).toEqual(0);
-    expect(mockCalls.called('email.send')).toEqual(0);
+    expect(mockCalls.called(`consenter.read`)).toEqual(2);
+    expect(mockCalls.called(`entity.read`)).toEqual(1);
+    expect(mockCalls.called(`user.read`)).toEqual(1);
+    expect(mockCalls.called('email.send')).toEqual(2);
   },
-  entityLookupFailure: async(_handler:any, mockEvent:any, task:string) => {
+  entityLookupFailure: async (mockEvent:any, task:string) => {
     mockCalls.reset();
     await invokeAndAssert({
       expectedResponse: {
@@ -445,7 +416,7 @@ export const SendAffiliateData = {
     expect(mockCalls.called(`user.read`)).toEqual(0);
     expect(mockCalls.called('email.send')).toEqual(0);
   },
-  userLookupFailure: async(_handler:any, mockEvent:any, task:string) => {
+  userLookupFailure: async (mockEvent:any, task:string) => {
     mockCalls.reset();
     await invokeAndAssert({
       expectedResponse: {
@@ -474,10 +445,9 @@ export const SendAffiliateData = {
     expect(mockCalls.called(`consenter.read`)).toEqual(1);
     expect(mockCalls.called(`entity.read.${BAD_ENTITY_ID2}`)).toEqual(1);
     expect(mockCalls.called(`user.read`)).toEqual(1);
-    expect(mockCalls.called('email.send')).toEqual(0);
+    expect(mockCalls.called('email.send')).toEqual(0);                   
   },
-  sendEmailFailure: async (_handler:any, mockEvent:any, task:string, message:string) => {
-    const s3ClientMock = mockClient(S3Client);
+  sendEmailFailure: async (mockEvent:any, task:string, message:string) => {
     let _affiliates = deepClone(affiliates);
     let parms = {
       expectedResponse: {
@@ -509,7 +479,6 @@ export const SendAffiliateData = {
     } as TestParms;
 
     mockCalls.reset();
-    s3ClientMock.reset();
     // parms.incomingPayload.parameters['exhibit_data']['sent_timestamp'] = 'never';
     const temp = porkypig.email;
     porkypig.email = badUser.email;
@@ -526,25 +495,8 @@ export const SendAffiliateData = {
     expect(mockCalls.called(`email.send.${FormTypes.FULL}.${badUser.email}`)).toEqual(0);
     expect(mockCalls.called(`email.send.${FormTypes.FULL}.${porkypig.email}`)).toEqual(0);
     expect(mockCalls.called(`email.send.${FormTypes.FULL}.${bugsbunny.email}`)).toEqual(0);
-    expect(s3ClientMock.calls().length).toEqual(2);
-
-    // _affiliates = deepClone(affiliates);
-    // _affiliates[0].email = BAD_EXHIBIT_RECIPIENT_EMAIL;
-    // parms.incomingPayload.parameters['exhibit_data'].entity_id = entity1.entity_id;
-    // parms.incomingPayload.parameters['exhibit_data'].affiliates = _affiliates;
-    // const badAffiliate = _affiliates[0];
-    // const goodAffiliate = _affiliates[1];
-    // mockCalls.reset();
-    // await invokeAndAssert(parms);
-    // expect(mockCalls.called(`email.send.${FormTypes.FULL}.${daffyduck.email}`)).toEqual(1);
-    // expect(mockCalls.called(`email.send.${FormTypes.FULL}.${bugsbunny.email}`)).toEqual(1);
-    // expect(mockCalls.called(`email.send.${FormTypes.FULL}.${porkypig.email}`)).toEqual(1);
-    // // Attempt to send email to one of the affiliates will fail, but should not stop email attempt on the other.
-    // expect(mockCalls.called(`email.send.${FormTypes.SINGLE}.${badAffiliate.email}`)).toEqual(1);
-    // expect(mockCalls.called(`email.send.${FormTypes.SINGLE}.${goodAffiliate.email}`)).toEqual(1);
   },
-  sendEmailOk: async(_handler:any, mockEvent:any, task:string) => {
-    const s3ClientMock = mockClient(S3Client);
+  sendEmailOk: async (mockEvent:any, task:string) => {
     mockCalls.reset();
     const getParms = (email:string) => {
       return {
@@ -576,9 +528,8 @@ export const SendAffiliateData = {
 
     const doTest = async (parms:TestParms) => {
       mockCalls.reset();
-      s3ClientMock.reset();
       await invokeAndAssert(parms, true);
-      expect(mockCalls.called(`consenter.read`)).toEqual(3);
+      expect(mockCalls.called(`consenter.read`)).toEqual(2);
       expect(mockCalls.called(`entity.read.${entity1.entity_id}`)).toEqual(1);
       expect(mockCalls.called(`user.read`)).toEqual(1);
       expect(mockCalls.called(`email.send`)).toEqual(2);
@@ -587,7 +538,6 @@ export const SendAffiliateData = {
       expect(mockCalls.called(`bucket.add.exhibit.${foghorLeghorn.email}`)).toEqual(1);
       expect(mockCalls.called(`bucket.add.exhibit.${wileECoyote.email}`)).toEqual(1);
       expect(mockCalls.called(`consenter.update`)).toEqual(1);
-      expect(s3ClientMock.calls().length).toEqual(2);
     }
 
     // Test for someone who has consented

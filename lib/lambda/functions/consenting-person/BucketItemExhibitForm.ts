@@ -9,7 +9,7 @@ import { IPdfForm } from "../../_lib/pdf/PdfForm";
 import { deepClone, log } from "../../Utils";
 import { BucketItem, Tags } from "./BucketItem";
 import { BucketItemMetadata, BucketItemMetadataParms, ItemType } from "./BucketItemMetadata";
-import { consentFormUrl } from "./ConsentingPerson";
+import { consentFormUrl } from "./ConsentingPersonUtils";
 
 /**
  * This class deals with "CRUD" operations against a single exhibit form in the s3 bucket.

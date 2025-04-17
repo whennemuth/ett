@@ -16,7 +16,7 @@ import { DisclosureItemsParms } from "../consenting-person/BucketItem";
 import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureForm";
 import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
 import { BucketItemMetadata } from "../consenting-person/BucketItemMetadata";
-import { consentFormUrl } from '../consenting-person/ConsentingPerson';
+import { consentFormUrl } from '../consenting-person/ConsentingPersonUtils';
 import { BucketCorrectionForm } from '../consenting-person/correction/BucketItemCorrectionForm';
 import { abrahamlincoln, alberteinstein, bingcrosby, bugsbunny, elvispresley } from "./MockObjects";
 

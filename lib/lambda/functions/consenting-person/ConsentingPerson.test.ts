@@ -1,90 +1,45 @@
-import { DaoMock, ExhibitEmailMock, DisclosureFormMock, ExhibitFormBucketItemsMock, ParameterValidationTests, SendAffiliateData } from "./ConsentingPerson.mocks";
-
-// Create the mock for the es6 ExhibitEmail class
-const exhibitEmailMock = jest.mock('../../functions/consenting-person/ExhibitEmail.ts', () => {
-  return ExhibitEmailMock();
-});
-
-const consenterBucketItemsMock = jest.mock('../../functions/consenting-person/BucketItemExhibitForm.ts', () => {
-  return ExhibitFormBucketItemsMock();
-});
-
-// Create the mock for the DAOFactory class
-const daoMock = jest.mock('../../_lib/dao/dao.ts', () => {
-  const originalModule = jest.requireActual('../../_lib/dao/dao.ts');
-  return DaoMock(originalModule);
-});
-
-const disclosureFormMock = jest.mock('../../_lib/pdf/DisclosureForm.ts', () => {
-  return DisclosureFormMock();
-})
-
-import { mockEvent } from './MockEvent';
+import { IncomingPayload, OutgoingBody } from '../../../role/AbstractRole';
+import { invokeAndAssert } from '../../UtilsTest';
 import { Task, handler, INVALID_RESPONSE_MESSAGES as msgs } from './ConsentingPerson';
-import { Config, ConfigNames } from "../../_lib/dao/entity";
-import { Configurations } from "../../_lib/config/Config";
+import { mockEvent } from './MockEvent';
 
 describe('Consenting Person lambda trigger: handler', () => {
   it('Should handle a simple ping test as expected', async () => {
-    await ParameterValidationTests.pingTest(handler, mockEvent, Task.PING);
+    await invokeAndAssert({
+      expectedResponse: { 
+        statusCode: 200, 
+        outgoingBody:{ message: 'Ping!', payload: { ok:true, ping:true }} as OutgoingBody 
+      },
+      _handler: handler, mockEvent,
+      incomingPayload: { task:Task.PING, parameters: { ping: true } } as IncomingPayload
+    }); 
   });
   it('Should handle missing ettpayload with 400 status code', async () => {
     const task = `${Task.SEND_EXHIBIT_FORM}`;
-    await ParameterValidationTests.missingPayload(handler, mockEvent, task, `${msgs.missingTaskParms} ${task}`);
+    await invokeAndAssert({
+      expectedResponse: {
+        statusCode: 400, 
+        outgoingBody: { 
+          message: `${msgs.missingTaskParms} ${task}`, 
+          payload: { invalid: true  }
+        }
+      }, 
+      _handler:handler, mockEvent,
+      incomingPayload: { task } as IncomingPayload
+    });
   });
   it('Should handle a bogus task value with 400 status code', async () => {
     const task = 'bogus-task';
-    await ParameterValidationTests.bogusTask(handler, mockEvent, task, `${msgs.missingOrInvalidTask} ${task}`);
+    await invokeAndAssert({
+      expectedResponse: {
+        statusCode: 400,
+        outgoingBody: { 
+          message: `${msgs.missingOrInvalidTask} ${task}`,
+          payload: { invalid: true  }
+        }
+      }, 
+      _handler:handler, mockEvent,
+      incomingPayload: { task } as IncomingPayload      
+    })
   });
-});
-
-describe(`Consenting Person lambda trigger: ${Task.SEND_EXHIBIT_FORM}`, () => {
-  const task = Task.SEND_EXHIBIT_FORM;
-
-  const tenYearsOfSeconds = '315360000';
-  const testConfigSet = { 
-    useDatabase: false, 
-    configs: [{
-      name: ConfigNames.CONSENT_EXPIRATION,
-      value: tenYearsOfSeconds,
-      config_type: 'duration',
-      description: 'Duration an individuals consent is valid for before it automatically expires'
-    }] as Config[],
-  };
-
-  process.env[Configurations.ENV_VAR_NAME] = JSON.stringify(testConfigSet);
-  
-  it('Should return invalid response if exhibit data is missing', async () => {
-    await SendAffiliateData.missingExhibitData(handler, mockEvent, task, msgs.missingExhibitData); 
-  });
-  it('Should return invalid response if entity_id is missing', async () => {
-    await SendAffiliateData.missingEntityId(handler, mockEvent, task, msgs.missingEntityId); 
-  });
-  it('Should return invalid response if affiliate records is/are missing', async () => {
-    await SendAffiliateData.missingAffiliateRecords(handler, mockEvent, task, msgs.missingAffiliateRecords); 
-  });
-  it('Should return invalid response if email of exhibit issuer is missing', async () => {
-    await SendAffiliateData.missingEmail(handler, mockEvent, task, msgs.missingExhibitFormIssuerEmail); 
-  });
-  it('Should return invalid response if exhibit issuer has not consented', async () => {
-    await SendAffiliateData.missingConsent(handler, mockEvent, task, msgs.missingConsent)
-  });
-  it('Should return invalid response if exhibit issuer has retracted their consent', async () => {
-    await SendAffiliateData.rescindedConsent(handler, mockEvent, task, msgs.missingConsent)
-  });
-  it('Should return invalid response if exhibit issuer has consented, but is inactive', async () => {
-    await SendAffiliateData.consenterInactive(handler, mockEvent, task, msgs.missingConsent)
-  });
-  it('Should behave as expected if error is encountered looking up the entity', async () => {
-    await SendAffiliateData.entityLookupFailure(handler, mockEvent, task);
-  });
-  it('Should behave as expected if error is encountered looking up users', async () => {
-    await SendAffiliateData.userLookupFailure(handler, mockEvent, task);
-  });
-  it('Should behave as expected if error is encountered sending emails', async () => {
-    await SendAffiliateData.sendEmailFailure(handler, mockEvent, task, `Internal server error: ${msgs.emailFailures}`);
-  }); 
-  it('Should behave as expected no errors are encountered', async () => {
-    await SendAffiliateData.sendEmailOk(handler, mockEvent, task);
-  }); 
 });

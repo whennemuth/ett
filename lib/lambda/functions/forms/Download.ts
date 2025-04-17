@@ -15,7 +15,7 @@ import { IPdfForm } from "../../_lib/pdf/PdfForm";
 import { getBlankData as getBlankRegistrationData, RegistrationFormEntity, RegistrationFormEntityData } from "../../_lib/pdf/RegistrationFormEntity";
 import { RegistrationFormIndividual } from '../../_lib/pdf/RegistrationFormIndividual';
 import { debugLog, error, errorResponse, invalidResponse, okPdfResponse } from "../../Utils";
-import { consentFormUrl } from "../consenting-person/ConsentingPerson";
+import { consentFormUrl } from '../consenting-person/ConsentingPersonUtils';
 
 export enum FormName {
   REGISTRATION_FORM_ENTITY = 'registration-form-entity',

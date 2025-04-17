@@ -1,5 +1,4 @@
 import { Color, PDFDocument, PDFFont, PDFPageDrawTextOptions, StandardFonts, rgb } from "pdf-lib";
-import { consentFormUrl } from "../../functions/consenting-person/ConsentingPerson";
 import { Configurations, DurationType } from "../config/Config";
 import { Affiliate, AffiliateType, AffiliateTypes, ConfigNames, Consenter, Entity, ExhibitFormConstraint, ExhibitFormConstraints, ExhibitForm as ExhibitFormData, FormType, FormTypes } from "../dao/entity";
 import { PdfForm } from "./PdfForm";
@@ -7,6 +6,7 @@ import { EmbeddedFonts } from "./lib/EmbeddedFonts";
 import { Rectangle } from "./lib/Rectangle";
 import { Align, Margins, VAlign, rgbPercent } from "./lib/Utils";
 import { humanReadableFromSeconds } from "../timer/DurationConverter";
+import { consentFormUrl } from "../../functions/consenting-person/ConsentingPersonUtils";
 
 export const blue = rgbPercent(47, 84, 150) as Color;
 export const grey = rgb(.1, .1, .1) as Color;

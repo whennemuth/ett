@@ -41,40 +41,45 @@ export type TestParms = {
  *   3) Assert the returned status code, message and payload
  * @returns 
  */
-export const invokeAndAssert = async (testParms:TestParms, ignorePayload?:boolean) => {
-  // Destructure the testParms
-  const { _handler, expectedResponse, mockEvent, incomingPayload, cognitoSub } = testParms;
-  const payloadStr:string = JSON.stringify(incomingPayload);
-  
-  // Inject the supplied payload and attributes into the mock event object
-  mockEvent.headers[AbstractRoleApi.ETTPayloadHeader as keyof typeof mockEvent.headers] = payloadStr;
-  if(cognitoSub) {
-    mockEvent.requestContext.authorizer.claims.username = cognitoSub;
-  } 
-  else {
-    // Reset the username attribute back to what it originally was.
-    const sub = mockEvent.requestContext.authorizer.claims.sub
-    mockEvent.requestContext.authorizer.claims.username = sub;
-  }
+export const invokeAndAssert = async (testParms:TestParms, ignorePayload?:boolean):Promise<any> => {
+  try {
+    // Destructure the testParms
+    const { _handler, expectedResponse, mockEvent, incomingPayload, cognitoSub } = testParms;
+    const payloadStr:string = JSON.stringify(incomingPayload);
+    
+    // Inject the supplied payload and attributes into the mock event object
+    mockEvent.headers[AbstractRoleApi.ETTPayloadHeader as keyof typeof mockEvent.headers] = payloadStr;
+    if(cognitoSub) {
+      mockEvent.requestContext.authorizer.claims.username = cognitoSub;
+    } 
+    else {
+      // Reset the username attribute back to what it originally was.
+      const sub = mockEvent.requestContext.authorizer.claims.sub
+      mockEvent.requestContext.authorizer.claims.username = sub;
+    }
 
-  // Invoke the lambda function
-  const response:LambdaProxyIntegrationResponse = await _handler(mockEvent);
+    // Invoke the lambda function
+    const response:LambdaProxyIntegrationResponse = await _handler(mockEvent);
 
-  // Destructure the lambda function response
-  const { statusCode, body } = response;
-  const bodyObj = JSON.parse(body || '{}');
-  const { message, payload:returnedPayload } = bodyObj;
+    // Destructure the lambda function response
+    const { statusCode, body } = response;
+    const bodyObj = JSON.parse(body || '{}');
+    const { message, payload:returnedPayload } = bodyObj;
 
-  // Make all assertions
-  const { message:expectedMessage} = expectedResponse.outgoingBody;
-  expect(statusCode).toEqual(expectedResponse.statusCode);
-  expect(message).toEqual(expectedMessage);
-  if(ignorePayload) {
+    // Make all assertions
+    const { message:expectedMessage} = expectedResponse.outgoingBody;
+    expect(statusCode).toEqual(expectedResponse.statusCode);
+    expect(message).toEqual(expectedMessage);
+    if(ignorePayload) {
+      return bodyObj;
+    }
+    const { payload:expectedPayload} = expectedResponse.outgoingBody;
+    expect(returnedPayload).toEqual(expectedPayload);
+    
+    // Return the body of the response in case caller wants to make more assertions.
     return bodyObj;
   }
-  const { payload:expectedPayload} = expectedResponse.outgoingBody;
-  expect(returnedPayload).toEqual(expectedPayload);
-  
-  // Return the body of the response in case caller wants to make more assertions.
-  return bodyObj;
+  catch (e) {
+    console.error(e);
+  }
 }

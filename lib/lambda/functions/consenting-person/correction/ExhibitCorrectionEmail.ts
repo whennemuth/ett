@@ -9,8 +9,8 @@ import { ExhibitForm, ExhibitFormParms } from "../../../_lib/pdf/ExhibitForm";
 import { ExhibitFormSingleBoth } from '../../../_lib/pdf/ExhibitFormSingleBoth';
 import { ExhibitFormSingleCurrent } from '../../../_lib/pdf/ExhibitFormSingleCurrent';
 import { IPdfForm, PdfForm } from "../../../_lib/pdf/PdfForm";
-import { consentFormUrl, ExhibitFormCorrection } from "../ConsentingPerson";
-import { bugsbunny, daffyduck, porkypig } from '../ConsentingPerson.mocks';
+import { consentFormUrl } from '../ConsentingPersonUtils';
+import { ExhibitFormCorrection } from '../ExhibitCorrect';
 
 
 /**
@@ -204,6 +204,10 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
   } as Consenter;
 
   // Mock the entity representatives but give them real email addresses
+  const entity1 = { entity_id:'warnerbros', entity_name: 'Warner Bros.', active: YN.Yes } as Entity;
+  const daffyduck = { email: 'daffyduck@warnerbros.com', entity_id: entity1.entity_id, role: Roles.RE_ADMIN, active: YN.Yes } as User;
+  const porkypig = { email: 'porkypig@warnerbros.com', entity_id: entity1.entity_id, role: Roles.RE_AUTH_IND, active: YN.Yes } as User;
+  const bugsbunny = { email: 'bugs@warnerbros.com', entity_id: entity1.entity_id, role: Roles.RE_AUTH_IND, active: YN.Yes } as User;
   const users = [ daffyduck, bugsbunny, porkypig ]
   users[0].email = 'asp1.random.edu@warhen.work';
   users[1].email = 'auth1.random.edu@warhen.work';
