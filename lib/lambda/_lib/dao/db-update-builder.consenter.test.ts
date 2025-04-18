@@ -1,8 +1,8 @@
 import { AttributeValue, UpdateItemCommandInput } from '@aws-sdk/client-dynamodb';
 import { DynamoDbConstruct, TableBaseNames } from '../../../DynamoDb';
 import { deepEqual } from '../../Utils';
-import { consenterUpdate, ConsenterUpdateParms } from './db-update-builder.consenter';
-import { Affiliate, AffiliateTypes, Consenter, ConsenterFields, ExhibitForm, ExhibitFormFields } from './entity';
+import { consenterUpdate, ConsenterUpdateParms, mergeExhibitFormLists } from './db-update-builder.consenter';
+import { Affiliate, AffiliateTypes, Consenter, ConsenterFields, ExhibitForm, ExhibitFormConstraints, ExhibitFormFields } from './entity';
 
 describe('getCommandInputBuilderForConsenterUpdate', () => {
 
@@ -27,7 +27,7 @@ describe('getCommandInputBuilderForConsenterUpdate', () => {
     } as Consenter;
   }
 
-  const getNewConsenter = () => {
+  const getNewConsenter = ():Consenter => {
     const { firstname, lastname, phone_number } = getOldConsenter();
     return {
       email: daffyEmail,
@@ -44,13 +44,13 @@ describe('getCommandInputBuilderForConsenterUpdate', () => {
       return {
         M: {
           entity_id: { S: `id${idx}` },
-          create_timestamp: { S: isoString } 
+          create_timestamp: { S: isoString }
         }
       }
     }
     return {
       entity_id: `id${idx}`,
-      create_timestamp: isoString
+      create_timestamp: isoString,
     } as ExhibitForm;
   }
 
@@ -500,6 +500,75 @@ describe('getCommandInputBuilderForConsenterUpdate', () => {
     expectedOutput!.ExpressionAttributeValues![":exhibit_forms"] = { L: [ efApi4, efApi5, efApi6, efApi7 ] };
     // Test for equality between command input and expected command input
     expect(deepEquivalent(input, expectedOutput)).toBe(true);
-
   });
+
+  it('Should merge exhibit forms for different entities correctly', () => {
+    const constraint = ExhibitFormConstraints.CURRENT;
+    const ef1 = getExhibitForm(1);
+    const ef2 = getExhibitForm(2);
+    ef1.constraint = constraint;
+    ef2.constraint = constraint;
+    ef1.affiliates = [ getBugsBunny(), getYosemiteSam() ];
+    ef2.affiliates = [ getYosemiteSam(), getFoghornLeghorn() ];
+
+    const newConsenter = getNewConsenter();
+    newConsenter.exhibit_forms = [ ef1 ];
+
+    const oldConsenter = getOldConsenter();
+    oldConsenter.exhibit_forms = [ ef2 ];
+
+    let merged = mergeExhibitFormLists(newConsenter, oldConsenter) as Consenter;
+
+    expect(merged.exhibit_forms).toMatchObject([
+      { constraint, entity_id: ef1.entity_id, affiliates: [ getBugsBunny(), getYosemiteSam() ] },
+      { constraint, entity_id: ef2.entity_id, affiliates: [ getYosemiteSam(), getFoghornLeghorn() ] }
+    ]);
+  });
+
+  it('Should merge exhibit forms for the same entity BUT different constraints correctly', () => {
+    const constraint1 = ExhibitFormConstraints.CURRENT;
+    const constraint2 = ExhibitFormConstraints.OTHER;
+    const ef1 = getExhibitForm(1);
+    const ef2 = getExhibitForm(2);
+    ef1.constraint = constraint1;
+    ef2.constraint = constraint2;
+    ef1.affiliates = [ getBugsBunny(), getYosemiteSam() ];
+    ef2.affiliates = [ getYosemiteSam(), getFoghornLeghorn() ];
+    ef2.entity_id = ef1.entity_id;
+
+    const newConsenter = getNewConsenter();
+    newConsenter.exhibit_forms = [ ef1 ];
+
+    const oldConsenter = getOldConsenter();
+    oldConsenter.exhibit_forms = [ ef2 ];
+
+    const merged = mergeExhibitFormLists(newConsenter, oldConsenter) as Consenter;
+    expect(merged.exhibit_forms).toMatchObject([
+      { constraint:constraint1, entity_id: ef1.entity_id, affiliates: [ getBugsBunny(), getYosemiteSam() ] },
+      { constraint:constraint2, entity_id: ef1.entity_id, affiliates: [ getYosemiteSam(), getFoghornLeghorn() ] }
+    ]);
+  });
+
+  it('Should merge exhibit forms for the same entity AND same constraints correctly', () => {
+    const constraint = ExhibitFormConstraints.CURRENT;
+    const ef1 = getExhibitForm(1);
+    const ef2 = getExhibitForm(2);
+    ef1.constraint = constraint;
+    ef2.constraint = constraint;
+    ef1.affiliates = [ getBugsBunny(), getYosemiteSam() ];
+    ef2.affiliates = [ getYosemiteSam(), getFoghornLeghorn() ];
+    ef2.entity_id = ef1.entity_id;
+
+    const newConsenter = getNewConsenter();
+    newConsenter.exhibit_forms = [ ef1 ];
+
+    const oldConsenter = getOldConsenter();
+    oldConsenter.exhibit_forms = [ ef2 ];
+
+    const merged = mergeExhibitFormLists(newConsenter, oldConsenter) as Consenter;
+    expect(merged.exhibit_forms).toMatchObject([
+      { constraint:constraint, entity_id: ef1.entity_id, affiliates: [ getBugsBunny(), getYosemiteSam() ] }
+    ]);
+  });
+
 });

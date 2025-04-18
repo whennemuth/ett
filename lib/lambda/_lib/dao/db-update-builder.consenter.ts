@@ -129,7 +129,7 @@ export const mergeExhibitFormLists = (_new:Consenter, old:Consenter={} as Consen
   const { exhibit_forms:oldforms=[]} = old;
   const orphans = oldforms.filter(oldform => {
     const match = newforms.find(newform => {
-      return newform.entity_id == oldform.entity_id;
+      return newform.entity_id == oldform.entity_id && newform.constraint == oldform.constraint;
     });
     return match == undefined;
   }) as ExhibitForm[];

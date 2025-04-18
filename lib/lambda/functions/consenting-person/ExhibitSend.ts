@@ -327,7 +327,7 @@ export class ExhibitDataSender {
     const { exhibit_forms:efs=[]} = updatedConsenter;
     // Prune the exhibit form that corresponds to the entity and constraint from the consenters exhibit form listing.
     updatedConsenter.exhibit_forms = efs.filter(ef => {
-      return ef.entity_id != entity.entity_id;
+      return ef.entity_id != entity.entity_id || ef.constraint != exhibitForm.constraint;
     })
     // Update the database record with the pruned exhibit form listing.
     const dao = DAOFactory.getInstance({ DAOType:'consenter', Payload: updatedConsenter});

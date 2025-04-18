@@ -4284,8 +4284,9 @@
 
       document.querySelector('#spanRequestingEntity').innerText = selectedEntity.entity_name;
 
+      const constraint = exhibitsPath.getConstraint() ?? '';
       const exhibit_form = exhibit_forms.find(ef => {
-        return ef.entity_id == selectedEntity.entity_id;
+        return ef.entity_id == selectedEntity.entity_id && ef.constraint == constraint;
       });
 
       populateExhibitFormSignoffFields();
