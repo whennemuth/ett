@@ -28,7 +28,7 @@ export function UserCrud(parms:UserCrudParams): DAOUser {
   }
 
   let { email, entity_id, role, sub, active=YN.Yes, create_timestamp=(new Date().toISOString()), 
-    fullname, phone_number, title } = userinfo;
+    fullname } = userinfo;
 
   let command:any;
   
