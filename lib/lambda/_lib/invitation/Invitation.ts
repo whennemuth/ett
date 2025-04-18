@@ -81,8 +81,7 @@ export class UserInvitation {
           `to use ETT.<br>Follow this link to begin registration:` + 
           `<p>${makeSafeHtml('<a href="' + _link + '">' + _link + '</a>')}</p>` +
           `You are the Administrative Support Professional, who, with two senior Authorized Individuals, ` +
-          `will represent your organization in using this tool.` +
-          `<br>More information on ETT is here:</b>`;
+          `will represent your organization in using this tool.`;
         break;
 
       case Roles.RE_AUTH_IND:
@@ -91,14 +90,13 @@ export class UserInvitation {
           `senior Authorized Individuals who will represent your organization in using this tool, authorize ` +
           `initiation of Disclosure Requests, directly receive completed Disclosure Forms, and decide who at ` +
           `the organization needs the disclosed information.<br>Follow this link to complete registration:` +
-          `<p>${makeSafeHtml('<a href="' + _link + '">' + _link + '</a>')}</p>` +
-          `More information on ETT is here:</b>`;
+          `<p>${makeSafeHtml('<a href="' + _link + '">' + _link + '</a>')}</p>`;
           break;
     }
 
     const howEttWorksImage = makeSafeHtml('<img src="cid:how-ett-works"/>');
-    const ettLink = makeSafeHtml(`<a class="au" href="${this._domain}">Ethical Transparency Tool</a>`);
-    const privacyLink = makeSafeHtml(`<a class="au" href="${this._domain}/privacy">Privacy Policy</a>`);
+    const ettLink = makeSafeHtml(`<a class="au" href="https://${this._domain}">Ethical Transparency Tool</a>`);
+    const privacyLink = makeSafeHtml(`<a class="au" href="https://${this._domain}/privacy">Privacy Policy</a>`);
     const societiesLink = makeSafeHtml(`<a class="au" href="https://societiesconsortium.com/">Societies Consortium to End Harassment in STEMM</a>`);
 
     const message = `
@@ -115,7 +113,6 @@ export class UserInvitation {
       <div class="content">
         <div class="heading1">${heading}</div>
         <p>&nbsp;</p>
-        <p><hr></p>
         <div class="body1">
           <br>
           <b>ABOUT ETT</b><br>
@@ -136,7 +133,7 @@ export class UserInvitation {
               while recognizing that a person may learn and correct past behaviors, benefiting everyone.
             </li>
             <li>
-              <b>Ethically treating everyone</b> - making it easier for an entity that made a misconduct 
+              Ethically treating everyone - making it easier for an entity that made a misconduct 
               finding (the most reliable source) to share it with an entity that requests it via 
               ETT.  Doing so with care for sensitive information and without shaming or whisper 
               campaigns.
