@@ -2908,11 +2908,13 @@
       msg.innerHtml = '';
       try {
         const uri = `${STATIC_PARAMETERS.REGISTER_ENTITY_API_URI}/register/${invitationCode}`;
+        const grandparentDiv = document.getElementById('register-entity-section');
         const parentDiv = document.getElementById('tblEntityName').closest('div');
         const formdata = {
           email: parentDiv.querySelector('#txtEmail').value,
           fullname: parentDiv.querySelector('#txtFullname').value,
           title: parentDiv.querySelector('#txtTitle').value,
+          registration_signature: grandparentDiv.querySelector('#txtEntityRepSig').value
         }
         if(selected_role == 'RE_ADMIN') {
           const txtEntity = parentDiv.querySelector('#txtEntityName');

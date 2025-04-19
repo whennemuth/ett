@@ -4,7 +4,7 @@ import { DAOFactory } from "../../_lib/dao/dao";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
 import { Invitation, Roles, User, YN } from "../../_lib/dao/entity";
 import { Registration } from "../../_lib/invitation/Registration";
-import { debugLog, error, errorResponse, invalidResponse, log, lookupCloudfrontDomain, lookupSingleActiveEntity, okResponse, unauthorizedResponse } from "../../Utils";
+import { debugLog, error, errorResponse, invalidResponse, log, lookupCloudfrontDomain, lookupSingleActiveEntity, okResponse, unauthorizedResponse, warn } from "../../Utils";
 import { demolishEntity } from "../authorized-individual/AuthorizedIndividual";
 
 export enum Task {
@@ -85,7 +85,7 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         // However, if it is set, it is a signal that the entity is already created and the asp is replacing 
         // a prior ASP asp part of an entity amendment.
         let { 
-          email, fullname, title, entity_id:entityId, entity_name, 
+          email, fullname, title, entity_id:entityId, entity_name, registration_signature,
           delegate_fullname, delegate_email, delegate_title, delegate_phone,
           signup_parameter
         } = event.queryStringParameters;
@@ -98,6 +98,10 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         }
         if( ! entityId && ! entity_name && (role == Roles.RE_ADMIN || role == Roles.SYS_ADMIN) ) {
            return invalidResponse('Bad Request: Missing entity_name querystring parameter');
+        }
+        if( ! registration_signature) {
+          warn(`Signature is missing for ${fullname} - will subsitute fullname`);
+          registration_signature = fullname;
         }
         let delegate = undefined;
         if(role == Roles.RE_AUTH_IND) {
@@ -132,6 +136,9 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         if(title) {
           title = decodeURIComponent(title);
         }
+        if(registration_signature) {
+          registration_signature = decodeURIComponent(registration_signature);
+        }
         
         // Bail out if an ASP is trying to register with an entity_name that is already in use.
         if(role == Roles.RE_ADMIN && ! entityId) {
@@ -142,7 +149,7 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
 
         // "Stash" the values that need to be retrieved by the PostSignup trigger lambda on to the invitation.
         const invitationWithStash = { 
-          email:email.toLowerCase(), fullname, title, entity_name, delegate, signup_parameter 
+          email:email.toLowerCase(), fullname, title, entity_name, delegate, registration_signature, signup_parameter 
         } as Invitation;
 
         // Register the user, persisting the "stashed" values of the invitation as well.
@@ -176,8 +183,8 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/signup/EntityRegistration.ts')) {
   
-  const task = Task.LOOKUP_ENTITY as Task;
-  const invitation_code = 'ea14dcfd-2f5a-40e1-9bc1-48a3afeec996';
+  const task = Task.REGISTER as Task;
+  const invitation_code = '61cf86cc-67bb-406a-aa37-f514400b5687';
 
   (async () => {
     const context:IContext = await require('../../../../contexts/context.json');
@@ -205,9 +212,11 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         _event = {
           pathParameters,
           queryStringParameters: {
-            email: "wrh@bu.edu",
-            fullname: "Warren Hennemuth",
-            title: "ETT developer/architect"  
+            email: "asp1.random.edu@warhen.work",
+            entity_name: "The School of Rock",
+            fullname: "Bugs Bunny",
+            registration_signature: "Bugs Signature",
+            title: "Rabbit"
           }
         };
         break;

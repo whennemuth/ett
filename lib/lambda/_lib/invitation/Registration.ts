@@ -60,7 +60,7 @@ export class Registration {
         timestamp = new Date().toISOString();
       }
 
-      const { email, fullname, title, entity_name, delegate, signup_parameter } = invitation;
+      const { email, fullname, title, entity_name, delegate, registration_signature, signup_parameter } = invitation;
       const _invitation = {
         code:this.code, 
         [InvitationFields.registered_timestamp]: timestamp,
@@ -68,6 +68,7 @@ export class Registration {
         [InvitationFields.fullname]: fullname,
         [InvitationFields.title]: title,
         [InvitationFields.delegate]: delegate,
+        [InvitationFields.registration_signature]: registration_signature,
         [InvitationFields.signup_parameter]: signup_parameter
       } as Invitation;
 
