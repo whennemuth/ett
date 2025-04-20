@@ -3399,6 +3399,7 @@
       const firstname = document.getElementById('txtConsenterFirstName').value ?? '';
       const middlename = document.getElementById('txtConsenterMiddleName').value ?? '';
       const lastname = document.getElementById('txtConsenterLastName').value ?? '';
+      const registration_signature = document.getElementById('txtConsenterSignature').value ?? '';
       const msg = document.getElementById('apiResponse');
 
       if( ! firstname) {
@@ -3415,7 +3416,7 @@
       try {
         // Register consenters name and email to the backend.
         const payload = {
-          parameters: { email, firstname, middlename, lastname }
+          parameters: { email, firstname, middlename, lastname, registration_signature },
         }
         fetch(STATIC_PARAMETERS.REGISTER_CONSENTER_API_URI, {
           method: 'GET',

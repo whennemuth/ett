@@ -5,7 +5,7 @@ import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
 import { ConfigNames, Consenter, YN } from "../../_lib/dao/entity";
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
-import { debugLog, error, errorResponse, invalidResponse, log, okResponse } from "../../Utils";
+import { debugLog, error, errorResponse, invalidResponse, log, okResponse, warn } from "../../Utils";
 import { ConsentStatus, consentStatus } from "../consenting-person/ConsentStatus";
 import { ID as scheduleId, Description as scheduleDescription } from "../delayed-execution/PurgeConsenter";
 
@@ -32,7 +32,8 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
       firstname: _firstname, 
       middlename: _middlename, 
       lastname: _lastname, 
-      phone_number: _phone_number 
+      phone_number: _phone_number,
+      registration_signature,
     } = parameters;
 
     if( ! email) {
@@ -45,6 +46,10 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
 
     if( ! _lastname) {
       return invalidResponse('Bad Request: Missing lastname parameter');
+    }
+
+    if( ! registration_signature) {
+      warn(`Missing registration_signature parameter for ${email}.`);
     }
 
     log(`Registering ${email}`);
@@ -64,8 +69,9 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
     // Carry over any changes made during the registration process to the existing consenter record for updates below.
     dao = ConsenterCrud({ 
       consenterInfo: { 
-        email, firstname: _firstname, middlename: _middlename, lastname: _lastname, create_timestamp, active 
-    } as Consenter, removeEmptyMiddleName: true
+        email, firstname: _firstname, middlename: _middlename, lastname: _lastname, 
+        create_timestamp, registration_signature, active 
+      } as Consenter, removeEmptyMiddleName: true
     });
 
     if(existingConsenter) {
