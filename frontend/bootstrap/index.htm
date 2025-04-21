@@ -3835,13 +3835,13 @@
       const { consenter: { email, phone_number}} = consenterInfo ?? {};
       const getFldVal = fldname => document.getElementById(fldname).value ?? '';
       const parms = { 
-        signature:getFldVal('txtConsentSignature'),
         fullname:getFldVal('txtConsentFullname'),
         email:getFldVal('txtConsentEmail'),
-        phone:getFldVal('txtConsentPhone')
+        phone:getFldVal('txtConsentPhone'),
+        consent_signature:getFldVal('txtConsentSignature')
       }
 
-      if( ! parms.signature) { alert('Signature required'); return; }
+      if( ! parms.consent_signature) { alert('Signature required'); return; }
       if( ! parms.fullname) { alert('Fullname required'); return; }
       if( ! parms.email) { alert('Email address required'); return; }
       if( ! parms.phone) { alert('Phone number required'); return; }

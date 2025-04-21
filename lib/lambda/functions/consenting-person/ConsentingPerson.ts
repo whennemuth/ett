@@ -76,16 +76,16 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
       log(`Performing task: ${task}`);
       const callerUsername = event?.requestContext?.authorizer?.claims?.username;
       const callerSub = callerUsername || event?.requestContext?.authorizer?.claims?.sub;
-      const { email, exhibit_data:exhibitForm, entityName, entity_id, corrections } = parameters;
+      const { email, exhibit_data:exhibitForm, entityName, entity_id, corrections, consent_signature } = parameters;
       switch(task as Task) {
         case Task.GET_CONSENTER:
           return await getConsenterResponse(email);
         case Task.GET_CONSENTER_FORMS:
           return await getConsenterForms(email);
         case Task.REGISTER_CONSENT:
-          return await registerConsent(email);
+          return await registerConsent(email, consent_signature);
         case Task.RENEW_CONSENT:
-          return await renewConsent(email);
+          return await renewConsent(email, consent_signature);
         case Task.RESCIND_CONSENT:
           return await rescindConsent(email);
         case Task.SEND_CONSENT:
@@ -121,7 +121,7 @@ export const getConsenterForms = async (email:string): Promise<LambdaProxyIntegr
  * @param email 
  * @returns 
  */
-export const registerConsent = async (email:string): Promise<LambdaProxyIntegrationResponse> => {
+export const registerConsent = async (email:string, consent_signature:string): Promise<LambdaProxyIntegrationResponse> => {
   log(`Registering consent for ${email}`);
   
   // Abort if consenter lookup fails
@@ -133,6 +133,7 @@ export const registerConsent = async (email:string): Promise<LambdaProxyIntegrat
   const response = await appendTimestamp({
     consenter: consenterInfo.consenter, 
     timestampFldName: ConsenterFields.consented_timestamp,
+    consent_signature,
     active: YN.Yes
   });
   consenterInfo = JSON.parse(response.body ?? '{}')['payload'] as ConsenterInfo;
@@ -148,7 +149,7 @@ export const registerConsent = async (email:string): Promise<LambdaProxyIntegrat
  * @param email 
  * @returns 
  */
-export const renewConsent = async (email:string): Promise<LambdaProxyIntegrationResponse> => {
+export const renewConsent = async (email:string, consent_signature:string): Promise<LambdaProxyIntegrationResponse> => {
   log(`Renewing consent for ${email}`);
   
   // Abort if consenter lookup fails
@@ -157,17 +158,10 @@ export const renewConsent = async (email:string): Promise<LambdaProxyIntegration
     return invalidResponse(INVALID_RESPONSE_MESSAGES.noSuchConsenter + ' ' + email );
   }
 
-  // Abort if the consenter has not yet consented
-  // if( ! consenterInfo?.activeConsent) {
-  //   if(consenterInfo?.consenter?.active != YN.Yes) {
-  //     return invalidResponse(INVALID_RESPONSE_MESSAGES.inactiveConsenter);
-  //   }
-  //   return invalidResponse(INVALID_RESPONSE_MESSAGES.missingConsent);
-  // }
-
   return appendTimestamp({
     consenter: consenterInfo.consenter, 
     timestampFldName: ConsenterFields.renewed_timestamp,
+    consent_signature,
     active: YN.Yes
   });
 }
