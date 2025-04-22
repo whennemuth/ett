@@ -2,7 +2,7 @@ import { DelayedExecutions } from "../../../DelayedExecution";
 import { LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { Configurations } from "../../_lib/config/Config";
 import { DAOFactory } from "../../_lib/dao/dao";
-import { Affiliate, AffiliateTypes, ConfigNames, Consenter, Entity, ExhibitForm, FormTypes, Roles, User, YN } from "../../_lib/dao/entity";
+import { Affiliate, AffiliateTypes, ConfigNames, Consenter, Entity, ExhibitForm, ExhibitFormConstraints, FormTypes, Roles, User, YN } from "../../_lib/dao/entity";
 import { ExhibitFormParms } from '../../_lib/pdf/ExhibitForm';
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
@@ -135,7 +135,7 @@ export class ExhibitDataSender {
       throwError(INVALID_RESPONSE_MESSAGES.noSuchConsenter);
     }
 
-    // Abort if the consenter has not yet consented
+    // // Abort if the consenter has not yet consented
     if(consentStatus != ACTIVE) {
       if(consentStatus == EXPIRED) {
         throwError(INVALID_RESPONSE_MESSAGES.expiredConsent);
@@ -379,4 +379,45 @@ export class ExhibitDataSender {
       return errorResponse(`Internal server error: ${e.message}`);
     }
   }
+}
+
+
+
+const { argv:args } = process;
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/ExhibitSend.ts')) {
+  (async () => {
+    try {
+      const exhibitForm = {
+        entity_id: "a27ef181-db7f-4e18-ade4-6a987d82e248",
+        constraint: ExhibitFormConstraints.CURRENT,
+        formType: FormTypes.FULL,
+        signature: 'CP1_SIGNATURE',
+        affiliates: [
+          {
+            affiliateType: AffiliateTypes.EMPLOYER_PRIMARY,
+            email: "affiliate1@warhen.work",
+            org: "My Neighborhood University",
+            fullname: "Mister Rogers",
+            title: "Daytime child television host",
+            phone_number: "781-333-5555",
+            consenter_signature: 'rogers_signature'
+          },
+          {
+            affiliateType: AffiliateTypes.EMPLOYER,
+            email: "affiliate2@warhen.work",
+            org: "Thingamagig University",
+            fullname: "Elvis Presley",
+            title: "Entertainer",
+            phone_number: "508-333-9999",
+            consenter_signature: 'elvis_signature'
+          }
+        ] as Affiliate[]
+      } as ExhibitForm;
+
+      new ExhibitDataSender('cp1@warhen.work', exhibitForm).send();
+    }
+    catch(reason) {
+      console.error(reason);
+    }
+  })();
 }

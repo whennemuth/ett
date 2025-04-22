@@ -6,7 +6,7 @@ import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { CognitoStandardAttributes, UserAccount } from "../../_lib/cognito/UserAccount";
 import { Configurations } from "../../_lib/config/Config";
 import { ConsenterCrud, UserCrudParams } from "../../_lib/dao/dao-consenter";
-import { AffiliateTypes, ConfigNames, Consenter, ConsenterFields, ExhibitForm, ExhibitFormConstraints, Roles, YN } from "../../_lib/dao/entity";
+import { Affiliate, AffiliateTypes, ConfigNames, Consenter, ConsenterFields, ExhibitForm, ExhibitFormConstraints, FormTypes, Roles, YN } from "../../_lib/dao/entity";
 import { ConsentFormData } from "../../_lib/pdf/ConsentForm";
 import { debugLog, error, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
 import { deleteExhibitForm } from "../delayed-execution/PurgeExhibitFormFromDatabase";
@@ -334,7 +334,7 @@ export const correctExhibitData = async (consenterEmail:string, corrections:Exhi
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/ConsentingPerson.ts')) {
 
-  const task = Task.GET_CONSENTER as Task;
+  const task = Task.SEND_EXHIBIT_FORM as Task;
   
   const bugs = {
     affiliateType:"employer",
@@ -418,26 +418,30 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
             email: "cp1@warhen.work",
             exhibit_data: {
               entity_id: "9ea1b3d3-729b-4c51-b0d0-51000b19be4e",
-              constraint: ExhibitFormConstraints.BOTH,
+              constraint: ExhibitFormConstraints.CURRENT,
+              formType: FormTypes.FULL,
+              signature: 'CP1_SIGNATURE',
               affiliates: [
                 {
-                  affiliateType: AffiliateTypes.EMPLOYER,
-                  email: "affiliate2@warhen.work",
+                  affiliateType: AffiliateTypes.EMPLOYER_PRIMARY,
+                  email: "affiliate1@warhen.work",
                   org: "My Neighborhood University",
                   fullname: "Mister Rogers",
                   title: "Daytime child television host",
-                  phone_number: "781-333-5555"
+                  phone_number: "781-333-5555",
+                  consenter_signature: 'rogers_signature'
                 },
-                // {
-                //   affiliateType: "OTHER",
-                //   email: "affiliate3@warhen.work",
-                //   org: "Thingamagig University",
-                //   fullname: "Elvis Presley",
-                //   title: "Entertainer",
-                //   phone_number: "508-333-9999"
-                // }
-              ]
-            }
+                {
+                  affiliateType: AffiliateTypes.EMPLOYER,
+                  email: "affiliate2@warhen.work",
+                  org: "Thingamagig University",
+                  fullname: "Elvis Presley",
+                  title: "Entertainer",
+                  phone_number: "508-333-9999",
+                  consenter_signature: 'elvis_signature'
+                }
+              ] as Affiliate[]
+            } as ExhibitForm
           }
           break;
 

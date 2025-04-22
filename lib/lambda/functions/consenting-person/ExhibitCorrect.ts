@@ -1,5 +1,5 @@
 import { DeleteObjectsCommandOutput } from "@aws-sdk/client-s3";
-import { Affiliate, Consenter, YN } from "../../_lib/dao/entity";
+import { Affiliate, AffiliateTypes, Consenter, YN } from "../../_lib/dao/entity";
 import { BucketDisclosureForm } from "./BucketItemDisclosureForm";
 import { BucketExhibitForm } from "./BucketItemExhibitForm";
 import { ExhibitBucket } from "./BucketItemExhibitForms";
@@ -214,4 +214,45 @@ export const correctExhibit = async (consenterEmail:string, corrections:ExhibitF
   }
 
   return getCorrectableAffiliates(consenterEmail, entity_id);
+}
+
+
+
+
+const { argv:args } = process;
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/ExhibitCorrect.ts')) {
+  (async () => {
+    try {
+      const corrections = {
+        entity_id: "a27ef181-db7f-4e18-ade4-6a987d82e248",
+        updates: [
+          {
+            email: "affiliate1@warhen.work",
+            affiliateType: AffiliateTypes.EMPLOYER_PRIMARY,
+            org: "My Neighborhood University",
+            fullname: "Mister Rogers",
+            title: "Daytime child television host",
+            phone_number: "0123456789"
+          }
+        ],
+        appends: [
+          {
+            affiliateType: AffiliateTypes.EMPLOYER,
+            org: "School of Omelets",
+            email: "affiliate3@warhen.work",
+            fullname: "Humpty Dumpty",
+            title: "Wall Sitter",
+            phone_number: "0123456888"
+        }
+        ],
+        deletes: []
+      } as ExhibitFormCorrection;
+
+      await correctExhibit('cp1@warhen.work', corrections);
+      console.log(`done`);
+    }
+    catch(reason) {
+      console.error(reason);
+    }
+  })();
 }
