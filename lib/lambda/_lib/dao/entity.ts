@@ -34,6 +34,7 @@ export enum UserFields {
   delegate = 'delegate',
   create_timestamp = 'create_timestamp',
   update_timestamp = 'update_timestamp',
+  registration_signature = 'registration_signature',
   active = 'active'
 };
 export enum DelegateFields {
@@ -59,6 +60,7 @@ export type User = {
   delegate?:Delegate,
   create_timestamp?: string,
   update_timestamp?: string,
+  registration_signature?: string,
   active?: Y_or_N
 };
 
@@ -76,14 +78,16 @@ export type Affiliate = {
   org: string,
   fullname: string,
   title?: string,
-  phone_number?: string
+  phone_number?: string,
+  consenter_signature?: string
 };
 export enum ExhibitFormFields {
   entity_id = 'entity_id',
   create_timestamp = 'create_timestamp',
   update_timestamp = 'update_timestamp',
   sent_timestamp = 'sent_timestamp',
-  affiliates = 'affiliates'
+  affiliates = 'affiliates',
+  signature = 'signature'
 }
 export enum ExhibitFormConstraints { 
   CURRENT = 'current', OTHER = 'other', BOTH = 'both' 
@@ -99,7 +103,8 @@ export type ExhibitForm = {
   sent_timestamp?: string,
   affiliates?: Affiliate[],
   formType: FormType,
-  constraint: ExhibitFormConstraint
+  constraint: ExhibitFormConstraint,
+  signature?: string
 };
 export enum ConsenterFields {
   email = 'email',
@@ -112,6 +117,8 @@ export enum ConsenterFields {
   create_timestamp = 'create_timestamp',
   update_timestamp = 'update_timestamp',
   consented_timestamp = 'consented_timestamp',
+  consent_signature = 'consent_signature',
+  registration_signature = 'registration_signature',
   rescinded_timestamp = 'rescinded_timestamp',
   renewed_timestamp = 'renewed_timestamp',
   exhibit_forms = 'exhibit_forms',
@@ -126,8 +133,10 @@ export type Consenter = {
   title?: string,
   phone_number?: string,
   create_timestamp?: string,
+  registration_signature?: string,
   update_timestamp?: string,
   consented_timestamp: string[],
+  consent_signature?: string,
   rescinded_timestamp: string[],
   renewed_timestamp: string[],
   exhibit_forms?: ExhibitForm[],
@@ -144,7 +153,6 @@ export enum EntityFields {
   update_timestamp = 'update_timestamp',
   registered_timestamp = 'registered_timestamp',
   active = 'active',
-  // TODO: registered = 'registered'
 };
 export type Entity = {
   entity_id: string,
@@ -171,6 +179,7 @@ export enum InvitationFields {
   delegate = 'delegate',
   registered_timestamp = 'registered_timestamp',
   retracted_timestamp = 'retracted_timestamp',
+  registration_signature = 'registration_signature',
   signup_parameter = 'signup_parameter'
 }
 export type Invitation = {
@@ -186,6 +195,7 @@ export type Invitation = {
   delegate?: Delegate,
   registered_timestamp?: string,
   retracted_timestamp?: string,
+  registration_signature?: string,
   signup_parameter?: string
 }
 

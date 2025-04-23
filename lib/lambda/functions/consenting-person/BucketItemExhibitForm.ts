@@ -71,6 +71,7 @@ export class BucketExhibitForm {
         // clone the exhibit form so that edits to fields that the  pdf generator makes will not affect the original.
         data: deepClone(exhibitForm), 
         consentFormUrl: consentFormUrl(consenterEmail),
+        affiliateEmail
       } as ExhibitFormParms;
 
       let pdf:IPdfForm

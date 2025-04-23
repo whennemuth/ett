@@ -88,7 +88,7 @@ export const getConsenterResponse = async (parm:string|Consenter, includeEntityL
 }
 
 export type AppendTimestampParms = {
-  consenter:Consenter, timestampFldName:ConsenterFields, active:YN, removeSub?:boolean
+  consenter:Consenter, timestampFldName:ConsenterFields, active:YN, consent_signature?:string, removeSub?:boolean
 }
 
 /**
@@ -98,9 +98,13 @@ export type AppendTimestampParms = {
  * @returns 
  */
 export const appendTimestamp = async (parms:AppendTimestampParms): Promise<LambdaProxyIntegrationResponse> => {
-  let { active, consenter, timestampFldName, removeSub=false } = parms;
+  let { active, consenter, timestampFldName, consent_signature, removeSub=false } = parms;
   if( ! consenter) {
     return invalidResponse(INVALID_RESPONSE_MESSAGES.noSuchConsenter)
+  }
+  if( ! consent_signature) {
+    const { firstname, middlename, lastname } = consenter;
+    consent_signature = consenter.consent_signature ?? PdfForm.fullName(firstname, middlename, lastname);
   }
 
   // Append a new item to the specified timestamp array of the consenter object
@@ -110,11 +114,15 @@ export const appendTimestamp = async (parms:AppendTimestampParms): Promise<Lambd
     consenter = Object.assign(consenter, { [timestampFldName]: [] as string[]})
   }
   (consenter[timestampFldName] as string[]).push(dte);
+
+  // Apply the signature to the consenter object
+  consenter.consent_signature = consent_signature;
   
-  // Apply the same change at the backend on the database record
+  // Apply the same changes at the backend on the database record
   await ConsenterCrud({
     consenterInfo: {
       email,
+      consent_signature,
       [timestampFldName]: consenter[timestampFldName],
       active
     } as unknown as Consenter,

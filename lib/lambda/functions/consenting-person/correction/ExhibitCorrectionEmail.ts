@@ -52,6 +52,7 @@ export class ExhibitCorrectionEmail {
       consentFormUrl: consentFormUrl(consenter.email),
       data: { formType:FormTypes.SINGLE, constraint, entity_id, affiliates: [ affiliate ] },
       entity: { entity_id, entity_name },
+      affiliateEmail: affiliate.email,
     } as ExhibitFormParms;
 
     switch(constraint) {

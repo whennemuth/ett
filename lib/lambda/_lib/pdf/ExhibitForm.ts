@@ -17,7 +17,8 @@ export type ExhibitFormParms = {
   data:ExhibitFormData,
   entity:Entity,
   consenter:Consenter,
-  consentFormUrl:string
+  consentFormUrl:string,
+  affiliateEmail?:string
 }
 
 export type ItemParagraph = { text:string, options:PDFPageDrawTextOptions, estimatedHeight?:number };
@@ -215,6 +216,7 @@ export class ExhibitForm extends PdfForm {
    * @param title 
    */
   public drawAffiliateGroup = async (parms:DrawAffiliateGroupParms) => {
+    const { parms: { affiliateEmail }} = this;
     const { affiliateType, orgHeaderLines, title } = parms;
     const { page, page: { nextPageIfNecessary }, boldfont, data, _return, drawAffliate, markPosition, getPositionalChange } = this;
     let size = 9;
@@ -223,9 +225,11 @@ export class ExhibitForm extends PdfForm {
       const { parms: { data: { formType }}} = this;
       const { affiliateType:affType } = affiliate;
       if(formType == FormTypes.SINGLE) {
-        return true;
+        return affiliate.email == affiliateEmail
       }
-      return affType == affiliateType
+      else {
+        return affType == affiliateType
+      }
     });
 
     if(affiliates.length > 0) {
@@ -314,12 +318,21 @@ export class ExhibitForm extends PdfForm {
    * @param formDescription 
    */
   public drawSignature = async (formDescription:string) => {
-    const {  
+    const { 
+      parms: { affiliateEmail, data: { formType, affiliates } },
       page, page: { bodyWidth, margins, drawRectangle, drawText, nextPageIfNecessary }, 
       getFullName, isBlankForm, font, boldfont, _return } = this;
-    const { data: { sent_timestamp }, consenter: { firstname, middlename, lastname, email, phone_number }} = this.parms;
+    const { data: { sent_timestamp, signature }, consenter: { firstname, middlename, lastname, email, phone_number }} = this.parms;
 
     const basePage = nextPageIfNecessary(200);
+
+    const getSignature = ():string => {
+      let sig:string|undefined;
+      if(formType == FormTypes.SINGLE) {
+        sig = affiliates?.find(a => a.email == affiliateEmail)?.consenter_signature;
+      }
+      return sig ?? ( signature ?? getFullName(firstname, middlename, lastname));
+    }
 
     _return(20);
 
@@ -346,7 +359,7 @@ export class ExhibitForm extends PdfForm {
     }
 
     await drawRectangle({
-      text: getFullName(firstname, middlename, lastname),
+      text: getSignature(),
       page, margins: { left:6, top:6, bottom:0, right:6 },
       align: Align.left, valign: VAlign.middle,
       options: {

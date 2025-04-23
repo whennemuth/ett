@@ -2089,7 +2089,7 @@
                     </div>
                   </div>
 
-
+                  <!-- Single Affiliate -->
                   <div class="tab-pane fade" id="consenter-affiliate" role="tabpanel" aria-labelledby="consenter-affiliate-link" style="overflow:auto;">
                     <h3 class="display-7 fw-bold">Single-Entity Exhibit Form</h3>
 
@@ -2148,7 +2148,7 @@
                             Please type your full name (First Middle Last) to digitally sign this Exhibit Form:
                           </div>
                           <div style="float:left; padding:10px; overflow: auto; display:flex; align-items: center; height:100%;">
-                            <input type="text" class="form-control" name="txtExhibitSignature" onkeypress="onSignatureKeypress()"
+                            <input type="text" class="form-control" name="txtExhibitSignature" onkeydown="onSignatureKeypress()"
                               style="max-width: 200px; height:48px; float:left; margin-right:10px;">
                           </div>
                         </div>
@@ -2908,11 +2908,13 @@
       msg.innerHtml = '';
       try {
         const uri = `${STATIC_PARAMETERS.REGISTER_ENTITY_API_URI}/register/${invitationCode}`;
+        const grandparentDiv = document.getElementById('register-entity-section');
         const parentDiv = document.getElementById('tblEntityName').closest('div');
         const formdata = {
           email: parentDiv.querySelector('#txtEmail').value,
           fullname: parentDiv.querySelector('#txtFullname').value,
           title: parentDiv.querySelector('#txtTitle').value,
+          registration_signature: grandparentDiv.querySelector('#txtEntityRepSig').value
         }
         if(selected_role == 'RE_ADMIN') {
           const txtEntity = parentDiv.querySelector('#txtEntityName');
@@ -3397,6 +3399,7 @@
       const firstname = document.getElementById('txtConsenterFirstName').value ?? '';
       const middlename = document.getElementById('txtConsenterMiddleName').value ?? '';
       const lastname = document.getElementById('txtConsenterLastName').value ?? '';
+      const registration_signature = document.getElementById('txtConsenterSignature').value ?? '';
       const msg = document.getElementById('apiResponse');
 
       if( ! firstname) {
@@ -3413,7 +3416,7 @@
       try {
         // Register consenters name and email to the backend.
         const payload = {
-          parameters: { email, firstname, middlename, lastname }
+          parameters: { email, firstname, middlename, lastname, registration_signature },
         }
         fetch(STATIC_PARAMETERS.REGISTER_CONSENTER_API_URI, {
           method: 'GET',
@@ -3832,13 +3835,13 @@
       const { consenter: { email, phone_number}} = consenterInfo ?? {};
       const getFldVal = fldname => document.getElementById(fldname).value ?? '';
       const parms = { 
-        signature:getFldVal('txtConsentSignature'),
         fullname:getFldVal('txtConsentFullname'),
         email:getFldVal('txtConsentEmail'),
-        phone:getFldVal('txtConsentPhone')
+        phone:getFldVal('txtConsentPhone'),
+        consent_signature:getFldVal('txtConsentSignature')
       }
 
-      if( ! parms.signature) { alert('Signature required'); return; }
+      if( ! parms.consent_signature) { alert('Signature required'); return; }
       if( ! parms.fullname) { alert('Fullname required'); return; }
       if( ! parms.email) { alert('Email address required'); return; }
       if( ! parms.phone) { alert('Phone number required'); return; }
@@ -4267,7 +4270,6 @@
       document.querySelector('#txtExhibitFullname').value = fullName;
       document.querySelector('#txtExhibitEmail').value = email;
       document.querySelector('#txtExhibitPhone').value = phone_number;
-      document.querySelector('#txtExhibitSignature').value = 'My Signature';      
     }
 
     /**
@@ -4465,6 +4467,18 @@
         backdrop: 'static'
       }).show();
 
+      document.querySelector('#signSingleExhibitForms').addEventListener('hide.bs.modal', event => {
+        const carousel = event.srcElement.querySelector('#exhibitFormCarouselInner');
+        for(const affiliate of exhibit_data) {
+          const { 'poc-email':email } = affiliate;
+          const emailTd = carousel.querySelectorAll('td[name="poc-email"]').values().find(td => td.innerHTML == email)
+          if(emailTd) {
+            const signature = emailTd.closest('table[name="tblPoc"]').parentElement.querySelector('input[name="txtExhibitSignature"]');
+            affiliate.consenter_signature = signature.value;
+          }
+        }
+      });
+
       document.querySelector('#signSingleExhibitForms').addEventListener('hidden.bs.modal', event => {
         inner.innerHTML = '';
       })
@@ -4475,13 +4489,17 @@
       const affiliates = [];
 
       document.querySelectorAll('#trPoc').forEach(tr => {
+        const affEmail = tr.querySelector('input[name="poc-email"]').value
         const affiliate = {
           affiliateType: tr.querySelector('select[name="org-type"]').value,
-          email: tr.querySelector('input[name="poc-email"]').value,
+          email: affEmail,
           org: tr.querySelector('input[name="org-name"]').value,
           fullname: tr.querySelector('input[name="poc-name"]').value,
           title: tr.querySelector('input[name="poc-title"]').value,
-          phone_number: tr.querySelector('input[name="poc-phone"]').value
+          phone_number: tr.querySelector('input[name="poc-phone"]').value,
+          consenter_signature: exhibit_data.find(ef => {
+            return ef['poc-email'] == affEmail;
+          })?.consenter_signature
         }
         affiliates.push(affiliate);
       })
@@ -4494,7 +4512,8 @@
         entity_id, 
         constraint: exhibitsPath.getConstraint(),
         formType,
-        affiliates
+        affiliates,
+        signature: document.querySelector('#txtExhibitSignature').value
       }};
       return payload;
     }
@@ -5939,10 +5958,22 @@
               fieldset.innerHTML = document.getElementById('tblPoc').innerHTML;
               affiliate.appendChild(fieldset);
               fieldset.rows[0].cells[1].colSpan = 3;
+              // Remove the add/remove buttons column
               fieldset.rows[1].deleteCell(6);
               fieldset.rows[2].deleteCell(6);
+              // Remove the email column
               fieldset.rows[1].deleteCell(4);
               fieldset.rows[2].deleteCell(4);
+              // Add a signature column
+              let sigCell = fieldset.rows[0].insertCell(-1);
+              sigCell.innerText = 'Signature';
+              sigCell.rowSpan = 2;
+              sigCell = fieldset.rows[2].insertCell(-1);
+              const txtSig = document.createElement('input');
+              txtSig.className = 'form-control';
+              txtSig.type = 'text';
+              txtSig.id = 'txtExhibitSignature';
+              sigCell.appendChild(txtSig);
             }
           });
 
@@ -5970,6 +6001,18 @@
             fieldset.innerHTML = document.getElementById('tblPoc').innerHTML;
             fieldsetContainer.appendChild(fieldset);
             container.appendChild(fieldsetContainer);
+
+            // Add a signature column
+            let sigCell = fieldset.rows[0].insertCell(-1);
+            sigCell.innerText = 'Signature';
+            sigCell.rowSpan = 2;
+            sigCell = fieldset.rows[2].insertCell(-1);
+            const txtSig = document.createElement('input');
+            txtSig.className = 'form-control';
+            txtSig.type = 'text';
+            txtSig.id = 'txtExhibitSignature';
+            sigCell.appendChild(txtSig);
+
           }
           else {
             const fieldsetContainer = document.getElementById('divNewAffiliates');
@@ -6009,7 +6052,8 @@
           org: a.querySelector('input[name="org-name"]').value,
           fullname: a.querySelector('input[name="poc-name"]').value,
           title: a.querySelector('input[name="poc-title"]').value,
-          phone_number: a.querySelector('input[name="poc-phone"]').value
+          phone_number: a.querySelector('input[name="poc-phone"]').value,
+          consenter_signature: a.querySelector('#txtExhibitSignature').value
         }
         corrections.updates.push(updated);
       });
@@ -6033,7 +6077,8 @@
             email: tr.querySelector('input[name="poc-email"]').value,
             fullname: tr.querySelector('input[name="poc-name"]').value,
             title: tr.querySelector('input[name="poc-title"]').value,
-            phone_number: tr.querySelector('input[name="poc-phone"]').value
+            phone_number: tr.querySelector('input[name="poc-phone"]').value,
+            consenter_signature: tr.querySelector('#txtExhibitSignature').value
           }
           corrections.appends.push(addition);
         });

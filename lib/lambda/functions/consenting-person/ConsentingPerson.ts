@@ -6,7 +6,7 @@ import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { CognitoStandardAttributes, UserAccount } from "../../_lib/cognito/UserAccount";
 import { Configurations } from "../../_lib/config/Config";
 import { ConsenterCrud, UserCrudParams } from "../../_lib/dao/dao-consenter";
-import { AffiliateTypes, ConfigNames, Consenter, ConsenterFields, ExhibitForm, ExhibitFormConstraints, Roles, YN } from "../../_lib/dao/entity";
+import { Affiliate, AffiliateTypes, ConfigNames, Consenter, ConsenterFields, ExhibitForm, ExhibitFormConstraints, FormTypes, Roles, YN } from "../../_lib/dao/entity";
 import { ConsentFormData } from "../../_lib/pdf/ConsentForm";
 import { debugLog, error, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
 import { deleteExhibitForm } from "../delayed-execution/PurgeExhibitFormFromDatabase";
@@ -76,16 +76,16 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
       log(`Performing task: ${task}`);
       const callerUsername = event?.requestContext?.authorizer?.claims?.username;
       const callerSub = callerUsername || event?.requestContext?.authorizer?.claims?.sub;
-      const { email, exhibit_data:exhibitForm, entityName, entity_id, corrections } = parameters;
+      const { email, exhibit_data:exhibitForm, entityName, entity_id, corrections, consent_signature } = parameters;
       switch(task as Task) {
         case Task.GET_CONSENTER:
           return await getConsenterResponse(email);
         case Task.GET_CONSENTER_FORMS:
           return await getConsenterForms(email);
         case Task.REGISTER_CONSENT:
-          return await registerConsent(email);
+          return await registerConsent(email, consent_signature);
         case Task.RENEW_CONSENT:
-          return await renewConsent(email);
+          return await renewConsent(email, consent_signature);
         case Task.RESCIND_CONSENT:
           return await rescindConsent(email);
         case Task.SEND_CONSENT:
@@ -121,7 +121,7 @@ export const getConsenterForms = async (email:string): Promise<LambdaProxyIntegr
  * @param email 
  * @returns 
  */
-export const registerConsent = async (email:string): Promise<LambdaProxyIntegrationResponse> => {
+export const registerConsent = async (email:string, consent_signature:string): Promise<LambdaProxyIntegrationResponse> => {
   log(`Registering consent for ${email}`);
   
   // Abort if consenter lookup fails
@@ -133,6 +133,7 @@ export const registerConsent = async (email:string): Promise<LambdaProxyIntegrat
   const response = await appendTimestamp({
     consenter: consenterInfo.consenter, 
     timestampFldName: ConsenterFields.consented_timestamp,
+    consent_signature,
     active: YN.Yes
   });
   consenterInfo = JSON.parse(response.body ?? '{}')['payload'] as ConsenterInfo;
@@ -148,7 +149,7 @@ export const registerConsent = async (email:string): Promise<LambdaProxyIntegrat
  * @param email 
  * @returns 
  */
-export const renewConsent = async (email:string): Promise<LambdaProxyIntegrationResponse> => {
+export const renewConsent = async (email:string, consent_signature:string): Promise<LambdaProxyIntegrationResponse> => {
   log(`Renewing consent for ${email}`);
   
   // Abort if consenter lookup fails
@@ -157,17 +158,10 @@ export const renewConsent = async (email:string): Promise<LambdaProxyIntegration
     return invalidResponse(INVALID_RESPONSE_MESSAGES.noSuchConsenter + ' ' + email );
   }
 
-  // Abort if the consenter has not yet consented
-  // if( ! consenterInfo?.activeConsent) {
-  //   if(consenterInfo?.consenter?.active != YN.Yes) {
-  //     return invalidResponse(INVALID_RESPONSE_MESSAGES.inactiveConsenter);
-  //   }
-  //   return invalidResponse(INVALID_RESPONSE_MESSAGES.missingConsent);
-  // }
-
   return appendTimestamp({
     consenter: consenterInfo.consenter, 
     timestampFldName: ConsenterFields.renewed_timestamp,
+    consent_signature,
     active: YN.Yes
   });
 }
@@ -340,7 +334,7 @@ export const correctExhibitData = async (consenterEmail:string, corrections:Exhi
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/ConsentingPerson.ts')) {
 
-  const task = Task.GET_CONSENTER as Task;
+  const task = Task.SEND_EXHIBIT_FORM as Task;
   
   const bugs = {
     affiliateType:"employer",
@@ -424,26 +418,30 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
             email: "cp1@warhen.work",
             exhibit_data: {
               entity_id: "9ea1b3d3-729b-4c51-b0d0-51000b19be4e",
-              constraint: ExhibitFormConstraints.BOTH,
+              constraint: ExhibitFormConstraints.CURRENT,
+              formType: FormTypes.FULL,
+              signature: 'CP1_SIGNATURE',
               affiliates: [
                 {
-                  affiliateType: AffiliateTypes.EMPLOYER,
-                  email: "affiliate2@warhen.work",
+                  affiliateType: AffiliateTypes.EMPLOYER_PRIMARY,
+                  email: "affiliate1@warhen.work",
                   org: "My Neighborhood University",
                   fullname: "Mister Rogers",
                   title: "Daytime child television host",
-                  phone_number: "781-333-5555"
+                  phone_number: "781-333-5555",
+                  consenter_signature: 'rogers_signature'
                 },
-                // {
-                //   affiliateType: "OTHER",
-                //   email: "affiliate3@warhen.work",
-                //   org: "Thingamagig University",
-                //   fullname: "Elvis Presley",
-                //   title: "Entertainer",
-                //   phone_number: "508-333-9999"
-                // }
-              ]
-            }
+                {
+                  affiliateType: AffiliateTypes.EMPLOYER,
+                  email: "affiliate2@warhen.work",
+                  org: "Thingamagig University",
+                  fullname: "Elvis Presley",
+                  title: "Entertainer",
+                  phone_number: "508-333-9999",
+                  consenter_signature: 'elvis_signature'
+                }
+              ] as Affiliate[]
+            } as ExhibitForm
           }
           break;
 

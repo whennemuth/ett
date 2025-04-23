@@ -60,7 +60,7 @@ export class ConsentFormPage3 extends PdfForm implements IPdfForm {
 
   private drawBody = async () => {
     const { page, page: { basePage, bodyWidth, margins, drawRectangle, drawText }, boldfont, font, getFullName,
-      data: { consenter: { firstname, middlename, lastname, phone_number, email, consented_timestamp } }, _return } = this;
+      data: { consenter: { firstname, middlename, lastname, phone_number, email, consented_timestamp, consent_signature } }, _return } = this;
 
     basePage.moveDown(50);
     
@@ -161,7 +161,7 @@ export class ConsentFormPage3 extends PdfForm implements IPdfForm {
     })
 
     await drawRectangle({
-      text: getFullName(firstname, middlename, lastname),
+      text: consent_signature ?? getFullName(firstname, middlename, lastname),
       page, margins: { left:6, top:6, bottom:0, right:6 },
       align: Align.left, valign: VAlign.middle,
       options: {
@@ -215,7 +215,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/
     entityName: 'Boston University',
     consenter: { 
       email: 'bugsbunny@warnerbros.com', firstname: 'Bugs', middlename: 'B', lastname: 'Bunny',
-      phone_number: '617-333-5555', consented_timestamp: [ new Date().toISOString() ], active: YN.Yes
+      phone_number: '617-333-5555', consented_timestamp: [ new Date().toISOString() ], 
+      consent_signature: 'Bugs_Signature', active: YN.Yes
     } as Consenter
   } as ConsentFormData).writeToDisk('./lib/lambda/_lib/pdf/consentForm3.pdf')
   .then((bytes) => {

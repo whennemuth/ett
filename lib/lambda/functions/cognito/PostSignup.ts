@@ -127,7 +127,7 @@ export const handler = async (_event:any) => {
 
     if( ! invitation) return;
 
-    let { entity_id, entity_name, fullname, title } = invitation;
+    let { entity_id, entity_name, fullname, title, registration_signature } = invitation;
     let user:User;
 
     try {
@@ -165,7 +165,8 @@ export const handler = async (_event:any) => {
         [UserFields.title]: title,
         [UserFields.phone_number]: phone_number,
         [UserFields.sub]: sub,
-        [UserFields.role]: Roles.RE_ADMIN
+        [UserFields.role]: Roles.RE_ADMIN,
+        [UserFields.registration_signature]: registration_signature
       } as User;
       const daoUser = DAOFactory.getInstance({ DAOType: 'user', Payload: user }) as DAOUser;
       await daoUser.create();
@@ -185,7 +186,7 @@ export const handler = async (_event:any) => {
 
   const addAuthIndToDatabase = async (event:PostSignupEventType):Promise<User|undefined> => {
     const { sub, email, phone_number } = event.request.userAttributes;
-    // Lookup the original invitation for the email to get the entity_id, fullname and title values:
+    // Lookup the original invitation for the email to get the entity_id, fullname, title and signature values:
     invitation = await scrapeUserValuesFromInvitations(getUserInvitationsForRole, email, Roles.RE_AUTH_IND);
     if( ! invitation) return;
     return addUserToDatabase(event, Roles.RE_AUTH_IND, invitation);
@@ -193,7 +194,7 @@ export const handler = async (_event:any) => {
 
   const addSysAdminToDatabase = async (event:PostSignupEventType):Promise<User|undefined> => {
     const { sub, email, phone_number } = event.request.userAttributes;
-    // Lookup the original invitation for the email to get the entity_id, fullname and title values:
+    // Lookup the original invitation for the email to get the entity_id, fullname, title, and signature values:
     invitation = await scrapeUserValuesFromInvitations(getUserInvitationsForRole, email, Roles.SYS_ADMIN);
     if( ! invitation) return;
     return addUserToDatabase(event, Roles.SYS_ADMIN, invitation);
@@ -304,7 +305,7 @@ export const handler = async (_event:any) => {
 const addUserToDatabase = async (event:PostSignupEventType, role:Role, invitation:Invitation):Promise<User|undefined> => {
   const { sub, email, phone_number } = event.request.userAttributes;
 
-  let { entity_id, fullname, title, delegate } = invitation;
+  let { entity_id, fullname, title, delegate, registration_signature } = invitation;
 
   const user = {
     [UserFields.email]: email,
@@ -314,7 +315,8 @@ const addUserToDatabase = async (event:PostSignupEventType, role:Role, invitatio
     [UserFields.phone_number]: phone_number,
     [UserFields.sub]: sub,
     [UserFields.role]: role,
-    [UserFields.delegate]: delegate
+    [UserFields.delegate]: delegate,
+    [UserFields.registration_signature]: registration_signature
   } as User;
 
   const daoUser = DAOFactory.getInstance({ DAOType: 'user', Payload: user }) as DAOUser;
