@@ -9,7 +9,7 @@ import { ConsentFormPage3 } from "./ConsentFormPage3";
 import { ConsentFormPage4 } from "./ConsentFormPage4";
 
 export type ConsentFormData = {
-  entityName:string, consenter:Consenter
+  entityName:string, consenter:Consenter, privacyHref?:string
 };
 export type ConsentFormDrawParms = {
   doc:PDFDocument, form:PDFForm, embeddedFonts:EmbeddedFonts
@@ -36,7 +36,7 @@ export class ConsentForm extends PdfForm implements IPdfForm {
 
     await new ConsentFormPage1(data).draw({ doc, form, embeddedFonts });
 
-    await new ConsentFormPage2().draw({ doc, form, embeddedFonts });
+    await new ConsentFormPage2(data).draw({ doc, form, embeddedFonts });
 
     await new ConsentFormPage3(data).draw({ doc, form, embeddedFonts });
 

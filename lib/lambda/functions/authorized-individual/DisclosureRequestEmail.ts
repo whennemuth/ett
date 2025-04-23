@@ -4,7 +4,7 @@ import { DAOFactory } from "../../_lib/dao/dao";
 import { UserCrud } from '../../_lib/dao/dao-user';
 import { Consenter, Delegate, Entity, ExhibitFormConstraints, ExhibitForm as ExhibitFormData, Role, Roles, User, YN } from "../../_lib/dao/entity";
 import { EmailParms, sendEmail } from "../../_lib/EmailWithAttachments";
-import { ConsentForm } from "../../_lib/pdf/ConsentForm";
+import { ConsentForm, ConsentFormData } from "../../_lib/pdf/ConsentForm";
 import { DisclosureForm, DisclosureFormData } from "../../_lib/pdf/DisclosureForm";
 import { ExhibitFormParms, getSampleAffiliates, SampleExhibitFormParms } from "../../_lib/pdf/ExhibitForm";
 import { ExhibitFormSingleBoth } from '../../_lib/pdf/ExhibitFormSingleBoth';
@@ -265,6 +265,7 @@ const send = async (parms:EmailParameters):Promise<boolean> => {
   const { fullName } = PdfForm;
   const consenterFullName = fullName(firstname, middlename, lastname);
   const context:IContext = <IContext>ctx;
+  const privacyHref = `https://${process.env.CLOUDFRONT_DOMAIN}${context.PRIVACY_POLICY_PATH}`;
 
   const attachments = [
     {
@@ -278,9 +279,9 @@ const send = async (parms:EmailParameters):Promise<boolean> => {
       description: 'exhibit-form-single.pdf'
     },
     {
-      pdf: new ConsentForm({ consenter: consenter as Consenter, entityName: entity_name }),
+      pdf: new ConsentForm({ consenter: consenter as Consenter, entityName: entity_name, privacyHref } as ConsentFormData),
       name: 'consent-form.pdf',
-      description: 'consent-form.pdf'
+      description: 'consent-form.pdf',
     }
   ];
 

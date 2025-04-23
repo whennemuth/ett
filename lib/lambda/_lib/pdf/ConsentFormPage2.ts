@@ -1,6 +1,6 @@
 import { writeFile } from "fs/promises";
 import { Color, PDFDocument, PDFFont, PDFPage, PageSizes, StandardFonts, rgb } from "pdf-lib";
-import { ConsentFormDrawParms } from "./ConsentForm";
+import { ConsentFormData, ConsentFormDrawParms } from "./ConsentForm";
 import { IPdfForm, PdfForm } from "./PdfForm";
 import { EmbeddedFonts } from "./lib/EmbeddedFonts";
 import { Page } from "./lib/Page";
@@ -12,10 +12,12 @@ export const grey = rgb(.1, .1, .1) as Color;
 export class ConsentFormPage2 extends PdfForm implements IPdfForm {
   private font:PDFFont;
   private boldfont:PDFFont;
+  private data:ConsentFormData;
 
-  constructor() {
+  constructor(data:ConsentFormData) {
     super();
     this.pageMargins = { top: 35, bottom: 35, left: 40, right: 40 } as Margins;
+    this.data = data;
   }
 
   public async getBytes(): Promise<Uint8Array> {
@@ -54,7 +56,7 @@ export class ConsentFormPage2 extends PdfForm implements IPdfForm {
   }
 
   private drawBody = async () => {
-    const { page, page: { basePage, drawWrappedText, drawText }, boldfont, font } = this;
+    const { page, page: { basePage, drawWrappedText, drawText }, boldfont, font, data: { privacyHref } } = this;
 
     basePage.moveDown(16);
     await drawWrappedText({
@@ -115,7 +117,7 @@ export class ConsentFormPage2 extends PdfForm implements IPdfForm {
         'I agree that this electronic <u>Consent Form</u>,<sup>1</sup> my electronic (digital) ' +
         'signature, and any copy will have the same effect as originals for all purposes. <b>I have read ' +
         'this <u>Consent Form</u><sup>1</sup> (including the definitions) and read and agree to the ' +
-        'ETT Privacy Policy [link]. I have had the time to consider and consult anyone I wish on ' +
+        `ETT Privacy Policy: ${privacyHref}. I have had the time to consider and consult anyone I wish on ` +
         'whether to provide this <u>Consent Form</u><sup>1</sup>  I am at least 18 years old and it ' +
         'is my knowing and voluntary decision to sign and deliver this <u>Consent Form</u>.<sup>1</sup></b>',
       options: { size:10, font },
@@ -132,7 +134,7 @@ export class ConsentFormPage2 extends PdfForm implements IPdfForm {
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/ConsentFormPage2.ts')) {
 
-  new ConsentFormPage2().writeToDisk('./lib/lambda/_lib/pdf/consentForm2.pdf')
+  new ConsentFormPage2({ privacyHref:'https://ett-domain/privacy' } as ConsentFormData ).writeToDisk('./lib/lambda/_lib/pdf/consentForm2.pdf')
   .then((bytes) => {
     console.log('done');
   })

@@ -12,6 +12,7 @@
   "RE_AUTH_IND_PATH": "/auth-ind",
   "CONSENTING_PERSON_PATH": "/consenting",
   "TERMS_OF_USE_PATH": "/terms",
+  "PRIVACY_POLICY_PATH": "/privacy",
   "DEFAULT_ROOT_OBJECT": "index.html",
   "CONFIG": {
     "useDatabase": true,
