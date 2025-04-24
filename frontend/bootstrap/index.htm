@@ -2370,6 +2370,19 @@
           return kv.split('=')[1];
         }
       }
+      const restoreHashValue = (key, value) => {
+        if(window.location.hash) {
+          if( ! getHashValue(key)) {
+            window.location.hash = window.location.hash + '&' + key + '=' + value;
+          }          
+        } 
+        else {
+          window.location.hash = key + '=' + value;
+        }
+      }
+      const restoreEntityHashValue = (entity_id) => {
+        restoreHashValue('entity_id', entity_id);
+      }
       const pushStash = (obj) => {
         window.sessionStorage.setItem('exhibitsPathStash', JSON.stringify(obj));
       }
@@ -2384,10 +2397,55 @@
         }
         return obj;
       }
-      return { isMatch, getRedirectUri, getOriginAndPath, getConstraint, getHashValue, pushStash, applyStash };
+      return { 
+        isMatch, getRedirectUri, getOriginAndPath, getConstraint, getHashValue, 
+        pushStash, applyStash, restoreHashValue, restoreEntityHashValue 
+      };
     }
 
     const exhibitsPath = ExhibitsPath();
+
+    /**
+     * API operations seem to result in the hash being negated/lost. Such operations can call this function to cope.
+     */
+    const refreshHash = () => {
+      if((selectedEntity ?? {}).entity_id) {
+        exhibitsPath.restoreEntityHashValue(selectedEntity.entity_id);
+      }
+      else if((entityInfo ?? {}).entity_id) {
+        exhibitsPath.restoreEntityHashValue(entityInfo.entity_id);
+      }
+      else if((consenterInfo ?? {}).entities) {
+        if(consenterInfo.entities.length == 1) {
+          const entity_id = consenterInfo.entities[0].entity_id;
+          exhibitsPath.restoreEntityHashValue(entity_id);
+        }
+      }
+    }
+
+    /**
+     * The user may NOT be coming in from a cognito redirect, then the consenter had already logged in from the
+     * the homepage and THEN manually entered the private link url and refreshed the page. In this case, the
+     * entity variables/state need to be set from the hash value here directly.
+     */
+    if(exhibitsPath.isMatch()) {
+      const { entity_id } = exhibitsPath.getHashValue('entity_id') ?? {};
+      if(entity_id) {
+        const stash = exhibitsPath.applyStash();
+        if( ! stash) {
+          exhibitsPath.pushStash({ entity_id });
+        }
+        if( ! entityInfo) {
+          entityInfo = { entity_id };
+        }
+        if( ! selectedEntity) {
+          selectedEntity = { entity_id };
+        }
+        if( ! selectedEntityForExhibitUpdate) {
+          selectedEntityForExhibitUpdate = { entity_id };
+        }
+      }
+    }
 
     /**
      * Get the uri that cognito is to redirect to after successful signin
@@ -3317,6 +3375,10 @@
       catch(e) {
         msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
       }
+      finally {
+        document.body.style.cursor = 'default';
+        refreshHash();
+      }
     }
 
     const sendDisclosureRequest = async () => {
@@ -3677,6 +3739,10 @@
       }
       catch(e) {
         msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+      }
+      finally {
+        document.body.style.cursor = 'default';
+        refreshHash();
       }
     }
 
@@ -4553,6 +4619,10 @@
       catch(e) {
         msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
       }
+      finally {
+        document.body.style.cursor = 'default';
+        refreshHash();
+      }
     }
 
     /**
@@ -4637,6 +4707,8 @@
         msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
       }
       finally {
+        document.body.style.cursor = 'default';
+        refreshHash();
         return affiliateEmails;
       }
     }
@@ -6120,6 +6192,10 @@
       catch(e) {
         msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
       }
+      finally {
+        document.body.style.cursor = 'default';
+        refreshHash();
+      }
 
       console.log(JSON.stringify(corrections, null, 2));
     }
@@ -6757,6 +6833,8 @@
         else {
           showSection('auth');
         }
+
+        refreshHash();
       }
 
 
