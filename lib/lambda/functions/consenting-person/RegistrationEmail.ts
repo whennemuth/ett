@@ -31,7 +31,10 @@ export class IndividualRegistrationFormEmail {
     return await sendEmail({
       subject: 'ETT Individual Registration Form',
       from: `noreply@${context.ETT_DOMAIN}`, 
-      message: `Please find enclosed a pdf copy of the ETT registration form, for ${consenterFullName}`,
+      message: 
+        `Greetings ${consenterFullName}.<br>` +
+        `Thankyou for registering with ETT.<br>` +
+        `Please find enclosed a pdf copy of your ETT registration form.`,
       to: [ emailAddress ],
       pdfAttachments: [
         {

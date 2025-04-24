@@ -27,7 +27,10 @@ export class ConsentFormEmail {
     return await sendEmail({
       subject: 'ETT Individual Consent Form',
       from: `noreply@${context.ETT_DOMAIN}`, 
-      message: `Please find enclosed a pdf copy of the ETT consent form, for ${consenterFullName}`,
+      message:  
+        `Greetings ${consenterFullName}.<br>` +
+        `Thankyou for granting consent for disclosures with ETT.<br>` +
+        `Please find enclosed a pdf copy of your ETT consent form.`,
       to: [ emailAddress ],
       pdfAttachments: [
         {
