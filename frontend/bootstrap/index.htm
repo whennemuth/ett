@@ -2223,7 +2223,6 @@
                     <div id="divRequestingEntity2" style="margin-top:40px; float:left;">
                       <div style="float:left;">
                         <div id="requestingEntityDropdown2" class="dropdown">
-                          <b>Select One:</b>&nbsp;                          
                           <button id="requestingEntityDropdownButton2" class="btn btn-primary btn-lg dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             Requesting Organizations/Entities
                           </button>
@@ -3770,7 +3769,7 @@
       }
 
       populateConsenterEntityList('requestingEntityDropdownList', requestingEntityId);
-      populateConsenterEntityList('requestingEntityDropdownList2');
+      populateConsenterEntityList('requestingEntityDropdownList2', requestingEntityId);
 
       if(requestingEntityId) {
         // Make the dropdown button reflect the selected entity.
@@ -3780,22 +3779,33 @@
         // Hide the "select one" label since there is only one entity to select.
         button.closest('#requestingEntityDropdown').querySelector('b').style.display = 'none';
         if( ! entityName) return;
-        // Trigger the event that would have fired had the user selected from the list manually.
-        const a = document.querySelector('#requestingEntityDropdownList').querySelector('a');
+        // Trigger the event that would have fired had the user selected from entity entry list manually.
+        let a = document.querySelector('#requestingEntityDropdownList').querySelector('a');
         autoSelectDefaultEntity(a);
+        // Trigger the event that would have fired had the user selected from entity amend list manually.
+        a = document.querySelector('#requestingEntityDropdownList2').querySelector('a');
+        autoSelectDefaultEntity(a, '2');        
       }
     }
 
-    const autoSelectDefaultEntity = (a) => {
+    const autoSelectDefaultEntity = (a, suffix) => {
       if(a.tagName == 'A' && a.name && a.id) {
-        const button = document.getElementById('requestingEntityDropdownButton');
+        const buttonId = 'requestingEntityDropdownButton' + (suffix ? suffix : '');
+        const dropdownId = 'requestingEntityDropdown' + (suffix ? suffix : '');
+        const button = document.getElementById(buttonId);
         const { entities } = consenterInfo;
         button.innerText = a.name;
         selectedEntity = entities.find(e => {
           return e.entity_id == a.id;
         });
-        populateExhibitForm();
-        toggleHighlight(document.querySelector('#requestingEntityDropdown'));
+        if( suffix) {
+          toggleExhibitCorrectionByEntity({ srcElement:a });
+        }
+        else {
+          populateExhibitForm();
+        }
+        
+        toggleHighlight(document.querySelector(`#${dropdownId}`));
       }
     }
 
@@ -6046,6 +6056,27 @@
               txtSig.type = 'text';
               txtSig.id = 'txtExhibitSignature';
               sigCell.appendChild(txtSig);
+              // Restore all affiliate type options since we don't know that the original reflects the current contraint in the href.
+              const lbxOrgType = fieldset.querySelector('select[name="org-type"]');
+              // Clear the existing options
+              while(lbxOrgType.options.length > 0) {
+                lbxOrgType.remove(0);
+              }
+              // Restore full set of options
+              const addOption = (options, id, text) => {
+                let opt = options.namedItem(id);
+                if(opt) return;
+                opt = document.createElement('option');
+                opt.id = id;
+                opt.value = id;
+                opt.text = text;
+                options.add(opt);
+              } 
+              const affiliateTypes = lbxOrgType.options;
+              addOption(affiliateTypes, 'EMPLOYER_PRIMARY', '1) Primary current employer');
+              addOption(affiliateTypes, 'EMPLOYER', '2) Secondary current employer');
+              addOption(affiliateTypes, 'ACADEMIC', '3) Academic / Professional Societies & Organizations');
+              addOption(affiliateTypes, 'OTHER', '4) Other Affiliated Organizations');
             }
           });
 
@@ -6084,7 +6115,6 @@
             txtSig.type = 'text';
             txtSig.id = 'txtExhibitSignature';
             sigCell.appendChild(txtSig);
-
           }
           else {
             const fieldsetContainer = document.getElementById('divNewAffiliates');
