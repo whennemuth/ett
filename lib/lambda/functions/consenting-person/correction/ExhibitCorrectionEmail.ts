@@ -115,27 +115,32 @@ export class ExhibitCorrectionEmail {
 
     const { _users: users } = this;
 
-    // Get the first AI of the entity as the "to" addressee
-    const firstAI = users.find(user => user.active == YN.Yes && user.role == Roles.RE_AUTH_IND);
-    if( ! firstAI) {
-      console.warn(`Could not find an active ${roleFullName(Roles.RE_AUTH_IND)} for entity: ${entity_id}`);
+    // Get the ASP of the entity as the "to" addressee
+    const asp = users.find(user => { 
+      return (user.role == Roles.RE_ADMIN && user.active == YN.Yes) ? user.email : undefined
+    });
+    if( ! asp) {
+      console.warn(`Could not find an active ${roleFullName(Roles.RE_ADMIN)} for entity: ${entity_id}`);
       return false;
     }
-
-    // Get the admin of the entity as the bcc addressee.
-    const bcc = users.map(user => { 
-      return (user.role == Roles.RE_ADMIN && user.active == YN.Yes) ? user.email : undefined
-    }).filter(email => email != undefined) as string[];
 
     // Get the other AI of the entity as a cc addressee.
     const cc = users.map(user => {
       return (user.role == Roles.RE_AUTH_IND && user.active == YN.Yes) ? user.email : undefined
-    }).filter(email => email != undefined && email != firstAI.email) as string[];
+    }).filter(email => email != undefined) as string[];
+
+    // Find any delegates
+    const delegates = users.map(user => {
+      return (user.role == Roles.RE_AUTH_IND && user.active == YN.Yes && user.delegate) ? user.delegate?.email : undefined
+    }).filter(email => email != undefined) as string[];
+
+    // Add delegate emails, if any, to the cc list
+    cc.push(...delegates);
 
     // Send the email
     console.log(`Sending exhibit form correction email to entity reps`);
     const from = `noreply@${context.ETT_DOMAIN}`;
-    return sendEmail({ subject, from, message, to: [ firstAI.email ], cc, bcc, pdfAttachments: attachments } as EmailParms);
+    return sendEmail({ subject, from, message, to: [ asp.email ], cc, pdfAttachments: attachments } as EmailParms);
   }
 
   public sendToAffiliates = async ():Promise<boolean> => {
