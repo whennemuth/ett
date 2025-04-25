@@ -1,16 +1,17 @@
 import { writeFile } from "fs/promises";
-import { Color, PDFDocument, PDFFont, PDFPage, PageSizes, StandardFonts, drawRectangle, rgb } from "pdf-lib";
+import { Color, PDFDocument, PDFFont, PDFPage, PageSizes, StandardFonts, rgb } from "pdf-lib";
+import { getMostRecent } from "../../Utils";
+import { Consenter, YN } from "../dao/entity";
 import { ConsentFormData, ConsentFormDrawParms } from "./ConsentForm";
 import { IPdfForm, PdfForm } from "./PdfForm";
 import { EmbeddedFonts } from "./lib/EmbeddedFonts";
 import { Page } from "./lib/Page";
 import { Align, Margins, VAlign, rgbPercent } from "./lib/Utils";
-import { Consenter, YN } from "../dao/entity";
-import { getMostRecent } from "../../Utils";
 
 const blue = rgbPercent(47, 84, 150) as Color;
 const grey = rgb(.1, .1, .1) as Color;
 const white = rgb(1, 1, 1) as Color;
+const red = rgbPercent(255, 0, 0);
 
 export class ConsentFormPage3 extends PdfForm implements IPdfForm {
   private data:ConsentFormData;
@@ -59,8 +60,11 @@ export class ConsentFormPage3 extends PdfForm implements IPdfForm {
   }
 
   private drawBody = async () => {
-    const { page, page: { basePage, bodyWidth, margins, drawRectangle, drawText }, boldfont, font, getFullName,
-      data: { consenter: { firstname, middlename, lastname, phone_number, email, consented_timestamp, consent_signature } }, _return } = this;
+    const { page, page: { basePage, bodyWidth, margins, drawRectangle, drawText, drawCenteredText }, boldfont, font, getFullName,
+      data: { dashboardHref, consenter: { 
+        firstname, middlename, lastname, phone_number, email, consented_timestamp, consent_signature 
+      }}, _return
+    } = this;
 
     basePage.moveDown(50);
     
@@ -202,6 +206,19 @@ export class ConsentFormPage3 extends PdfForm implements IPdfForm {
       textOptions: { size:12, font, color:grey }
     });
 
+    _return(80);
+    page.print('To ', { size:12, font });
+    page.print('RESCIND ', { size:12, font:boldfont, color:red });
+    page.print('(or review the exception), ', { size:10, font:boldfont, color:red  });
+    
+    page.print('RENEW, ', { size:12, font:boldfont, color:red });
+    page.print('or ', { size:12, font });
+    page.print('CORRECT ', { size:12, font:boldfont, color:red });
+    page.print(`this consent form,`, { size:12, font });
+    _return(16);
+    page.print(`revisit the ETT website at:`, { size:12, font });
+    _return(24);
+    drawCenteredText(`${dashboardHref}`, { size:12, font:boldfont, color:blue });
   }
 }
 
@@ -213,6 +230,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/
 
   new ConsentFormPage3({
     entityName: 'Boston University',
+    privacyHref: `https://ett-domain-TBD.com/privacy`,
+    dashboardHref: `https://ett-domain-TBD.com/consenting`,
     consenter: { 
       email: 'bugsbunny@warnerbros.com', firstname: 'Bugs', middlename: 'B', lastname: 'Bunny',
       phone_number: '617-333-5555', consented_timestamp: [ new Date().toISOString() ], 
@@ -225,5 +244,4 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/
   .catch(e => {
     console.error(e);
   });
-
 }

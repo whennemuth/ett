@@ -69,4 +69,12 @@ export class Page {
     }
     return this.page;
   }
+
+  public print = (segment:string, options:PDFPageDrawTextOptions) => {
+    const { font, size } = options;
+    this.basePage.drawText(segment, options);
+    const lastPrintedWidth = font!.widthOfTextAtSize(segment, size!);
+    this.basePage.moveRight(lastPrintedWidth);
+  }
+
 }

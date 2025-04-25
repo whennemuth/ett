@@ -9,7 +9,7 @@ import { ConsentFormPage3 } from "./ConsentFormPage3";
 import { ConsentFormPage4 } from "./ConsentFormPage4";
 
 export type ConsentFormData = {
-  entityName:string, consenter:Consenter, privacyHref?:string
+  entityName:string, consenter:Consenter, privacyHref?:string, dashboardHref?:string
 };
 export type ConsentFormDrawParms = {
   doc:PDFDocument, form:PDFForm, embeddedFonts:EmbeddedFonts
@@ -54,13 +54,17 @@ export class ConsentForm extends PdfForm implements IPdfForm {
 export const getBlankData = ():ConsentFormData => {
   return {
     entityName: '[ Name of Entity ]',
-    consenter: {  email:'', firstname:'', middlename:'', lastname:'', phone_number:'', active:YN.Yes }
+    consenter: {  email:'', firstname:'', middlename:'', lastname:'', phone_number:'', active:YN.Yes },
+    privacyHref: `https://ett-domain-TBD.com/privacy`,
+    dashboardHref: `https://ett-domain-TBD.com/consenting`
   } as ConsentFormData;
 }
 
 export const getSampleData = ():ConsentFormData => {
   return {
     entityName: 'Boston University',
+    privacyHref: `https://ett-domain-TBD.com/privacy`,
+    dashboardHref: `https://ett-domain-TBD.com/consenting`,
     consenter: { 
       email: 'bugsbunny@warnerbros.com', firstname: 'Bugs', middlename: 'B', lastname: 'Bunny',
       phone_number: '617-333-5555', consented_timestamp: [ new Date().toISOString() ], active: YN.Yes

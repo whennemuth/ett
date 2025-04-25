@@ -266,6 +266,7 @@ const send = async (parms:EmailParameters):Promise<boolean> => {
   const consenterFullName = fullName(firstname, middlename, lastname);
   const context:IContext = <IContext>ctx;
   const privacyHref = `https://${process.env.CLOUDFRONT_DOMAIN}${context.PRIVACY_POLICY_PATH}`;
+  const dashboardHref = `https://${process.env.CLOUDFRONT_DOMAIN}${context.CONSENTING_PERSON_PATH}`;
 
   const attachments = [
     {
@@ -279,7 +280,7 @@ const send = async (parms:EmailParameters):Promise<boolean> => {
       description: 'exhibit-form-single.pdf'
     },
     {
-      pdf: new ConsentForm({ consenter: consenter as Consenter, entityName: entity_name, privacyHref } as ConsentFormData),
+      pdf: new ConsentForm({ consenter: consenter as Consenter, entityName: entity_name, privacyHref, dashboardHref } as ConsentFormData),
       name: 'consent-form.pdf',
       description: 'consent-form.pdf',
     }

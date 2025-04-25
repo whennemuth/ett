@@ -67,6 +67,7 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
       case FormName.CONSENT_FORM:
         const blankConsentData = getBlankConsentData();
         blankConsentData.privacyHref = `https://${process.env.CLOUDFRONT_DOMAIN}${context.PRIVACY_POLICY_PATH}`;
+        blankConsentData.dashboardHref = `https://${process.env.CLOUDFRONT_DOMAIN}${context.CONSENTING_PERSON_PATH}`;
         form = new ConsentForm(blankConsentData);
         break;
 

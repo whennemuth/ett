@@ -79,17 +79,10 @@ export class CorrectionForm extends PdfForm implements IPdfForm {
       padBottom: 8
     });
 
-    const print = (segment:string, options:PDFPageDrawTextOptions) => {
-      const { font, size } = options;
-      page.basePage.drawText(segment, options);
-      const lastPrintedWidth = font!.widthOfTextAtSize(segment, size!);
-      page.basePage.moveRight(lastPrintedWidth);  
-    }
-
     // Print variably formatted items on the same line.
-    print('The corrected items are ', { font, size });
-    print('highlighted ', { color:red, font:boldfont, size:12 });
-    print('below.', { font, size });
+    page.print('The corrected items are ', { font, size });
+    page.print('highlighted ', { color:red, font:boldfont, size:12 });
+    page.print('below.', { font, size });
   }
 
   private drawBody = async () => {
@@ -185,6 +178,6 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/
 
   (async () => {
     await new CorrectionForm(oldConsenter, newConsenter).writeToDisk('./lib/lambda/_lib/pdf/CorrectionForm.pdf');
-    
+    console.log('done');
   })();
 }

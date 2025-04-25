@@ -23,6 +23,7 @@ export class ConsentFormEmail {
     emailAddress = emailAddress ?? email;
     const context:IContext = <IContext>ctx;
     const privacyHref = `https://${process.env.CLOUDFRONT_DOMAIN}${context.PRIVACY_POLICY_PATH}`;
+    const dashboardHref = `https://${process.env.CLOUDFRONT_DOMAIN}${context.CONSENTING_PERSON_PATH}`;
 
     return await sendEmail({
       subject: 'ETT Individual Consent Form',
@@ -34,7 +35,7 @@ export class ConsentFormEmail {
       to: [ emailAddress ],
       pdfAttachments: [
         {
-          pdf: new ConsentForm({ consenter, entityName, privacyHref }),
+          pdf: new ConsentForm({ consenter, entityName, privacyHref, dashboardHref }),
           name: 'consent-form.pdf',
           description: 'consent-form.pdf'
         }
