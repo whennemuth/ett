@@ -86,6 +86,9 @@ export class EntityRepToCorrect {
         // Give the new consenter the sub from the corresponding new cognito user account
         corrected.sub = sub;
 
+        // Ensure a new update_timestamp is applied by blanking out any existing value.
+        corrected.update_timestamp = undefined;
+
         // Delete the old user from the database.
         await UserCrud({ userinfo: correctable }).Delete();
 
@@ -110,12 +113,18 @@ export class EntityRepToCorrect {
         // Carry over any fields from the old user that do not exist in the new user.
         corrected = mergeUsers(correctable, corrected);
 
+        // Ensure a new update_timestamp is applied by blanking out any existing value.
+        corrected.update_timestamp = undefined;
+
         // Pass on any updates to the user to the corresponding database record.
         await UserCrud({ userinfo: corrected, removableDelegate:true }).update(correctable, true); 
       }
       else if(otherChanges()) {
         // Carry over any fields from the old user that do not exist in the new user.
         corrected = mergeUsers(correctable, corrected);
+
+        // Ensure a new update_timestamp is applied by blanking out any existing value.
+        corrected.update_timestamp = undefined;
 
         // Pass on any updates to the user to the corresponding database record.
         await UserCrud({ userinfo: corrected, removableDelegate:true }).update(correctable, true);
