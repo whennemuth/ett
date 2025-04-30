@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { IContext } from "../../../contexts/IContext";
-import { EntityToDemolish } from "../functions/authorized-individual/Demolition";
+import { EntityToDemolish } from "../_lib/demolition/Demolition";
 import { ExhibitFormsBucketEnvironmentVariableName } from "../functions/consenting-person/BucketItemMetadata";
 import { log } from "../Utils";
 import { lookupUserPoolId } from "./cognito/Lookup";

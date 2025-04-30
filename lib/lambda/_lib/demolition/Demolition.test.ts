@@ -7,7 +7,7 @@ import { DAOConfig, DAOConsenter, DAOEntity, DAOInvitation, DAOUser, FactoryParm
 import { Config, Consenter, Invitation, User } from '../../_lib/dao/entity';
 import { EntityToDemolish } from './Demolition';
 import { expectedCommandInput } from './DemolitionCommandInputMock';
-import { bugbunny_invitation, bugsbunny, daffyduck, daffyduck_invitation, entity, yosemitesam, yosemitesam_invitation } from './MockObjects';
+import { bugbunny_invitation, bugsbunny, daffyduck, daffyduck_invitation, entity, yosemitesam, yosemitesam_invitation } from '../../functions/authorized-individual/MockObjects';
 
 const dbMockClient = mockClient(DynamoDBClient);
 const cognitoMockClient = mockClient(CognitoIdentityProviderClient);
@@ -43,7 +43,7 @@ const mockConfigRead = jest.fn(async ():Promise<any> => {
   })
 }) as any;
 
-jest.mock('../../_lib/dao/dao.ts', () => {
+jest.mock('../dao/dao.ts', () => {
   return {
     __esModule: true,
     DAOFactory: {
@@ -65,7 +65,7 @@ jest.mock('../../_lib/dao/dao.ts', () => {
   }
 });
 
-jest.mock('../consenting-person/BucketItem.ts', () => {
+jest.mock('../../functions/consenting-person/BucketItem.ts', () => {
   return {
     BucketItem: jest.fn().mockImplementation(() => { 
       return {
@@ -85,7 +85,7 @@ jest.mock('../consenting-person/BucketItem.ts', () => {
 });
 
 const mockCleanup = jest.fn(async () => {}) as any;
-jest.mock('../../_lib/timer/cleanup/Cleanup.ts', () => {
+jest.mock('../timer/cleanup/Cleanup.ts', () => {
   return {
     Cleanup: jest.fn().mockImplementation(() => {
       return {

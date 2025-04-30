@@ -1,31 +1,18 @@
-import { SendEmailCommand, SendEmailCommandInput, SendEmailResponse, SESv2Client } from "@aws-sdk/client-sesv2";
-import { warn } from "console";
-import * as ctx from '../../../../contexts/context.json';
 import { CONFIG, IContext } from "../../../../contexts/IContext";
 import { DelayedExecutions } from "../../../DelayedExecution";
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { Configurations } from "../../_lib/config/Config";
-import { DAOConsenter, DAOFactory, DAOUser, ReadParms } from "../../_lib/dao/dao";
-import { ENTITY_WAITING_ROOM, EntityCrud } from "../../_lib/dao/dao-entity";
-import { InvitationCrud } from "../../_lib/dao/dao-invitation";
-import { ConfigNames, Consenter, Entity, Invitation, Role, roleFullName, Roles, User, YN } from "../../_lib/dao/entity";
+import { ConfigNames, Role, Roles, User } from "../../_lib/dao/entity";
 import { InvitablePerson, InvitablePersonParms } from "../../_lib/invitation/InvitablePerson";
 import { SignupLink } from "../../_lib/invitation/SignupLink";
-import { PdfForm } from "../../_lib/pdf/PdfForm";
-import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
-import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
-import { sendRegistrationForm } from "../cognito/PostSignup";
-import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureForm";
-import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
-import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
-import { DisclosureRequestReminderLambdaParms, ID as scheduleId, Description as scheduleDescription } from "../delayed-execution/SendDisclosureRequestReminder";
+import { ExhibitFormsBucketEnvironmentVariableName } from "../consenting-person/BucketItemMetadata";
+import { getConsenterList } from "../consenting-person/ConsentingPersonUtils";
 import { correctUser, lookupEntity, retractInvitation, sendEntityRegistrationForm } from "../re-admin/ReAdminUser";
-import { EntityToCorrect } from "./correction/EntityCorrection";
-import { Personnel } from "./correction/EntityPersonnel";
-import { DemolitionRecord, EntityToDemolish } from "./Demolition";
-import { DisclosureEmailParms, DisclosureRequestEmail, RecipientListGenerator } from "./DisclosureRequestEmail";
+import { amendEntityName, amendEntityUser, handleRegistrationAmendmentCompletion } from "./AmendEntity";
+import { demolishEntity } from "./DemolishEntity";
+import { sendDisclosureRequests } from "./DisclosureRequest";
 import { ExhibitFormRequest, SendExhibitFormRequestParms } from "./ExhibitFormRequest";
 
 export enum Task {
@@ -80,14 +67,14 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
 
         case Task.SEND_EXHIBIT_FORM_REQUEST:
           var { consenterEmail, entity_id, constraint, linkUri, lookback, positions } = parameters;
-          return await sendExhibitFormRequest( { 
+          return await new ExhibitFormRequest( { 
             consenterEmail, entity_id, constraint, linkUri, lookback, positions
-          } as SendExhibitFormRequestParms);
+          } as SendExhibitFormRequestParms).sendEmail();
 
         case Task.SEND_DISCLOSURE_REQUEST:
-          var { consenterEmail, entity_id, affiliateEmail } = parameters;
-          return await sendDisclosureRequest(consenterEmail, entity_id, affiliateEmail);
-      
+          var { consenterEmail, entity_id, affiliateEmail=undefined } = parameters;
+          return await sendDisclosureRequests(consenterEmail, entity_id, [ affiliateEmail ].filter(a => a));
+            
         case Task.GET_CONSENTERS:
           var { fragment } = parameters;
           return await getConsenterList(fragment);
@@ -134,349 +121,8 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
   }
 }
 
-/**
- * Remove the entity entirely. Includes user, invitations, and cognito userpool entries associated with the entity.
- * @param entity_id 
- * @param notify 
- * @param dryRun 
- * @returns LambdaProxyIntegrationResponse
- */
-export const demolishEntity = async (entity_id:string, notify:boolean, dryRun?:boolean): Promise<LambdaProxyIntegrationResponse> => {
-  try {
-    // Bail out if missing the required entity_id parameter
-    if( ! entity_id) {
-      return invalidResponse('Bad Request: Missing entity_id parameter');
-    }
 
-    // Demolish the entity
-    const entityToDemolish = new EntityToDemolish(entity_id);
-    entityToDemolish.dryRun = dryRun||false;
-    await entityToDemolish.demolish() as DemolitionRecord;
 
-    // Bail out if the initial lookup for the entity failed.
-    if( ! entityToDemolish.entity) {
-      return invalidResponse(`Bad Request: Invalid entity_id: ${entity_id}`);
-    }
-    
-    // For every user deleted by the demolish operation, notify them it happened by email.
-    if(notify) {
-      const isEmail = (email:string|undefined) => /@/.test(email||'');
-      const emailAddresses:string[] = entityToDemolish.deletedUsers
-        .map((user:User) => { return isEmail(user.email) ? user.email : ''; })
-        .filter((email:string) => email);
-
-      for(var i=0; i<emailAddresses.length; i++) {
-        var email = emailAddresses[i];
-        try {
-          log(`Sending email to ${email}`);
-          if(dryRun) {
-            continue;
-          }
-          await notifyUserOfDemolition(email, entityToDemolish.entity);
-          log('Email sent');
-        }
-        catch(reason) {
-          log(reason, `Error sending email to ${email}`);
-        }
-      }
-    }    
-    return okResponse('Ok', entityToDemolish.demolitionRecord);
-  }
-  catch(e:any) {
-    log(e);
-    return errorResponse(`ETT error: ${e.message}`);
-  }
-}
-
-/**
- * Send a single email to an address notifying the recipient about the entity being demolished.
- * @param emailAddress 
- * @returns LambdaProxyIntegrationResponse
- */
-export const notifyUserOfDemolition = async (emailAddress:string, entity:Entity):Promise<void> => {
-  log(`Notifying ${emailAddress} that entity ${entity.entity_id}: ${entity.entity_name} was demolished`);
-
-  const client = new SESv2Client({
-    region: process.env.REGION
-  });
-
-  const context:IContext = <IContext>ctx;
-
-  const command = new SendEmailCommand({
-    Destination: {
-      ToAddresses: [ emailAddress ],
-    },
-    FromEmailAddress: `noreply@${context.ETT_DOMAIN}`,
-    Content: {
-      Simple: {
-        Subject: {
-          Charset: 'utf-8',
-          Data: 'NOTIFICATION: Ethical Transparency Tool (ETT) - notice of entity cancellation',
-        },
-        Body: {
-          // Text: { Charset: 'utf-8', Data: 'This is a test' },
-          Html: {
-            Charset: 'utf-8',
-            Data: `
-              <style>
-                div { float: initial; clear: both; padding: 20px; width: 500px; }
-                hr { height: 1px; background-color: black; margin-bottom:20px; margin-top: 20px; border: 0px; }
-                .content { max-width: 500px; margin: auto; }
-                .heading1 { font: 16px Georgia, serif; background-color: #ffd780; text-align: center; }
-                .body1 { font: italic 14px Georgia, serif; background-color: #ffe7b3; text-align: justify;}
-              </style>
-              <div class="content">
-                <div class="heading1">Notice of entity cancellation</div>
-                <div class="body1" style="padding:20px;">
-                  <hr>
-                  You have recently participated in an invitation to register with ${entity.entity_name} through the ETT (Ethical Transparency Tool).
-                  <br>
-                  However, an ${roleFullName(Roles.RE_AUTH_IND)} has opted to cancel the registration process for this entity. 
-                </div>
-              </div>`
-          }
-        }
-      }
-    }
-  } as SendEmailCommandInput);
-
-  const response:SendEmailResponse = await client.send(command);
-  const messageId = response?.MessageId;
-  if( ! messageId) {
-    console.error(`No message ID in SendEmailResponse for ${emailAddress}`);
-  }
-  if(response) {
-    log(response);
-  }
-}
-
-/**
- * Change the name of the specified entity
- * @param entity_id 
- * @param name 
- * @returns 
- */
-const amendEntityName = async (entity_id:string, name:string, callerSub:string): Promise<LambdaProxyIntegrationResponse> => {
-  log({ entity_id, name }, `amendEntityName`)
-  if( ! entity_id) {
-    return invalidResponse('Missing entity_id parameter');
-  }
-  if( ! name) {
-    return invalidResponse('Missing name parameter');
-  }
-  const corrector = new EntityToCorrect(new Personnel({ entity: entity_id }));
-  await corrector.correctEntity({ now: { entity_id, entity_name:name } as Entity, correctorSub: callerSub });
-  return okResponse('Ok', {});
-}
-
-/**
- * Remove a user from the specified entity and optionally invite a replacement
- * @param parms 
- * @returns 
- */
-const amendEntityUser = async (parms:any): Promise<LambdaProxyIntegrationResponse> => {
-  log(parms, `amendEntityUser`)
-  var { entity_id, replacerEmail, replaceableEmail, replacementEmail, registrationUri } = parms;
-  if( ! entity_id) {
-    return invalidResponse('Missing entity_id parameter');
-  }
-  if( ! replaceableEmail) {
-    return invalidResponse('Missing replaceableEmail parameter');
-  }
-
-  const corrector = new EntityToCorrect(new Personnel({ entity:entity_id, replacer:replacerEmail, registrationUri }));
-  const corrected = await corrector.correctPersonnel({ replaceableEmail, replacementEmail });
-  if(corrected) {
-    return okResponse('Ok', {});
-  }
-  return errorResponse(`Entity correction failure: ${corrector.getMessage()}`);
-}
-
-/**
- * If a registration was carried out with an amendment to immediately follow, the issuance of the email
- * carrying a pdf copy of the registration form is postponed until the amendment is complete, and that
- * amendment does not result in an entity role vacancy.
- * @param signup_parameter 
- */
-const handleRegistrationAmendmentCompletion = async (amenderEmail:string, entity_id:string):Promise<LambdaProxyIntegrationResponse> => {
-
-  // Lookup the invitation of the corrector to the entity for "stashed" information.
-  let invitation = { } as Invitation;
-  const invitations = await InvitationCrud({ 
-    email:amenderEmail, entity_id 
-  } as Invitation).read({ convertDates:false } as ReadParms) as Invitation[];
-  if(invitations.length > 0) {
-    // Return the most recent invitation
-    invitations.sort((a, b) => {
-      return new Date(b.sent_timestamp).getTime() - new Date(a.sent_timestamp).getTime();
-    });
-    invitation = invitations[0];
-  }
-  else {
-    // This might happen if the invitation expires while the registration is being completed.
-    warn({ amenderEmail, entity_id }, 'No invitation found');
-    return errorResponse(`No invitation found for ${amenderEmail} in entity ${entity_id}`);
-  }
-
-  const { signup_parameter } = invitation;
-
-  // If the invitation indicates the user chose to amend the entity during registration, issue the registration email now.
-  if(signup_parameter == 'amend') {
-    const entity = await EntityCrud({ entity_id } as Entity).read() as Entity;
-    const { entity_name } = entity;
-    log({ signup_parameter, email:amenderEmail, entity_name }, 'Postponed registration email issuance');
-    await sendRegistrationForm({ email:amenderEmail, role:Roles.RE_AUTH_IND } as User, Roles.RE_AUTH_IND, entity_name);
-    invitation.signup_parameter = 'amended';
-    // Update the invitation to reflect the registration amendment was carried out.
-    log(invitation, 'Changing invitation signup_parameter to "amended"');
-    await InvitationCrud(invitation).update();
-  }
-  return okResponse('Ok', {});
-}
-
-/**
- * Get the email address of the first system administrator found in a lookup.
- * @returns 
- */
-const getSysAdminEmail = async ():Promise<string|null> => {
-  const dao:DAOUser = DAOFactory.getInstance({
-    DAOType: 'user', Payload: { entity_id:ENTITY_WAITING_ROOM } as User
-  }) as DAOUser;
-  const users = await dao.read() as User[] ?? [] as User[];
-  const sysadmins = users.filter((user:User) => user.role == Roles.SYS_ADMIN);
-  if(sysadmins.length > 0) {
-    return sysadmins[0].email;
-  }
-  return null;
-}
-
-/**
- * Get a list of active consenting individuals whose name begins with the 
- * specified fragment of text.
- * @param fragment 
- * @returns 
- */
-export const getConsenterList = async (fragment?:string):Promise<LambdaProxyIntegrationResponse> => {
-  const dao:DAOConsenter = DAOFactory.getInstance({
-    DAOType: "consenter", Payload: { active: YN.Yes } as Consenter
-  }) as DAOConsenter;
-  const consenters = await dao.read() as Consenter[] ?? [] as Consenter[];
-  const mapped = consenters.map(consenter => {
-    const { email, firstname, middlename, lastname } = consenter;
-    const fullname = PdfForm.fullName(firstname, middlename, lastname);
-    if( ! fragment) {
-      return { email, fullname };
-    }
-    const match = fullname.toLowerCase().includes(fragment.toLowerCase());
-    return match ? { email, fullname } : undefined;
-  }).filter(s => { return s != undefined });
-  return okResponse('Ok', { consenters:mapped });
-}
-
-/**
- * Send an email to a consenting individual to prompt them to submit their exhibit form through ETT.
- * @param consenterEmail 
- * @param entity_id 
- * @returns 
- */
-export const sendExhibitFormRequest = async (parms:SendExhibitFormRequestParms):Promise<LambdaProxyIntegrationResponse> => {
-  return new ExhibitFormRequest(parms).sendEmail();
-}
-
-/**
- * Send a disclosure request email to affiliates with the required attachments.
- * @param consenterEmail 
- * @param entity_id 
- * @param affiliateEmail 
- * @returns 
- */
-export const sendDisclosureRequest = async (consenterEmail:string, entity_id:string, affiliateEmail:string):Promise<LambdaProxyIntegrationResponse> => {
-
-  const envVarName = DelayedExecutions.DisclosureRequestReminder.targetArnEnvVarName;
-  const functionArn = process.env[envVarName];
-  const configs = new Configurations();
-  const { SECONDS } = PeriodType;
-
-  if( ! functionArn) {
-    return errorResponse('Cannot determine disclosure request lambda function arn from environment!');
-  }
-
-  const metadata = new BucketItemMetadata();
-  const { EXHIBIT, DISCLOSURE } = ItemType;
-
-  const s3ObjectKeyForExhibitForm = await metadata.getLatestS3ObjectKey({
-    itemType:EXHIBIT, entityId: entity_id, affiliateEmail, consenterEmail
-  });
-  if( ! s3ObjectKeyForExhibitForm) {
-    return invalidResponse(`Invalid Request: A matching exhibit form cannot be found for: ${JSON.stringify({ consenterEmail, entity_id, affiliateEmail}, null, 2)}`); 
-  }
-
-  const s3ObjectKeyForDisclosureForm = await metadata.getLatestS3ObjectKey({
-    itemType:DISCLOSURE, entityId: entity_id, affiliateEmail, consenterEmail
-  });
-  if( ! s3ObjectKeyForDisclosureForm) {
-    return invalidResponse(`Invalid Request: A matching disclosure form cannot be found for: ${JSON.stringify({ consenterEmail, entity_id, affiliateEmail}, null, 2)}`); 
-  }
-  
-  /**
-   * Create a delayed execution that will send the exhibit form that was just saved to the bucket in a
-   * disclosure request reminder email as an attachment, delete it when done if it is the second reminder.
-   * @param s3ObjectKey 
-   */
-  const scheduleDisclosureRequestReminder = async (disclosureEmailParms:DisclosureEmailParms, configName:ConfigNames) => {
-    const envVarName = DelayedExecutions.DisclosureRequestReminder.targetArnEnvVarName;
-    const functionArn = process.env[envVarName];
-    if(functionArn) {
-      const lambdaInput = { 
-        disclosureEmailParms,
-        purgeForms: (configName == ConfigNames.SECOND_REMINDER)
-      } as DisclosureRequestReminderLambdaParms;
-      const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
-      const waitTime = (await configs.getAppConfig(configName)).getDuration();
-      const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
-      await delayedTestExecution.startCountdown(timer, scheduleId, `${scheduleDescription}: ${configName} (${disclosureEmailParms.consenterEmail})`);
-    }
-    else {
-      console.error(`Cannot schedule ${configName} ${scheduleDescription}: ${envVarName} variable is missing from the environment!`);
-    }
-  }
-
-  // Define the parameters for identifying the disclosure form in the bucket
-  const parms = {
-    consenterEmail,
-    emailType: "request",
-    s3ObjectKeyForExhibitForm,
-    s3ObjectKeyForDisclosureForm
-  } as DisclosureEmailParms;
-
-  // Get the list of recipients for the disclosure request
-  const recipients = await new RecipientListGenerator(parms).generate();
-  
-  // Send the disclosure request
-  const sent = await new DisclosureRequestEmail(parms).send(recipients);
-
-  // Bail out if the email failed
-  if( ! sent) {
-    return errorResponse(`Email failure for disclosure request: ${JSON.stringify(parms, null, 2)}`);
-  }
-
-  // Tag the pdfs so that they are skipped over by the event bridge stale pdf database purging schedule:
-  const exhibitForm = new BucketExhibitForm(s3ObjectKeyForExhibitForm);
-  const disclosureForm = new BucketDisclosureForm({ metadata: s3ObjectKeyForDisclosureForm });
-  let tagged = false;
-  tagged ||= await exhibitForm.tagWithDiclosureRequestSentDate();
-  tagged &&= await disclosureForm.tagWithDiclosureRequestSentDate();
-  if( ! tagged) {
-    console.warn(`Tagging failed for pdf forms and so they may be purged from s3 BEFORE disclosure request reminders are triggered and will look for them.`);
-  }
-
-  // Schedule the disclosure request reminders:
-  parms.emailType = "reminder";
-  await scheduleDisclosureRequestReminder(parms, ConfigNames.FIRST_REMINDER);
-  await scheduleDisclosureRequestReminder(parms, ConfigNames.SECOND_REMINDER);
-
-  return okResponse('Ok', {});
-}
 
 
 /**

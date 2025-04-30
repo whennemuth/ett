@@ -8,7 +8,7 @@ import { ConsenterInfo, getConsenterInfo, getCorrectableAffiliates } from "./Con
 import { ExhibitCorrectionEmail } from "./correction/ExhibitCorrectionEmail";
 import { invalidResponse, log, warn } from "../../Utils";
 import { BucketItem, Tags } from "./BucketItem";
-import { sendDisclosureRequest } from "../authorized-individual/AuthorizedIndividual";
+import { sendDisclosureRequest } from "../authorized-individual/DisclosureRequest";
 import { TagInspector } from "./BucketItemTag";
 import { INVALID_RESPONSE_MESSAGES } from "./ConsentingPerson";
 import { ConsentStatus } from "./ConsentStatus";

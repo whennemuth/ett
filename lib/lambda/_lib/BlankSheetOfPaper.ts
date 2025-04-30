@@ -2,7 +2,7 @@ import { AdminDeleteUserCommand, AdminDeleteUserCommandOutput, AdminDeleteUserRe
 import { AttributeValue } from "@aws-sdk/client-dynamodb";
 import { IContext } from "../../../contexts/IContext";
 import { DynamoDbConstruct, TableBaseNames } from "../../DynamoDb";
-import { EntityToDemolish } from "../functions/authorized-individual/Demolition";
+import { EntityToDemolish } from "../_lib/demolition/Demolition";
 import { ExhibitFormsBucketEnvironmentVariableName } from "../functions/consenting-person/BucketItemMetadata";
 import { lookupUserPoolId } from "./cognito/Lookup";
 import { ENTITY_WAITING_ROOM, EntityCrud } from "./dao/dao-entity";

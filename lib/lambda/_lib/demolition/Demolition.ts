@@ -7,9 +7,9 @@ import { lookupUserPoolId } from "../../_lib/cognito/Lookup";
 import { DynamoDbConstruct, TableBaseNames } from "../../../DynamoDb";
 import { log } from "../../Utils";
 import { IContext } from "../../../../contexts/IContext";
-import { BucketInventory } from "../consenting-person/BucketInventory";
+import { BucketInventory } from "../../functions/consenting-person/BucketInventory";
 import { DeleteObjectsCommandOutput, ObjectIdentifier } from "@aws-sdk/client-s3";
-import { BucketItem } from "../consenting-person/BucketItem";
+import { BucketItem } from "../../functions/consenting-person/BucketItem";
 import { EntityCrud } from "../../_lib/dao/dao-entity";
 import { Cleanup, CleanupParms } from "../../_lib/timer/cleanup/Cleanup";
 import { FilterForStaleEntityVacancy } from "../../_lib/timer/cleanup/FilterForStaleEntityVacancy";
@@ -262,7 +262,7 @@ export class EntityToDemolish {
  * RUN MANUALLY: Modify the task, landscape, entity_id, and dryRun settings as needed.
  */
 const { argv:args } = process;
-if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/authorized-individual/Demolition.ts')) {
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/demolition/Demolition.ts')) {
 
   (async () => {
     const context:IContext = await require('../../../../contexts/context.json');

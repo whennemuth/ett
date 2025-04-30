@@ -5,7 +5,7 @@ import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
 import { Invitation, Roles, User, YN } from "../../_lib/dao/entity";
 import { Registration } from "../../_lib/invitation/Registration";
 import { debugLog, error, errorResponse, invalidResponse, log, lookupCloudfrontDomain, lookupSingleActiveEntity, okResponse, unauthorizedResponse, warn } from "../../Utils";
-import { demolishEntity } from "../authorized-individual/AuthorizedIndividual";
+import { demolishEntity } from "../authorized-individual/DemolishEntity";
 
 export enum Task {
   LOOKUP_INVITATION = 'lookup-invitation',

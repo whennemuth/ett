@@ -1,7 +1,7 @@
 import * as ctx from '../../../../contexts/context.json';
 import { IContext } from '../../../../contexts/IContext';
 import { LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
-import { DAOFactory } from "../../_lib/dao/dao";
+import { DAOConsenter, DAOFactory } from "../../_lib/dao/dao";
 import { ConsenterCrud } from "../../_lib/dao/dao-consenter";
 import { ENTITY_WAITING_ROOM } from "../../_lib/dao/dao-entity";
 import { ConfigNames, Consenter, ConsenterFields, Entity, ExhibitForm, YN } from "../../_lib/dao/entity";
@@ -245,4 +245,27 @@ export const getCorrectableAffiliates = async (email:string, entityId:string, ch
   const inventory = await BucketInventory.getInstance(email, entityId); 
   inventory.getAffiliateEmails();
   return okResponse('Ok', { affiliateEmails: inventory.getAffiliateEmails() });
+}
+
+/**
+ * Get a list of active consenting individuals whose name begins with the 
+ * specified fragment of text.
+ * @param fragment 
+ * @returns 
+ */
+export const getConsenterList = async (fragment?:string):Promise<LambdaProxyIntegrationResponse> => {
+  const dao:DAOConsenter = DAOFactory.getInstance({
+    DAOType: "consenter", Payload: { active: YN.Yes } as Consenter
+  }) as DAOConsenter;
+  const consenters = await dao.read() as Consenter[] ?? [] as Consenter[];
+  const mapped = consenters.map(consenter => {
+    const { email, firstname, middlename, lastname } = consenter;
+    const fullname = PdfForm.fullName(firstname, middlename, lastname);
+    if( ! fragment) {
+      return { email, fullname };
+    }
+    const match = fullname.toLowerCase().includes(fragment.toLowerCase());
+    return match ? { email, fullname } : undefined;
+  }).filter(s => { return s != undefined });
+  return okResponse('Ok', { consenters:mapped });
 }

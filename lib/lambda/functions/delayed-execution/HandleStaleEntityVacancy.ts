@@ -13,7 +13,7 @@ import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, log } from "../../Utils";
 import { Personnel } from "../authorized-individual/correction/EntityPersonnel";
 import { EntityState } from "../authorized-individual/correction/EntityState";
-import { EntityToDemolish } from "../authorized-individual/Demolition";
+import { EntityToDemolish } from "../../_lib/demolition/Demolition";
 import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName } from "../consenting-person/BucketItemMetadata";
 import { sendEndOfRegistrationEmail } from "./RemoveStaleInvitations";
 

@@ -6,7 +6,7 @@ import { DAOUser, FactoryParms } from '../../_lib/dao/dao';
 import { Roles, User } from '../../_lib/dao/entity';
 import { deepClone } from '../../Utils';
 import { Task, handler } from './AuthorizedIndividual';
-import { expectedCommandInput } from './DemolitionCommandInputMock';
+import { expectedCommandInput } from '../../_lib/demolition/DemolitionCommandInputMock';
 import { bugsbunny, daffyduck, entity, yosemitesam } from './MockObjects';
 
 const deletedUsers = [ bugsbunny, daffyduck, yosemitesam ] as User[];
@@ -16,7 +16,7 @@ const demolish = async ():Promise<any> => expectedCommandInput;
 enum Scenario { NORMAL, UNMATCHABLE_ENTITY, NON_EMAILS };
 let currentScenario = Scenario.NORMAL as Scenario;
 
-jest.mock('./Demolition', () => {
+jest.mock('../../_lib/demolition/Demolition', () => {
   return {
     EntityToDemolish: jest.fn().mockImplementation(() => {
       switch(currentScenario) {
