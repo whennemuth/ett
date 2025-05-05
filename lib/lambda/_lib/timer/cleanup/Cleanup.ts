@@ -1,9 +1,10 @@
-import { GetScheduleCommand, GetScheduleCommandInput, GetScheduleOutput, SchedulerClient, ScheduleSummary } from "@aws-sdk/client-scheduler";
+import { ScheduleSummary } from "@aws-sdk/client-scheduler";
 import { IContext } from "../../../../../contexts/IContext";
 import { log } from "../../../Utils";
 import { getPrefix, PostExecution, ScheduledLambdaInput } from "../DelayedExecution";
 import { humanReadableFromMilliseconds } from "../DurationConverter";
 import { EggTimer } from "../EggTimer";
+import { lookupScheduleDetails } from "../Lookup";
 import { ISchedulesCache, SchedulesCache } from "./Cache";
 import { FilterForStaleEntityVacancy } from "./FilterForStaleEntityVacancy";
 
@@ -72,7 +73,7 @@ export class Cleanup {
    * @returns 
    */
   private selectApplicableSchedules = async (selectionParms:SelectionParms): Promise<SelectionResult[]> => {
-    const { lookupScheduleDetails, cache: { getAllSchedules }, cleanupParms: { landscape } } = this;
+    const { cache: { getAllSchedules }, cleanupParms: { landscape } } = this;
     const { region, scheduleFilter, inputFilter } = selectionParms;
     const selectionResults = [] as SelectionResult[];
     const schedules = await getAllSchedules(landscape);
@@ -114,21 +115,6 @@ export class Cleanup {
     return selectionResults;
   }
 
-  /**
-   * Use the SDK to lookup the specified schedule.
-   * @param Name 
-   * @param region 
-   * @param GroupName 
-   * @returns 
-   */
-  private lookupScheduleDetails = async (Name:string, region:string, GroupName?:string):Promise<GetScheduleOutput> => {
-    log({ Name, GroupName }, `Looking up target for schedule`);
-    const client = new SchedulerClient({ region });
-    const commandInput = { Name, GroupName } as GetScheduleCommandInput;
-    const command = new GetScheduleCommand(commandInput);
-    const response = await client.send(command) as GetScheduleOutput;
-    return response;
-  }
 
   /**
    * Delete the specified schedule.
@@ -182,6 +168,12 @@ export class Cleanup {
   }
 }
 
+
+
+
+/**
+ * RUN MANUALLY
+ */
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/timer/cleanup/Cleanup.ts')) {
   (async () => {

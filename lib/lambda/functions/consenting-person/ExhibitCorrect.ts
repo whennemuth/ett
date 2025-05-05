@@ -6,7 +6,7 @@ import { ExhibitBucket } from "./BucketItemExhibitForms";
 import { BucketItemMetadata, BucketItemMetadataParms, ItemType } from "./BucketItemMetadata";
 import { ConsenterInfo, getConsenterInfo, getCorrectableAffiliates } from "./ConsentingPersonUtils";
 import { ExhibitCorrectionEmail } from "./correction/ExhibitCorrectionEmail";
-import { invalidResponse, log, warn } from "../../Utils";
+import { error, invalidResponse, log, warn } from "../../Utils";
 import { BucketItem, Tags } from "./BucketItem";
 import { sendDisclosureRequest } from "../authorized-individual/DisclosureRequest";
 import { TagInspector } from "./BucketItemTag";
@@ -14,6 +14,10 @@ import { INVALID_RESPONSE_MESSAGES } from "./ConsentingPerson";
 import { ConsentStatus } from "./ConsentStatus";
 import { BucketInventory } from "./BucketInventory";
 import { LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
+import { Target } from "@aws-sdk/client-scheduler";
+import { lookupSpecificSchedules } from "../../_lib/timer/Lookup";
+import { DisclosureRequestReminderLambdaParms, ID } from "../delayed-execution/SendDisclosureRequestReminder";
+import { IContext } from "../../../../contexts/IContext";
 
 export type ExhibitFormCorrection = {
   entity_id:string, updates:Affiliate[], appends:Affiliate[], deletes:string[]
@@ -210,46 +214,123 @@ export const correctExhibit = async (consenterEmail:string, corrections:ExhibitF
     await correctionEmail.sendToEntity();
 
     // Send an email to each affiliate that was updated notifiying them of the update.
-    await correctionEmail.sendToAffiliates();
+    await correctionEmail.sendToAffiliates(await getQualifiedAffiliateFilter(consenterEmail, entity_id));
   }
 
   return getCorrectableAffiliates(consenterEmail, entity_id);
 }
 
-
+/**
+ * If an affiliate has not been sent a disclosure request, then they should be excluded from receiving
+ * the exhibit form correction email. The only way to determine this is to see if there is any event bridge
+ * schedule in existence for disclosure request reminders to the affiliate with respect to the consenter and
+ * entity. This function will return a function filters for affiliates who HAVE already been sent a disclosure request.
+ * @param consenter_email 
+ * @param entity_id 
+ * @returns 
+ */
+const getQualifiedAffiliateFilter = async (consenter_email:string, entity_id:string):Promise<(email:string) => boolean> => {
+  const region = process.env.REGION;
+  const prefix = process.env.PREFIX;
+  if( ! region) {
+    throw new Error(`REGION environment variable not set`);
+  }
+  if( ! prefix) {
+    throw new Error(`PREFIX environment variable not set`);
+  }
+  const landscape = prefix.split('-')[1];
+  let targets = [] as Target[];
+  const getBucketItemMetadataParms = (targetInput:string|undefined):BucketItemMetadataParms => {
+    if( ! targetInput) return {} as BucketItemMetadataParms;
+    const { lambdaInput } = JSON.parse(targetInput);
+    const { disclosureEmailParms: { s3ObjectKeyForExhibitForm } } = lambdaInput as DisclosureRequestReminderLambdaParms
+    return BucketItemMetadata.fromBucketObjectKey(s3ObjectKeyForExhibitForm);
+  }
+  try {
+    targets = await lookupSpecificSchedules({ 
+      region, 
+      landscape,
+      scheduleTypeId: ID,
+      targetInputFilter: (targetInput:string|undefined):boolean => {
+        const { consenterEmail, entityId } = getBucketItemMetadataParms(targetInput);        
+        return entityId === entity_id && consenterEmail === consenter_email;
+      }
+    });
+  }
+  catch(e) {
+    error(e);
+  }
+  finally {
+    const emails = [] as string[];
+    for(const target of targets) {
+      if( ! target?.Input) continue;
+      const { affiliateEmail } = getBucketItemMetadataParms(target.Input);
+      if( ! affiliateEmail) continue;
+      if( ! emails.includes(affiliateEmail)) {
+        emails.push(affiliateEmail);
+      }
+    }
+    return (email:string):boolean => emails.includes(email);
+  }
+}
 
 
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/ExhibitCorrect.ts')) {
+  const task = 'getQualifiedAffiliateFilter' as 'correctExhibit' | 'getQualifiedAffiliateFilter';
   (async () => {
     try {
-      const corrections = {
-        entity_id: "a27ef181-db7f-4e18-ade4-6a987d82e248",
-        updates: [
-          {
-            email: "affiliate1@warhen.work",
-            affiliateType: AffiliateTypes.EMPLOYER_PRIMARY,
-            org: "My Neighborhood University",
-            fullname: "Mister Rogers",
-            title: "Daytime child television host",
-            phone_number: "0123456789"
-          }
-        ],
-        appends: [
-          {
-            affiliateType: AffiliateTypes.EMPLOYER,
-            org: "School of Omelets",
-            email: "affiliate3@warhen.work",
-            fullname: "Humpty Dumpty",
-            title: "Wall Sitter",
-            phone_number: "0123456888"
-        }
-        ],
-        deletes: []
-      } as ExhibitFormCorrection;
+      switch(task) {
+        case "getQualifiedAffiliateFilter":
+          const context:IContext = await require('../../../../contexts/context.json');
+          const { STACK_ID:app, REGION:region, TAGS: { Landscape:landscape }} = context;
+          const prefix = `${app}-${landscape}`;
+          process.env.PREFIX = prefix;
+          process.env.REGION = region;
+          const consenter_email = 'cp1@warhen.work'
+          const entity_id = 'a27ef181-db7f-4e18-ade4-6a987d82e248';
+          const filter = await getQualifiedAffiliateFilter(consenter_email, entity_id);
 
-      await correctExhibit('cp1@warhen.work', corrections);
-      console.log(`done`);
+          for(const affiliate of [ 1, 2, 3, 4, 5, 6, 7, 8 ].map(i => `affiliate${i}@warhen.work`)) {
+            if(filter(affiliate)) {
+              console.log(`${affiliate} is qualified`);
+            }
+            else {
+              console.log(`${affiliate} is NOT qualified`);
+            }
+          }
+          break;
+        case "correctExhibit":
+          const corrections = {
+            entity_id: "a27ef181-db7f-4e18-ade4-6a987d82e248",
+            updates: [
+              {
+                email: "affiliate1@warhen.work",
+                affiliateType: AffiliateTypes.EMPLOYER_PRIMARY,
+                org: "My Neighborhood University",
+                fullname: "Mister Rogers",
+                title: "Daytime child television host",
+                phone_number: "0123456789"
+              }
+            ],
+            appends: [
+              {
+                affiliateType: AffiliateTypes.EMPLOYER,
+                org: "School of Omelets",
+                email: "affiliate3@warhen.work",
+                fullname: "Humpty Dumpty",
+                title: "Wall Sitter",
+                phone_number: "0123456888"
+            }
+            ],
+            deletes: []
+          } as ExhibitFormCorrection;
+
+          await correctExhibit('cp1@warhen.work', corrections);
+          console.log(`done`);
+          break;
+      }
+
     }
     catch(reason) {
       console.error(reason);

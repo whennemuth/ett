@@ -1,9 +1,9 @@
-import { ListSchedulesCommand, ListSchedulesCommandInput, ListSchedulesCommandOutput, SchedulerClient, ScheduleSummary } from "@aws-sdk/client-scheduler";
+import { ScheduleSummary } from "@aws-sdk/client-scheduler";
 import { error } from "../../../Utils";
 import { ConsenterCrud } from "../../dao/dao-consenter";
 import { EntityCrud } from "../../dao/dao-entity";
 import { Consenter, Entity } from "../../dao/entity";
-import { getGroupName } from "../DelayedExecution";
+import { lookupAllSchedules } from "../Lookup";
 
 export interface ISchedulesCache {
   getAllSchedules(landscape:string|undefined):Promise<ScheduleSummary[]>
@@ -45,35 +45,7 @@ export class SchedulesCache implements ISchedulesCache {
     if(schedulesCache.has(landscape)) {
       return schedulesCache.get(landscape) as ScheduleSummary[];
     }
-    let NamePrefix = 'ett-';
-    let groupName:string|undefined = undefined;
-    if(landscape) {
-      groupName = getGroupName(`${NamePrefix}${landscape}`)
-      NamePrefix = NamePrefix + landscape + '-';
-    }
-    const client = new SchedulerClient({ region });
-    const pageSize = 10;
-    const allSchedules = [] as ScheduleSummary[];
-    let next_token:string|undefined = 'START';
-
-
-    while(next_token) {
-      console.log(`Getting ${next_token == 'START' ? 'first' : 'next'} set of ${pageSize} schedule summaries...`);
-      const input = { NamePrefix, Limit: Number(pageSize) } as ListSchedulesCommandInput;
-      if(groupName) input.GroupName = groupName;
-      if(next_token !== 'START') {
-        input.NextToken = next_token;
-      }
-      const command = new ListSchedulesCommand(input);
-      const response = await client.send(command) as ListSchedulesCommandOutput;
-      const { NextToken:token, Schedules } = response;
-      next_token = token;
-      if(Schedules) {
-        for(const schedule of Schedules) {
-          allSchedules.push(schedule);
-        };
-      }
-    }
+    const allSchedules = await lookupAllSchedules({ region, landscape });
     schedulesCache.set(landscape, allSchedules);
     return allSchedules;
   }

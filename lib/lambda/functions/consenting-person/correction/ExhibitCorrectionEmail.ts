@@ -143,7 +143,7 @@ export class ExhibitCorrectionEmail {
     return sendEmail({ subject, from, message, to: [ asp.email ], cc, pdfAttachments: attachments } as EmailParms);
   }
 
-  public sendToAffiliates = async ():Promise<boolean> => {
+  public sendToAffiliates = async (filter?:(email:string) => boolean):Promise<boolean> => {
     const { context, initialize, corrections: { updates=[] }, getExhibitForm } = this;
 
     await initialize();
@@ -157,6 +157,12 @@ export class ExhibitCorrectionEmail {
     let allOk:boolean = true;
     for(let i=0; i<updates.length; i++) {
       const { email } = updates[i];
+
+      // Skip any emails that are in the exclude list
+      if(filter && ! filter(email)) {
+        console.log(`Skipping email to ${email} because it does not meet filter criteria`);
+        continue;
+      }
 
       // Log what's about to happen
       console.log(`Sending exhibit form correction email to affiliate: ${email}`);
