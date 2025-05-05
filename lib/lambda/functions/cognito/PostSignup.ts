@@ -1,6 +1,6 @@
 import { CONFIG, IContext } from '../../../../contexts/IContext';
 import { LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
-import { debugLog, error, isOk, log, warn } from '../../Utils';
+import { debugLog, error, errorResponse, invalidResponse, isOk, log, okResponse, warn } from '../../Utils';
 import { lookupRole, removeUserFromUserpool } from '../../_lib/cognito/Lookup';
 import { Configurations } from '../../_lib/config/Config';
 import { DAOConsenter, DAOEntity, DAOFactory, DAOUser } from '../../_lib/dao/dao';
@@ -9,7 +9,9 @@ import { UserCrud } from '../../_lib/dao/dao-user';
 import { ConfigNames, ConfigTypes, Consenter, ConsenterFields, Entity, Invitation, Role, roleFullName, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
 import { scheduleStaleEntityVacancyHandler } from '../authorized-individual/correction/EntityCorrection';
 import { sendConsenterRegistrationForm } from '../consenting-person/ConsentingPerson';
-import { sendEntityRegistrationForm, updateReAdminInvitationWithNewEntity, UserInfo } from '../re-admin/ReAdminUser';
+import { updateReAdminInvitationWithNewEntity } from '../re-admin/ReAdminUser';
+import { lookupEntity, UserInfo } from '../signup/EntityLookup';
+import { EntityRegistrationEmail } from '../signup/EntityRegistrationEmail';
 import { PostSignupEventType } from './PostSignupEventType';
 
 /**
@@ -440,6 +442,56 @@ export const sendRegistrationForm = async (person:User|Consenter, role:Role, ent
   if( ! sent) {
     log(_email, `Proceeding with cognito account setup, but failed to send registration email.`);
   }
+}
+
+export type SendEntityRegistrationFormData = {
+  email:string,
+  role:Role,
+  termsHref?:string,
+  loginHref?:string,
+  meetsPrequisite?:(userInfo:UserInfo) => boolean
+}
+
+/**
+ * Send an email to the user by their request a copy of their registration form.
+ * @param email 
+ * @param role 
+ * @param loginHref Contains the url that the pdf file includes for directions to the ETT website.
+ * @returns 
+ */
+export const sendEntityRegistrationForm = async (data:SendEntityRegistrationFormData):Promise<LambdaProxyIntegrationResponse> => {
+  const { email, role, termsHref, loginHref, meetsPrequisite } = data;
+  log({ email, role, termsHref, loginHref }, 'sendEntityRegistrationForm');
+  try {
+    const userInfo = await lookupEntity(email, role) as UserInfo;
+    if( ! userInfo.email) {
+      log(`Failed to lookup entity info - no such user: ${email}`);
+      return invalidResponse(`No such user found: ${email}`);
+    }
+    if( ! userInfo.entity) {
+      log(`Failed to lookup entity info - no entity found for ${email}`);
+      return invalidResponse(`No entity found for ${email}`);
+    }
+    if(meetsPrequisite && ! meetsPrequisite(userInfo)) {
+      log('Prerequisites NOT met for sending registration form');
+      return okResponse('Ok');
+    }
+    const regEmail = new EntityRegistrationEmail({ ...userInfo, termsHref, loginHref });
+
+    await regEmail.send();
+
+    if( ! userInfo.entity.registered_timestamp) {
+      // Add a timestamp to the entity to indicate its initial registration. 
+      // NOTE this won't change on user swapouts as part of amendments.
+      const { entity: { entity_id }} = userInfo;
+      await EntityCrud({ entity_id, registered_timestamp: new Date().toISOString() } as Entity).update();
+    }  
+  }
+  catch(e: any) {
+    return errorResponse(`Error looking up entity info: ${e.message}`);
+  }
+
+  return okResponse('Ok');
 }
 
 /**

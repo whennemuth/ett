@@ -6,7 +6,7 @@ import { IPdfForm, PdfForm } from "./PdfForm";
 import { RegistrationFormEntityPage1 } from "./RegistrationFormEntityPage1";
 import { RegistrationFormEntityPage2 } from "./RegistrationFormEntityPage2";
 import { RegistrationFormEntityPage3 } from "./RegistrationFormEntityPage3";
-import { EntityInfo, UserInfo } from "../../functions/re-admin/ReAdminUser";
+import { EntityInfo, UserInfo } from "../../functions/signup/EntityLookup";
 
 export type RegistrationFormEntityData = UserInfo & { 
   termsHref?:string,

@@ -13,9 +13,10 @@ import { debugLog, error, errorResponse, invalidResponse, log, lookupCloudfrontD
 import { getConsenterList } from '../consenting-person/ConsentingPersonUtils';
 import { EntityToDemolish } from '../../_lib/demolition/Demolition';
 import { deleteConsenter, getConsenterForms } from '../consenting-person/ConsentingPerson';
-import { Task as ReAdminTasks, correctUser, createEntity, deactivateEntity, inviteUsers, lookupEntity, retractInvitation, sendEntityRegistrationForm, updateEntity } from '../re-admin/ReAdminUser';
+import { Task as ReAdminTasks, correctUser, createEntity, deactivateEntity, inviteUsers, lookupEntity, retractInvitation, updateEntity } from '../re-admin/ReAdminUser';
 import { DynamoDbTableOutput } from './DynamoDbTableOutput';
 import { HtmlTableView } from './view/HtmlTableView';
+import { sendEntityRegistrationForm } from '../cognito/PostSignup';
 
 export enum Task {
   REPLACE_RE_ADMIN = 'replace-re-admin',

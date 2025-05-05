@@ -3,16 +3,15 @@ import { DelayedExecutions } from '../../../DelayedExecution';
 import { AbstractRoleApi, IncomingPayload, LambdaProxyIntegrationResponse } from '../../../role/AbstractRole';
 import { lookupEmail, lookupUserPoolId } from '../../_lib/cognito/Lookup';
 import { DAOEntity, DAOFactory, DAOUser } from '../../_lib/dao/dao';
-import { ENTITY_WAITING_ROOM, EntityCrud } from '../../_lib/dao/dao-entity';
+import { ENTITY_WAITING_ROOM } from '../../_lib/dao/dao-entity';
 import { Entity, Invitation, Role, roleFullName, Roles, User, UserFields, YN } from '../../_lib/dao/entity';
 import { InvitablePerson, InvitablePersonParms } from '../../_lib/invitation/InvitablePerson';
 import { UserInvitation } from '../../_lib/invitation/Invitation';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
 import { debugLog, errorResponse, invalidResponse, isOk, log, lookupCloudfrontDomain, lookupPendingInvitations, mergeResponses, okResponse } from "../../Utils";
-import { registrationFormEmailPrerequisitesAreMet } from '../cognito/PostSignup';
+import { registrationFormEmailPrerequisitesAreMet, sendEntityRegistrationForm } from '../cognito/PostSignup';
 import { ExhibitFormsBucketEnvironmentVariableName } from '../consenting-person/BucketItemMetadata';
 import { EntityRepToCorrect } from './Correction';
-import { EntityRegistrationEmail } from './RegistrationEmail';
 
 export enum Task {
   CREATE_ENTITY = 'create-entity',
@@ -370,56 +369,6 @@ export const inviteASingleUser = async (parameters:any, callerSub:string):Promis
  */
 export const retractInvitation = async (code:string):Promise<LambdaProxyIntegrationResponse> => {
   await UserInvitation.retractInvitation(code);
-  return okResponse('Ok');
-}
-
-export type SendEntityRegistrationFormData = {
-  email:string,
-  role:Role,
-  termsHref?:string,
-  loginHref?:string,
-  meetsPrequisite?:(userInfo:UserInfo) => boolean
-}
-
-/**
- * Send an email to the user by their request a copy of their registration form.
- * @param email 
- * @param role 
- * @param loginHref Contains the url that the pdf file includes for directions to the ETT website.
- * @returns 
- */
-export const sendEntityRegistrationForm = async (data:SendEntityRegistrationFormData):Promise<LambdaProxyIntegrationResponse> => {
-  const { email, role, termsHref, loginHref, meetsPrequisite } = data;
-  log({ email, role, termsHref, loginHref }, 'sendEntityRegistrationForm');
-  try {
-    const userInfo = await _lookupEntity(email, role) as UserInfo;
-    if( ! userInfo.email) {
-      log(`Failed to lookup entity info - no such user: ${email}`);
-      return invalidResponse(`No such user found: ${email}`);
-    }
-    if( ! userInfo.entity) {
-      log(`Failed to lookup entity info - no entity found for ${email}`);
-      return invalidResponse(`No entity found for ${email}`);
-    }
-    if(meetsPrequisite && ! meetsPrequisite(userInfo)) {
-      log('Prerequisites NOT met for sending registration form');
-      return okResponse('Ok');
-    }
-    const regEmail = new EntityRegistrationEmail({ ...userInfo, termsHref, loginHref });
-
-    await regEmail.send();
-
-    if( ! userInfo.entity.registered_timestamp) {
-      // Add a timestamp to the entity to indicate its initial registration. 
-      // NOTE this won't change on user swapouts as part of amendments.
-      const { entity: { entity_id }} = userInfo;
-      await EntityCrud({ entity_id, registered_timestamp: new Date().toISOString() } as Entity).update();
-    }  
-  }
-  catch(e: any) {
-    return errorResponse(`Error looking up entity info: ${e.message}`);
-  }
-
   return okResponse('Ok');
 }
 
