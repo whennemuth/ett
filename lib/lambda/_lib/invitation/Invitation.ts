@@ -4,7 +4,7 @@ import { IContext } from '../../../../contexts/IContext';
 import * as ctx from '../../../../contexts/context.json';
 import { DelayedExecutions } from '../../../DelayedExecution';
 import { error, log, lookupCloudfrontDomain } from '../../Utils';
-import { ID as scheduleId, Description as scheduleDescription, StaleInvitationLambdaParms } from '../../functions/delayed-execution/RemoveStaleInvitations';
+import { ID as scheduleTypeId, Description as scheduleDescription, StaleInvitationLambdaParms } from '../../functions/delayed-execution/RemoveStaleInvitations';
 import { makeSafeHtml, sendEmail } from '../EmailWithAttachments';
 import { Configurations } from '../config/Config';
 import { DAOFactory, DAOInvitation } from '../dao/dao';
@@ -269,7 +269,7 @@ export class UserInvitation {
       const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
       const { SECONDS } = PeriodType;
       const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
-      await delayedTestExecution.startCountdown(timer, scheduleId, description);
+      await delayedTestExecution.startCountdown(timer, scheduleTypeId, description);
     }
     else {
       console.error(`Cannot schedule ${description}: ${envVarName} variable is missing from the environment!`);

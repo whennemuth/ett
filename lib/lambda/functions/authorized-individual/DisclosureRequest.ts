@@ -9,7 +9,7 @@ import { BucketInventory } from "../consenting-person/BucketInventory";
 import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureForm";
 import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
 import { BucketItemMetadata, ItemType } from "../consenting-person/BucketItemMetadata";
-import { DisclosureRequestReminderLambdaParms, ID as scheduleId, Description as scheduleDescription } from "../delayed-execution/SendDisclosureRequestReminder";
+import { DisclosureRequestReminderLambdaParms, ID as scheduleTypeId, Description as scheduleDescription } from "../delayed-execution/SendDisclosureRequestReminder";
 import { DisclosureEmailParms, DisclosureRequestEmail, RecipientListGenerator } from "./DisclosureRequestEmail";
 
 /**
@@ -63,7 +63,7 @@ export const sendDisclosureRequest = async (consenterEmail:string, entity_id:str
       const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
       const waitTime = (await configs.getAppConfig(configName)).getDuration();
       const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
-      await delayedTestExecution.startCountdown(timer, scheduleId, `${scheduleDescription}: ${configName} (${disclosureEmailParms.consenterEmail})`);
+      await delayedTestExecution.startCountdown(timer, scheduleTypeId, `${scheduleDescription}: ${configName} (${disclosureEmailParms.consenterEmail})`);
     }
     else {
       console.error(`Cannot schedule ${configName} ${scheduleDescription}: ${envVarName} variable is missing from the environment!`);

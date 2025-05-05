@@ -7,7 +7,7 @@ import { ExhibitFormParms } from '../../_lib/pdf/ExhibitForm';
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { deepClone, error, errorResponse, invalidResponse, log } from "../../Utils";
-import { Description as S3ScheduleDescription, ID as S3ScheduleId } from "../delayed-execution/PurgeExhibitFormFromBucket";
+import { Description as S3ScheduleDescription, ID as S3scheduleTypeId } from "../delayed-execution/PurgeExhibitFormFromBucket";
 import { DisclosureItemsParms } from "./BucketItem";
 import { BucketDisclosureForm } from "./BucketItemDisclosureForm";
 import { BucketExhibitForm } from "./BucketItemExhibitForm";
@@ -205,7 +205,7 @@ export class ExhibitDataSender {
           const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
           const waitTime = (await configs.getAppConfig(deleteAfter)).getDuration();
           const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
-          await delayedTestExecution.startCountdown(timer, S3ScheduleId, `${S3ScheduleDescription} (${consenter.email})`);
+          await delayedTestExecution.startCountdown(timer, S3scheduleTypeId, `${S3ScheduleDescription} (${consenter.email})`);
         }
         else {
           console.error(`Cannot schedule ${deleteAfter} ${S3ScheduleDescription}: ${envVarName} variable is missing from the environment!`);

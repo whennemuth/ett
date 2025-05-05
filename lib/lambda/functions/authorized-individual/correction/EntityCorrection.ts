@@ -10,7 +10,7 @@ import { EmailParms, sendEmail } from '../../../_lib/EmailWithAttachments';
 import { DelayedLambdaExecution } from "../../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../../_lib/timer/EggTimer";
 import { log, lookupCloudfrontDomain } from "../../../Utils";
-import { ID as scheduleId, Description as scheduleDescription, StaleVacancyLambdaParms } from "../../delayed-execution/HandleStaleEntityVacancy";
+import { ID as scheduleTypeId, Description as scheduleDescription, StaleVacancyLambdaParms } from "../../delayed-execution/HandleStaleEntityVacancy";
 import { Personnel } from "./EntityPersonnel";
 
 export type CorrectEntityParms = {
@@ -160,7 +160,7 @@ export const scheduleStaleEntityVacancyHandler = async (entity:Entity, role:Role
     let waitTime = (await configs.getAppConfig(staleAfter)).getDuration();
     waitTime += 60; // Event bridge seems to trigger early at times by anywhere up to 18 seconds, so tack on an extra minute.
     const timer = EggTimer.getInstanceSetFor(waitTime, PeriodType.SECONDS);
-    await delayedExecution.startCountdown(timer, scheduleId, `${scheduleDescription}: ${entity_name}`);
+    await delayedExecution.startCountdown(timer, scheduleTypeId, `${scheduleDescription}: ${entity_name}`);
   }
   else {
     console.error(`Cannot schedule ${scheduleDescription}: ${envVarName} variable is missing from the environment!`);

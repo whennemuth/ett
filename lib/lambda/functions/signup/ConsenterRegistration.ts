@@ -7,7 +7,7 @@ import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
 import { debugLog, error, errorResponse, invalidResponse, log, okResponse, warn } from "../../Utils";
 import { ConsentStatus, consentStatus } from "../consenting-person/ConsentStatus";
-import { ID as scheduleId, Description as scheduleDescription } from "../delayed-execution/PurgeConsenter";
+import { ID as scheduleTypeId, Description as scheduleDescription } from "../delayed-execution/PurgeConsenter";
 
 /**
  * Handles the public steps of registration for consenting individual
@@ -127,7 +127,7 @@ export const sheduleConsenterPurge = async (consenterEmail:string) => {
     const delayedTestExecution = new DelayedLambdaExecution(functionArn, lambdaInput);
     const { SECONDS } = PeriodType;
     const timer = EggTimer.getInstanceSetFor(waitTime, SECONDS); 
-    await delayedTestExecution.startCountdown(timer, scheduleId, description);
+    await delayedTestExecution.startCountdown(timer, scheduleTypeId, description);
   }
   else {
     console.error(`Cannot schedule ${description}: ${envVarName} variable is missing from the environment!`);

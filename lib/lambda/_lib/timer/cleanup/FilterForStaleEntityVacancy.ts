@@ -1,5 +1,5 @@
 import { ScheduleSummary } from "@aws-sdk/client-scheduler";
-import { ID as scheduleId, StaleVacancyLambdaParms } from "../../../functions/delayed-execution/HandleStaleEntityVacancy";
+import { ID as scheduleTypeId, StaleVacancyLambdaParms } from "../../../functions/delayed-execution/HandleStaleEntityVacancy";
 import { log } from "../../../Utils";
 import { getPrefix } from "../DelayedExecution";
 import { ISchedulesCache } from "./Cache";
@@ -16,7 +16,7 @@ export class FilterForStaleEntityVacancy implements Filter {
   }
 
   public matchForSchedule = (schedule:ScheduleSummary):boolean => {
-    const startOfName = `${getPrefix()}-${scheduleId}-`;
+    const startOfName = `${getPrefix()}-${scheduleTypeId}-`;
     return schedule.Name ? schedule.Name.startsWith(startOfName) : false;
   };
 
@@ -24,7 +24,7 @@ export class FilterForStaleEntityVacancy implements Filter {
     const { region, matchForSchedule } = this;
     const { entityDoesNotExist } = cache;
 
-    log(`Getting selection criteria for: ${scheduleId}`);
+    log(`Getting selection criteria for: ${scheduleTypeId}`);
 
     return {
       region,

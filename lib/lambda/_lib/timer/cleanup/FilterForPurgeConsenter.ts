@@ -1,5 +1,5 @@
 import { ScheduleSummary } from "@aws-sdk/client-scheduler";
-import { ID as scheduleId } from "../../../functions/delayed-execution/PurgeConsenter";
+import { ID as scheduleTypeId } from "../../../functions/delayed-execution/PurgeConsenter";
 import { log } from "../../../Utils";
 import { getPrefix } from "../DelayedExecution";
 import { ISchedulesCache } from "./Cache";
@@ -13,7 +13,7 @@ export class FilterForPurgeConsenter implements Filter {
   }
 
   public matchForSchedule = (schedule:ScheduleSummary):boolean => {
-    const startOfName = `${getPrefix()}-${scheduleId}-`;
+    const startOfName = `${getPrefix()}-${scheduleTypeId}-`;
     return schedule.Name ? schedule.Name.startsWith(startOfName) : false;
   };
 
@@ -21,7 +21,7 @@ export class FilterForPurgeConsenter implements Filter {
     const { cleanupParms, matchForSchedule } = this;
     const { consenterDoesNotExist } = cache; 
      
-    log(`Getting selection criteria for: ${scheduleId}`);
+    log(`Getting selection criteria for: ${scheduleTypeId}`);
     
     return {
       region: cleanupParms.region,

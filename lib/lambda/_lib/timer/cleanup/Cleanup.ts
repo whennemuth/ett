@@ -31,8 +31,8 @@ export type Filter = {
   matchForSchedule: (schedule:ScheduleSummary) => boolean
 }
 
-export const defaultMatchForSchedule = (schedule:ScheduleSummary, scheduleId:string):boolean => {
-  const startOfName = `${getPrefix()}-${scheduleId}-`;
+export const defaultMatchForSchedule = (schedule:ScheduleSummary, scheduleTypeId:string):boolean => {
+  const startOfName = `${getPrefix()}-${scheduleTypeId}-`;
   return schedule.Name ? schedule.Name.startsWith(startOfName) : false;
 }
 

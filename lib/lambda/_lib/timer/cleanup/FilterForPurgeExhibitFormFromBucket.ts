@@ -2,7 +2,7 @@ import { ScheduleSummary } from "@aws-sdk/client-scheduler";
 import { log } from "console";
 import { DisclosureItemsParms } from "../../../functions/consenting-person/BucketItem";
 import { BucketItemMetadata } from "../../../functions/consenting-person/BucketItemMetadata";
-import { ID as scheduleId } from "../../../functions/delayed-execution/PurgeExhibitFormFromBucket";
+import { ID as scheduleTypeId } from "../../../functions/delayed-execution/PurgeExhibitFormFromBucket";
 import { getPrefix } from "../DelayedExecution";
 import { ISchedulesCache } from "./Cache";
 import { CleanupParms, Filter, SelectionParms } from "./Cleanup";
@@ -18,7 +18,7 @@ export class FilterForPurgeExhibitFormFromBucket implements Filter {
   }
 
   public matchForSchedule = (schedule:ScheduleSummary):boolean => {
-    const startOfName = `${getPrefix()}-${scheduleId}-`;
+    const startOfName = `${getPrefix()}-${scheduleTypeId}-`;
     return schedule.Name ? schedule.Name.startsWith(startOfName) : false;
   };
 
@@ -27,7 +27,7 @@ export class FilterForPurgeExhibitFormFromBucket implements Filter {
     const { cleanupParms, matchForSchedule } = this;
     const { entityDoesNotExist, consenterDoesNotExist } = cache;
 
-    log(`Getting selection criteria for: ${scheduleId}`);
+    log(`Getting selection criteria for: ${scheduleTypeId}`);
     
     return {
       region: cleanupParms.region,

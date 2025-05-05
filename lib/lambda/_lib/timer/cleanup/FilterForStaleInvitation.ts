@@ -1,5 +1,5 @@
 import { ScheduleSummary } from "@aws-sdk/client-scheduler";
-import { ID as scheduleId, StaleInvitationLambdaParms } from "../../../functions/delayed-execution/RemoveStaleInvitations";
+import { ID as scheduleTypeId, StaleInvitationLambdaParms } from "../../../functions/delayed-execution/RemoveStaleInvitations";
 import { log } from "../../../Utils";
 import { getPrefix } from "../DelayedExecution";
 import { ISchedulesCache } from "./Cache";
@@ -13,7 +13,7 @@ export class FilterForStaleInvitation implements Filter {
   }
 
   public matchForSchedule = (schedule:ScheduleSummary):boolean => {
-    const startOfName = `${getPrefix()}-${scheduleId}-`;
+    const startOfName = `${getPrefix()}-${scheduleTypeId}-`;
     return schedule.Name ? schedule.Name.startsWith(startOfName) : false;
   };
 
@@ -21,7 +21,7 @@ export class FilterForStaleInvitation implements Filter {
     const { region, matchForSchedule } = this;
     const { entityDoesNotExist } = cache;
 
-    log(`Getting selection criteria for: ${scheduleId}`);
+    log(`Getting selection criteria for: ${scheduleTypeId}`);
 
     return {
       region,
