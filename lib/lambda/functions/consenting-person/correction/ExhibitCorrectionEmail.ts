@@ -151,7 +151,7 @@ export class ExhibitCorrectionEmail {
     const { _consenter: { firstname, middlename, lastname }, _entity: { entity_name } } = this;
     const { fullName } = PdfForm;
     const consenterFullname = fullName(firstname, middlename, lastname);
-    const subject = 'ETT Notice of Consent Revision';
+    const subject = 'ETT Notice of Exhibit Form Correction';
     let message = `${roleFullName(Roles.CONSENTING_PERSON)} ${consenterFullname} has made corrections to your details in their exhibit form for ${entity_name}.`
 
     let allOk:boolean = true;
