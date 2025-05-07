@@ -1,5 +1,5 @@
 import { DeleteObjectsCommandOutput } from "@aws-sdk/client-s3";
-import { Affiliate, AffiliateTypes, Consenter, YN } from "../../_lib/dao/entity";
+import { Affiliate, AffiliateTypes, Consenter, ExhibitForm, YN } from "../../_lib/dao/entity";
 import { BucketDisclosureForm } from "./BucketItemDisclosureForm";
 import { BucketExhibitForm } from "./BucketItemExhibitForm";
 import { ExhibitBucket } from "./BucketItemExhibitForms";
@@ -152,7 +152,8 @@ export const correctExhibit = async (consenterEmail:string, corrections:ExhibitF
   // Handle updated affiliates
   const successfulUpdates = [] as Affiliate[];
   if(updates.length > 0) {
-    const consenter = { email:consenterEmail, exhibit_forms: [ { entity_id, affiliates:updates } ]} as Consenter;
+    const consenter = Object.assign({}, consenterInfo.consenter);
+    consenter.exhibit_forms = [ { entity_id, affiliates:updates } as ExhibitForm ];
     for(let i=0; i<updates.length; i++) {
       const { email:affiliateEmail } = updates[i];
 
@@ -183,7 +184,8 @@ export const correctExhibit = async (consenterEmail:string, corrections:ExhibitF
 
   // Handle new affiliates
   if(appends.length > 0) {
-    const consenter = { email:consenterEmail, exhibit_forms:[ { entity_id, affiliates:appends } ] } as Consenter;
+    const consenter = Object.assign({}, consenterInfo.consenter);
+    consenter.exhibit_forms = [ { entity_id, affiliates:appends } as ExhibitForm ];
     for(let i=0; i<appends.length; i++) {
       // Send out an automatic disclosure request to the new affiliates (even though the AI did not get a 
       // chance to review them) and create the customary reminder event bridge schedules.

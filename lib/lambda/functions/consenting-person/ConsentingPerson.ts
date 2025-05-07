@@ -447,6 +447,11 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
 
         case Task.CORRECT_EXHIBIT_FORM:
           const { ACADEMIC, OTHER } = AffiliateTypes;
+
+          process.env[Configurations.ENV_VAR_NAME] = JSON.stringify({ useDatabase:false, configs: [{
+            name:ConfigNames.CONSENT_EXPIRATION, value:'120', config_type:'duration', description:'testing'
+          }]} as CONFIG);
+
           payload.parameters = {
             email: 'cp2@warhen.work',
             corrections: {

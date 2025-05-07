@@ -212,7 +212,10 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     entity_name: 'The School of Hard Knocks' 
   } as Entity;
   const consenter = {
-    email: 'cp2@warhen.work', firstname: 'Elmer', middlename: 'F', lastname: 'Fudd', consented_timestamp: [ new Date().toISOString() ]
+    email: 'cp2@warhen.work', 
+    phone_number: '1234567890',
+    firstname: 'Elmer', middlename: 'F', lastname: 'Fudd', 
+    consented_timestamp: [ new Date().toISOString() ]
   } as Consenter;
 
   // Mock the entity representatives but give them real email addresses
