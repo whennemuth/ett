@@ -33,7 +33,7 @@ export class IndividualRegistrationFormEmail {
       from: `noreply@${context.ETT_DOMAIN}`, 
       message: 
         `Greetings ${consenterFullName}.<br>` +
-        `Thankyou for registering with ETT.<br>` +
+        `Thank you for registering with ETT.<br>` +
         `Please find enclosed a pdf copy of your ETT registration form.`,
       to: [ emailAddress ],
       pdfAttachments: [

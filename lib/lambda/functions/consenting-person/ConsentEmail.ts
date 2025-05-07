@@ -30,7 +30,7 @@ export class ConsentFormEmail {
       from: `noreply@${context.ETT_DOMAIN}`, 
       message:  
         `Greetings ${consenterFullName}.<br>` +
-        `Thankyou for granting consent for disclosures with ETT.<br>` +
+        `Thank you for granting consent for disclosures with ETT.<br>` +
         `Please find enclosed a pdf copy of your ETT consent form.`,
       to: [ emailAddress ],
       pdfAttachments: [

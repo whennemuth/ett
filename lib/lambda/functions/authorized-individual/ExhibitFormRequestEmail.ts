@@ -119,7 +119,7 @@ export class ExhibitFormRequestEmail {
     return sendEmail({
       subject: `ETT Exhibit Form Request`,
       to: [ consenterEmail ],
-      message: `Thankyou ${consenterFullName} for registering with the Ethical Tranparency Tool.<br>` +
+      message: `Thank you ${consenterFullName} for registering with the Ethical Tranparency Tool.<br>` +
         `${entity_name} is requesting you take the next step and fill out a current/prior contacts or "exhibit" form.<br>` +
         `<p><b>${lookbackMsg}</b></p>` +
         `<p><b>${positionsMsg}</b></p>` +
