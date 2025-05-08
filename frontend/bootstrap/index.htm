@@ -852,6 +852,18 @@
             </div>
           </div>
 
+          
+          <!---------------------------------------------------->
+          <!--              ENTITY LISTING SECTION            -->
+          <!---------------------------------------------------->
+          <div id="entity-inventory-section" class="container-fluid py-5" style="display: none">
+            <h3 class="display-7 fw-bold" style="text-align:center">Entity Inventory</h3>
+            <p name="entity-inventory" class="text-justify fs-4" style="text-align:justify;">
+              List goes here
+            </p>
+          </div>
+
+
           <!---------------------------------------------------->
           <!--                   APP SECTION                  -->
           <!---------------------------------------------------->
@@ -2346,6 +2358,8 @@
 
     let entityInfo = {};
 
+    let publicEntityInfo = { entities: []};
+
     let invitation;
 
     let consenterInfo;
@@ -2428,6 +2442,15 @@
     }
 
     const exhibitsPath = ExhibitsPath();
+
+    const EntityInventoryPath = () => {
+      const isMatch = () => {
+        return document.location.pathname.startsWith('/bootstrap/registered-entities');
+      }
+      return { isMatch };
+    }
+
+    const entityInventoryPath = EntityInventoryPath();
 
     /**
      * API operations seem to result in the hash being negated/lost. Such operations can call this function to cope.
@@ -2980,6 +3003,94 @@
       finally {
         showSection('acknowledge-entity');
       }
+    }
+
+    const fetchPublicEntityList = async (callback) => {
+      const msg = document.getElementById('apiResponse');
+      msg.innerHTML = '';
+      try {
+        const uri = STATIC_PARAMETERS.PUBLIC_ENTITY_INFO_API_URIS.find(uri => uri.endsWith('/inventory'));
+        document.body.style.cursor = 'progress';
+        const response = await fetch(uri, {
+          method: 'GET',
+          credentials: 'omit',
+          mode: 'cors',
+        });
+
+        const package = await response.json();
+        document.body.style.cursor = 'default';
+        const { message, payload } = package;
+        if(payload.ok) {
+          publicEntityInfo.entities = payload.inventory;
+          callback();
+        }
+        else {
+          msg.innerHTML = `<pre>${message}</pre>`;
+        }
+      }
+      catch(e) {
+        msg.innerHTML = `<pre>${JSON.stringify(e, Object.getOwnPropertyNames(e), 2)}</pre>`;
+        return null;
+      }
+    }
+
+    const renderPublicEntityList = (entities=publicEntityInfo.entities) => {
+      const container = document.querySelector('p[name="entity-inventory"]');
+
+      // Clear the container
+      container.innerHTML = '';
+
+      // Create a table element
+      const table = document.createElement('table');
+      table.className = 'table table-striped table-bordered';
+      table.style.width = '100%';
+      table.style.border = '1px solid black';
+      table.style.borderCollapse = 'collapse';
+      table.style.marginTop = '20px';
+      table.style.fontSize = 'large';
+      table.style.fontFamily = 'Arial, sans-serif';
+      table.style.textAlign = 'left';
+      table.style.backgroundColor = '#f8f9fa';
+      table.style.color = '#212529';
+      table.style.borderRadius = '5px';
+      table.style.overflow = 'auto';
+
+      // Create the table header
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      const headers = [ 'Entity Name', 'Description', 'Registered on' ];
+      headers.forEach(headerText => {
+        const th = document.createElement('th');
+        th.textContent = headerText;
+        th.style.border = '1px solid black';
+        th.style.padding = '8px';
+        th.style.backgroundColor = '#007bff';
+        th.style.color = 'white';
+        th.style.textAlign = 'center';
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      // Create the table body
+      const tbody = document.createElement('tbody');
+      entities.forEach(entity => {
+        const row = document.createElement('tr');
+        const { entity_name, description, registered_timestamp } = entity ?? {};
+        const cells = [ entity_name, description, (new Date(registered_timestamp)).toLocaleString() ];
+        cells.forEach(cellText => {
+          const td = document.createElement('td');
+          td.textContent = cellText;
+          td.style.border = '1px solid black';
+          td.style.padding = '8px';
+          row.appendChild(td);
+        });
+        tbody.appendChild(row);
+      });
+      table.appendChild(tbody);
+
+      // Add the table to the container
+      container.appendChild(table);
     }
 
     /**
@@ -6381,7 +6492,15 @@
     }
 
     // Define the different sections of the page and a function to switch between them
-    const sections = [ 'auth', 'app', 'acknowledge-entity', 'acknowledge-consenter', 'register-entity', 'register-consenter' ];
+    const sections = [ 
+      'auth', 
+      'app', 
+      'acknowledge-entity', 
+      'acknowledge-consenter', 
+      'register-entity', 
+      'register-consenter',
+      'entity-inventory'
+    ];
     const showSection = (sectionToShow) => {
       sections.forEach(section => {
         document.getElementById(`${section}-section`).style.display = sectionToShow == section ? 'block' : 'none';
@@ -7002,6 +7121,20 @@
           showSection(action);
           break;
 
+        case 'entity-inventory':
+          if(localTesting()) {
+            renderPublicEntityList([
+              { entity_name: 'The School of Rock', description: 'Prep school for budding rock stars', registered_timestamp: '2025-04-20T16:52:33.088Z' },
+              { entity_name: 'The School of Hard Knocks', description: 'Where you learn things the hard way', registered_timestamp: '2025-04-20T16:52:33.088Z' },
+              { entity_name: 'Starfleet Academy', description: 'Federation site for cadet training', registered_timestamp: '2025-04-20T16:52:33.088Z' },
+              { entity_name: 'The School of thought', description: 'Where one goes to cogitate existence', registered_timestamp: '2025-04-20T16:52:33.088Z' },
+              { entity_name: 'The School of General Studies', description: 'Where you go to get a rounded education', registered_timestamp: '' },
+              { entity_name: 'Hogwarts', description: 'School for magicians and sorcerers', registered_timestamp: '' },
+            ]);
+          }
+          showSection('entity-inventory');
+          break;
+
         case 'login':
           await exchangeAuthorizationCode(checkAuth);
           // Build a redirect url back to the root url and path (minus querystring) to shed the action, 
@@ -7040,7 +7173,18 @@
           break;
 
         default:
-          await checkAuth();
+          if(entityInventoryPath.isMatch()) {
+            if( publicEntityInfo.entities.length == 0) {
+              await fetchPublicEntityList(renderPublicEntityList);
+            }
+            else {
+              renderPublicEntityList(publicEntityInfo.entities);
+            }
+            showSection('entity-inventory');
+          }
+          else {
+            await checkAuth();
+          }
           break;
       }
     };

@@ -10,7 +10,8 @@ import { EntityInfo, UserInfo } from "../../functions/signup/EntityLookup";
 
 export type RegistrationFormEntityData = UserInfo & { 
   termsHref?:string,
-  loginHref?:string 
+  dashboardHref?:string,
+  privacyHref?:string
 }
 
 export type RegistrationFormEntityDrawParms = {
@@ -31,15 +32,15 @@ export class RegistrationFormEntity extends PdfForm implements IPdfForm {
     this.embeddedFonts = new EmbeddedFonts(this.doc);
     this.form = this.doc.getForm();
 
-    let { doc, form, embeddedFonts, data, data: { create_timestamp, loginHref, termsHref } } = this;
+    let { doc, form, embeddedFonts, data, data: { create_timestamp, dashboardHref, termsHref } } = this;
     termsHref = termsHref ?? '[ ETT terms web address ]';
-    loginHref = loginHref ?? '[ ETT login web address ]';
+    dashboardHref = dashboardHref ?? '[ ETT login web address ]';
 
     await new RegistrationFormEntityPage1(data).draw({ doc, form, embeddedFonts });
 
     await new RegistrationFormEntityPage2().draw({ doc, form, embeddedFonts });
 
-    await new RegistrationFormEntityPage3(termsHref, loginHref, create_timestamp!).draw({ doc, form, embeddedFonts });
+    await new RegistrationFormEntityPage3(termsHref, dashboardHref, create_timestamp!).draw({ doc, form, embeddedFonts });
 
     const pdfBytes = await this.doc.save();
     return pdfBytes;
@@ -118,8 +119,9 @@ export const getSampleData = ():RegistrationFormEntityData => {
       update_timestamp: today,
       entity_id: '12345',
     } as EntityInfo,
-    loginHref: 'https://www.example.com/login',
-    termsHref: 'https://www.example.com/terms'
+    dashboardHref: 'https://www.example.com/login',
+    termsHref: 'https://www.example.com/terms',
+    privacyHref: 'https://www.example.com/privacy',
   } as RegistrationFormEntityData
 }
 

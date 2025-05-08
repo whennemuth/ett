@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { App, CfnOutput, RemovalPolicy, StackProps, Tags } from 'aws-cdk-lib';
 import { BlockPublicAccess, Bucket } from 'aws-cdk-lib/aws-s3';
-import { BuildOptions, build } from 'esbuild';
+import { build, BuildOptions } from 'esbuild';
 import 'source-map-support/register';
 import { IContext } from '../contexts/IContext';
 import * as ctx from '../contexts/context.json';
@@ -11,13 +11,13 @@ import { CloudfrontConstruct, CloudfrontConstructProps } from '../lib/Cloudfront
 import { CognitoConstruct, CognitoConstructParms } from '../lib/Cognito';
 import { DelayedExecutionLambdaParms, DelayedExecutionLambdas, DelayedExecutions } from '../lib/DelayedExecution';
 import { DynamoDbConstruct } from '../lib/DynamoDb';
+import { PublicApiConstruct, PublicApiConstructParms, PUBLIC_API_ROOT_URL_ENV_VAR } from '../lib/PublicApi';
 import { SignupApiConstruct, SignupApiConstructParms } from '../lib/SignupApi';
 import { StaticSiteConstructParms } from '../lib/StaticSite';
 import { StaticSiteBootstrapConstruct } from '../lib/StaticSiteBootstrap';
 import { StaticSiteWebsiteConstruct } from '../lib/StaticSiteWebsite';
 import { roleFullName, Roles } from '../lib/lambda/_lib/dao/entity';
 import { ViewerRequestParametersConstruct } from '../lib/lambda/functions/cloudfront/ViewerRequestParameters';
-import { PublicApiConstruct, PublicApiConstructParms } from '../lib/PublicApi';
 
 const context:IContext = <IContext>ctx;
 export const StackDescription = 'Ethical transparency tool';
@@ -93,11 +93,18 @@ const buildAll = () => {
   // Set up the dynamodb table for users.
   const dynamodb = new DynamoDbConstruct(stack, 'Dynamodb');
 
+  // Create the api for the public pdf forms download
+  const publicApi = new PublicApiConstruct(stack, 'PublicApi', {
+    cloudfrontDomain: cloudfront.getDistributionDomainName(),
+    dynamodb
+  } as PublicApiConstructParms);
+
   // Create all the delayed execution lambda functions
   const delayedExecutionLambdas = new DelayedExecutionLambdas(stack, 'DelayedExecution', {
     cloudfrontDomain: cloudfront.getDistributionDomainName(),
     exhibitFormsBucket,
-    userPoolId:cognito.getUserPool().userPoolId
+    userPoolId:cognito.getUserPool().userPoolId,
+    publicApiDomainNameEnvVar: { name:PUBLIC_API_ROOT_URL_ENV_VAR, value: publicApi.url },
   } as DelayedExecutionLambdaParms);
 
   // Set up the public api register endpoints for "pre-signup" that are called before any cognito signup occurs.
@@ -121,18 +128,13 @@ const buildAll = () => {
     disclosureRequestReminderLambdaArn: delayedExecutionLambdas.disclosureRequestReminderLambda.functionArn,
     bucketExhibitFormPurgeLambdaArn: delayedExecutionLambdas.bucketExhibitFormPurgeLambda.functionArn,
     handleStaleEntityVacancyLambdaArn: delayedExecutionLambdas.handleStaleEntityVacancyLambda.functionArn,
-    removeStaleInvitations: delayedExecutionLambdas.removeStaleInvitationsLambda.functionArn
+    removeStaleInvitations: delayedExecutionLambdas.removeStaleInvitationsLambda.functionArn,
+    publicApiDomainNameEnvVar: { name:PUBLIC_API_ROOT_URL_ENV_VAR, value: publicApi.url }
   } as ApiConstructParms);
 
   // Grant the apis the necessary permissions (policy actions).
   api.grantPermissionsTo(dynamodb, cognito, exhibitFormsBucket);
   signupApi.grantPermissionsTo(dynamodb);
-
-  // Create the api for the public pdf forms download
-  const publicApi = new PublicApiConstruct(stack, 'PublicApi', {
-    cloudfrontDomain: cloudfront.getDistributionDomainName(),
-    dynamodb
-  } as PublicApiConstructParms);
 
   const getStaticSiteParameters = (bucket:Bucket): StaticSiteConstructParms => {
     return {
@@ -144,6 +146,7 @@ const buildAll = () => {
       registerEntityApiUri: signupApi.registerEntityApiUri,
       registerConsenterApiUri: signupApi.registerConsenterApiUri,
       publicFormDownloadUris: publicApi.publicFormsDownloadApiUris,
+      publicEntityInfoApiUris: publicApi.publicEntityInfoApiUris,
       apis: [ 
         api.helloWorldApi.getApi(), 
         api.sysAdminApi.getApi(), 

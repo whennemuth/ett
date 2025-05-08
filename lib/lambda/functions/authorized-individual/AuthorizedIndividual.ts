@@ -102,8 +102,8 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           return await invitablePerson.invite();
            
         case Task.SEND_REGISTRATION:
-          var { email, role, termsHref, loginHref } = parameters;
-          return await sendEntityRegistrationForm( { email, role, termsHref, loginHref });
+          var { email, role, termsHref, dashboardHref, privacyHref } = parameters;
+          return await sendEntityRegistrationForm( { email, role, termsHref, dashboardHref, privacyHref });
              
         case Task.RETRACT_INVITATION:
           return await retractInvitation(parameters.code);

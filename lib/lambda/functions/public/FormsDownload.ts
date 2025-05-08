@@ -1,7 +1,7 @@
 import * as ctx from '../../../../contexts/context.json';
 import { IContext } from "../../../../contexts/IContext";
-import { PublicApiConstruct } from "../../../PublicApi";
-import { LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
+import { PUBLIC_API_ROOT_URL_ENV_VAR } from '../../../PublicApi';
+import { Actions } from "../../../role/AbstractRole";
 import { Consenter } from '../../_lib/dao/entity';
 import { ConsentForm, getBlankData as getBlankConsentData } from '../../_lib/pdf/ConsentForm';
 import { DisclosureForm, getBlankData as getBlankDisclosureData } from '../../_lib/pdf/DisclosureForm';
@@ -14,8 +14,8 @@ import { ExhibitFormSingleOther } from "../../_lib/pdf/ExhibitFormSingleOther";
 import { IPdfForm } from "../../_lib/pdf/PdfForm";
 import { getBlankData as getBlankRegistrationData, RegistrationFormEntity, RegistrationFormEntityData } from "../../_lib/pdf/RegistrationFormEntity";
 import { RegistrationFormIndividual } from '../../_lib/pdf/RegistrationFormIndividual';
-import { debugLog, error, errorResponse, invalidResponse, okPdfResponse } from "../../Utils";
 import { consentFormUrl } from '../consenting-person/ConsentingPersonUtils';
+import { IndividualRegistrationFormData } from '../consenting-person/RegistrationEmail';
 
 export enum FormName {
   REGISTRATION_FORM_ENTITY = 'registration-form-entity',
@@ -30,44 +30,78 @@ export enum FormName {
   DISCLOSURE_FORM = 'disclosure-form',
 }
 
-export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> => {
+/**
+ * Get the public url of the api gateway endpoint that serves up the bytes streams for downloadable pdf forms.
+ * @param formName 
+ * @returns 
+ */
+export const getPublicFormApiUrl = (formName:FormName, apiDomainName?:string):string => {
+  let root = apiDomainName || process.env[PUBLIC_API_ROOT_URL_ENV_VAR] || '';
+  if( ! root.startsWith('https://') ) {
+    root = `https://${root}`;
+  }
+  const host = new URL(root).host;
+  if( ! host ) {
+    throw new Error(`Bad Request: unable to determine api domain name from ${root}`);
+  }
 
-  try {
-    debugLog(event);
+  // Rebuild the full api gateway endpoint url for the public forms download endpoint from its host name.
+  // https://<host>/<landscape>/public/forms/download/<form_name>
+  const context:IContext = <IContext>ctx;
+  const url = new URL('', `https://${host}`);
+  const addResource = (resource:string) => url.pathname += url.pathname.endsWith('/') ? resource : `/${resource}`;
+  addResource(context.TAGS.Landscape);
+  addResource(Actions.public);
+  addResource('forms');
+  addResource('download');
+  addResource(formName);
+  return url.toString(); 
+}
 
-    const { FORM_NAME_PATH_PARAM: pathParm} = PublicApiConstruct;
-    const { [pathParm]:formName } = event.pathParameters;
+/**
+ * Handler for the public API to download a form.
+ * @param event 
+ * @returns 
+ */
+export class Downloader {
+  private formName:FormName;
+  private apiDomainName:string;
+
+  constructor(formName:string, apiDomainName:string) {
+    this.formName = formName as FormName;
+    this.apiDomainName = apiDomainName;
+  }
+
+  public getBytes = async ():Promise<Uint8Array> => {
     const context:IContext = <IContext>ctx;
-
-    if( ! formName ) {
-      return invalidResponse(`Bad Request: ${pathParm} not specified (${Object.values(formName).join('|')})`);
-    }
-    if( ! Object.values<string>(FormName).includes(formName || '')) {
-      return invalidResponse(`Bad Request: invalid form name specified (${Object.values(FormName).join('|')})`);
-    }
-
+    const { formName, apiDomainName } = this;
     let form: IPdfForm | undefined;
-    let bytes:Uint8Array;
+
     switch(formName as FormName) {
       
       case FormName.REGISTRATION_FORM_ENTITY:
         const blankRegData = getBlankRegistrationData() as RegistrationFormEntityData;
-        blankRegData.loginHref = `https://${process.env.CLOUDFRONT_DOMAIN}`;
+        blankRegData.dashboardHref = `https://${process.env.CLOUDFRONT_DOMAIN}`;
         blankRegData.termsHref = `https://${process.env.CLOUDFRONT_DOMAIN}${context.TERMS_OF_USE_PATH}`;
+        blankRegData.privacyHref = `https://${process.env.CLOUDFRONT_DOMAIN}${context.PRIVACY_POLICY_PATH}`;
         form = new RegistrationFormEntity(blankRegData);
         break;
 
       case FormName.REGISTRATION_FORM_INDIVIDUAL:
-        form = new RegistrationFormIndividual(
-          {} as Consenter, 
-          `https://${process.env.CLOUDFRONT_DOMAIN}${context.CONSENTING_PERSON_PATH}`
-        );
+        form = new RegistrationFormIndividual({
+          consenter: {} as Consenter, 
+          dashboardHref: `https://${process.env.CLOUDFRONT_DOMAIN}${context.CONSENTING_PERSON_PATH}`,
+          privacyHref: `https://${process.env.CLOUDFRONT_DOMAIN}${context.PRIVACY_POLICY_PATH}`,
+        } as IndividualRegistrationFormData);
         break;
 
       case FormName.CONSENT_FORM:
         const blankConsentData = getBlankConsentData();
         blankConsentData.privacyHref = `https://${process.env.CLOUDFRONT_DOMAIN}${context.PRIVACY_POLICY_PATH}`;
         blankConsentData.dashboardHref = `https://${process.env.CLOUDFRONT_DOMAIN}${context.CONSENTING_PERSON_PATH}`;
+        blankConsentData.exhibitFormLink = getPublicFormApiUrl(FormName.EXHIBIT_FORM_BOTH_FULL, apiDomainName);
+        blankConsentData.disclosureFormLink = getPublicFormApiUrl(FormName.DISCLOSURE_FORM, apiDomainName);
+        blankConsentData.entityInventoryLink = `https://${process.env.CLOUDFRONT_DOMAIN}${context.ENTITY_INVENTORY_PATH}`;
         form = new ConsentForm(blankConsentData);
         break;
 
@@ -107,14 +141,9 @@ export const handler = async(event:any):Promise<LambdaProxyIntegrationResponse> 
         break;
 
       default:
-        return invalidResponse(`Bad Request: form name ${formName} not implemented`);
+        throw new Error(`Bad Request: form name ${formName} not implemented`);
     }
 
-    bytes = await (form! as IPdfForm).getBytes();
-    return okPdfResponse(bytes, `${formName}.pdf`);
-  }
-  catch(e:any) {
-    error(e);
-    return errorResponse(e.message);
+    return (form! as IPdfForm).getBytes();
   }
 }

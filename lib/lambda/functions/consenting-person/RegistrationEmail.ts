@@ -7,7 +7,7 @@ import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { RegistrationFormIndividual } from "../../_lib/pdf/RegistrationFormIndividual";
 
 export type IndividualRegistrationFormData = ConsentFormData & {
-  loginHref?:string
+  privacyHref?:string
 }
 
 /**
@@ -22,7 +22,7 @@ export class IndividualRegistrationFormEmail {
   }
 
   public send = async (emailAddress?:string):Promise<boolean> => {
-    const { data: { consenter, consenter: { email, firstname, middlename, lastname }, loginHref }} = this;
+    const { data: { consenter, consenter: { email, firstname, middlename, lastname }, dashboardHref, privacyHref }} = this;
     const { fullName } = PdfForm;
     const consenterFullName = fullName(firstname, middlename, lastname);
     emailAddress = emailAddress ?? email;
@@ -38,7 +38,9 @@ export class IndividualRegistrationFormEmail {
       to: [ emailAddress ],
       pdfAttachments: [
         {
-          pdf: new RegistrationFormIndividual(consenter, loginHref),
+          pdf: new RegistrationFormIndividual({ 
+            consenter, dashboardHref, privacyHref 
+          } as IndividualRegistrationFormData),
           name: 'registration-form.pdf',
           description: 'registration-form.pdf'
         }
@@ -70,7 +72,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
       phone_number: '+617-222-4444', 
       create_timestamp: new Date().toISOString()
     },
-    loginHref: 'https://www.example.com/login'
+    dashboardHref: 'https://www.example.com/login',
+    privacyHref: 'https://www.example.com/privacy',
   } as IndividualRegistrationFormData;
 
   new IndividualRegistrationFormEmail(test_consenter_form_data).send()

@@ -1,9 +1,10 @@
-import { YN } from "../../_lib/dao/entity";
-import { ConsentForm, ConsentFormData } from "../../_lib/pdf/ConsentForm";
-import { PdfForm } from "../../_lib/pdf/PdfForm";
-import { sendEmail } from "../../_lib/EmailWithAttachments";
 import * as ctx from '../../../../contexts/context.json';
 import { IContext } from "../../../../contexts/IContext";
+import { YN } from "../../_lib/dao/entity";
+import { sendEmail } from "../../_lib/EmailWithAttachments";
+import { ConsentForm, ConsentFormData } from "../../_lib/pdf/ConsentForm";
+import { PdfForm } from "../../_lib/pdf/PdfForm";
+import { FormName, getPublicFormApiUrl } from "../public/FormsDownload";
 
 /**
  * This class represents an email that is issued to a recipient who has requested a copy of a consenters
@@ -35,7 +36,15 @@ export class ConsentFormEmail {
       to: [ emailAddress ],
       pdfAttachments: [
         {
-          pdf: new ConsentForm({ consenter, entityName, privacyHref, dashboardHref }),
+          pdf: new ConsentForm({ 
+            consenter, 
+            entityName, 
+            privacyHref, 
+            dashboardHref,
+            exhibitFormLink: getPublicFormApiUrl(FormName.EXHIBIT_FORM_BOTH_FULL),
+            disclosureFormLink: getPublicFormApiUrl(FormName.DISCLOSURE_FORM),
+            entityInventoryLink: `https://${process.env.CLOUDFRONT_DOMAIN}${context.ENTITY_INVENTORY_PATH}`
+          }),
           name: 'consent-form.pdf',
           description: 'consent-form.pdf'
         }

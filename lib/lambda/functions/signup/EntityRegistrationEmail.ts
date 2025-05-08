@@ -67,7 +67,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
   (async () => {
     const data = getSampleData();
     data.email = email; // override email
-    const regEmail = new EntityRegistrationEmail({ ...data, loginHref: 'https://www.example.com' });
+    const regEmail = new EntityRegistrationEmail({ ...data, dashboardHref: 'https://www.example.com', privacyHref: 'https://www.example.com/privacy' });
     await regEmail.send();
   })();
 }

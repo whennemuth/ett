@@ -1,13 +1,14 @@
-import { Construct } from "constructs";
 import { UserPool } from "aws-cdk-lib/aws-cognito";
-import { HelloWorldApi } from "./role/HelloWorld";
-import { SysAdminApi } from "./role/SysAdmin";
-import { ReAdminUserApi } from "./role/ReAdmin";
+import { Bucket } from "aws-cdk-lib/aws-s3";
+import { Construct } from "constructs";
+import { EnvVar } from "../lib/lambda/Utils";
+import { CognitoConstruct } from "./Cognito";
+import { DynamoDbConstruct } from "./DynamoDb";
 import { AuthorizedIndividualApi } from "./role/AuthorizedIndividual";
 import { ConsentingPersonApi } from "./role/ConsentingPerson";
-import { DynamoDbConstruct } from "./DynamoDb";
-import { CognitoConstruct } from "./Cognito";
-import { Bucket } from "aws-cdk-lib/aws-s3";
+import { HelloWorldApi } from "./role/HelloWorld";
+import { ReAdminUserApi } from "./role/ReAdmin";
+import { SysAdminApi } from "./role/SysAdmin";
 
 export type ApiConstructParms = {
   userPool: UserPool,
@@ -21,7 +22,8 @@ export type ApiConstructParms = {
   disclosureRequestReminderLambdaArn: string,
   bucketExhibitFormPurgeLambdaArn: string,
   handleStaleEntityVacancyLambdaArn: string,
-  removeStaleInvitations: string
+  removeStaleInvitations: string,
+  publicApiDomainNameEnvVar: EnvVar,
 }
 
 /**

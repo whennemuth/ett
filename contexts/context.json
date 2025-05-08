@@ -13,6 +13,7 @@
   "CONSENTING_PERSON_PATH": "/consenting",
   "TERMS_OF_USE_PATH": "/terms",
   "PRIVACY_POLICY_PATH": "/privacy",
+  "ENTITY_INVENTORY_PATH": "/registered-entities",
   "DEFAULT_ROOT_OBJECT": "index.html",
   "CONFIG": {
     "useDatabase": true,

@@ -6,21 +6,21 @@ import { Align, Margins, rgbPercent, VAlign } from "./lib/Utils";
 import { writeFile } from "fs/promises";
 import { Page } from "./lib/Page";
 import { Rectangle } from "./lib/Rectangle";
+import { IndividualRegistrationFormData } from "../../functions/consenting-person/RegistrationEmail";
+
 
 const blue = rgbPercent(47, 84, 150) as Color;
 const lightblue = rgbPercent(180, 198, 231) as Color;
 const red = rgbPercent(255, 0, 0);
 
 export class RegistrationFormIndividual extends PdfForm implements IPdfForm {
-  private consenter:Consenter;
+  private data:IndividualRegistrationFormData;
   private font:PDFFont;
   private boldfont:PDFFont;
-  private loginHref?:string;
 
-  constructor(consenter:Consenter, loginHref?:string) {
+  constructor(data:IndividualRegistrationFormData) {
     super();
-    this.consenter = consenter;
-    this.loginHref = loginHref;
+    this.data = data;
     this.pageMargins = { top: 35, bottom: 35, left: 40, right: 40 } as Margins;
   }
 
@@ -32,7 +32,7 @@ export class RegistrationFormIndividual extends PdfForm implements IPdfForm {
     this.embeddedFonts = new EmbeddedFonts(this.doc);
     this.form = this.doc.getForm();
 
-    const { doc, form, embeddedFonts, pageMargins, drawLogo, drawTitle, drawConsenter } = this;
+    const { doc, embeddedFonts, pageMargins, drawLogo, drawTitle, drawConsenter } = this;
 
     // Create the page
     this.page = new Page(doc.addPage(PageSizes.Letter) as PDFPage, pageMargins, embeddedFonts); 
@@ -66,7 +66,7 @@ export class RegistrationFormIndividual extends PdfForm implements IPdfForm {
    */
   private drawConsenter = async () => {
     let size = 10;
-    const { page, page: { basePage, bodyWidth }, boldfont, font, _return, getFullName, consenter, loginHref } = this;
+    const { page, page: { basePage, bodyWidth }, boldfont, font, _return, data: { consenter, dashboardHref, privacyHref } } = this;
     const { firstname='', middlename='', lastname='', email='', phone_number='', create_timestamp='' } = consenter;
 
     basePage.moveDown(16);
@@ -126,7 +126,7 @@ export class RegistrationFormIndividual extends PdfForm implements IPdfForm {
 
     await page.drawWrappedText({
       text: '<i>Registering on ETT means that you have read and agree to the ETT Privacy Notice and Privacy ' +
-        'Policy [link] and consent to inclusion of your name and contacts (as you reflect them above) on ' + 
+        `Policy: ${privacyHref}, and consent to inclusion of your name and contacts (as you reflect them above) on ` + 
         'the ETT database and in ETT-related communications made in the ETT process. The Consent Form ' +
         'provides information on how to rescind your Consent Form (consenting to disclosures). When the ' +
         'period of your Consent Form ends for all purposes—your registration will also end automatically.<i>',
@@ -145,8 +145,8 @@ export class RegistrationFormIndividual extends PdfForm implements IPdfForm {
     });
     
     let correctionMsg = `To modify your registration, or to withdraw or renew your consent, log into your account`;
-    if(loginHref) {
-      correctionMsg += ` at: <b><-1>${loginHref}</-1></b>`;
+    if(dashboardHref) {
+      correctionMsg += ` at: <b><-1>${dashboardHref}</-1></b>`;
     }
     else {
       correctionMsg += ' and access the relevant change features.';
@@ -184,13 +184,25 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/
     create_timestamp: new Date().toISOString(),
   } as Consenter;
 
-  const loginHref = `https://d227na12o3l3dd.cloudfront.net/bootstrap/index.htm?action=start-login&selected_role=${Roles.CONSENTING_PERSON}`;
+  const dashboardHref = `https://d227na12o3l3dd.cloudfront.net/bootstrap/index.htm?action=start-login&selected_role=${Roles.CONSENTING_PERSON}`;
+  const privacyHref = `https://d227na12o3l3dd.cloudfront.net/privacy`;
 
   (async () => {
     // Populated form
-    // await new RegistrationFormIndividual(consenter, loginHref).writeToDisk('./lib/lambda/_lib/pdf/RegistrationFormIndividual.pdf');
+    await new RegistrationFormIndividual({ 
+      consenter,
+      entityName: 'Warner Bros', 
+      dashboardHref, 
+      privacyHref 
+    }).writeToDisk('./lib/lambda/_lib/pdf/RegistrationFormIndividual.pdf');
 
     // Or blank form
-    await new RegistrationFormIndividual({} as Consenter, loginHref).writeToDisk('./lib/lambda/_lib/pdf/RegistrationFormIndividual.pdf');
+    // await new RegistrationFormIndividual({
+    //   consenter: {} as Consenter, 
+    //   entityName: 'Warner Bros',
+    //   dashboardHref,
+    //   privacyHref
+    // }).writeToDisk('./lib/lambda/_lib/pdf/RegistrationFormIndividual.pdf');
+
   })();
 }

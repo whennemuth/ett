@@ -14,13 +14,13 @@ const red = rgbPercent(255, 0, 0);
 export class RegistrationFormEntityPage3 extends PdfForm implements IPdfForm {
   private font:PDFFont;
   private boldfont:PDFFont;
-  private loginHref:string;
+  private dashboardHref:string;
   private termsHref:string;
   private signedDate:string
 
-  constructor(termsHref:string, loginHref:string, signedDateISOString:string=new Date().toISOString()) {
+  constructor(termsHref:string, dashboardHref:string, signedDateISOString:string=new Date().toISOString()) {
     super();
-    this.loginHref = loginHref;
+    this.dashboardHref = dashboardHref;
     this.termsHref = termsHref;
     this.pageMargins = { top: 35, bottom: 35, left: 40, right: 40 } as Margins;
     this.signedDate = new Date(signedDateISOString).toUTCString();
@@ -241,7 +241,7 @@ export class RegistrationFormEntityPage3 extends PdfForm implements IPdfForm {
   }
 
   private drawInnerBoxContent = async () => {
-    const { page, page: { basePage }, font, boldfont, _return, signedDate, loginHref } = this;
+    const { page, page: { basePage }, font, boldfont, _return, signedDate, dashboardHref } = this;
 
     _return(16);
     await page.drawCenteredText(
@@ -269,7 +269,7 @@ export class RegistrationFormEntityPage3 extends PdfForm implements IPdfForm {
 
     basePage.moveDown(8);
     await page.drawCenteredText(
-      loginHref,
+      dashboardHref,
       { font:boldfont, size:8, color:blue, lineHeight:14, }
     );
   }
@@ -312,9 +312,9 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/
 
   const outputfile = './lib/lambda/_lib/pdf/RegistrationFormEntityPage3.pdf';
   const termsHref = `https://d227na12o3l3dd.cloudfront.net/terms`;
-  const loginHref = `https://d227na12o3l3dd.cloudfront.net/bootstrap/index.htm?action=start-login&selected_role=${Roles.CONSENTING_PERSON}`;
+  const dashboardHref = `https://d227na12o3l3dd.cloudfront.net/bootstrap/index.htm?action=start-login&selected_role=${Roles.CONSENTING_PERSON}`;
   
-  new RegistrationFormEntityPage3(termsHref, loginHref, new Date().toISOString()).writeToDisk(outputfile)
+  new RegistrationFormEntityPage3(termsHref, dashboardHref, new Date().toISOString()).writeToDisk(outputfile)
     .then((bytes) => {
       console.log('done');
     })

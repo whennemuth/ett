@@ -395,6 +395,7 @@ export const scrapeUserValuesFromInvitations = async (invitationLookup:RoleInvit
   return scrapedInvitation;
 }
 
+
 /**
  * Send the registration form to the individual signing up as an attachment in an email.
  * @param consenter 
@@ -411,7 +412,12 @@ export const sendRegistrationForm = async (person:User|Consenter, role:Role, ent
         const consenter = person as Consenter;
         _email = consenter.email;
         entityName = entityName ?? 'Any entity registered with ETT';
-        response = await sendConsenterRegistrationForm(consenter, entityName);
+        response = await sendConsenterRegistrationForm({
+          consenter, 
+          entityName, 
+          dashboardHref: getDashboardHref(Roles.CONSENTING_PERSON),
+          privacyHref: getPrivacyHref(),
+        });
         break;
       default:
         // Either RE_ADMIN or RE_AUTH_IND
@@ -421,13 +427,14 @@ export const sendRegistrationForm = async (person:User|Consenter, role:Role, ent
           email, 
           role, 
           termsHref: getTermsHref(),
-          loginHref: getLoginHref(), 
+          dashboardHref: getDashboardHref(), 
+          privacyHref: getPrivacyHref(),
           /**
            * Cannot set a role-specific url since the registration form pdf is being attached in one email 
            * where roles are all being cc'd togther. If each recipient got their own email separately, a 
            * role-specific pdf form could be generated for each.
            */
-          // loginHref: getLoginHref(role), 
+          // dashboardHref: getDashboardHref(role), 
           meetsPrequisite: registrationFormEmailPrerequisitesAreMet
         });
         break;
@@ -448,7 +455,8 @@ export type SendEntityRegistrationFormData = {
   email:string,
   role:Role,
   termsHref?:string,
-  loginHref?:string,
+  dashboardHref?:string,
+  privacyHref?:string,
   meetsPrequisite?:(userInfo:UserInfo) => boolean
 }
 
@@ -456,12 +464,12 @@ export type SendEntityRegistrationFormData = {
  * Send an email to the user by their request a copy of their registration form.
  * @param email 
  * @param role 
- * @param loginHref Contains the url that the pdf file includes for directions to the ETT website.
+ * @param dashboardHref Contains the url that the pdf file includes for directions to the ETT website.
  * @returns 
  */
 export const sendEntityRegistrationForm = async (data:SendEntityRegistrationFormData):Promise<LambdaProxyIntegrationResponse> => {
-  const { email, role, termsHref, loginHref, meetsPrequisite } = data;
-  log({ email, role, termsHref, loginHref }, 'sendEntityRegistrationForm');
+  const { email, role, termsHref, dashboardHref, privacyHref, meetsPrequisite } = data;
+  log({ email, role, termsHref, dashboardHref, privacyHref }, 'sendEntityRegistrationForm');
   try {
     const userInfo = await lookupEntity(email, role) as UserInfo;
     if( ! userInfo.email) {
@@ -476,7 +484,7 @@ export const sendEntityRegistrationForm = async (data:SendEntityRegistrationForm
       log('Prerequisites NOT met for sending registration form');
       return okResponse('Ok');
     }
-    const regEmail = new EntityRegistrationEmail({ ...userInfo, termsHref, loginHref });
+    const regEmail = new EntityRegistrationEmail({ ...userInfo, termsHref, dashboardHref, privacyHref });
 
     await regEmail.send();
 
@@ -499,7 +507,7 @@ export const sendEntityRegistrationForm = async (data:SendEntityRegistrationForm
  * The path environment variable is named after the role of the user plus "_PATH".
  * 
  * TODO: There is currently no way to know if the user/consenter was using the bootstrap app or the 
- * standard website. So, the loginHref is currently assumed to be the standard website, and the path for the
+ * standard website. So, the dashboardHref is currently assumed to be the standard website, and the path for the
  * url nested in any pdf generated for sending out registration forms will NOT refer to a bootstrap endpoint
  * (even if the bootstrap app was used for registration). Is this limitation worth addressing?
  * 
@@ -515,7 +523,7 @@ export const sendEntityRegistrationForm = async (data:SendEntityRegistrationForm
  * @param role 
  * @returns 
  */
-export const getLoginHref = (role?:Role):string => {
+export const getDashboardHref = (role?:Role):string => {
   const { CLOUDFRONT_DOMAIN:domain } = process.env;
   const url = new URL(`https://${domain}`);
   if(role) {
@@ -528,6 +536,14 @@ export const getLoginHref = (role?:Role):string => {
 export const getTermsHref = ():string => {
   const { CLOUDFRONT_DOMAIN:domain } = process.env;
   const pathname = process.env.TERMS_OF_USE_PATH;
+  const url = new URL(`https://${domain}`);
+  url.pathname = pathname!;
+  return url.href;
+}
+
+export const getPrivacyHref = ():string => {
+  const { CLOUDFRONT_DOMAIN:domain } = process.env;
+  const pathname = process.env.PRIVACY_POLICY_PATH;
   const url = new URL(`https://${domain}`);
   url.pathname = pathname!;
   return url.href;

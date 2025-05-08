@@ -65,7 +65,8 @@ export class LambdaFunction extends AbstractFunction {
       userPool, cloudfrontDomain, landscape, exhibitFormsBucket, 
       disclosureRequestReminderLambdaArn, 
       handleStaleEntityVacancyLambdaArn,
-      removeStaleInvitations
+      removeStaleInvitations,
+      publicApiDomainNameEnvVar
     } = parms;
     const { userPoolArn, userPoolId } = userPool;
     const prefix = `${STACK_ID}-${landscape}`;
@@ -168,6 +169,7 @@ export class LambdaFunction extends AbstractFunction {
         [DelayedExecutions.DisclosureRequestReminder.targetArnEnvVarName]: disclosureRequestReminderLambdaArn,
         [DelayedExecutions.HandleStaleEntityVacancy.targetArnEnvVarName]: handleStaleEntityVacancyLambdaArn,
         [DelayedExecutions.RemoveStaleInvitations.targetArnEnvVarName]: removeStaleInvitations,
+        [publicApiDomainNameEnvVar.name]: publicApiDomainNameEnvVar.value,
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });

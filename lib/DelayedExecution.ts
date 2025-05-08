@@ -1,14 +1,16 @@
+import { Duration } from "aws-cdk-lib";
 import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { Runtime } from "aws-cdk-lib/aws-lambda";
 import { Bucket } from "aws-cdk-lib/aws-s3";
+import { ScheduleGroup } from "aws-cdk-lib/aws-scheduler";
 import { Construct } from "constructs";
 import { IContext } from "../contexts/IContext";
+import { EnvVar } from "../lib/lambda/Utils";
 import { AbstractFunction } from "./AbstractFunction";
 import { TableBaseNames } from "./DynamoDb";
 import { Configurations } from "./lambda/_lib/config/Config";
 import { ExhibitFormsBucketEnvironmentVariableName } from "./lambda/functions/consenting-person/BucketItemMetadata";
-import { Duration } from "aws-cdk-lib";
-import { ScheduleGroup } from "aws-cdk-lib/aws-scheduler";
+
 
 export type DelayedExecutionNames = {
   coreName: string, targetArnEnvVarName: string
@@ -43,7 +45,8 @@ export const DelayedExecutions = {
 export type DelayedExecutionLambdaParms = {
   cloudfrontDomain: string,
   exhibitFormsBucket: Bucket,
-  userPoolId: string
+  userPoolId: string,
+  publicApiDomainNameEnvVar: EnvVar
 }
 export class DelayedExecutionLambdas extends Construct {
   private scope:Construct;
@@ -150,7 +153,7 @@ export class DelayedExecutionLambdas extends Construct {
 
   private createDisclosureRequestReminderLambda = () => {
     const { 
-      constructId, parms: { cloudfrontDomain, exhibitFormsBucket: { bucketArn, bucketName } }, 
+      constructId, parms: { cloudfrontDomain, exhibitFormsBucket: { bucketArn, bucketName }, publicApiDomainNameEnvVar }, 
       context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID }, scheduleGroupName
     } = this;
     const baseId = `${constructId}DisclosureRequestReminder`;
@@ -227,6 +230,7 @@ export class DelayedExecutionLambdas extends Construct {
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
         PREFIX: prefix,
         [ExhibitFormsBucketEnvironmentVariableName]: bucketName,
+        [publicApiDomainNameEnvVar.name]: publicApiDomainNameEnvVar.value,
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });

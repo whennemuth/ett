@@ -1,10 +1,11 @@
 import { writeFile } from "fs/promises";
 import { Color, PDFDocument, PDFFont, PDFPage, PageSizes, StandardFonts, rgb } from "pdf-lib";
-import { ConsentFormDrawParms } from "./ConsentForm";
+import { ConsentFormData, ConsentFormDrawParms, getSampleData } from "./ConsentForm";
 import { IPdfForm, PdfForm } from "./PdfForm";
 import { EmbeddedFonts } from "./lib/EmbeddedFonts";
 import { Page } from "./lib/Page";
 import { Margins, rgbPercent } from "./lib/Utils";
+import { FormName } from "../../functions/public/FormsDownload";
 
 export const blue = rgbPercent(47, 84, 150) as Color;
 export const grey = rgb(.1, .1, .1) as Color;
@@ -12,9 +13,11 @@ export const grey = rgb(.1, .1, .1) as Color;
 export class ConsentFormPage4 extends PdfForm implements IPdfForm {
   private font:PDFFont;
   private boldfont:PDFFont;
+  private data:ConsentFormData;
 
-  constructor() {
+  constructor(data:ConsentFormData) {
     super();
+    this.data = data;
     this.pageMargins = { top: 35, bottom: 35, left: 40, right: 40 } as Margins;
   }
 
@@ -54,7 +57,12 @@ export class ConsentFormPage4 extends PdfForm implements IPdfForm {
   }
 
   private drawBody = async () => {
-    const { page, page: { basePage, drawWrappedText, drawText }, boldfont, font } = this;
+    const { data: {
+      exhibitFormLink, disclosureFormLink, entityInventoryLink
+    }, page: { basePage, drawWrappedText, drawText }, boldfont, font } = this;
+    
+    // const exhibitFormLink = getPublicFormApiUri(FormName.EXHIBIT_FORM_BOTH_FULL);
+    // const disclosureFormLink = getPublicFormApiUri(FormName.DISCLOSURE_FORM);
     const size = 11;
 
     basePage.moveDown(16);
@@ -91,12 +99,12 @@ export class ConsentFormPage4 extends PdfForm implements IPdfForm {
       '<sup>5</sup><u>Consent Recipient(s)</u> mean the entities referenced in Part B. 1, 2, 3, 4 of the ' +
       'Consent Form.  A Consent Recipient is the “Disclosing Entity” that completes a Disclosure Form when ' +
       'requested.  For up-to-date information, the person who submits a Consent Form also provides a list ' +
-      'of the names of their Consent Recipients, with contacts, using <u>Exhibit Forms</u> at this link ' +
+      `of the names of their Consent Recipients, with contacts, using <u>Exhibit Forms</u> at ${exhibitFormLink} ` +
       'each time any ETT-Registered Entity is considering the person for a Privilege or Honor, Employment ' +
       'or Role and makes a request. (The Exhibit Forms template may be amended for amplification or clarity ' +
       'over time and re-posted.)',
 
-      '<sup>6</sup>The <u>Disclosure Form</u> is the form at this link (and may be amended for amplification ' +
+      `<sup>6</sup>The <u>Disclosure Form</u> is the form at ${disclosureFormLink} (and may be amended for amplification ` +
       'or clarity over time and re-posted).  <u>Finding of Responsibility</u> is a finding of any one or more ' +
       'of the generic types of misconduct listed/referenced on the Disclosure Form.  A <u>Finding of ' +
       'Responsibility</u> is defined by the Consent Recipient that made or adopted the finding under its own ' +
@@ -105,7 +113,7 @@ export class ConsentFormPage4 extends PdfForm implements IPdfForm {
       'it checks “No Finding of Responsibility” or “Will Not Be Responding”.',
 
       '<sup>7</sup><u>ETT-Registered Entit(ies)</u> mean the entities and organizations now or in the future ' +
-      'registered to use the Ethical Transparency Tool.  See this [link] for a list, which will be updated over ' +
+      `registered to use the Ethical Transparency Tool.  See ${entityInventoryLink} for a list, which will be updated over ` +
       'time. ETT-Registered Entities are the only entities that may request completed Disclosure Forms from ' +
       'Consent Recipients.',
     ] as string[];
@@ -123,7 +131,7 @@ export class ConsentFormPage4 extends PdfForm implements IPdfForm {
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/ConsentFormPage4.ts')) {
 
-  new ConsentFormPage4().writeToDisk('./lib/lambda/_lib/pdf/consentForm4.pdf')
+  new ConsentFormPage4(getSampleData()).writeToDisk('./lib/lambda/_lib/pdf/consentForm4.pdf')
   .then((bytes) => {
     console.log('done');
   })

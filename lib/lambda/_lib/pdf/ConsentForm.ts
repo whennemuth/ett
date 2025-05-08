@@ -1,15 +1,22 @@
 import { writeFile } from "fs/promises";
-import { IPdfForm, PdfForm } from "./PdfForm";
 import { PDFDocument, PDFForm } from "pdf-lib";
-import { EmbeddedFonts } from "./lib/EmbeddedFonts";
 import { Consenter, YN } from "../dao/entity";
 import { ConsentFormPage1 } from "./ConsentFormPage1";
 import { ConsentFormPage2 } from "./ConsentFormPage2";
 import { ConsentFormPage3 } from "./ConsentFormPage3";
 import { ConsentFormPage4 } from "./ConsentFormPage4";
+import { EmbeddedFonts } from "./lib/EmbeddedFonts";
+import { IPdfForm, PdfForm } from "./PdfForm";
+import { FormName } from "../../functions/public/FormsDownload";
 
 export type ConsentFormData = {
-  entityName:string, consenter:Consenter, privacyHref?:string, dashboardHref?:string
+  entityName:string, 
+  consenter:Consenter, 
+  privacyHref?:string, 
+  dashboardHref?:string,
+  exhibitFormLink?:string,
+  disclosureFormLink?:string, 
+  entityInventoryLink?:string
 };
 export type ConsentFormDrawParms = {
   doc:PDFDocument, form:PDFForm, embeddedFonts:EmbeddedFonts
@@ -40,7 +47,7 @@ export class ConsentForm extends PdfForm implements IPdfForm {
 
     await new ConsentFormPage3(data).draw({ doc, form, embeddedFonts });
 
-    await new ConsentFormPage4().draw({ doc, form, embeddedFonts });
+    await new ConsentFormPage4(data).draw({ doc, form, embeddedFonts });
 
     const pdfBytes = await this.doc.save();
     return pdfBytes;
@@ -56,15 +63,21 @@ export const getBlankData = ():ConsentFormData => {
     entityName: '[ Name of Entity ]',
     consenter: {  email:'', firstname:'', middlename:'', lastname:'', phone_number:'', active:YN.Yes },
     privacyHref: `https://ett-domain-TBD.com/privacy`,
-    dashboardHref: `https://ett-domain-TBD.com/consenting`
+    dashboardHref: `https://ett-domain-TBD.com/consenting`,
+    entityInventoryLink: 'https://ett-domain-TBD.com/public/entity/inventory',
+    exhibitFormLink: 'https://ett-domain-TBD.com/public/forms/download/' + FormName.EXHIBIT_FORM_BOTH_FULL,
+    disclosureFormLink: 'https://ett-domain-TBD.com/public/forms/download/' + FormName.DISCLOSURE_FORM,
   } as ConsentFormData;
 }
 
 export const getSampleData = ():ConsentFormData => {
   return {
     entityName: 'Boston University',
-    privacyHref: `https://ett-domain-TBD.com/privacy`,
-    dashboardHref: `https://ett-domain-TBD.com/consenting`,
+    privacyHref: `https://ett-domain.com/privacy`,
+    dashboardHref: `https://ett-domain.com/consenting`,
+    entityInventoryLink: 'https://ett-domain.com/public/entity/inventory',
+    exhibitFormLink: 'https://ett-domain.com/public/forms/download/' + FormName.EXHIBIT_FORM_BOTH_FULL,
+    disclosureFormLink: 'https://ett-domain.com/public/forms/download/' + FormName.DISCLOSURE_FORM,
     consenter: { 
       email: 'bugsbunny@warnerbros.com', firstname: 'Bugs', middlename: 'B', lastname: 'Bunny',
       phone_number: '617-333-5555', consented_timestamp: [ new Date().toISOString() ], active: YN.Yes

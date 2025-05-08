@@ -2,7 +2,7 @@ import * as ctx from '../../../../contexts/context.json';
 import { IContext } from "../../../../contexts/IContext";
 import { DAOFactory } from "../../_lib/dao/dao";
 import { UserCrud } from '../../_lib/dao/dao-user';
-import { Consenter, Delegate, Entity, ExhibitFormConstraints, ExhibitForm as ExhibitFormData, Role, Roles, User, YN } from "../../_lib/dao/entity";
+import { Consenter, Entity, ExhibitFormConstraints, ExhibitForm as ExhibitFormData, Roles, User, YN } from "../../_lib/dao/entity";
 import { EmailParms, sendEmail } from "../../_lib/EmailWithAttachments";
 import { ConsentForm, ConsentFormData } from "../../_lib/pdf/ConsentForm";
 import { DisclosureForm, DisclosureFormData } from "../../_lib/pdf/DisclosureForm";
@@ -18,6 +18,7 @@ import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
 import { BucketItemMetadata } from "../consenting-person/BucketItemMetadata";
 import { consentFormUrl } from '../consenting-person/ConsentingPersonUtils';
 import { BucketCorrectionForm } from '../consenting-person/correction/BucketItemCorrectionForm';
+import { FormName, getPublicFormApiUrl } from '../public/FormsDownload';
 import { abrahamlincoln, alberteinstein, bingcrosby, bugsbunny, elvispresley } from "./MockObjects";
 
 
@@ -126,47 +127,51 @@ export class BasicDisclosureRequest {
 export class RecipientListGenerator {
   private entity_id: string;
   private affiliateEmail: string | undefined;
+  private consenterEmail: string;
   private emailType: string;
 
   /**
    * @param disclosureEmailParms The parameters for identifying the disclosure form in the bucket
    */
   constructor(disclosureEmailParms:DisclosureEmailParms) {
-    const { s3ObjectKeyForDisclosureForm, s3ObjectKeyForExhibitForm, emailType } = disclosureEmailParms;
+    const { s3ObjectKeyForDisclosureForm, s3ObjectKeyForExhibitForm, emailType, consenterEmail } = disclosureEmailParms;
     const dfMetadata = BucketItemMetadata.fromBucketObjectKey(s3ObjectKeyForDisclosureForm);
     const efMetadata = BucketItemMetadata.fromBucketObjectKey(s3ObjectKeyForExhibitForm);
     this.entity_id = dfMetadata?.entityId ?? efMetadata?.entityId;
     this.affiliateEmail = dfMetadata?.affiliateEmail ?? efMetadata?.affiliateEmail;
+    this.consenterEmail = consenterEmail;
     this.emailType = emailType ?? 'request';
   }
 
   public generate = async ():Promise<Recipients> => {
-    const { entity_id, affiliateEmail, emailType } = this;
+    const { entity_id, affiliateEmail, consenterEmail, emailType } = this;
+    
     // Get all users for the entity
     const users = (await UserCrud({ userinfo: { entity_id } as User }).read() as User[])
       .filter(user => user.active == YN.Yes);
 
-    // Construct a recipient list for the disclosure request email
-    const emailMapper = (user:User, role:Role):string|undefined => {
-      if(user.role == role && user.active == YN.Yes) {
-        const { email, delegate={} as Delegate } = user;
-        if(delegate.email) {
-          return delegate.email;
-        }
-        return email;
-      }
-      return undefined;
-    }
+    const cc = [] as string[];
+    const bcc = [] as string[];
+
+    // Add the authorized individuals to the cc list
+    cc.push(...users.filter(user => user.role == Roles.RE_AUTH_IND).map(user => user.email));
+
+    // Add any delegates of the authorized individuals to the cc list
+    cc.push(...users
+      .filter(user => user.role == Roles.RE_AUTH_IND)
+      .map(user => user?.delegate?.email || 'undefined')
+      .filter(email => email != 'undefined')
+    );
+
+    // Add the consenter to the cc list
+    cc.push(consenterEmail);
+
+    // Add the ASP to the bcc list
+    bcc.push(...users.filter(user => user.role == Roles.RE_ADMIN).map(user => user.email));
 
     switch(emailType) {
-      case 'reminder':
-        return { to: [ affiliateEmail ] } as Recipients
-      case 'request': default:
-        return {
-          to: [ affiliateEmail ],
-          cc: users.map(user => emailMapper(user, Roles.RE_AUTH_IND)).filter(email => email != undefined),
-          bcc: users.map(user => emailMapper(user, Roles.RE_ADMIN)).filter(email => email != undefined)
-        } as Recipients
+      case 'reminder': case 'request': default:
+        return { to: [ affiliateEmail ], cc, bcc } as Recipients
     }
   }
 }
@@ -280,7 +285,16 @@ const send = async (parms:EmailParameters):Promise<boolean> => {
       description: 'exhibit-form-single.pdf'
     },
     {
-      pdf: new ConsentForm({ consenter: consenter as Consenter, entityName: entity_name, privacyHref, dashboardHref } as ConsentFormData),
+      pdf: new ConsentForm({ 
+        consenter: consenter as Consenter, 
+        entityName: 
+        entity_name, 
+        privacyHref, 
+        dashboardHref,
+        exhibitFormLink: getPublicFormApiUrl(FormName.EXHIBIT_FORM_BOTH_FULL),
+        disclosureFormLink: getPublicFormApiUrl(FormName.DISCLOSURE_FORM),
+        entityInventoryLink: `https://${process.env.CLOUDFRONT_DOMAIN}${context.ENTITY_INVENTORY_PATH}`
+      } as ConsentFormData),
       name: 'consent-form.pdf',
       description: 'consent-form.pdf',
     }

@@ -17,6 +17,7 @@ export interface IContext {
   CONSENTING_PERSON_PATH:string;
   TERMS_OF_USE_PATH:string;
   PRIVACY_POLICY_PATH:string;
+  ENTITY_INVENTORY_PATH:string;
   DEFAULT_ROOT_OBJECT:string;
   CONFIG: CONFIG;
   TAGS:     Tags;

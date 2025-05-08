@@ -276,16 +276,18 @@ export const sendConsent = async (consenter:Consenter, entityName?:string): Prom
  * @param email 
  * @returns 
  */
-export const sendConsenterRegistrationForm = async (consenterInfo:Consenter, entityName:string, loginHref?:string): Promise<LambdaProxyIntegrationResponse> => {
-  const email = consenterInfo.email.toLowerCase();;
-  const consenter = await ConsenterCrud({ consenterInfo }).read() as Consenter;
+export const sendConsenterRegistrationForm = async (data:IndividualRegistrationFormData): Promise<LambdaProxyIntegrationResponse> => {
+  let { consenter, consenter: { email }, entityName, dashboardHref, privacyHref } = data;
+  email = email.toLowerCase();
+  consenter.email = email;
+  consenter = await ConsenterCrud({ consenterInfo:consenter }).read() as Consenter;
   if( ! consenter) {
     return errorResponse(`Cannot send registration form to ${email}: Consenter not found`);
   }
   log(`Sending registration forms to ${email}`);
   return sendForm(consenter, async (consenterInfo:ConsenterInfo) => {
     await new IndividualRegistrationFormEmail({ 
-      consenter:consenterInfo.consenter, entityName, loginHref 
+      consenter, entityName, dashboardHref, privacyHref 
     } as IndividualRegistrationFormData).send(email);
   });
 };

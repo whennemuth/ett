@@ -62,7 +62,8 @@ export class LambdaFunction extends AbstractFunction {
     const context:IContext = scope.node.getContext('stack-parms');
     const { ACCOUNT, REGION, CONFIG, STACK_ID } = context;
     const { userPool, cloudfrontDomain, landscape, exhibitFormsBucket, 
-      databaseExhibitFormPurgeLambdaArn, disclosureRequestReminderLambdaArn, bucketExhibitFormPurgeLambdaArn 
+      databaseExhibitFormPurgeLambdaArn, disclosureRequestReminderLambdaArn, bucketExhibitFormPurgeLambdaArn,
+      publicApiDomainNameEnvVar
     } = parms;
     const { userPoolArn, userPoolId } = userPool;
     const prefix = `${STACK_ID}-${landscape}`;
@@ -164,6 +165,7 @@ export class LambdaFunction extends AbstractFunction {
         [DelayedExecutions.ExhibitFormDbPurge.targetArnEnvVarName]: databaseExhibitFormPurgeLambdaArn,
         [DelayedExecutions.ExhibitFormBucketPurge.targetArnEnvVarName]: bucketExhibitFormPurgeLambdaArn,
         [DelayedExecutions.DisclosureRequestReminder.targetArnEnvVarName]: disclosureRequestReminderLambdaArn,
+        [publicApiDomainNameEnvVar.name]: publicApiDomainNameEnvVar.value,
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
     });

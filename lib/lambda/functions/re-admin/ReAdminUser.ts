@@ -70,8 +70,8 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
         case Task.RETRACT_INVITATION:
           return await retractInvitation(parameters.code);
         case Task.SEND_REGISTRATION:
-          var { email, role, termsHref, loginHref } = parameters;
-          return await sendEntityRegistrationForm({ email, role, termsHref, loginHref, meetsPrequisite: registrationFormEmailPrerequisitesAreMet });
+          var { email, role, termsHref, dashboardHref, privacyHref } = parameters;
+          return await sendEntityRegistrationForm({ email, role, termsHref, dashboardHref, privacyHref, meetsPrequisite: registrationFormEmailPrerequisitesAreMet });
         case Task.CORRECTION:
           return await correctUser(parameters);
         case Task.PING:
@@ -506,7 +506,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
             email: 'auth4.random.edu@warhen.work',
             role: Roles.RE_AUTH_IND,
             termsHref: `https://${cloudfrontDomain}/terms`,
-            loginHref: `https://${cloudfrontDomain}/login`
+            dashboardHref: `https://${cloudfrontDomain}/login`
           }
         } as IncomingPayload;
         _event = {

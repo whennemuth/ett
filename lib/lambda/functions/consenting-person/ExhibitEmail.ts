@@ -10,7 +10,7 @@ import { ExhibitFormSingleBoth } from '../../_lib/pdf/ExhibitFormSingleBoth';
 import { ExhibitFormSingleCurrent } from '../../_lib/pdf/ExhibitFormSingleCurrent';
 import { ExhibitFormSingleOther } from '../../_lib/pdf/ExhibitFormSingleOther';
 import { IPdfForm, PdfForm } from "../../_lib/pdf/PdfForm";
-import { FormName } from '../forms/Download';
+import { FormName } from '../public/FormsDownload';
 
 export type ExhibitEmailOverrides = {
   subject?:string;

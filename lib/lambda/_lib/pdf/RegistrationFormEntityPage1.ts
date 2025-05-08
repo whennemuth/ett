@@ -211,14 +211,14 @@ export class RegistrationFormEntityPage1 extends PdfForm implements IPdfForm {
   }
 
   private drawDisclaimerPart1 = async () => {
-    const { page, boldfont, _return } = this;
+    const { page, boldfont, data: { privacyHref }, _return } = this;
     const size = 10;
     _return(16);
     const text = 
       `<i>Your organization’s representatives are its above-listed ${roleFullName(Roles.RE_ADMIN)}` +
       `and its ${roleFullName(Roles.RE_AUTH_IND)}s, who are also the contacts for responses to Disclosure Requests. ` +
       'Registering your organization to use ETT also means that in your official and personal capacities you ' +
-      'have read and agree to the ETT Privacy Notice and Privacy Policy [link] and consent on your own and ' +
+      `have read and agree to the ETT Privacy Notice and Privacy Policy: ${privacyHref}, and consent on your own and ` +
       'your organization’s behalf to inclusion of your organization’s name, with or without its ' +
       'representative(s) name and contact information (as reflected above) on the ETT database and in ' +
       'ETT-related communications, factually stating that your organization is or was registered to use ' +

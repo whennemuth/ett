@@ -9,6 +9,8 @@ import { DAOEntity, DAOFactory, DAOUser } from "./_lib/dao/dao";
 import { Entity, Invitation, User, YN } from "./_lib/dao/entity";
 import assert = require("assert");
 
+export type EnvVar = { name:string, value:string };
+
 /**
  * https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-output-format
  * https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-cors.html#apigateway-enable-cors-proxy
