@@ -1,4 +1,4 @@
-import { DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, QueryCommand, QueryCommandInput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
+import { DeleteItemCommand, DeleteItemCommandInput, DeleteItemCommandOutput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, QueryCommand, QueryCommandInput, ScanCommand, ScanInput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
 import { DynamoDbConstruct, IndexBaseNames, TableBaseNames } from '../../../DynamoDb';
 import { DAOEntity, ReadParms } from './dao';
@@ -83,7 +83,8 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
       return await _queryActive(active, readParms) as Entity[];
     }
     else {
-      return await _queryAll(readParms) as Entity[];
+      return await _scan(readParms) as Entity[];
+      // return await _queryAll(readParms) as Entity[];
     }
   }
 
@@ -123,6 +124,18 @@ export function EntityCrud(entityInfo:Entity, _dryRun:boolean=false): DAOEntity 
     const inactive = await _queryActive(YN.No);
     all.push(...inactive);
     return all;
+  }
+
+  const _scan = async (readParms?:ReadParms):Promise<Entity[]> => {
+    console.log(`Scanning entity table`);   
+    const command = new ScanCommand({ TableName } as ScanInput);
+    const retval = await sendCommand(command);
+    const entities = [] as Entity[];
+    const { convertDates } = (readParms ?? {});
+    for(const item in retval.Items) {
+      entities.push(await loadEntity(retval.Items[item], convertDates ?? true));
+    }
+    return entities;
   }
 
   /**
