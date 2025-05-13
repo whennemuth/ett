@@ -62,8 +62,8 @@ export const handler = async (event:ScheduledLambdaInput, context:any) => {
  * @param s3ObjectKey 
  * @returns 
  */
-export const checkAbort = async (s3ObjectKey:string):Promise<boolean> => {
-  return new TagInspector(Tags.DISCLOSED).tagExistsAmong(s3ObjectKey, ItemType.EXHIBIT);
+export const checkAbort = async (s3ObjectKey:string, itemType:ItemType):Promise<boolean> => {
+  return new TagInspector(Tags.DISCLOSED).tagExistsAmong(s3ObjectKey, itemType);
 }
 
 /**
@@ -105,7 +105,7 @@ export const checkConsenterCorrectionForms = async (s3ObjectKeyForExhibitForm:st
  */
 export const purgeFormFromBucket = async (itemType:ItemType, Key:string, checkAbort?:Function):Promise<boolean> => {
   if(checkAbort) {
-    const abort = await checkAbort(Key) as boolean;
+    const abort = await checkAbort(Key, itemType) as boolean;
     if(abort) {
       console.log(`Aborting purge of pdf from s3: ${Key}`);
       return false;
@@ -152,7 +152,7 @@ const validateLambdaInput = (lambdaInput:DisclosureItemsParms):void => {
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/delayed-execution/PurgeExhibitFormFromBucket.ts')) {
 
-  const task = 'immediate' as 'immediate'|'scheduled';
+  const task = 'existing' as 'test-immediate' | 'test-scheduled' | 'existing';
   const { MINUTES } = PeriodType;
   const { EXHIBIT, DISCLOSURE } = ItemType;
 
@@ -175,33 +175,51 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
       await callback(lambdaArn, lambdaInput);
     }
 
-    const { loadFormIntoBucket, consenter } = (await getTestItem());
+    const getLambdaInputForTestItem = async ():Promise<DisclosureItemsParms> => {
+      const { loadFormIntoBucket, consenter } = (await getTestItem());
 
-    const s3ObjectKeyForExhibitForm = await loadFormIntoBucket(EXHIBIT);
+      const s3ObjectKeyForExhibitForm = await loadFormIntoBucket(EXHIBIT);
 
-    const s3ObjectKeyForDisclosureForm = await loadFormIntoBucket(DISCLOSURE);
+      const s3ObjectKeyForDisclosureForm = await loadFormIntoBucket(DISCLOSURE);
 
-    const lambdaInput = {
-      consenterEmail:consenter.email,
-      s3ObjectKeyForDisclosureForm,
-      s3ObjectKeyForExhibitForm
-    } as DisclosureItemsParms;
+      return {
+        consenterEmail:consenter.email,
+        s3ObjectKeyForDisclosureForm,
+        s3ObjectKeyForExhibitForm
+      } as DisclosureItemsParms;
+    }
+
+    let lambdaInput:DisclosureItemsParms;
 
     let callback;
     switch(task) {
-      case "immediate":
+      case "test-immediate":
+        // Create dummy bucket items and "pretend" a delayed execution has just elapsed by triggering
+        // their removal by immediately invoking the lambda function handler locally.
+        lambdaInput = await getLambdaInputForTestItem();
         callback = async (lambdaArn:string, lambdaInput:DisclosureItemsParms) => {
           await handler({ lambdaInput } as ScheduledLambdaInput, null);
         };
         await createDelayedExectionToRemoveBucketItem(lambdaInput, callback);
         break;
-      case "scheduled":
+      case "test-scheduled":
+        // Create dummy bucket items and create a delayed execution to remove them after 2 minutes
+        lambdaInput = await getLambdaInputForTestItem();
         callback = async (lambdaArn:string, lambdaInput:DisclosureItemsParms) => {
           const delayedTestExecution = new DelayedLambdaExecution(lambdaArn, lambdaInput);
           const timer = EggTimer.getInstanceSetFor(2, MINUTES); 
           await delayedTestExecution.startCountdown(timer, ID, `${Description} (TESTING)`);
         };
         await createDelayedExectionToRemoveBucketItem(lambdaInput, callback);
+        break;
+      case "existing":
+        // Just call the lambda function handler directly without any scheduling for existing s3 object keys
+        lambdaInput = {
+          consenterEmail: "cp1@warhen.work",
+          s3ObjectKeyForDisclosureForm: "cp1(at)warhen.work/54322755-3d89-4388-98c6-ed291ef74221/affiliate1(at)warhen.work/disclosure-2025-05-13T20!29!37.058Z.pdf",
+          s3ObjectKeyForExhibitForm:"cp1(at)warhen.work/54322755-3d89-4388-98c6-ed291ef74221/affiliate1(at)warhen.work/exhibit-2025-05-13T20!29!37.058Z.pdf"
+        } as DisclosureItemsParms;
+        await handler({ lambdaInput } as ScheduledLambdaInput, null);
         break;
     }
   })();
