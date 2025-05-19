@@ -9,6 +9,7 @@ import { InvitablePerson, InvitablePersonParms } from '../../_lib/invitation/Inv
 import { UserInvitation } from '../../_lib/invitation/Invitation';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
 import { debugLog, errorResponse, invalidResponse, isOk, log, lookupCloudfrontDomain, lookupPendingInvitations, mergeResponses, okResponse } from "../../Utils";
+import { sendDisclosureRequests } from '../authorized-individual/DisclosureRequest';
 import { registrationFormEmailPrerequisitesAreMet, sendEntityRegistrationForm } from '../cognito/PostSignup';
 import { ExhibitFormsBucketEnvironmentVariableName } from '../consenting-person/BucketItemMetadata';
 import { EntityRepToCorrect } from './Correction';
@@ -22,6 +23,7 @@ export enum Task {
   INVITE_USER = 'invite-user',
   RETRACT_INVITATION = 'retract-invitation',
   SEND_REGISTRATION = 'send-registration',
+  SEND_DISCLOSURE_REQUEST = 'send-disclosure-request',
   CORRECTION = 'correct-entity-rep',
   PING = 'ping'
 }
@@ -72,6 +74,9 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
         case Task.SEND_REGISTRATION:
           var { email, role, termsHref, dashboardHref, privacyHref } = parameters;
           return await sendEntityRegistrationForm({ email, role, termsHref, dashboardHref, privacyHref, meetsPrequisite: registrationFormEmailPrerequisitesAreMet });
+        case Task.SEND_DISCLOSURE_REQUEST:
+          var { consenterEmail, entity_id, affiliateEmail=undefined } = parameters;
+          return await sendDisclosureRequests(consenterEmail, entity_id, [ affiliateEmail ].filter(a => a));          
         case Task.CORRECTION:
           return await correctUser(parameters);
         case Task.PING:
