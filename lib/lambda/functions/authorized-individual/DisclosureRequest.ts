@@ -1,14 +1,16 @@
+import { IContext } from "../../../../contexts/IContext";
 import { DelayedExecutions } from "../../../DelayedExecution";
 import { LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
 import { Configurations } from "../../_lib/config/Config";
-import { ConfigNames } from "../../_lib/dao/entity";
+import { EntityCrud } from "../../_lib/dao/dao-entity";
+import { ConfigNames, Entity } from "../../_lib/dao/entity";
 import { DelayedLambdaExecution } from "../../_lib/timer/DelayedExecution";
 import { EggTimer, PeriodType } from "../../_lib/timer/EggTimer";
-import { errorResponse, invalidResponse, okResponse } from "../../Utils";
+import { errorResponse, invalidResponse, log, okResponse } from "../../Utils";
 import { BucketInventory } from "../consenting-person/BucketInventory";
 import { BucketDisclosureForm } from "../consenting-person/BucketItemDisclosureForm";
 import { BucketExhibitForm } from "../consenting-person/BucketItemExhibitForm";
-import { BucketItemMetadata, ItemType } from "../consenting-person/BucketItemMetadata";
+import { BucketItemMetadata, ExhibitFormsBucketEnvironmentVariableName, ItemType } from "../consenting-person/BucketItemMetadata";
 import { DisclosureRequestReminderLambdaParms, ID as scheduleTypeId, Description as scheduleDescription } from "../delayed-execution/SendDisclosureRequestReminder";
 import { DisclosureEmailParms, DisclosureRequestEmail, RecipientListGenerator } from "./DisclosureRequestEmail";
 
@@ -120,8 +122,39 @@ export const sendDisclosureRequests = async (consenterEmail:string, entity_id:st
     const inventory = await BucketInventory.getInstance(consenterEmail, entity_id);
     affiliateEmails.push(...inventory.getAffiliateEmails());
   }
+  if(affiliateEmails.length == 0) {
+    const entity = await EntityCrud({ entity_id } as Entity).read();
+    if( ! entity) {
+      return errorResponse(`No such entity: ${entity_id}`);
+    }
+    const { entity_name } = entity as Entity;
+    return errorResponse(`No affiliate records found for consenter: ${consenterEmail} and entity: ${entity_name}`);
+  }
   for(const affilliateEmail of affiliateEmails) {
     await sendDisclosureRequest(consenterEmail, entity_id, affilliateEmail);
   }
   return okResponse('Ok', {});
+}
+
+
+
+
+const { argv:args } = process;
+if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/authorized-individual/DisclosureRequest.ts')) {
+
+  (async () => {
+    // 1) Get context variables
+    const context:IContext = await require('../../../../contexts/context.json');
+    const { DisclosureRequestReminder: { coreName, targetArnEnvVarName } } = DelayedExecutions;
+    const { STACK_ID, REGION, ACCOUNT, TAGS: { Landscape }} = context;
+    const prefix = `${STACK_ID}-${Landscape}`;
+    const bucketName = `${prefix}-exhibit-forms`;
+    const discFuncName = `${prefix}-${coreName}`;
+    process.env[targetArnEnvVarName] = `arn:aws:lambda:${REGION}:${ACCOUNT}:function:${discFuncName}`;
+    process.env[ExhibitFormsBucketEnvironmentVariableName] = bucketName;
+
+    const response = await sendDisclosureRequests('consenter@gmail.com', '54322755-3d89-4388-98c6-ed291ef74221');
+    // Should return 500 if nothing in the bucket is found for the specified consenter and entity
+    log(response, 'Response');
+  })();
 }
