@@ -29,10 +29,11 @@ export class ConsentFormEmail {
     const { CLOUDFRONT_DOMAIN:domain } = process.env;
     const privacyHref = `https://${domain}${PRIVACY_POLICY_PATH}`;
     const dashboardHref = `https://${domain}${CONSENTING_PERSON_PATH}`;
+    const registrationHref = `https://${domain}${CONSENTING_PERSON_REGISTRATION_PATH}`;
 
     return await sendEmail({
       subject: 'ETT Individual Consent Form',
-      from: `noreply@${context.ETT_DOMAIN}`, 
+      from: `noreply@${ETT_DOMAIN}`, 
       message:  
         `Greetings ${consenterFullName}.<br>` +
         `Thank you for granting consent for disclosures with ETT.<br>` +
@@ -45,6 +46,7 @@ export class ConsentFormEmail {
             entityName, 
             privacyHref, 
             dashboardHref,
+            registrationHref,
             exhibitFormLink: getPublicFormApiUrl(FormName.EXHIBIT_FORM_BOTH_FULL),
             disclosureFormLink: getPublicFormApiUrl(FormName.DISCLOSURE_FORM),
             entityInventoryLink: `https://${domain}${ENTITY_INVENTORY_PATH}`

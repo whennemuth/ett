@@ -276,6 +276,7 @@ const send = async (parms:EmailParameters):Promise<boolean> => {
   const { CLOUDFRONT_DOMAIN:domain } = process.env;
   const privacyHref = `https://${domain}${PRIVACY_POLICY_PATH}`;
   const dashboardHref = `https://${domain}${CONSENTING_PERSON_PATH}`;
+  const registrationHref = `https://${domain}${CONSENTING_PERSON_REGISTRATION_PATH}`;
 
   const attachments = [
     {
@@ -295,6 +296,7 @@ const send = async (parms:EmailParameters):Promise<boolean> => {
         entity_name, 
         privacyHref, 
         dashboardHref,
+        registrationHref,
         exhibitFormLink: getPublicFormApiUrl(FormName.EXHIBIT_FORM_BOTH_FULL),
         disclosureFormLink: getPublicFormApiUrl(FormName.DISCLOSURE_FORM),
         entityInventoryLink: `https://${domain}${ENTITY_INVENTORY_PATH}`

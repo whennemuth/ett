@@ -14,6 +14,7 @@ export type ConsentFormData = {
   consenter:Consenter, 
   privacyHref?:string, 
   dashboardHref?:string,
+  registrationHref?:string,
   exhibitFormLink?:string,
   disclosureFormLink?:string, 
   entityInventoryLink?:string
@@ -64,6 +65,7 @@ export const getBlankData = ():ConsentFormData => {
     consenter: {  email:'', firstname:'', middlename:'', lastname:'', phone_number:'', active:YN.Yes },
     privacyHref: `https://ett-domain-TBD.com/privacy`,
     dashboardHref: `https://ett-domain-TBD.com/consenting`,
+    registrationHref: 'https://ett-domain-TBD.com/consenting/register',
     entityInventoryLink: 'https://ett-domain-TBD.com/public/entity/inventory',
     exhibitFormLink: 'https://ett-domain-TBD.com/public/forms/download/' + FormName.EXHIBIT_FORM_BOTH_FULL,
     disclosureFormLink: 'https://ett-domain-TBD.com/public/forms/download/' + FormName.DISCLOSURE_FORM,
@@ -75,6 +77,7 @@ export const getSampleData = ():ConsentFormData => {
     entityName: 'Boston University',
     privacyHref: `https://ett-domain.com/privacy`,
     dashboardHref: `https://ett-domain.com/consenting`,
+    registrationHref: 'https://ett-domain.com/consenting/register',
     entityInventoryLink: 'https://ett-domain.com/public/entity/inventory',
     exhibitFormLink: 'https://ett-domain.com/public/forms/download/' + FormName.EXHIBIT_FORM_BOTH_FULL,
     disclosureFormLink: 'https://ett-domain.com/public/forms/download/' + FormName.DISCLOSURE_FORM,

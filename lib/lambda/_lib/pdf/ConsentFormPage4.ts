@@ -58,7 +58,7 @@ export class ConsentFormPage4 extends PdfForm implements IPdfForm {
 
   private drawBody = async () => {
     const { data: {
-      exhibitFormLink, disclosureFormLink, entityInventoryLink
+      exhibitFormLink, disclosureFormLink, entityInventoryLink, registrationHref
     }, page: { basePage, drawWrappedText, drawText }, boldfont, font } = this;
     
     // const exhibitFormLink = getPublicFormApiUri(FormName.EXHIBIT_FORM_BOTH_FULL);
