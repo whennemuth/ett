@@ -1,12 +1,13 @@
 import { PDFDocument, PDFFont, PDFPage, PDFPageDrawTextOptions, StandardFonts } from "pdf-lib";
 import { EmbeddedFonts } from "./EmbeddedFonts";
+import { Link } from "./Link";
 import { Page } from "./Page";
 import { Margins } from "./Utils";
 
 /** Represents, within the line of text, a segment with its own formatting */
 export type ParsedItem = { 
   text:string, italics:boolean, bold:boolean, underline:boolean, newfont:PDFFont, width:number, 
-  fontSize:number, yOffset:number 
+  fontSize:number, yOffset:number, linkHref?:string 
 };
 
 /**
@@ -55,11 +56,32 @@ export class TextLine {
       });  
     }
 
-    const drawText = (item:ParsedItem, opts:PDFPageDrawTextOptions) => {
-      const { text, width, underline } = item;
-      basePage.drawText(text, opts);
-      if(underline) {
-        drawUnderline(width, opts)
+    const drawText = async (item:ParsedItem, opts:PDFPageDrawTextOptions) => {
+      const { page } = this;
+      const { text, width, underline, linkHref } = item;
+
+      const draw = () => {
+        basePage.drawText(text, opts);
+        if(underline) {
+          drawUnderline(width, opts)
+        }
+      }
+      
+      if(linkHref) {
+        const link = new Link(page.basePage.doc, page);
+        await link.draw({
+          text: item.text,
+          uri: linkHref ?? item.text,
+          textOptions: opts,
+          border: false,
+          customDrawText: async () => new Promise<void>((resolve) => {
+            draw();
+            resolve();
+          })
+        });
+      }
+      else {
+        draw();
       }
     }
 
@@ -87,7 +109,7 @@ export class TextLine {
         basePage.moveDown(item.yOffset);
       }
 
-      drawText(item, newopts);
+      await drawText(item, newopts);
 
       // "Unjog" up or down for subscript or superscript
       if(item.yOffset > 0) {
@@ -115,6 +137,7 @@ export class TextLine {
     // Since the split separator is a regex, the separators are included in the output array.
     const items = text.split(tagRegex); 
     let italics = false, bold = false, underline = false, sizeDiff = 0, subSizeDiff = 0, yOffset = 0;
+    let linkHref:string|undefined = undefined;
     const parsedItems = [] as ParsedItem[];
 
     for(let i=0; i<items.length; i++) {
@@ -132,20 +155,43 @@ export class TextLine {
         case '</sup>': subSizeDiff = 0; yOffset = 0; break
         default:
           if(`${item}`.trim().length > 0 || /^\x20+$/.test(item)) {
+            
+            // Check if the item is a font size offset markup tag.
             const matchesSizeChange = /^<\/?(\-?\d{1,2})>$/.exec(item);
             if(matchesSizeChange) {
               sizeDiff = item.includes('/') ? 0 : parseInt(matchesSizeChange[1]);
+              continue;
             }
-            else {
-              const parsed = { text:item, bold, italics, underline, yOffset } as ParsedItem;
-              const newfont = await getFont(originalFont!, parsed);
-              parsed.newfont = newfont;
-              const width = newfont.widthOfTextAtSize(item, (size! + sizeDiff));
-              parsed.fontSize = (size! + sizeDiff + subSizeDiff);
-              parsed.width = width;
-              this.combinedWidthOfTextAtSize += width;
-              parsedItems.push(parsed);   
-            }                 
+
+            // Check if the item is a link markup tag.
+            const matchesLink = /^(<a(\x20+href="([^"]+)")?>|<\/a>)$/.exec(item);
+            if(matchesLink) {
+              if(item == '</a>') {
+                linkHref = undefined;
+              }
+              else if(item == '<a>') {
+                linkHref = 'inner_text';
+              }
+              else if(matchesLink.length > 3) {
+                linkHref = matchesLink[3];
+              }
+              continue;
+            }
+            
+            // If we get here, then the item is a text segment between markup tags that will 
+            // have applied to it the formatting that the markup wrapping it indicates.
+            const parsed = { text:item, bold, italics, underline, yOffset, linkHref } as ParsedItem;
+            const newfont = await getFont(originalFont!, parsed);
+            parsed.newfont = newfont;
+            const width = newfont.widthOfTextAtSize(item, (size! + sizeDiff));
+            parsed.fontSize = (size! + sizeDiff + subSizeDiff);
+            parsed.width = width;
+            this.combinedWidthOfTextAtSize += width;
+            if(linkHref == 'inner_text') {
+              parsed.linkHref = item;
+              linkHref = undefined; // Reset the linkHref so that it does not carry over to the next item.
+            }
+            parsedItems.push(parsed);          
           }
       }
     };

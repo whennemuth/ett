@@ -1,4 +1,4 @@
-import { PDFFont, PDFPage, PDFPageDrawTextOptions, StandardFonts } from 'pdf-lib';
+import { PDFFont, PDFName, PDFPage, PDFPageDrawTextOptions, PDFRef, StandardFonts } from 'pdf-lib';
 import { EmbeddedFonts } from './EmbeddedFonts';
 import { Rectangle, RectangleOptions } from './Rectangle';
 import { DrawWrappedTextParameters, Text } from './Text';
@@ -12,6 +12,7 @@ export class Page {
   private _margins:Margins;
   private text:Text;
   private embeddedFonts:EmbeddedFonts;
+  private linkAnnotations:PDFRef[] = [];
   
   constructor(page:PDFPage, margins:Margins, embeddedFonts:EmbeddedFonts) {
     this.page = page;
@@ -36,10 +37,19 @@ export class Page {
   public getFont = async (name:StandardFonts|string):Promise<PDFFont> => {
     return this.embeddedFonts.getFont(name);
   }
-
   public drawRectangle = async (options:RectangleOptions) => {
     await new Rectangle(options).draw();
   }
+  public putLinkAnnotation = (link:PDFRef) => {
+    this.linkAnnotations.push(link);
+  }
+  public setLinkAnnotations = ():void => {
+    if(this.linkAnnotations.length > 0) {
+      const { page: { doc }, basePage, linkAnnotations } = this;
+      basePage.node.set(PDFName.of('Annots'), doc.context.obj(linkAnnotations));
+    }
+  }
+        
 
   public get basePage():PDFPage {
     return this.page
@@ -55,7 +65,8 @@ export class Page {
   }
 
   public nextPage = (dimensions?:[number, number], extra?:() => void):PDFPage => {
-    const { page, margins: { left, top } } = this;
+    const { page, margins: { left, top }, setLinkAnnotations } = this;
+    setLinkAnnotations();
     dimensions ??= [page.getWidth(), page.getHeight()];
     this.page = page.doc.addPage(dimensions) as PDFPage;
     this.page.moveTo(left, (page.getHeight() - top));

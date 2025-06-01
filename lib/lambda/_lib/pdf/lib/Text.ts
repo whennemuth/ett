@@ -104,7 +104,11 @@ export class Text {
       const lastLine = lines[lines.length-1].text;
       const endTag = `</${tagname}>`;
       const startTag = `<${tagname}>`;
-      const iLastStart = lastLine.lastIndexOf(startTag);
+      let iLastStart = lastLine.lastIndexOf(startTag);
+      if(startTag == '<a>' && iLastStart == -1) {
+        iLastStart = lastLine.lastIndexOf('<a href=');
+      }
+
       if(iLastStart > -1) {
         const iLastEnd = lastLine.lastIndexOf(endTag);
         if(iLastEnd == -1 || iLastStart > iLastEnd) {
@@ -124,7 +128,7 @@ export class Text {
         lines.push({ text:line, options, padBottom:linePad });
         line = word.trim();
 
-        const tagnames = [ 'b', 'i', 'u', '1', '2', '3', '4', '5', '6', '7', '8', '9' ];
+        const tagnames = [ 'b', 'i', 'u', 'a', '1', '2', '3', '4', '5', '6', '7', '8', '9' ];
         tagnames.forEach(tagname => checkTags(tagname));
       }
       else {
