@@ -74,6 +74,13 @@ export class Downloader {
 
   public getBytes = async ():Promise<Uint8Array> => {
     const context:IContext = <IContext>ctx;
+    const { PATHS: {
+      CONSENTING_PERSON_PATH,
+      CONSENTING_PERSON_REGISTRATION_PATH,
+      ENTITY_INVENTORY_PATH,
+      TERMS_OF_USE_PATH,
+      PRIVACY_POLICY_PATH
+    }} = context;
     const { formName, apiDomainName } = this;
     let form: IPdfForm | undefined;
 
@@ -82,26 +89,27 @@ export class Downloader {
       case FormName.REGISTRATION_FORM_ENTITY:
         const blankRegData = getBlankRegistrationData() as RegistrationFormEntityData;
         blankRegData.dashboardHref = `https://${process.env.CLOUDFRONT_DOMAIN}`;
-        blankRegData.termsHref = `https://${process.env.CLOUDFRONT_DOMAIN}${context.TERMS_OF_USE_PATH}`;
-        blankRegData.privacyHref = `https://${process.env.CLOUDFRONT_DOMAIN}${context.PRIVACY_POLICY_PATH}`;
+        blankRegData.termsHref = `https://${process.env.CLOUDFRONT_DOMAIN}${TERMS_OF_USE_PATH}`;
+        blankRegData.privacyHref = `https://${process.env.CLOUDFRONT_DOMAIN}${PRIVACY_POLICY_PATH}`;
         form = new RegistrationFormEntity(blankRegData);
         break;
 
       case FormName.REGISTRATION_FORM_INDIVIDUAL:
         form = new RegistrationFormIndividual({
           consenter: {} as Consenter, 
-          dashboardHref: `https://${process.env.CLOUDFRONT_DOMAIN}${context.CONSENTING_PERSON_PATH}`,
-          privacyHref: `https://${process.env.CLOUDFRONT_DOMAIN}${context.PRIVACY_POLICY_PATH}`,
+          dashboardHref: `https://${process.env.CLOUDFRONT_DOMAIN}${CONSENTING_PERSON_PATH}`,
+          privacyHref: `https://${process.env.CLOUDFRONT_DOMAIN}${PRIVACY_POLICY_PATH}`,
         } as IndividualRegistrationFormData);
         break;
 
       case FormName.CONSENT_FORM:
         const blankConsentData = getBlankConsentData();
-        blankConsentData.privacyHref = `https://${process.env.CLOUDFRONT_DOMAIN}${context.PRIVACY_POLICY_PATH}`;
-        blankConsentData.dashboardHref = `https://${process.env.CLOUDFRONT_DOMAIN}${context.CONSENTING_PERSON_PATH}`;
+        blankConsentData.privacyHref = `https://${process.env.CLOUDFRONT_DOMAIN}${PRIVACY_POLICY_PATH}`;
+        blankConsentData.dashboardHref = `https://${process.env.CLOUDFRONT_DOMAIN}${CONSENTING_PERSON_PATH}`;
+        blankConsentData.registrationHref = `https://${process.env.CLOUDFRONT_DOMAIN}${CONSENTING_PERSON_REGISTRATION_PATH}`;
         blankConsentData.exhibitFormLink = getPublicFormApiUrl(FormName.EXHIBIT_FORM_BOTH_FULL, apiDomainName);
         blankConsentData.disclosureFormLink = getPublicFormApiUrl(FormName.DISCLOSURE_FORM, apiDomainName);
-        blankConsentData.entityInventoryLink = `https://${process.env.CLOUDFRONT_DOMAIN}${context.ENTITY_INVENTORY_PATH}`;
+        blankConsentData.entityInventoryLink = `https://${process.env.CLOUDFRONT_DOMAIN}${ENTITY_INVENTORY_PATH}`;
         form = new ConsentForm(blankConsentData);
         break;
 

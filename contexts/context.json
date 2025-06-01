@@ -7,14 +7,17 @@
   "ETT_DOMAIN": "warhen.work",
   "REDIRECT_PATH_BOOTSTRAP": "bootstrap/index.htm",
   "REDIRECT_PATH_WEBSITE": "/",
-  "SYS_ADMIN_PATH": "/sysadmin",
-  "RE_ADMIN_PATH": "/entity",
-  "RE_AUTH_IND_PATH": "/auth-ind",
-  "CONSENTING_PERSON_PATH": "/consenting",
-  "TERMS_OF_USE_PATH": "/terms",
-  "PRIVACY_POLICY_PATH": "/privacy",
-  "ENTITY_INVENTORY_PATH": "/registered-entities",
   "DEFAULT_ROOT_OBJECT": "index.html",
+  "PATHS": {
+    "SYS_ADMIN_PATH": "/sysadmin",
+    "RE_ADMIN_PATH": "/entity",
+    "RE_AUTH_IND_PATH": "/auth-ind",
+    "CONSENTING_PERSON_PATH": "/consenting",
+    "CONSENTING_PERSON_REGISTRATION_PATH": "/consenting/register",
+    "TERMS_OF_USE_PATH": "/terms",
+    "PRIVACY_POLICY_PATH": "/privacy",
+    "ENTITY_INVENTORY_PATH": "/registered-entities"
+  },
   "CONFIG": {
     "useDatabase": true,
     "configs": [

@@ -9,7 +9,7 @@ The context.json file is located inside the contexts directory at the root of th
   "STACK_ID": "ett",
   "ACCOUNT": "[Your account ID]",
   "REGION": "[Your desired region]",
-  [ more config fields... ]
+  [ more fields... ]
   "CONFIG": {
     "useDatabase": true,
     "configs": [
@@ -21,6 +21,10 @@ The context.json file is located inside the contexts directory at the root of th
       },
       [ more configurations... ]
     ]
+  },
+  "PATHS": {
+  	"TERMS_OF_USE_PATH": "/terms",
+  	[ more paths... ]
   },
   "TAGS": {
     "Service": "client",
@@ -52,17 +56,16 @@ The full list of context settings is as follows:
 
 - **REDIRECT_PATH_WEBSITE:** This is the path after ETT_DOMAIN that points to the root of the official front-end for ETT. This default to `"/"`
 
-- **SYS_ADMIN_PATH:** Indicates the path to reach the dashboard for the system administrator. Default: `"/sysadmin"`
-
-- **RE_ADMIN_PATH:** Indicates the path to reach the dashboard for the Administrative Support Professional (ASP/RE_ADMIN). Default:  `"/entity"`
-
-- **RE_AUTH_IND_PATH:** Indicates the path to reach the dashboard for the Authorized Individual (AI/RE_AUTH_IND)". Default: `"/auth-ind"`
-
-- **CONSENTING_PERSON_PATH:** Indicates the path to reach the dashboard for the Consenting Individual. Default: `"/consenting"`
-
-- **TERMS_OF_USE_PATH:** Indicates the path to reach the terms of use policy page. Default: `"/terms"`
-
 - **DEFAULT_ROOT_OBJECT:** Front-ends for ETT are intended to be single-page apps that are deployed as artifacts in an [S3 bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingBucket.html). This bucket is set as an origin for the [Cloudfront distribution](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/distribution-working-with.html) that all requests must go through to reach the app. This value is specifically used in the [defaultRootObject](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/distribution-web-values-specify.html#DownloadDistValuesDefaultRootObject) attribute of that Cloudfront distribution. Default: `"index.html"`
+
+- **PATHS:** These are relative paths that target specific endpoints or screens within the official app *(not the bootstrap UI)*.
+
+  - **SYS_ADMIN_PATH:** Indicates the path to reach the dashboard for the system administrator. Default: `"/sysadmin"`
+  - **RE_ADMIN_PATH:** Indicates the path to reach the dashboard for the Administrative Support Professional (ASP/RE_ADMIN). Default:  `"/entity"`
+  - **RE_AUTH_IND_PATH:** Indicates the path to reach the dashboard for the Authorized Individual (AI/RE_AUTH_IND)". Default: `"/auth-ind"`
+  - **CONSENTING_PERSON_PATH:** Indicates the path to reach the dashboard for the Consenting Individual. Default: `"/consenting"`
+  - **CONSENTING_PERSON_REGISTRATION_PATH:** Indicates the path to reach the registration form for the Consenting Individual. Default `"/consenting/register"`
+  - **TERMS_OF_USE_PATH:** Indicates the path to reach the terms of use policy page. Default: `"/terms"`
 
 - **CONFIG:** This entry is a collection of settings the app will use for reference when carrying out certain business rules. These are mostly duration or timeout thresholds. There is a **"useDatabase"** setting provided
 

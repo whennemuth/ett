@@ -40,7 +40,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
   (async () => {
 
     const context:IContext = await require('../../../../contexts/context.json');
-    const uri = `https://${process.env.CLOUDFRONT_DOMAIN}${context.ENTITY_INVENTORY_PATH}`;
+    const uri = `https://${process.env.CLOUDFRONT_DOMAIN}${context.PATHS.ENTITY_INVENTORY_PATH}`;
     console.log(`URI: ${uri}`);
 
     const entityUtils = new EntityUtils();

@@ -54,7 +54,9 @@ export class CognitoConstruct extends Construct {
   buildResources(): void {
     const { 
       prefix, context: { REGION, ACCOUNT, CONFIG:config, STACK_ID:stackId }, scheduleGroupName,
-      context: { CONSENTING_PERSON_PATH, RE_ADMIN_PATH, RE_AUTH_IND_PATH, TERMS_OF_USE_PATH, PRIVACY_POLICY_PATH },
+      context: { PATHS: {
+        CONSENTING_PERSON_PATH, RE_ADMIN_PATH, RE_AUTH_IND_PATH, TERMS_OF_USE_PATH, PRIVACY_POLICY_PATH }
+      },
       constructId, landscape, exhibitFormsBucket, handleStaleEntityVacancyLambdaArn, cloudfrontDomain
     } = this;
     const { CONFIG, CONSENTERS, ENTITIES, INVITATIONS, USERS } = TableBaseNames;

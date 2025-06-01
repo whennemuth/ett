@@ -602,7 +602,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         // Set the config as an environment variable
         const context:IContext = await require('../../../../contexts/context.json');
         process.env[Configurations.ENV_VAR_NAME] = JSON.stringify(configs);
-        const { CONSENTING_PERSON_PATH, RE_ADMIN_PATH, RE_AUTH_IND_PATH } = context;
+        const { PATHS: { CONSENTING_PERSON_PATH, RE_ADMIN_PATH, RE_AUTH_IND_PATH } } = context;
         process.env.CONSENTING_PERSON_PATH = CONSENTING_PERSON_PATH;
         process.env.RE_ADMIN_PATH = RE_ADMIN_PATH;
         process.env.RE_AUTH_IND_PATH = RE_AUTH_IND_PATH;

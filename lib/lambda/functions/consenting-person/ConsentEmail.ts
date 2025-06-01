@@ -23,8 +23,12 @@ export class ConsentFormEmail {
     const consenterFullName = fullName(firstname, middlename, lastname);
     emailAddress = emailAddress ?? email;
     const context:IContext = <IContext>ctx;
-    const privacyHref = `https://${process.env.CLOUDFRONT_DOMAIN}${context.PRIVACY_POLICY_PATH}`;
-    const dashboardHref = `https://${process.env.CLOUDFRONT_DOMAIN}${context.CONSENTING_PERSON_PATH}`;
+    const { ETT_DOMAIN, PATHS: {
+      PRIVACY_POLICY_PATH, CONSENTING_PERSON_PATH,  ENTITY_INVENTORY_PATH, CONSENTING_PERSON_REGISTRATION_PATH 
+    }} = context;
+    const { CLOUDFRONT_DOMAIN:domain } = process.env;
+    const privacyHref = `https://${domain}${PRIVACY_POLICY_PATH}`;
+    const dashboardHref = `https://${domain}${CONSENTING_PERSON_PATH}`;
 
     return await sendEmail({
       subject: 'ETT Individual Consent Form',
@@ -43,7 +47,7 @@ export class ConsentFormEmail {
             dashboardHref,
             exhibitFormLink: getPublicFormApiUrl(FormName.EXHIBIT_FORM_BOTH_FULL),
             disclosureFormLink: getPublicFormApiUrl(FormName.DISCLOSURE_FORM),
-            entityInventoryLink: `https://${process.env.CLOUDFRONT_DOMAIN}${context.ENTITY_INVENTORY_PATH}`
+            entityInventoryLink: `https://${domain}${ENTITY_INVENTORY_PATH}`
           }),
           name: 'consent-form.pdf',
           description: 'consent-form.pdf'

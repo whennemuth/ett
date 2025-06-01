@@ -11,16 +11,21 @@ export interface IContext {
   CLOUDFRONT_CERTIFICATE?: string;
   REDIRECT_PATH_WEBSITE:string;
   REDIRECT_PATH_BOOTSTRAP:string;
+  DEFAULT_ROOT_OBJECT:string;
+  CONFIG: CONFIG;
+  PATHS: Paths;
+  TAGS:     Tags;
+}
+
+export interface Paths {
   SYS_ADMIN_PATH:string;
   RE_ADMIN_PATH:string;
   RE_AUTH_IND_PATH:string;
   CONSENTING_PERSON_PATH:string;
+  CONSENTING_PERSON_REGISTRATION_PATH:string;
   TERMS_OF_USE_PATH:string;
   PRIVACY_POLICY_PATH:string;
   ENTITY_INVENTORY_PATH:string;
-  DEFAULT_ROOT_OBJECT:string;
-  CONFIG: CONFIG;
-  TAGS:     Tags;
 }
 
 export interface CONFIG {
