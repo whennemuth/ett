@@ -75,6 +75,8 @@ export class ExhibitFormSingleBoth extends PdfForm implements IPdfForm {
 
     await drawReadyForSubmission();
 
+    this.page.setLinkAnnotations();
+
     const pdfBytes = await doc.save();
     return pdfBytes;
   }
@@ -106,7 +108,7 @@ export class ExhibitFormSingleBoth extends PdfForm implements IPdfForm {
     });
 
     await drawCenteredText(
-      consentFormUrl, 
+      `<a>${consentFormUrl}</a>`, 
       { font:boldfont, size:8, color:blue, lineHeight:14 }
     );
     _return();

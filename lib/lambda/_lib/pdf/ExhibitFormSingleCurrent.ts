@@ -70,9 +70,11 @@ export class ExhibitFormSingleCurrent extends PdfForm implements IPdfForm {
 
     await drawAgreement();
 
-    await drawSignature('single exhibit Form');
+    await drawSignature('Single Exhibit Form');
 
     await drawReadyForSubmission();
+
+    this.page.setLinkAnnotations();
 
     const pdfBytes = await doc.save();
     return pdfBytes;
@@ -93,30 +95,26 @@ export class ExhibitFormSingleCurrent extends PdfForm implements IPdfForm {
   private drawIntro = async () => {
     const { 
       baseForm: { consentFormUrl, consenter: { firstname, middlename, lastname } }, 
-      page: { basePage, drawWrappedText, drawCenteredText }, font, boldfont, _return, getFullName 
+      page: { basePage, drawWrappedText }, boldfont, getFullName 
     } = this;
     let fullname = getFullName(firstname, middlename, lastname);
     fullname = fullname ? `my <i>(${fullname})</i>` : 'my';
     const size = 9;
 
     await drawWrappedText({ 
-      text: `<b>This Current Employer(s) Exhibit Form is incorporated into ${fullname} Consent Form, at:</b>`, 
+      text: `<b>This Current Employer Single Entity Exhibit Form is incorporated into ${fullname} Consent Form, attached to this Exhibit Form.</b>`, 
       options: { size, font:boldfont }, linePad: 4, padBottom: 6 
     });
 
-    await drawCenteredText(
-      consentFormUrl, 
-      { font:boldfont, size:8, color:blue, lineHeight:14 }
-    );
-    _return();
-
     basePage.moveDown(8);
     await drawWrappedText({ 
-      text: `<u>I agree that my ETT Registration Form and Consent Form will remain in effect to authorize ` +
-        `the Disclosure Form that the following entity completes and provides in response to the Disclosure Request ` +
-        `sent with this Form</u>.  The definitions in the Consent Form also apply to this Single Entity ` +
-        `Exhibit Form.  The following entity is one of my <u>Consent Recipients</u> (Affiliates) that is my ` +
-        `current employer or appointing organization and is referenced in and covered by my Consent Form: `, 
+      text: '<u>I agree that my ETT Registration Form and Consent Form  authorizes (and will remain in effect ' +
+      'to authorize) the following entity to complete the Disclosure Form about me and provide it in response ' +
+      'to the Disclosure Request sent with this Form. The following entity is also authorized to disclose the ' +
+      'information called for in the Disclosure Form about me in response to the Disclosure Request, if ' +
+      'preferred</u>. The definitions in the Consent Form also apply to this Single Entity Exhibit Form. The ' +
+      'following entity is one of my <u>Consent Recipients</u> (Affiliates) that is my current employer or ' +
+      'appointing organization and is referenced in and covered by my Consent Form:', 
       options: { size, font:boldfont }, linePad: 4, padBottom: 16 
     });
   }
@@ -144,7 +142,7 @@ export class ExhibitFormSingleCurrent extends PdfForm implements IPdfForm {
     await drawWrappedText({
       text: '____Check if applicable:  I am the person known to you as __________________________ ' +
         '[insert Individual’s prior name] and I have signed this Single Entity Exhibit Form below and my ' +
-        'linked Consent Form using my updated name.',
+        'Consent Form using my updated name.',
       options: { size:9, font:boldfont }, linePad: 6, padBottom: 16, horizontalRoom: bodyWidth - 20
     }); 
   }
@@ -174,9 +172,8 @@ export class ExhibitFormSingleCurrent extends PdfForm implements IPdfForm {
     await drawCenteredText('Ready for Submission', { size:16, font }, 16);
 
     await drawWrappedText({
-      text: '<i>You have digitally signed your Current Employer(s) Exhibit Form—and, if you have ' +
-        'more than one current employer and/or appointing organization, each of your related ' +
-        'Single-Entity Exhibit Forms.</u>',
+      text: '<i>You have digitally signed your Current Employer(s) Exhibit Form—and each of your ' +
+        'related Single-Entity Exhibit Form(s).</i>',
       options: { size:9, font:boldfont }, linePad: 6, padBottom: 20, horizontalRoom
     });
 
@@ -184,7 +181,7 @@ export class ExhibitFormSingleCurrent extends PdfForm implements IPdfForm {
 
     await drawBulletedItem({
       paragraphs: [ { text: 'Your ETT Registration Form and Consent Form will not expire and you will ' +
-        'not be able to rescind them or your Current Employer(s) or related Single Entity Exhibit Form(s) ' +
+        'not be able to rescind them or your Current Employer(s) or related Full or Single Entity Exhibit Form(s) ' +
         'in connection with the Privilege or Honor, Employment or Role for which the listed ETT Registered ' +
         'Entity is considering you at this time.  Your Consent Recipients (Affiliates) will be relying on ' +
         'these forms to make disclosures to the Registered Entity.  Contact the Registered Entity directly ' +
@@ -206,7 +203,8 @@ export class ExhibitFormSingleCurrent extends PdfForm implements IPdfForm {
     await drawBigRedButton({
       text: 'SUBMIT',
       descriptionHeight: 16,
-      description: 'Click the Submit Button to complete and submit your One Current Employer(s) Exhibit Form:'
+      description: 'Click the Submit Button to complete and submit your Full and Single Entity Current ' +
+       'Employer(s) Exhibit Forms:'
     });
   }
 
@@ -224,7 +222,7 @@ export class ExhibitFormSingleCurrent extends PdfForm implements IPdfForm {
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/ExhibitFormSingleCurrent.ts')) {
 
-  const testBlankForm = false;
+  const testBlankForm = true;
 
   (async () => {
 
