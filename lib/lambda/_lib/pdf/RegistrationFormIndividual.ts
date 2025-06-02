@@ -47,6 +47,8 @@ export class RegistrationFormIndividual extends PdfForm implements IPdfForm {
 
     await drawConsenter();
 
+    this.page.setLinkAnnotations();
+
     const pdfBytes = await this.doc.save();
     return pdfBytes;
   }
@@ -126,10 +128,11 @@ export class RegistrationFormIndividual extends PdfForm implements IPdfForm {
 
     await page.drawWrappedText({
       text: '<i>Registering on ETT means that you have read and agree to the ETT Privacy Notice and Privacy ' +
-        `Policy: ${privacyHref}, and consent to inclusion of your name and contacts (as you reflect them above) on ` + 
-        'the ETT database and in ETT-related communications made in the ETT process. The Consent Form ' +
-        'provides information on how to rescind your Consent Form (consenting to disclosures). When the ' +
-        'period of your Consent Form ends for all purposes—your registration will also end automatically.<i>',
+        `Policy (available <u><a href="${privacyHref}">here</a></u>), and consent to inclusion of your name ` +
+        `and contacts (as you reflect them above) on the ETT database and in ETT-related communications made ` +
+        'in the ETT process. The Consent Form provides information on how to rescind your Consent Form ' +
+        '(consenting to disclosures). When the period of your Consent Form ends for all purposes—your ' +
+        'registration will also end automatically.<i>',
       options: { size, font:boldfont, color:red },
       linePad: 4,
     });
@@ -146,7 +149,7 @@ export class RegistrationFormIndividual extends PdfForm implements IPdfForm {
     
     let correctionMsg = `To modify your registration, or to withdraw or renew your consent, log into your account`;
     if(dashboardHref) {
-      correctionMsg += ` at: <b><-1>${dashboardHref}</-1></b>`;
+      correctionMsg += `  <u><b><1><a href="${dashboardHref}">here</a></1></b></u>`;
     }
     else {
       correctionMsg += ' and access the relevant change features.';
