@@ -57,6 +57,8 @@ export class ConsentFormPage3 extends PdfForm implements IPdfForm {
     await drawLogo(this.page);
 
     await drawBody();
+
+    this.page.setLinkAnnotations();
   }
 
   private drawBody = async () => {
@@ -218,7 +220,7 @@ export class ConsentFormPage3 extends PdfForm implements IPdfForm {
     _return(16);
     page.print(`revisit the ETT website at:`, { size:12, font });
     _return(24);
-    drawCenteredText(`${dashboardHref}`, { size:12, font:boldfont, color:blue });
+    await drawCenteredText(`<a>${dashboardHref}</a>`, { size:12, font:boldfont, color:blue });
   }
 }
 

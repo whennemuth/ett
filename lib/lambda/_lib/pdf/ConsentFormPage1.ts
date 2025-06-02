@@ -77,7 +77,8 @@ export class ConsentFormPage1 extends PdfForm implements IPdfForm {
 
     await page.drawText('A. FUNDAMENTAL PRINCIPLES ( <u>Principles</u>): <sup>2</sup>', { size:10, font:boldfont }, 6);
     await page.drawWrappedText({
-      text: `${entityName} is committed to providing a climate and culture where all are welcome and ` + 
+      text: `The institutions and societies that are using the Ethical Transparency Tool are committed ` +
+      `to providing a climate and culture where all are welcome and ` + 
       `able to thrive, for the sake of our community members and to advance our integrity, excellence, ` + 
       `and earned public trust. While people found responsible for misconduct may learn lessons, change ` + 
       `conduct, and regain trust, transparency is important.  Not knowing about findings of sexual, ` + 
@@ -90,18 +91,19 @@ export class ConsentFormPage1 extends PdfForm implements IPdfForm {
 
     await page.drawText('B. GIVE YOUR CONSENT:', { size:10, font:boldfont }, 6);
     await page.drawWrappedText({
-      text: 'This <u>Consent Form</u><sup>1</sup> is part of the <u>Ethical Transparency Tool</u>, <sup>1</sup> which is a tool ' +
+      text: 'This <u>Consent Form</u><sup>1</sup> is part of the <u>Ethical Transparency Tool</u>, <sup>1</sup> a tool ' +
       'to advance the <u>Principles</u>.<sup>2</sup>',
       options: { size:10, font },
       linePad: 8,
       padBottom: 8
     });
     await page.drawWrappedText({
-      text: `As a condition to being considered by ${entityName} for <u>Privileges or Honors</u>,<sup>3</sup> ` +
-      `<u>Employment or Roles</u>,<sup>4</sup> now or in the future, and by submitting this <u>Consent Form</u>,` +
+      text: `As a condition to being considered for certain <u>Privileges or Honors</u>,<sup>3</sup> ` +
+      `<u>Employment or Roles</u>,<sup>4</sup> by any <u>ETT-Registered Entity</u><sup>7</sup> ` +
+      `now or in the future, and by submitting this <u>Consent Form</u>,` +
       `<sup>1</sup> I give my consent to any Consent Recipient(s) <sup>5</sup> to complete a <u>Disclosure ` +
-      `Form</u><sup>6</sup> about me and to provide it to any <u>ETT-Registered Entit(ies)</u> <sup>7</sup> that ` +
-      `make(s) a request during the life of this Consent Form.`,
+      `Form</u><sup>6</sup> about me and to provide it or its information to any <u>ETT-Registered Entit(ies)</u> <sup>7</sup> ` +
+      `that make(s) a request for disclosures during the life of this Consent Form<sup>1</sup>.`,
       options: { size:10, font },
       linePad: 8,
       padBottom: 8
@@ -113,8 +115,8 @@ export class ConsentFormPage1 extends PdfForm implements IPdfForm {
         '<u>Consent Recipient(s)</u><sup>5</sup> are my :', '',
         '1.  Current employers and former employers (the look-back period for former employers will be ' +
         'determined by each',
-        '<u>ETT-Registered Entity</u><sup>7</sup> at the time it uses this Consent ' +
-        'Form to request a disclosure);', '',
+        '<u>ETT-Registered Entity</u><sup>7</sup> at the time it uses this <u>Consent ' +
+        'Form</u><sup>1</sup> to request a disclosure);', '',
         '2. Current and former academic, professional, and field-related honorary and membership ' +
         'societies and organizations', '(same look-back period as in #1);', '',
         '3. Current and former entities and organizations where I have or had emeritus/emerita, visiting, or other teaching,', 
@@ -132,9 +134,10 @@ export class ConsentFormPage1 extends PdfForm implements IPdfForm {
     
     page.basePage.moveDown(26);
     await page.drawWrappedText({
-      text: 'To provide an up-to-date list, <b>I will submit Exhibit Forms<sup>5</sup> listing the name and a ' +
-      'contact for each of my Consent Recipients each time any ETT-Registered Entity<sup>7</sup></b>makes a request.' + 
-      '  (See Process Diagram.)',
+      text: 'To provide an up-to-date list, <b>I will submit <u>Exhibit Forms</u><sup>5</sup> ' +
+      'listing the name and a contact for each of my <u>Consent Recipients</u> <sup>5</sup> each time ' +
+      'any <u>ETT-Registered Entity</u> <sup>7</sup></b>makes a request for disclosures.' + 
+      '  (See the Process Diagram at the end of this form in Appendix B)',
       options: { size:10, font },
       linePad: 8,
     });
