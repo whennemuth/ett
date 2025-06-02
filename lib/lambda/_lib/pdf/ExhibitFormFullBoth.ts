@@ -8,7 +8,6 @@ import { blue, ExhibitForm, ExhibitFormParms, getSampleAffiliates, red, SampleEx
 import { IPdfForm, PdfForm } from './PdfForm';
 import { Page } from './lib/Page';
 import { Align, VAlign } from './lib/Utils';
-import { get } from 'node:http';
 
 /**
  * This class represents an exhibit pdf form that can be dynamically generated around the provided exhibit data.

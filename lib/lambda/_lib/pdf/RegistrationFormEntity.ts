@@ -63,7 +63,14 @@ export const getBlankData = ():RegistrationFormEntityData => {
       { ...blankUser, role:Roles.RE_AUTH_IND }, { ...blankUser, role:Roles.RE_AUTH_IND }
     ]
   } as EntityInfo
-  return { ...blankUser, role:Roles.RE_ADMIN, entity:blankEntityInfo } as RegistrationFormEntityData;
+  return { 
+    ...blankUser, 
+    role:Roles.RE_ADMIN, 
+    entity:blankEntityInfo, 
+    dashboardHref: 'https://www.example.com/login',
+    termsHref: 'https://www.example.com/terms',
+    privacyHref: 'https://www.example.com/privacy',
+  } as RegistrationFormEntityData;
 }
 
 export const getSampleData = ():RegistrationFormEntityData => {
