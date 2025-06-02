@@ -7,8 +7,6 @@ import { Align, Margins, rgbPercent, VAlign } from "./lib/Utils";
 import { IPdfForm, PdfForm } from "./PdfForm";
 import { RegistrationFormEntityDrawParms } from "./RegistrationFormEntity";
 
-
-const blue = rgbPercent(47, 84, 150) as Color;
 const red = rgbPercent(255, 0, 0);
 
 export class RegistrationFormEntityPage3 extends PdfForm implements IPdfForm {
@@ -69,6 +67,8 @@ export class RegistrationFormEntityPage3 extends PdfForm implements IPdfForm {
     await drawInnerBoxContent();
 
     await drawDefinitions();
+
+    this.page.setLinkAnnotations();
   }
 
   private drawBox = async (boxHeight:number, marginOverflow:number, borderWidth:number) => {
@@ -97,7 +97,7 @@ export class RegistrationFormEntityPage3 extends PdfForm implements IPdfForm {
   }
 
   private drawInnerBox = async () => {  
-    await this.drawBox(90, 0, 1)
+    await this.drawBox(76, 0, 1)
   }
 
   private drawOuterBoxContent = async () => {
@@ -111,7 +111,7 @@ export class RegistrationFormEntityPage3 extends PdfForm implements IPdfForm {
 
     _return(4);
     await page.drawCenteredText(
-      `<i>(Also posted at <u>${termsHref}</u>)</i>`,
+      `<i>(Also posted at <u><a>${termsHref}</a></u>)</i>`,
       { font, size:8, lineHeight:14 }
     )
 
@@ -263,21 +263,15 @@ export class RegistrationFormEntityPage3 extends PdfForm implements IPdfForm {
 
     basePage.moveDown(8);
     await page.drawCenteredText(
-      `You may terminate this registration at any time here:`,
+      `You may terminate this registration at any time <u><a href="${dashboardHref}">here</a></u>`,
       { font:boldfont, size:10, color:red, lineHeight:14, }
-    );
-
-    basePage.moveDown(8);
-    await page.drawCenteredText(
-      dashboardHref,
-      { font:boldfont, size:8, color:blue, lineHeight:14, }
     );
   }
 
   private drawDefinitions = async () => {
     const { page: { drawWrappedText, basePage, margins }, font, _return } = this;
 
-    _return(24);
+    _return(36);
 
     basePage.drawLine({ 
       start: { x: margins.left, y: basePage.getY() + 12 }, 
@@ -294,7 +288,6 @@ export class RegistrationFormEntityPage3 extends PdfForm implements IPdfForm {
       'supervisory, evaluative, committee, or mentoring role. Other privileges (e.g., volunteer roles) ' +
       'and employment-related roles and decisions that the Requesting Entity identifies as affecting ' +
       'climate and culture may be included.'
-
 
     await drawWrappedText({
       text: `<b><sup>4</sup></b> ${def}`, 
