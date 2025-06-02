@@ -97,9 +97,11 @@ export class ExhibitFormFullBoth extends PdfForm implements IPdfForm {
 
     await drawOrderedItems();
 
-    await drawSignature('full exhibit Form');
+    await drawSignature('Full Exhibit Form');
 
     await drawReadyForSubmission();
+
+    this.page.setLinkAnnotations();
 
     const pdfBytes = await doc.save();
     return pdfBytes;
@@ -119,31 +121,22 @@ export class ExhibitFormFullBoth extends PdfForm implements IPdfForm {
    */
   private drawIntro = async () => {
     const { 
-      baseForm: { consentFormUrl, consenter: { firstname, middlename, lastname } }, 
-      page: { basePage, drawWrappedText, drawCenteredText }, font, boldfont, _return, getFullName 
+      baseForm: { consenter: { firstname, middlename, lastname } }, 
+      page: { basePage, drawWrappedText }, font, getFullName 
     } = this;
     let fullname = getFullName(firstname, middlename, lastname);
     fullname = fullname ? `my <i>(${fullname})</i>` : 'my';
     const size = 9;
 
     await drawWrappedText({ 
-      text: `<b>This Full Exhibit Form is incorporated into ${fullname} Consent Form, at:</b>`, 
+      text: `<b>This Full Exhibit Form is incorporated into ${fullname} Consent Form, attached to this Exhibit Form</b>.`, 
       options: { size, font }, linePad: 4, padBottom: 6 
     });
 
-    await drawCenteredText(
-      consentFormUrl, 
-      { font:boldfont, size:8, color:blue, lineHeight:14 }
-    );
-    _return();
-
-    // This Exhibit Form provides an up-to-date list of the name(s) and contact(s) for my known 
-    // Consent Recipients (also called Affiliates) on the date of this Exhibit Form.  The definitions 
-    // in the Consent Form also apply to this Exhibit Form. My known Consent Recipient(s) are:
     basePage.moveDown(8);
     await drawWrappedText({ 
       text: '<b>This Exhibit Form provides an up-to-date list of the name(s) and contact(s) for my ' +
-        'known <u>Consent Recipients</u> (also called Affiliates) on the date of this Exhibit Form.  ' +
+        'known <u>Consent Recipients</u> (also called Affiliates) on the date of this Exhibit Form. ' +
         'The definitions in the Consent Form also apply to this Exhibit Form.</b> <u>My known Consent ' +
         'Recipient(s)</u> are:', 
       options: { size, font }, linePad: 4 
@@ -214,14 +207,20 @@ export class ExhibitFormFullBoth extends PdfForm implements IPdfForm {
   }
 
   private drawOrderedItems = async () => {
-    const { page: { 
-      bodyWidth, drawWrappedText, drawText, nextPageIfNecessary 
-    }, font, boldfont, _return, baseForm: { entityName, getStaleEntityPeriod, getSecondReminderPeriod, drawOrderedItem } } = this;
+    const { 
+      page: { 
+        bodyWidth, drawWrappedText, drawText, nextPageIfNecessary 
+      }, font, boldfont, _return, 
+      baseForm: { 
+        entityName='[entity/organization]', getStaleEntityPeriod, getFirstReminderPeriod, getSecondReminderPeriod, 
+        getSecondReminderOffsetPeriod, drawOrderedItem 
+      } 
+    } = this;
     let basePage = this.page.basePage;
 
     basePage = nextPageIfNecessary(32);
 
-    _return(20);
+    _return(40);
     await drawText(
       'I direct the Ethical Transparency Tool (“ <u>ETT</u>”) to do the following and consent to it doing so:', 
       { size:9, font:boldfont }, 16);
@@ -234,7 +233,7 @@ export class ExhibitFormFullBoth extends PdfForm implements IPdfForm {
 
     await drawOrderedItem({
       paragraphs: [ { text: `<b>Also transmit this Full Exhibit Form on my behalf to</b> ` +
-        `${entityName}, which is the ETT-Registered Entity that requested it (“ <u>Registered Entity</u>”) ` +
+        `${entityName}, which is the ETT-Registered Entity that requested it (“<u>Registered Entity</u>”) ` +
         `in connection with considering me for a Privilege or Honor, Employment or Role at this time.`,
       options: { size:9, font:boldfont } } ],
     });
@@ -242,22 +241,24 @@ export class ExhibitFormFullBoth extends PdfForm implements IPdfForm {
     await drawOrderedItem({
       paragraphs: [
         {
-          text: `<b><u>Within the next ${await getStaleEntityPeriod()}</u>—if the Registered Entity ` +
+          text: `<b><u>Within the next ${await getStaleEntityPeriod()}</u> - if the Registered Entity ` +
             'initiates transmittals via ETT to my listed  Consent Recipients/Affiliates, asking them ' +
             'to complete Disclosure Forms about me (“<u>Disclosure Requests</u>”), transmit the ' +
-            'disclosure Requests.</b>  Each Disclosure Request will include the relevant Single-Entity ' +
-            'Exhibit Form (so one Consent Recipient is not notified of the others), my Consent Form, ' +
+            'Disclosure Requests.</b>  Each Disclosure Request will include my consent form, the ' +
+            'relevant Single-Entity Exhibit Form (listing only the Consent Recipient/Affiliate that is ' +
+            'receiving it - so one Consent Recipient is not notified of the others), ' +
             'and a blank Disclosure Form.  Copy the Registered Entity and me on the Disclosure Requests.',
           options: { size:9, font }
         },
         {
           // TODO: Perhaps suggest an alternative wording - There are no disclosure requests to delete, and it seems like the implication is that they are being stored for 21 days.
-          text: `<b><u>Within ${await getSecondReminderPeriod()} after sending these initial ` +
-            `Disclosure Request(s)</u>—resend the Registered Entity’s Disclosure Request(s) twice ` +
-            `(as reminders) to my Consent Recipients (Affiliates) listed in this Exhibit Form,</b> copying ` +
-            `the Registered Entity and me. <b>Then promptly delete the Disclosure Requests, my Full Exhibit ` +
-            `Form and all related Single Entity Exhibit Forms from ETT (as ETT will have completed its ` +
-            `transmittal role).</b>`,
+          text: `<b><u>Within ${await getSecondReminderPeriod()} after sending these initial Disclosure ` +
+            `Request(s)</u> (${await getFirstReminderPeriod()} after, and ` +
+            `${await getSecondReminderOffsetPeriod()} after that) — resend the Registered Entity’s ` +
+            `Disclosure Request(s) twice (as reminders) separately to each of my Consent Recipients ` +
+            `(Affiliates) listed in this Exhibit Form,</b> copying the Registered Entity and me. <b>Then `+
+            `promptly delete the Disclosure Requests, my Full Exhibit Form and all related Single Entity ` +
+            `Exhibit Forms from ETT (as ETT will have completed its transmittal role).</b>`,
           options: { size:9, font }
         }
       ]
@@ -265,16 +266,15 @@ export class ExhibitFormFullBoth extends PdfForm implements IPdfForm {
 
     await drawOrderedItem({
       paragraphs: [ { text: '<u>I agree that my ETT Registration Form and Consent Form will remain in effect ' +
-        'for use with these particular Disclosure Requests and completed Disclosure Forms that my Consent ' +
-        'Recipient(s) provide in response (even if my ETT Registration and Consent otherwise expire or are ' +
-        'rescinded).</u>', 
+        'for use with these particular Disclosure Requests and my Consent Recipient(s)’ disclosures in ' +
+        'response (even if my ETT Registration and Consent otherwise expire or are rescinded).</u>', 
         options: { size:9, font:boldfont } } ]
     });
 
     await drawOrderedItem({
       paragraphs: [ { text: '<u>I agree that ETT has the right to identify me as the person who provided ' +
         'and authorized use of the name, title, email and phone number of the contacts I’ve listed for my ' +
-        'Affiliates.</u>', 
+        'Consent Recipients (Affiliates).</u>', 
         options: { size:9, font:boldfont } } ]
     });
     
@@ -304,7 +304,7 @@ export class ExhibitFormFullBoth extends PdfForm implements IPdfForm {
     }); 
   }
 
-  private drawReadyForSubmission = async () => {
+  private drawReadyForSubmission = async (includeSubmit:boolean=false) => {
     const { baseForm: { isBlankForm, drawBigRedButton }, _return, page: { nextPageIfNecessary } } = this;
     if( ! isBlankForm) {
       return;
@@ -316,10 +316,15 @@ export class ExhibitFormFullBoth extends PdfForm implements IPdfForm {
     await drawBigRedButton({
       text: 'NEXT',
       descriptionHeight: 32,
-      description: 'Click the Next button to create, review, date, and sign a Single-Entity Exhibit ' +
-        'Form for each of your listed Consent Recipients. You will not be able to submit any of your ' +
+      description: 'Click the Next button to create, review, date, and digitally sign a Single-Entity Exhibit ' +
+        'Form for each of your listed Consent Recipients (Affiliates). You will not be able to submit any of your ' +
         'Exhibit Forms until you digitally sign all of them.'
     });
+
+    if( ! includeSubmit) {
+      return; // Apparently, the remaining content is not to be shown per client request.
+    }
+
     _return(32);
 
     const { 
@@ -386,7 +391,7 @@ export class ExhibitFormFullBoth extends PdfForm implements IPdfForm {
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/ExhibitFormFullBoth.ts')) {
 
-  const testBlankForm = false;
+  const testBlankForm = true;
 
   (async () => {
 

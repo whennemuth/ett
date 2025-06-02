@@ -87,9 +87,11 @@ export class ExhibitFormFullOther extends PdfForm implements IPdfForm {
 
     await drawOrderedItems();
 
-    await drawSignature('full exhibit Form');
+    await drawSignature('Full Exhibit Form');
 
     await drawReadyForSubmission();
+
+    this.page.setLinkAnnotations();
 
     const pdfBytes = await doc.save();
     return pdfBytes;
@@ -110,28 +112,22 @@ export class ExhibitFormFullOther extends PdfForm implements IPdfForm {
   private drawIntro = async () => {
     const { 
       baseForm: { consentFormUrl, consenter: { firstname, middlename, lastname } }, 
-      page: { basePage, drawWrappedText, drawCenteredText }, font, boldfont, _return, getFullName 
+      page: { basePage, drawWrappedText }, font, getFullName 
     } = this;
     let fullname = getFullName(firstname, middlename, lastname);
     fullname = fullname ? `my <i>(${fullname})</i>` : 'my';
     const size = 9;
 
     await drawWrappedText({ 
-      text: `<b>his Full Exhibit Form is incorporated into ${fullname} Consent Form, at:</b>`, 
+      text: `<b>This Full Exhibit Form is incorporated into ${fullname} Consent Form, attached to this Exhibit Form.</b>`, 
       options: { size, font }, linePad: 4, padBottom: 6 
     });
-
-    await drawCenteredText(
-      consentFormUrl, 
-      { font:boldfont, size:8, color:blue, lineHeight:14 }
-    );
-    _return();
 
     basePage.moveDown(8);
     await drawWrappedText({ 
       text: '<b>This Exhibit Form provides an up-to-date list of the names and contacts for my known ' +
       '<u>Consent Recipients</u> (also called Affiliates) on the date of this Exhibit Form—but NOT <u>my ' +
-      'current employers and appointing organizations</u>.  The definitions in the Consent Form also apply ' +
+      'current employers and appointing organizations</u>. The definitions in the Consent Form also apply ' +
       'to this Exhibit Form.</b> <u>My known Consent Recipient(s)</u> of the types covered by this form are:', 
       options: { size, font }, linePad: 4 
     });
@@ -170,7 +166,7 @@ export class ExhibitFormFullOther extends PdfForm implements IPdfForm {
     await drawWrappedText({
       text: '<sup><b>1</b></sup>List your <b>former employers</b> for the period specified by the ETT-Registered ' +
         'Entity that requested this Exhibit Form (“Registered Entity”) and is considering you for ' +
-        'a <u>Privilege or Honor</u>, <u>Employment or Role</u> at this time.   List up to date contacts of the ' +
+        'a <u>Privilege or Honor</u>, <u>Employment or Role</u> at this time. List up to date contacts of the ' +
         'type (e.g., HR, supervisor, department head) specified by that Registered Entity.',
       options: { size, font }, linePad: 2, padBottom: 14, horizontalRoom
     });
@@ -221,13 +217,13 @@ export class ExhibitFormFullOther extends PdfForm implements IPdfForm {
       { size:9, font:boldfont }, 16);
 
     await drawOrderedItem({
-      paragraphs: [ { text: 'Transmit this “<u>Full Exhibit Form</u>” and my accompanying ' +
+      paragraphs: [ { text: 'Transmit this “<u>Exhibit Form</u>” and my accompanying ' +
         '“<u>Single-Entity Exhibit Forms</u>” on my behalf to my private page on ETT. ',
       options: { size:9, font:boldfont } } ]
     });
 
     await drawOrderedItem({
-      paragraphs: [ { text: `<b>Also transmit this Full Exhibit Form on my behalf to</b> ` +
+      paragraphs: [ { text: `<b>Also transmit this Exhibit Form on my behalf to</b> ` +
         `${entityName}, which is the ETT-Registered Entity that requested it (“ <u>Registered Entity</u>”) ` +
         `in connection with considering me for a Privilege or Honor, Employment or Role at this time.`,
       options: { size:9, font:boldfont } } ],
@@ -239,16 +235,17 @@ export class ExhibitFormFullOther extends PdfForm implements IPdfForm {
           text: `<b><u>Within the next ${await getStaleEntityPeriod()}</u>—if the Registered Entity ` +
             'initiates transmittals via ETT to my listed  Consent Recipients/Affiliates, asking them ' +
             'to complete Disclosure Forms about me (“<u>Disclosure Requests</u>”), transmit the ' +
-            'disclosure Requests.</b>  Each Disclosure Request will include the relevant Single-Entity ' +
-            'Exhibit Form (so one Consent Recipient is not notified of the others), my Consent Form, ' +
-            'and a blank Disclosure Form.  Copy the Registered Entity and me on the Disclosure Requests.',
+            'Disclosure Requests.</b>  Each Disclosure Request will include the relevant Single-Entity ' +
+            'Exhibit Form (listing only the Consent Recipient/Affiliate that is receiving it — so one ' +
+            'Consent Recipient is not notified of the others), my Consent Form, and a blank Disclosure ' +
+            'Form.  Copy the Registered Entity and me on the Disclosure Requests.',
           options: { size:9, font }
         },
         {
           text: `<b><u>Within the ${await getSecondReminderPeriod()} after sending these initial ` +
             `Disclosure Request(s)</u>—resend the Registered Entity’s Disclosure Request(s) twice ` +
-            `(as reminders) to my Consent Recipients (Affiliates) listed in this Exhibit Form,</b> copying ` +
-            `the Registered Entity and me. <b>Then promptly delete the Disclosure Requests, my Full Exhibit ` +
+            `(as reminders) separately to each of my Consent Recipients (Affiliates) listed in this Exhibit Form,</b> copying ` +
+            `the Registered Entity and me. <b>Then promptly delete the Disclosure Requests, my Exhibit ` +
             `Form and all related Single Entity Exhibit Forms from ETT (as ETT will have completed its ` +
             `transmittal role).</b>`,
           options: { size:9, font }
@@ -258,16 +255,15 @@ export class ExhibitFormFullOther extends PdfForm implements IPdfForm {
 
     await drawOrderedItem({
       paragraphs: [ { text: '<u>I agree that my ETT Registration Form and Consent Form will remain in effect ' +
-        'for use with these particular Disclosure Requests and completed Disclosure Forms that my Consent ' +
-        'Recipient(s) provide in response (even if my ETT Registration and Consent otherwise expire or are ' +
-        'rescinded).</u>', 
+        'for use with these particular Disclosure Requests and my Consent Recipient(s)’ disclosures in ' +
+        'response (even if my ETT Registration and Consent otherwise expire or are rescinded).</u>', 
         options: { size:9, font:boldfont } } ]
     });
 
     await drawOrderedItem({
       paragraphs: [ { text: '<u>I agree that ETT has the right to identify me as the person who provided ' +
         'and authorized use of the name, title, email and phone number of the contacts I’ve listed for my ' +
-        'Affiliates.</u>', 
+        'Consent Recipients (Affiliates).</u>', 
         options: { size:9, font:boldfont } } ]
     });
 
@@ -297,7 +293,7 @@ export class ExhibitFormFullOther extends PdfForm implements IPdfForm {
     }); 
   }
 
-  private drawReadyForSubmission = async () => {
+  private drawReadyForSubmission = async (includeSubmit:boolean=false) => {
     const { baseForm: { isBlankForm, drawBigRedButton }, _return, page: { nextPageIfNecessary } } = this;
     if( ! isBlankForm) {
       return;
@@ -309,24 +305,22 @@ export class ExhibitFormFullOther extends PdfForm implements IPdfForm {
     await drawBigRedButton({
       text: 'NEXT',
       descriptionHeight: 32,
-      description: 'Click the Next button to create, review, date, and sign a Single-Entity Exhibit ' +
-        'Form for each of your listed Consent Recipients. You will not be able to submit any of your ' +
+      description: 'Click the Next button to create, review, date, and digitally sign a Single-Entity Exhibit ' +
+        'Form for each of your listed Consent Recipients (Affiliates). You will not be able to submit any of your ' +
         'Exhibit Forms until you digitally sign all of them.'
     });
-    _return(32);
 
     const { 
       page: { drawText, drawCenteredText, drawWrappedText, bodyWidth }, 
       font, boldfont, baseForm: { drawBulletedItem }
     } = this;
     let horizontalRoom = bodyWidth - 20;
-    basePage = nextPageIfNecessary(300);
 
-    await drawWrappedText({
-      text: '<i>If you only have only one current employer (and no other appointing organizations) ' +
-      'proceed to Ready for Submission.</i>',
-      options: { size:9, font:boldfont, color:red  }, linePad: 6, padBottom: 18, horizontalRoom
-    });
+    if( ! includeSubmit) {
+      return; // Apparently, the remaining content is not to be shown per client request.
+    }
+    
+    basePage = nextPageIfNecessary(300);
 
     _return(32);
     await drawCenteredText(
@@ -385,7 +379,7 @@ export class ExhibitFormFullOther extends PdfForm implements IPdfForm {
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/ExhibitFormFullOther.ts')) {
 
-  const testBlankForm = false;
+  const testBlankForm = true;
 
   (async () => {
 
