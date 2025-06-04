@@ -37,9 +37,12 @@ export const handler = async (event:ScheduledLambdaInput, context:any) => {
 
     const { disclosureEmailParms, purgeForms=false } = lambdaInput as DisclosureRequestReminderLambdaParms;
     const { s3ObjectKeyForExhibitForm, s3ObjectKeyForDisclosureForm } = disclosureEmailParms;
+    let cancelled:boolean = false;
 
     if(await fresherCopiesFound(s3ObjectKeyForExhibitForm)) {
-      log('Cancelling disclosure request reminder.');
+      log('Corrections that were made since this reminder was scheduled have been found.\n' +
+        'Cancelling disclosure request reminder.');
+      cancelled = true;
     }
     else {
 
@@ -54,17 +57,26 @@ export const handler = async (event:ScheduledLambdaInput, context:any) => {
       else {
         error('Disclosure request reminder NOT sent!');
       }
+
+      if(purgeForms) {
+        log('Since no correction forms that were made since this reminder was scheduled have been found, ' +
+          'ALL correction forms for the affiliate will be purged now.');
+
+        await purgeExhibitCorrectionForms(s3ObjectKeyForExhibitForm);
+
+        await checkConsenterCorrectionForms(s3ObjectKeyForExhibitForm);
+      }
     }
 
     if(purgeForms) {
+      log('Purging the forms that ' + 
+        (cancelled ? 'would have been sent ' : 'were just sent') + 
+        ' in this 2nd reminder email.');
+      
       await purgeFormFromBucket(EXHIBIT, s3ObjectKeyForExhibitForm);
 
       await purgeFormFromBucket(DISCLOSURE, s3ObjectKeyForDisclosureForm);
-           
-      await purgeExhibitCorrectionForms(s3ObjectKeyForExhibitForm);
-
-      await checkConsenterCorrectionForms(s3ObjectKeyForExhibitForm);
-    }
+    }    
   }
   catch(e:any) {    
     log(e);
