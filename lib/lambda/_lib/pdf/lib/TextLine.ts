@@ -1,13 +1,13 @@
-import { PDFDocument, PDFFont, PDFPage, PDFPageDrawTextOptions, StandardFonts } from "pdf-lib";
+import { Color, PDFDocument, PDFFont, PDFPage, PDFPageDrawTextOptions, StandardFonts } from "pdf-lib";
 import { EmbeddedFonts } from "./EmbeddedFonts";
 import { Link } from "./Link";
 import { Page } from "./Page";
-import { Margins } from "./Utils";
+import { Margins, rgbPercent } from "./Utils";
 
 /** Represents, within the line of text, a segment with its own formatting */
 export type ParsedItem = { 
   text:string, italics:boolean, bold:boolean, underline:boolean, newfont:PDFFont, width:number, 
-  fontSize:number, yOffset:number, linkHref?:string 
+  fontSize:number, yOffset:number, linkHref?:string, color?:Color
 };
 
 /**
@@ -109,6 +109,10 @@ export class TextLine {
         basePage.moveDown(item.yOffset);
       }
 
+      if(item.color) {
+        newopts.color = item.color;
+      }
+
       await drawText(item, newopts);
 
       // "Unjog" up or down for subscript or superscript
@@ -132,11 +136,14 @@ export class TextLine {
    * @returns 
    */
   public parse = async (text:string):Promise<ParsedItem[]> => {
+    const blue = rgbPercent(47, 84, 150) as Color;
+    const lightblue = rgbPercent(180, 198, 231) as Color;
+    const red = rgbPercent(255, 0, 0);
     const { options: { font:originalFont, size }, getFont } = this;
     const tagRegex = /(<[^<>]+>)/g; // Match an element like <i> or </i>
     // Since the split separator is a regex, the separators are included in the output array.
     const items = text.split(tagRegex); 
-    let italics = false, bold = false, underline = false, sizeDiff = 0, subSizeDiff = 0, yOffset = 0;
+    let italics = false, bold = false, underline = false, sizeDiff = 0, subSizeDiff = 0, yOffset = 0, color = undefined;
     let linkHref:string|undefined = undefined;
     const parsedItems = [] as ParsedItem[];
 
@@ -152,7 +159,13 @@ export class TextLine {
         case '<sub>': subSizeDiff = -2; yOffset = 4; break;
         case '<sup>': subSizeDiff = -2; yOffset = 4; break;
         case '</sub>': subSizeDiff = 0; yOffset = 0; break;
-        case '</sup>': subSizeDiff = 0; yOffset = 0; break
+        case '</sup>': subSizeDiff = 0; yOffset = 0; break;
+        case '<red>': color = red; break;
+        case '</red>': color = undefined; break;
+        case '<blue>': color = blue; break;
+        case '</blue>': color = undefined; break;
+        case '<lightblue>': color = lightblue; break;
+        case '</lightblue>': color = undefined; break;
         default:
           if(`${item}`.trim().length > 0 || /^\x20+$/.test(item)) {
             
@@ -180,7 +193,7 @@ export class TextLine {
             
             // If we get here, then the item is a text segment between markup tags that will 
             // have applied to it the formatting that the markup wrapping it indicates.
-            const parsed = { text:item, bold, italics, underline, yOffset, linkHref } as ParsedItem;
+            const parsed = { text:item, bold, italics, underline, yOffset, linkHref, color } as ParsedItem;
             const newfont = await getFont(originalFont!, parsed);
             parsed.newfont = newfont;
             const width = newfont.widthOfTextAtSize(item, (size! + sizeDiff));

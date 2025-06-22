@@ -128,7 +128,7 @@ export class Text {
         lines.push({ text:line, options, padBottom:linePad });
         line = word.trim();
 
-        const tagnames = [ 'b', 'i', 'u', 'a', '1', '2', '3', '4', '5', '6', '7', '8', '9' ];
+        const tagnames = [ 'b', 'i', 'u', 'a', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'red', 'blue', 'lightblue' ];
         tagnames.forEach(tagname => checkTags(tagname));
       }
       else {
