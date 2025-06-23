@@ -1,17 +1,17 @@
 import { writeFile } from "fs/promises";
 import { PDFDocument, PDFForm } from "pdf-lib";
+import { EntityInfo, UserInfo } from "../../functions/signup/EntityLookup";
 import { Delegate, Roles, User } from "../dao/entity";
 import { EmbeddedFonts } from "./lib/EmbeddedFonts";
 import { IPdfForm, PdfForm } from "./PdfForm";
 import { RegistrationFormEntityPage1 } from "./RegistrationFormEntityPage1";
 import { RegistrationFormEntityPage2 } from "./RegistrationFormEntityPage2";
 import { RegistrationFormEntityPage3 } from "./RegistrationFormEntityPage3";
-import { EntityInfo, UserInfo } from "../../functions/signup/EntityLookup";
 
 export type RegistrationFormEntityData = UserInfo & { 
   termsHref?:string,
   dashboardHref?:string,
-  privacyHref?:string
+  privacyHref?:string,
 }
 
 export type RegistrationFormEntityDrawParms = {
@@ -32,7 +32,9 @@ export class RegistrationFormEntity extends PdfForm implements IPdfForm {
     this.embeddedFonts = new EmbeddedFonts(this.doc);
     this.form = this.doc.getForm();
 
-    let { doc, form, embeddedFonts, data, data: { create_timestamp, dashboardHref, termsHref } } = this;
+    let { doc, form, embeddedFonts, data, data: { 
+      create_timestamp, dashboardHref, termsHref, registration_signature, fullname
+    } } = this;
     termsHref = termsHref ?? '[ ETT terms web address ]';
     dashboardHref = dashboardHref ?? '[ ETT login web address ]';
 
@@ -40,7 +42,12 @@ export class RegistrationFormEntity extends PdfForm implements IPdfForm {
 
     await new RegistrationFormEntityPage2().draw({ doc, form, embeddedFonts });
 
-    await new RegistrationFormEntityPage3(termsHref, dashboardHref, create_timestamp!).draw({ doc, form, embeddedFonts });
+    await new RegistrationFormEntityPage3({
+      termsHref, 
+      dashboardHref, 
+      signedDateISOString: create_timestamp!, 
+      registrationSignature: registration_signature || fullname
+    }).draw({ doc, form, embeddedFonts });
 
     const pdfBytes = await this.doc.save();
     return pdfBytes;
@@ -96,6 +103,7 @@ export const getSampleData = ():RegistrationFormEntityData => {
     fullname: 'Foghorn Leghorn',
     title: 'Rooster',
     create_timestamp: yesterday,
+    registration_signature: 'foghorn_signature',
     delegate: {
       email: 'wile@warnerbros.com',
       phone_number: '617-222-7777',
@@ -140,8 +148,8 @@ const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/RegistrationFormEntity.ts')) {
 
   const outputfile = './lib/lambda/_lib/pdf/RegistrationFormEntity.pdf';
-  // const data = getSampleData();
-  const data = getBlankData();
+  const blankForm = false;
+  const data = blankForm ? getBlankData() : getSampleData();
 
   new RegistrationFormEntity(data).writeToDisk(outputfile)
     .then((bytes) => {

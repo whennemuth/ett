@@ -1,12 +1,12 @@
-import { Color, PDFDocument, PDFFont, PDFPageDrawTextOptions, StandardFonts, rgb } from "pdf-lib";
+import { Color, PDFDocument, PDFFont, PDFPageDrawRectangleOptions, PDFPageDrawTextOptions, StandardFonts, rgb } from "pdf-lib";
+import { consentFormUrl } from "../../functions/consenting-person/ConsentingPersonUtils";
 import { Configurations, DurationType } from "../config/Config";
 import { Affiliate, AffiliateType, AffiliateTypes, ConfigNames, Consenter, Entity, ExhibitFormConstraint, ExhibitFormConstraints, ExhibitForm as ExhibitFormData, FormType, FormTypes } from "../dao/entity";
+import { humanReadableFromSeconds } from "../timer/DurationConverter";
 import { PdfForm } from "./PdfForm";
 import { EmbeddedFonts } from "./lib/EmbeddedFonts";
 import { Rectangle } from "./lib/Rectangle";
-import { Align, Margins, VAlign, rgbPercent } from "./lib/Utils";
-import { humanReadableFromSeconds } from "../timer/DurationConverter";
-import { consentFormUrl } from "../../functions/consenting-person/ConsentingPersonUtils";
+import { Align, ButtonParms, Margins, VAlign, drawButton, rgbPercent } from "./lib/Utils";
 
 export const blue = rgbPercent(47, 84, 150) as Color;
 export const grey = rgb(.1, .1, .1) as Color;
@@ -34,10 +34,9 @@ export class ExhibitForm extends PdfForm {
   // Default the parms to a blank object
   private parms:ExhibitFormParms;
   private blankForm:boolean = false;
-  private staleEntityDays:number;
-  private staleEntityPeriod:string;
-  private secondReminderDays:number;
-  private secondReminderPeriod:string;
+  private staleEntitySeconds:number;
+  private firstReminderSeconds:number;
+  private secondReminderSeconds:number;
   
   font:PDFFont;
   boldfont:PDFFont;
@@ -86,33 +85,72 @@ export class ExhibitForm extends PdfForm {
   }
 
   /**
-   * Get the number of days after which an entity is considered stale from the app configuration.
-   * @returns 
+   * @returns The number of seconds after which an entity is considered stale from the app configuration..
    */
-  public getStaleEntityPeriod = async():Promise<string> => {
-    if( ! this.staleEntityPeriod) {
+  public getStaleEntitySeconds = async():Promise<number> => {
+    if( ! this.staleEntitySeconds) {
       const { getAppConfig } = new Configurations();
       const { STALE_ASP_VACANCY, STALE_AI_VACANCY } = ConfigNames;
       const staleAI = await getAppConfig(STALE_AI_VACANCY)
       const staleASP = await getAppConfig(STALE_ASP_VACANCY);
-      const seconds = staleAI.getDuration(DurationType.SECOND) + staleASP.getDuration(DurationType.SECOND);
-      this.staleEntityPeriod = humanReadableFromSeconds(seconds);
+      this.staleEntitySeconds = staleAI.getDuration(DurationType.SECOND) + staleASP.getDuration(DurationType.SECOND);
     }
-    return this.staleEntityPeriod;;
+    return this.staleEntitySeconds;
   }
 
   /**
-   * Get the number of days after which a second reminder is sent to an affiliate from the app configuration.
-   * @returns 
+   * @returns The number of days after which an entity is considered stale.
    */
-  public getSecondReminderPeriod = async():Promise<string> => {
-    if( ! this.secondReminderPeriod) {
+  public getStaleEntityPeriod = async():Promise<string> => {
+    return humanReadableFromSeconds(await this.getStaleEntitySeconds());
+  }
+
+  /**
+   * @returns The number of seconds after which a first reminder is sent to an affiliate from the app configuration.
+   */
+  public getFirsReminderSeconds = async():Promise<number> => {
+    if( ! this.firstReminderSeconds) {
+      const { getAppConfig } = new Configurations();
+      const { FIRST_REMINDER } = ConfigNames;
+      this.firstReminderSeconds = (await getAppConfig(FIRST_REMINDER)).getDuration(DurationType.SECOND);
+    }
+    return this.firstReminderSeconds;
+  }
+
+  /**
+   * @returns The human readable period after which a first reminder is sent to an affiliate.
+   */
+  public getFirstReminderPeriod = async():Promise<string> => {
+    return humanReadableFromSeconds(await this.getFirsReminderSeconds());
+  }
+
+  /**
+   * @returns The number of seconds after which a second reminder is sent to an affiliate from the app configuration.
+   */
+  public getSecondReminderSeconds = async():Promise<number> => {
+    if( ! this.secondReminderSeconds) {
       const { getAppConfig } = new Configurations();
       const { SECOND_REMINDER } = ConfigNames;
-      const seconds = (await getAppConfig(SECOND_REMINDER)).getDuration(DurationType.SECOND);
-      this.secondReminderPeriod = humanReadableFromSeconds(seconds);
+      this.secondReminderSeconds = (await getAppConfig(SECOND_REMINDER)).getDuration(DurationType.SECOND);
     }
-    return this.secondReminderPeriod;
+    return this.secondReminderSeconds;
+  }
+
+  /**
+   * @returns The human readable period after which a second reminder is sent to an affiliate.
+   */
+  public getSecondReminderPeriod = async():Promise<string> => {
+    return humanReadableFromSeconds(await this.getSecondReminderSeconds());
+  }
+
+  public getSecondReminderOffsetPeriod = async():Promise<string> => {
+    const firstSeconds = await this.getFirsReminderSeconds();
+    const secondSeconds = await this.getSecondReminderSeconds();
+    if(firstSeconds > secondSeconds) {
+      throw new Error('The first reminder seconds must be less than the second reminder seconds. Check your configuration settings.');
+    }
+    const offset = secondSeconds - firstSeconds;
+    return humanReadableFromSeconds(offset);
   }
 
   /**
@@ -123,7 +161,7 @@ export class ExhibitForm extends PdfForm {
   public drawAffliate = async (a:Affiliate, size:number, orgHeaderLines:string[]) => {
     const { 
       page, page: { basePage }, font, boldfont, _return, markPosition, 
-      returnToMarkedPosition: returnToPosition
+      returnToMarkedPosition: returnToPosition, data: { formType } 
     } = this;
 
     // Draw the organization row
@@ -139,30 +177,51 @@ export class ExhibitForm extends PdfForm {
     _return();
     let rightMargin = 8;
     let xOffset = width - boldfont.widthOfTextAtSize(orgHeaderLines[0], size) - rightMargin;
+    let options = { borderWidth:1, borderColor:blue, color:grey, opacity:.2, width, height } as PDFPageDrawRectangleOptions;
+    let textOptions = { size, font:boldfont } as PDFPageDrawTextOptions;
+
+    if(formType == FormTypes.SINGLE) {
+      // If this is a single form, then the following row must be styled like the title row of a full exhibit form.
+      options = { borderWidth:1, borderColor:blue, color:blue, width, height };
+      textOptions = { size, font:boldfont, color:white };      
+    }
+
     await new Rectangle({
       text:orgHeaderLines[0],
       page,
       align: Align.right,
       valign: VAlign.top,
-      options: { borderWidth:1, borderColor:blue, color:grey, opacity:.2, width, height },
-      textOptions: { size, font:boldfont },
+      options,
+      textOptions,
       margins: { right:rightMargin, top:2 } as Margins
     }).draw();
 
     if(orgHeaderLines.length > 1) {
       xOffset = width - boldfont.widthOfTextAtSize(orgHeaderLines[1], size) - rightMargin;
-      basePage.drawText(orgHeaderLines[1], { 
+      const options = { 
         x: basePage.getX() + xOffset, y: basePage.getY() + 6, size, font: boldfont 
-      });
+      } as PDFPageDrawTextOptions;
+      if(formType == FormTypes.SINGLE) {
+        options.color = white;
+      }
+      basePage.drawText(orgHeaderLines[1], options);
     }
     
     basePage.moveRight(width); 
 
+    options = { borderWidth:1, borderColor:blue, width:(page.bodyWidth - width), height } as PDFPageDrawRectangleOptions;
+    textOptions = { size, font } as PDFPageDrawTextOptions;
+    if(formType == FormTypes.SINGLE) {
+      // If this is a single form, then the following row must be styled like the title row of a full exhibit form.
+      options = { borderWidth:1, borderColor:blue, color:blue, width:(page.bodyWidth - width), height };
+      textOptions = { size, font:boldfont, color:white };
+    }
+
     await new Rectangle({
       text: a.org, page,
       align: Align.left, valign: VAlign.middle,
-      options: { borderWidth:1, borderColor:blue, width:(page.bodyWidth - width), height },
-      textOptions: { size, font },
+      options,
+      textOptions,
       margins: { left: 8 } as Margins
     }).draw();
     _return(64);
@@ -180,7 +239,7 @@ export class ExhibitForm extends PdfForm {
     returnToPosition(posId);
     basePage.moveUp(48);
 
-    const items = [ [ 'Fullname', a.fullname ], [ 'Job Title', a.title ], [ 'Email', a.email ], [ 'Phone Nbr', a.phone_number ] ]
+    const items = [ [ 'Full name', a.fullname ], [ 'Job Title', a.title ], [ 'Email', a.email ], [ 'Phone Nbr', a.phone_number ] ]
     for(let i=0; i<items.length; i++) {
       const item = items[i];
       _return();
@@ -281,7 +340,7 @@ export class ExhibitForm extends PdfForm {
     const { ACADEMIC, EMPLOYER, EMPLOYER_PRIMARY, EMPLOYER_PRIOR, OTHER } = AffiliateTypes;
     switch(affType) {
       case EMPLOYER_PRIMARY:
-       return [ 'Primary Current Employer' ];
+       return [ 'Primary Current Employer', '(no acronyms)' ];
       case EMPLOYER:
         return [ 'Current Employer or Appointing /', 'Organization (no acronyms)' ];
       case EMPLOYER_PRIOR: case ACADEMIC: case OTHER:
@@ -475,7 +534,9 @@ export class ExhibitForm extends PdfForm {
 
     for(let i=0; i<paragraphs.length; i++) {
       const { text, options, estimatedHeight } = paragraphs[i];
+      let indent = basePage.getX();
       basePage = nextPageIfNecessary(estimatedHeight ?? 60, () => _return(16));
+
       if(i == 0) {
         // Draw the line with the bullet
         basePage.moveRight(10);
@@ -485,6 +546,10 @@ export class ExhibitForm extends PdfForm {
       } 
       else {
         basePage.moveDown(16);
+        if(basePage.getX() != indent) {
+          // If the indent has changed, then we must have moved to a new page, and we need to reapply it.
+          basePage.moveTo(indent, basePage.getY());
+        }
       }
       await drawWrappedText({ text, options, linePad:6, horizontalRoom:(bodyWidth - 30) });
     }
@@ -519,51 +584,18 @@ export class ExhibitForm extends PdfForm {
     basePage.moveDown(20);
   }
 
+
   /**
    * Draw a large red button with a white lable and a description to the right.
    * @param parms 
    */
   public drawBigRedButton = async (parms:BigRedButtonParms) => {
-    const { text, description, descriptionHeight } = parms;
-    const { _return, page, page: { drawRectangle, drawWrappedText, bodyWidth, basePage, margins }, boldfont, font } = this;
-
-    const buttonHeight = 60;
-    const textSize = 18;
-    const textWidth = boldfont.widthOfTextAtSize(text, textSize);
-    const buttonWidth = textWidth > (buttonHeight * 2) ? (textWidth + 12) : (buttonHeight * 2);
-    const rightMargin = (buttonWidth - textWidth) / 2;
-
-    _return(buttonHeight);
-
-    // Draw the button
-    await drawRectangle({
-      text,
-      page, margins: { left:0, top:0, bottom:0, right:rightMargin },
-      align: Align.right, valign: VAlign.middle,
-      options: { 
-        x:(margins.left),
-        y:basePage.getY(), 
-        color:red, 
-        width:buttonWidth, 
-        height:buttonHeight 
-      },
-      textOptions: { size:textSize, font:boldfont, color:white, lineHeight: 16 }
-    });
-
-    // Jog back up and over to the right to draw the description centered and padded on the right side of the button.
-    const padLeft = 8;
-    const horizontalRoom = (bodyWidth - 20) - buttonWidth - padLeft;
-    const textHeight = font.heightAtSize(9);
-    basePage.moveRight(buttonWidth + padLeft);
-    if(descriptionHeight > buttonHeight) {
-      basePage.moveDown((descriptionHeight - buttonHeight) / 2);
-    }
-    else {
-      basePage.moveUp(buttonHeight - ((buttonHeight - descriptionHeight) / 2) - textHeight);
-    }
-    await drawWrappedText({
-      text:description, options: { size:9, font  }, linePad: 2, horizontalRoom
-    });
+    const { description, descriptionHeight, text } = parms;
+    const { font, boldfont } = this;
+    await drawButton(this, {
+      text, description, descriptionHeight, buttonHeight:60, textSize:18, lineHeight:16, 
+      boldfont, font, color:red, textColor:white
+    } as ButtonParms);
   }
 
   /**
@@ -669,7 +701,8 @@ export const SampleExhibitFormParms = (affiliates:Affiliate[]):ExhibitFormParms 
 
   data.affiliates = affiliates;
 
-  return { consenter, entity, data, consentFormUrl: consentFormUrl(email) };
+  const affiliateEmail = data.affiliates[0].email
+  return { consenter, entity, affiliateEmail, data, consentFormUrl: consentFormUrl(email) } as ExhibitFormParms;
   
 };
 

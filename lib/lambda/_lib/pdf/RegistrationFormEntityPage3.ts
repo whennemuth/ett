@@ -1,27 +1,32 @@
 import { writeFile } from "fs/promises";
-import { Color, PageSizes, PDFDocument, PDFFont, PDFPage, PDFPageDrawTextOptions, StandardFonts } from "pdf-lib";
+import { Color, PageSizes, PDFDocument, PDFFont, PDFPage, PDFPageDrawTextOptions, rgb, StandardFonts } from "pdf-lib";
 import { roleFullName, Roles } from "../dao/entity";
 import { EmbeddedFonts } from "./lib/EmbeddedFonts";
 import { Page } from "./lib/Page";
-import { Align, Margins, rgbPercent, VAlign } from "./lib/Utils";
+import { Align, drawButton, Margins, rgbPercent, VAlign } from "./lib/Utils";
 import { IPdfForm, PdfForm } from "./PdfForm";
 import { RegistrationFormEntityDrawParms } from "./RegistrationFormEntity";
 
+export type RegistrationFormEntityPage3Parms = {
+  termsHref:string,
+  dashboardHref:string,
+  signedDateISOString?:string,
+  registrationSignature?:string
+}
+
 const red = rgbPercent(255, 0, 0);
+const white = rgb(1, 1, 1) as Color;
+
 
 export class RegistrationFormEntityPage3 extends PdfForm implements IPdfForm {
   private font:PDFFont;
   private boldfont:PDFFont;
-  private dashboardHref:string;
-  private termsHref:string;
-  private signedDate:string
+  private parms:RegistrationFormEntityPage3Parms;
 
-  constructor(termsHref:string, dashboardHref:string, signedDateISOString:string=new Date().toISOString()) {
+  constructor(parms:RegistrationFormEntityPage3Parms) {
     super();
-    this.dashboardHref = dashboardHref;
-    this.termsHref = termsHref;
+    this.parms = parms;;
     this.pageMargins = { top: 35, bottom: 35, left: 40, right: 40 } as Margins;
-    this.signedDate = new Date(signedDateISOString).toUTCString();
   }
 
   public async getBytes(): Promise<Uint8Array> {
@@ -93,7 +98,7 @@ export class RegistrationFormEntityPage3 extends PdfForm implements IPdfForm {
   }
 
   private drawOuterBox = async () => {
-    await this.drawBox(640, 8, 2);
+    await this.drawBox(630, 8, 2);
   }
 
   private drawInnerBox = async () => {  
@@ -101,7 +106,7 @@ export class RegistrationFormEntityPage3 extends PdfForm implements IPdfForm {
   }
 
   private drawOuterBoxContent = async () => {
-    const { termsHref, page, page: { basePage, bodyWidth }, font, boldfont, _return } = this;
+    const { parms: { termsHref }, page, page: { basePage, bodyWidth }, font, boldfont, _return } = this;
 
     _return(16);
     await page.drawCenteredText(
@@ -141,28 +146,28 @@ export class RegistrationFormEntityPage3 extends PdfForm implements IPdfForm {
     }
 
     await drawBulletedItem({
-      header: 'ETT IS A TOOL TO HELP YOU GET CONSENTS AND MAKE DISCLOSURES.',
+      header: 'EACH ETT-REGISTERED ENTITY MUST MAKE INDEPENDENT DECISIONS AND POLICIES.',
       headerOptions: { font:boldfont, color:red, size:9, lineHeight:14 },
       body: 
-        'ETT is a tool that helps you get individuals’ consents to disclosures of findings of ' + 
-        'misconduct about them and to make disclosures requests to the entities that may have ' + 
-        'made or adopted findings. ETT is not a policy and does not dictate or guide decisions ' + 
-        'or policies, including, e.g., for which Privileges or Honors, Employment or Role(s) <sup>4</sup> ' + 
-        'ETT is used, how to weigh findings, or who is qualified or should be selected.'
+        'ETT is just an automation tool that any ETT-Registered Entity may use, in its discretion, to ' +
+        'get individuals’ consents to disclosures of findings of misconduct about them and to make ' +
+        'disclosures requests to the entities that may have made or adopted findings. ETT does <b>not</b> ' +
+        'receive any disclosures or conduct records.  It is <b>not</b> a policy and does <b>not</b> dictate or guide ' +
+        'decisions or policies, including, e.g., for which Privileges or Honors, Employment or Role(s) ' +
+        '<sup>4</sup> ETT is used, how to weigh findings, or who is qualified or should be selected.'
       ,
       bodyOptions: { font, size:9, lineHeight:12 }
     });
 
     await drawBulletedItem({
       header: 
-        `${roleFullName(Roles.RE_AUTH_IND)}s (AIs) should be in senior institutional roles, accustomed ` +
-        'to managing sensitive',
+        `${roleFullName(Roles.RE_AUTH_IND)}s (AIs) and any Contacts for Disclosure Request Responses ` +
+        'should be in senior institutional roles,',
       headerOptions: { font, size:9, lineHeight:14 },
       body: 
-        'and confidential information, and knowledgeable about the ETT-Registered Entity. ' +
-        `${roleFullName(Roles.RE_ADMIN)}s (ASPs) should also be accustomed to managing sensitive ` +
-        'and confidential information. An ETT-Registered Entity determines these roles/people.'
-      ,
+        'accustomed to managing sensitive and confidential information, and knowledgeable about the ' +
+        `ETT-Registered Entity. ${roleFullName(Roles.RE_ADMIN)}s (ASPs) should also be accustomed to ` +
+        'managing sensitive and confidential information. An ETT-Registered Entity determines these roles/people.',
       bodyOptions: { font, size:9, lineHeight:12 }
     });
 
@@ -196,23 +201,21 @@ export class RegistrationFormEntityPage3 extends PdfForm implements IPdfForm {
     await drawBulletedItem({
       header: 
         'Completed Consent Forms, Exhibit Forms, and Disclosure Forms must be used by an ETT-Registered ' +
-        'Completed',
+        'Entity <b>only</b>',
       headerOptions: { font, size:9, lineHeight:14 },
-      body: 
-        'Consent Forms, Exhibit Forms, and Disclosure Forms must be used by an ETT-Registered Entity ' +
-        '<b>only</b> in connection with Privilege(s) or Honor(s), Employment or Role(s).<sup>4</sup> '
-      ,
+      body: 'in connection with Privilege(s) or Honor(s), Employment or Role(s). <sup>4</sup>',
       bodyOptions: { font, size:9, lineHeight:12 }
     });
 
     await drawBulletedItem({
       header: 
         'ETT-Registered Entities must not share <b>completed</b> Registration, Consent, Exhibit, or Disclosure ' +
-        'Forms that',
+        'Forms (or the information',
       headerOptions: { font, size:9, lineHeight:14 },
       body: 
-        'they <b>receive or access</b> with other entities (third parties). ETT-Registered Entities may ' +
-        'access Consent Forms on ETT, while a Consent is in effect.'
+        'called for under the Disclosure Form) that they <b>receive or access</b> with other ' +
+        'entities (third parties). ETT-Registered Entities may access Consent Forms on ETT, while a ' +
+        'Consent is in effect.'
       ,
       bodyOptions: { font, size:9, lineHeight:12 }
     });
@@ -236,16 +239,29 @@ export class RegistrationFormEntityPage3 extends PdfForm implements IPdfForm {
       ,
       bodyOptions: { font, size:9, color:red, lineHeight:12 }
     });
-
-
   }
 
   private drawInnerBoxContent = async () => {
-    const { page, page: { basePage }, font, boldfont, _return, signedDate, dashboardHref } = this;
+    const { 
+      page, page: { basePage }, font, boldfont, _return, 
+      parms: { signedDateISOString= new Date().toISOString(), dashboardHref, registrationSignature='' } 
+    } = this;
+
+    if( ! registrationSignature) {
+      return this.drawBlankInnerBoxContent();
+    }
+
+    // Cannot use the signature and the signed date because this form might be used in the context of an 
+    // email attachment, where these value are for the last person to register, but the form is being copied
+    // to all entity members. This can only be corrected if we stop CC'ing and send priviate emails to each
+    // person who registers, which is not the current design.
+    const signedDate = new Date(signedDateISOString).toUTCString();
+    const signature = registrationSignature ? `<u>  ${registrationSignature}     </u>` : '____________________';
 
     _return(16);
+
     await page.drawCenteredText(
-      `Signed, Dated, and Submitted on: ${signedDate}`,
+      'Signed, dated and submitted',
       { font:boldfont, size:10, color:red, lineHeight:14, }
     );
 
@@ -268,10 +284,52 @@ export class RegistrationFormEntityPage3 extends PdfForm implements IPdfForm {
     );
   }
 
+  private drawBlankInnerBoxContent = async () => {
+    const { page, page: { basePage }, font, boldfont, _return, parms: { dashboardHref } } = this;
+
+    _return(16);
+    await page.drawCenteredText(
+      `<b>[  ] Check here, type your name below, and submit, to digitally sign this Registration Form</b> on behalf`,
+      { font, size:10, color:red, lineHeight:14, }
+    );
+
+    basePage.moveDown(2);
+    await page.drawCenteredText(
+      'of the Registered Entity and to agree on its and your behalf to these terms, register and your authority to do so.',
+      { font, size:10, color:red, lineHeight:14, }
+    );
+
+    basePage.moveDown(8);
+    await page.drawCenteredText(
+      `Sign, date, and click on SUBMIT: ____________________`,
+      { font:boldfont, size:10, color:red, lineHeight:14, }
+    );
+
+    basePage.moveDown(8);
+    await page.drawCenteredText(
+      `You may terminate this registration at any time <u><a href="${dashboardHref}">here</a></u>`,
+      { font:boldfont, size:10, color:red, lineHeight:14, }
+    );
+
+    await drawButton(this, {
+      text: 'SUBMIT',
+      buttonHeight: 30,
+      textSize: 12,
+      font,
+      boldfont,
+      color: red,
+      textColor: white,
+      newline: false,
+      x: basePage.getWidth() - 106,
+      y: basePage.getY() + 4,
+      lineHeight: 4,
+    });
+  }
+
   private drawDefinitions = async () => {
     const { page: { drawWrappedText, basePage, margins }, font, _return } = this;
 
-    _return(36);
+    _return(28);
 
     basePage.drawLine({ 
       start: { x: margins.left, y: basePage.getY() + 12 }, 
@@ -281,7 +339,7 @@ export class RegistrationFormEntityPage3 extends PdfForm implements IPdfForm {
 
     const def = 'Examples of <b>Privilege(s) or Honor(s)</b> include but are not limited to: elected fellow, ' +
       'elected or life membership; recipient of an honor, award, or an emeritus or endowed role; ' +
-      'elected or appointed governance, committee, officer, or leadership role. However, Privileges ' +
+      'elected or appointed governance, committee, officer, or leadership role. However, Privileges or Honors ' +
       ' <b><u>do not</u></b> include basic membership in an academic, professional, or honorary society at an ' +
       'individual’s initiative (i.e., when not elected or awarded). Examples of <b>Employment or Roles</b> ' +
       'include but are not limited to: employment; employee appointment or assignment to a ' +
@@ -307,7 +365,13 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/
   const termsHref = `https://d227na12o3l3dd.cloudfront.net/terms`;
   const dashboardHref = `https://d227na12o3l3dd.cloudfront.net/bootstrap/index.htm?action=start-login&selected_role=${Roles.CONSENTING_PERSON}`;
   
-  new RegistrationFormEntityPage3(termsHref, dashboardHref, new Date().toISOString()).writeToDisk(outputfile)
+  const blankForm = true;
+  const parms = { termsHref, dashboardHref } as RegistrationFormEntityPage3Parms;
+  if( ! blankForm ) {
+    parms.signedDateISOString = (new Date().toISOString());
+    parms.registrationSignature = 'My Signature';
+  }
+  new RegistrationFormEntityPage3(parms).writeToDisk(outputfile)
     .then((bytes) => {
       console.log('done');
     })

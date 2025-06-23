@@ -1,5 +1,5 @@
 import { writeFile } from "fs/promises";
-import { Color, PageSizes, PDFDocument, PDFFont, PDFPage, StandardFonts } from "pdf-lib";
+import { Color, PageSizes, PDFDocument, PDFFont, PDFPage, PDFPageDrawTextOptions, StandardFonts } from "pdf-lib";
 import { roleFullName, Roles, User } from "../dao/entity";
 import { EmbeddedFonts } from "./lib/EmbeddedFonts";
 import { Page } from "./lib/Page";
@@ -73,9 +73,13 @@ export class RegistrationFormEntityPage1 extends PdfForm implements IPdfForm {
     this.page.setLinkAnnotations();
   }
 
+  public isBlankForm = ():boolean => {
+    const { data: { entity, email } } = this;
+    return entity?.entity_name === '' && email === '';
+  }
 
-  /**
-   * Draw the title and subtitle
+    /**
+     * Draw the title and subtitle
    */
   private drawTitle = async () => {
     const { page, boldfont, font, _return } = this;
@@ -85,13 +89,26 @@ export class RegistrationFormEntityPage1 extends PdfForm implements IPdfForm {
   }
 
   private drawSubTitle = async () => {
-    const { page, font, _return, data: { create_timestamp, entity: { users } } } = this;
+    // Blank form
+    const { page, font, isBlankForm, _return } = this;
+    const title = '<b>Entity Registration Form</b>';
+    const options = { size: 10, font } as PDFPageDrawTextOptions;
+    if(isBlankForm()) {
+      await page.drawText(title, options, 12);
+      _return(24);
+      return;
+    }
+
+    // or...
+
+    // Filled out form
+    const { data: { create_timestamp } } = this;
     let signedOn = new Date().toUTCString();
     if(create_timestamp) {
       const created = new Date(Date.parse(create_timestamp));
       signedOn = created.toUTCString();
     }
-    await page.drawText(`<b>Entity Registration Form</b> <i>(digitally signed: <b>${signedOn}.</b>)</i>`, { size: 10, font }, 12);
+    await page.drawText(`${title} <i>(digitally signed: <b>${signedOn}.</b>)</i>`, options, 12);
     _return(24);
   }
 
@@ -215,23 +232,39 @@ export class RegistrationFormEntityPage1 extends PdfForm implements IPdfForm {
   private drawDisclaimerPart1 = async () => {
     const { page, boldfont, data: { privacyHref }, _return } = this;
     const size = 10;
-    _return(16);
-    const text = 
-      `<i>Your organization’s representatives are its above-listed ${roleFullName(Roles.RE_ADMIN)}` +
-      `and its ${roleFullName(Roles.RE_AUTH_IND)}s, who are also the contacts for responses to Disclosure ` +
-      'Requests. Registering your organization to use ETT also means that in your official and personal ' +
-      'capacities you have read and agree to the ETT Privacy Notice and Privacy Policy (available ' +
-      `<u><a href="${privacyHref}">here</a></u>), and consent on your own and your organization’s behalf ` +
-      'to inclusion of your organization’s name, with or without its representative(s) name and contact ' +
-      'information (as reflected above) on the ETT database and in ETT-related communications, factually ' +
-      'stating that your organization is or was registered to use ETT or is or was an ETT-Registered ' +
-      'Entity. This agreement and consent includes but is not limited to putting your organization’s ' +
-      'name, with or without its representative(s)’ names and contact</i>';
+    _return(6);
+
     await page.drawWrappedText({
-      text,
+      text: `Your organization’s representatives are its above-listed ${roleFullName(Roles.RE_ADMIN)} ` +
+      `and its ${roleFullName(Roles.RE_AUTH_IND)}s, who are also the contacts that will respond to Disclosure ` +
+      'Requests when another ETT Registered Entity makes a Disclsoure Request to your organization.',
       options: { size, font:boldfont, color:red, lineHeight: 12 },
       linePad: 2
     });
+
+    _return(10);
+
+    await page.drawWrappedText({
+      text: 'Registering your organization to use ETT means that it can participate in ETT. It also ' +
+      'means that in your official and personal capacities you have read and agree to the ETT Privacy Notice ' +
+      `and Privacy Policy (available <u><a href="${privacyHref}">here</a></u>), and consent on your own and ` +
+      'your organization’s behalf to them and to inclusion of your organization’s name, with or without its ' +
+      'representative(s) name and contact information (as reflected above) on the ETT database and in ' + 
+      'ETT-related communications, factually stating that your organization is or was registered to use ETT ' +
+      'or is or was an ETT-Registered Entity.',
+      options: { size, font:boldfont, color:red, lineHeight: 12 },
+      linePad: 2
+    });
+
+    _return(10);
+
+    await page.drawWrappedText({
+      text: 'This agreement and consent includes but is not limited to putting your organization’s ' +
+      'name, with or without its representative(s)’ names and contact',
+      options: { size, font:boldfont, color:red, lineHeight: 12 },
+      linePad: 2
+    });
+
     _return(16);
   }
 
@@ -251,7 +284,7 @@ export class RegistrationFormEntityPage1 extends PdfForm implements IPdfForm {
       'These are the contacts who will respond to Disclosure Requests from another ETT-Registered Entity ' +
       'when your organization is disclosing its findings of misconduct against a person who is being ' +
       'considered by the other ETT-Registered Entity. You may input “same as [specify Authorized ' +
-      `Individuals or ${roleFullName(Roles.RE_ADMIN)}]” it these individuals will fulfill the ` +
+      `Individuals or ${roleFullName(Roles.RE_ADMIN)}]” if these individuals will fulfill the ` +
       'Disclosure Response Contact role too'
     ]
 
@@ -285,8 +318,9 @@ const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/RegistrationFormEntityPage1.ts')) {
 
   const outputfile = './lib/lambda/_lib/pdf/RegistrationFormEntityPage1.pdf';
-  // const data = getSampleData();
-  const data = getBlankData();
+  const isBlankForm = false;
+
+  const data = isBlankForm ? getBlankData() : getSampleData();
 
   new RegistrationFormEntityPage1(data).writeToDisk(outputfile)
     .then((bytes) => {
