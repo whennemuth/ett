@@ -69,7 +69,7 @@ export class RegistrationFormEntityPage2 extends PdfForm implements IPdfForm {
       });
     }
     await draw( 
-      '<i>information, on a list of ETT-Registered Entities that is made publicly available. Your organization’s ' +
+      'information, on a list of ETT-Registered Entities that is made publicly available. Your organization’s ' +
       'and representatives’ information will be removed from lists of current ETT-Registered Entities upon ' +
       'termination of the organization’s registration. If there is a change in an ETT-Registered Entity’s ' +
       'Authorized Representative(s), the removed representative(s) will be removed from lists of current ' +
@@ -79,15 +79,15 @@ export class RegistrationFormEntityPage2 extends PdfForm implements IPdfForm {
       'ability to use ETT efficiently. Any such reference will not include an endorsement of ETT or state ' +
       'the specific way (within all the permitted ways) in which your organization is or was using ETT, ' +
       `unless an ${roleFullName(Roles.RE_AUTH_IND)} gives additional written consent. (ETT may ` +
-      'be abbreviated or spelled out as the Ethical Transparency Tool.)</i>'
+      'be abbreviated or spelled out as the Ethical Transparency Tool.)'
     );
 
     _return(16);
 
     await draw(
-      '<i>Mere listing of your organization and its representatives as an ETT-Registered Entity is not deemed ' +
+      'Mere listing of your organization and its representatives as an ETT-Registered Entity is not deemed ' +
       'an endorsement. ETT may communicate aggregated data on the way ETT-Registered Entities use ETT and ' +
-      'the impact of the tool.</i>');
+      'the impact of the tool.');
 
     _return(24);
   }
