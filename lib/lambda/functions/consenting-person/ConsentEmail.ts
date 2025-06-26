@@ -1,5 +1,6 @@
 import * as ctx from '../../../../contexts/context.json';
 import { IContext } from "../../../../contexts/IContext";
+import { PUBLIC_API_ROOT_URL_ENV_VAR } from '../../../PublicApi';
 import { YN } from "../../_lib/dao/entity";
 import { sendEmail } from "../../_lib/EmailWithAttachments";
 import { ConsentForm, ConsentFormData } from "../../_lib/pdf/ConsentForm";
@@ -66,27 +67,39 @@ export class ConsentFormEmail {
  */
 const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/consenting-person/ConsentEmail.ts')) {
-  const email = process.env.PDF_RECIPIENT_EMAIL;
-  
-  if( ! email) {
-    console.log('Email environment variable is missing. Put PDF_RECIPIENT_EMAIL=[email] in .env in ${workspaceFolder}');
-    process.exit(1);
-  }
 
-  const test_consenter_form_data = {
-    entityName: 'Boston University',
-    consenter: {
-      email, active: YN.Yes, consented_timestamp: [ new Date().toISOString() ],
-      firstname: 'Bugs', middlename: 'B', lastname: 'Bunny', title: 'Rabbit',
-      phone_number: '+617-222-4444', 
+  (async () => {
+
+    // 1) Get context variables
+    const context:IContext = await require('../../../../contexts/context.json');
+    const { REGION, TAGS: { Landscape }} = context;
+    process.env.REGION = REGION;
+    process.env[PUBLIC_API_ROOT_URL_ENV_VAR] = `https://${Landscape}.some-domain.com/some/path`; // Set a dummy value for the public api root url env var
+
+    // 2) Get the email address of the recipient
+    const email = process.env.PDF_RECIPIENT_EMAIL;    
+    if( ! email) {
+      console.log('Email environment variable is missing. Put PDF_RECIPIENT_EMAIL=[email] in .env in ${workspaceFolder}');
+      process.exit(1);
     }
-  } as ConsentFormData;
 
-  new ConsentFormEmail(test_consenter_form_data).send()
-    .then(success => {
-      console.log(success ? 'Succeeded' : 'Failed');
-    })
-    .catch(e => {
-      console.error(e);
-    });
+    // 3) Configure the consent form with data
+    const test_consenter_form_data = {
+      entityName: 'Boston University',
+      consenter: {
+        email, active: YN.Yes, consented_timestamp: [ new Date().toISOString() ],
+        firstname: 'Bugs', middlename: 'B', lastname: 'Bunny', title: 'Rabbit',
+        phone_number: '+617-222-4444', 
+      }
+    } as ConsentFormData;
+
+    // 4) Send the email
+    new ConsentFormEmail(test_consenter_form_data).send()
+      .then(success => {
+        console.log(success ? 'Succeeded' : 'Failed');
+      })
+      .catch(e => {
+        console.error(e);
+      });
+  })();
 }
