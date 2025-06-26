@@ -49,7 +49,7 @@ export class DisclosureFormPage1 extends PdfForm implements IPdfForm {
     this.doc = doc;
     this.form = form;
     this.embeddedFonts = embeddedFonts;
-    const { pageMargins, drawLogo, drawTitle, drawConsenter, drawRequestingEntity, drawDisclosingEntity } = this;
+    const { pageMargins, drawLogo, drawTitle, drawConsenter, drawRequestingEntity, drawDisclosingEntity1 } = this;
 
     // Create the page
     this.page = new Page(doc.addPage(PageSizes.Letter) as PDFPage, pageMargins, embeddedFonts); 
@@ -66,7 +66,7 @@ export class DisclosureFormPage1 extends PdfForm implements IPdfForm {
 
     await drawRequestingEntity();
 
-    await drawDisclosingEntity();
+    await drawDisclosingEntity1();
   }
 
 
@@ -177,14 +177,14 @@ export class DisclosureFormPage1 extends PdfForm implements IPdfForm {
   }
 
   
-  private drawAuthorizedIndividual = async (number:string, authInd:User) => {
+  private drawAuthorizedIndividual = async (number:string, authInd:User, roleName:string) => {
     let size = 10;
     const { page, page: { basePage, bodyWidth }, font, _return } = this;
     const { delegate } = authInd;
     const rep = delegate ?? authInd;
 
     await new Rectangle({
-      text: `${roleFullName(Roles.RE_AUTH_IND)} #${number}`,
+      text: `${roleName} #${number}`,
       page,
       align: Align.left,
       valign: VAlign.middle,
@@ -339,9 +339,9 @@ export class DisclosureFormPage1 extends PdfForm implements IPdfForm {
       } as User)
     }
 
-    await drawAuthorizedIndividual('1', requestingEntity.authorizedIndividuals[0]);
+    await drawAuthorizedIndividual('1', requestingEntity.authorizedIndividuals[0], `${roleFullName(Roles.RE_AUTH_IND)}`);
 
-    await drawAuthorizedIndividual('2 <i>(if any)</i>', requestingEntity.authorizedIndividuals[1]);
+    await drawAuthorizedIndividual('2 <i>(if any)</i>', requestingEntity.authorizedIndividuals[1], `${roleFullName(Roles.RE_AUTH_IND)}`);
 
     basePage.moveDown(80);
     await new Rectangle({
@@ -366,8 +366,8 @@ export class DisclosureFormPage1 extends PdfForm implements IPdfForm {
           'Privileges  <b>DO NOT</b> include basic membership in an academic, professional, or honorary ' + 
           'society at an individual’s initiative (i.e., when not elected or awarded).  Examples ' + 
           'of <b>Employment or Roles</b> include but are not limited to: employment; employee appointment ' + 
-          'or assignment to a supervisory, evaluative, or mentoring role. Other privileges (e.g., ' +
-          'volunteer roles) and employment-related roles and decisions that the Requesting Entity ' + 
+          'or assignment to a supervisory, evaluative, or mentoring role. Other Privileges or Honors (e.g., ' +
+          'volunteer roles) and other Employment-related roles and decisions that an ETT-Registered Entity ' + 
           'identifies as affecting climate and culture may be included.</i>',
         options: { size: 8, font } as PDFPageDrawTextOptions,
         horizontalRoom: (basePage.getWidth() - pageMargins.left - pageMargins.right - 16),
@@ -376,9 +376,9 @@ export class DisclosureFormPage1 extends PdfForm implements IPdfForm {
     );
   }
 
-  private drawDisclosingEntity = async () => {
+  private drawDisclosingEntity1 = async () => {
     let size = 10;
-    const { page, page: { basePage, bodyWidth }, form, pageMargins, font, boldfont, _return, data, drawAuthorizedIndividual } = this;
+    const { page, page: { basePage, bodyWidth }, font, boldfont, _return, data, drawAuthorizedIndividual } = this;
     const { disclosingEntity } = data!;
 
     _return();
@@ -430,43 +430,46 @@ export class DisclosureFormPage1 extends PdfForm implements IPdfForm {
       } as User)
     }
 
-    await drawAuthorizedIndividual('1', disclosingEntity.representatives[0]);
+    await drawAuthorizedIndividual('1', disclosingEntity.representatives[0], 'Authorized Representative');
 
-    await drawAuthorizedIndividual('2 <i>(if any)</i>', disclosingEntity.representatives[1]);
+    await drawAuthorizedIndividual('2 <i>(if any)</i>', disclosingEntity.representatives[1], 'Authorized Representative');
 
-    basePage.moveDown(130);
+    // Draw the "IMPORTANT" rectangle
+    basePage.moveDown(110);
     await new Rectangle({
       text: "<b>IMPORTANT:</b>",
       page,
       align: Align.left,
       valign: VAlign.top,
-      options: { color:grey, opacity:.2, borderWidth:1, borderColor:blue, width:bodyWidth, height:146 },
+      options: { color:grey, opacity:.2, borderWidth:1, borderColor:blue, width:bodyWidth, height:126 },
       textOptions: { size, font, color:red },
       margins: { top: 8, left: 8 } as Margins
     }).draw();
     _return();
 
-    basePage.moveUp(112);
+    // Move back up to the top of the rectangle
+    basePage.moveUp(92);
     basePage.moveRight(8);
 
+    // Draw the first 3 items in the IMPORTANT rectangle
     const msgs = [
-      '1) The Disclosing Entity’s response(s) in this form are based only on what its representative(s) (above),',
-      '    know, as they confer with the offices that they think are likely to have the most relevant records.',
-      '2) Note that a Disclosing Entity will not necessarily have policies addressing all of the kinds of',
+      '1) A Disclosing Entity need not be an ETT-Registered Entity. However, if the Disclosing Entity is also an',
+      '    ETT-Registered Entity, its Authorized Representatives to make disclosures will be its Authorized',
+      '    Individuals or Contacts for Disclosure Request Responses designated in its ETT Entity Registration Form.',
+      '2) The Disclosing Entity’s response(s) in this form are based only on what its representative(s) (above) know,',
+      '    as they confer with the offices that they know maintain the official records that they think are likely',
+      '    to be most relevant. The representative(s) will not necessarily check all potential sources of such records',
+      '    but rather the known repository of official records.',
+      '3) Note that a Disclosing Entity will not necessarily have policies addressing all of the kinds of',
       '    misconduct listed on this Form.',
-      '3) Please choose a secure means of communicating the completed form to the Requesting Entity.',
-      '    Some examples are a password protected PDF or website or live screen sharing.',
-      `4) Please be sure to save a record of your completed Disclosure Form and copies of the ${roleFullName(Roles.CONSENTING_PERSON)}’s`,
-      '    completed Consent Form and Exhibit Form (both provided to you by ETT via email).  ETT is not a record-keeper.',
-      '    <i>(The Disclosing Entity is a “Consent Recipient” referenced on the Consent Form and listed on the Exhibit Form.)</i>'
     ]
-    for(let i=0; i<msgs.length-1; i++) {
-      await page.drawText(msgs[i], { size:9.5, font:boldfont, color:(i>5 ? red: undefined) }, 0);
+    for(let i=0; i<msgs.length; i++) {
+      await page.drawText(msgs[i], { size:9.5, font:boldfont }, 0);
       _return;
-      i % 2 == 1 && basePage.moveDown(4);
+      if(i < msgs.length -1 && /^\d+\)/.test(msgs[i+1])) {
+        basePage.moveDown(4);
+      }
     }
-
-    await page.drawText(msgs[msgs.length-1], { size:9.5, font }, 0);
   }
 }
 

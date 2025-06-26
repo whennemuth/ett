@@ -13,14 +13,19 @@ export type InnerTableParms = {
   raise:number, width:number, size?:number, borderWidth?:number, backgroundColor?:Color, borderColor?:Color
 }
 
+export type Misconduct = {
+  id:string, name:string, tooltip?:string
+}
+
 export class DisclosureItemsGroup extends PdfForm {
   private font:PDFFont;
-  private misconduct:string[];
+  private misconduct:Misconduct[];
   private drawParms:DisclosureFormDrawParms;
   private rowHeights:number[] = [];
   private index: number;
+  private itemIndex = 0;
 
-  constructor(index:number, misconduct:string[], page:Page, drawParms:DisclosureFormDrawParms) {
+  constructor(index:number, misconduct:Misconduct[], page:Page, drawParms:DisclosureFormDrawParms) {
     super();
     this.index = index;
     this.page = page;
@@ -62,7 +67,7 @@ export class DisclosureItemsGroup extends PdfForm {
     const { index, page, page: { basePage }, font, markPosition, returnToMarkedPosition } = this;
     let idx = 1;
 
-    const drawOtherTextbox = () => {
+    const drawOtherTextbox = (lowerExtra:number) => {
       const posId = markPosition();
       basePage.moveUp(4);
       basePage.moveLeft(4);
@@ -71,7 +76,7 @@ export class DisclosureItemsGroup extends PdfForm {
       const newDa = da + '\n' + setFontAndSize('Courier', 10).toString();
       tbx.acroField.setDefaultAppearance(newDa);
       tbx.enableMultiline();
-      tbx.addToPage(basePage, { x: basePage.getX() + 8, y: basePage.getY(), width: otherTextBoxWidth, height: 16 })  
+      tbx.addToPage(basePage, { x: basePage.getX() + 8, y: basePage.getY() - lowerExtra, width: otherTextBoxWidth, height: 16 })  
       returnToMarkedPosition(posId);   
     };
 
@@ -91,23 +96,30 @@ export class DisclosureItemsGroup extends PdfForm {
       returnToMarkedPosition(posId);
     } 
     const getRows = async (size:number, font:PDFFont):Promise<RowDef[]> => {
-      const { misconduct:labels, rowHeights } = this;
+      const { misconduct:mcDefs, rowHeights } = this;
       const rows = [] as RowDef[];
       const horizontalRoom = width - 24;
-      for(let i=0; i<labels.length; i++) {
-        const label = labels[i];
-        const labelNoMarkup = label.replace(/(<[^<>]+>)/g, '');
+      for(let i=0; i<mcDefs.length; i++) {
+        const mcdef = mcDefs[i];
+        // const labelNoMarkup = mcdef.replace(/(<[^<>]+>)/g, '');
+        const labelNoMarkup = mcdef.id + '. ' + mcdef.name;
+        let fullLabel = `<b>${mcdef.id}.</b> ${mcdef.name}`;
+        if(mcdef.tooltip) {
+          fullLabel = `<b>${mcdef.id}.</b> <tooltip index="${this.itemIndex}">${mcdef.name}</tooltip>`;
+        }
+        this.itemIndex++; // Increment the index for the next misconduct item
         const contentTooWide = font.widthOfTextAtSize(labelNoMarkup, size) > horizontalRoom;
-        const otherTextbox = label.includes('Other under your policy:');
+        const otherTextbox = mcdef.name.includes('Other under your policy') || mcdef.id == '11a';
         let height = 20;
         height = otherTextbox ? 40 : height;
         height = contentTooWide ? 30 : height;
         rowHeights.push(height);
         rows.push({ height, cells: [
           { drawContent: async (color:Color, size:number) => {
-            await drawCheckedItem(label, (height - 20));
+            await drawCheckedItem(fullLabel, (height - 20));
             if(otherTextbox) {
-              drawOtherTextbox();
+              const lowerExtra = mcdef.id == '11a' ? 22 : 0;
+              drawOtherTextbox(lowerExtra);
             }
           }}
         ]});
@@ -206,5 +218,11 @@ export class DisclosureItemsGroup extends PdfForm {
     returnToMarkedPosition(posId);
   };
 
+  public setMisconductItemIndex = (index:number):void => {
+    this.itemIndex = index;
+  }
 
+  public getMisconductItemIndex = ():number => {
+    return this.itemIndex;
+  }
 }

@@ -9,6 +9,7 @@ import { IPdfForm, PdfForm } from "./PdfForm";
 import { EmbeddedFonts } from "./lib/EmbeddedFonts";
 import { DisclosureFormPage4 } from "./DisclosureFormPage4";
 import { DisclosureFormPage5 } from "./DisclosureFormPage5";
+import { DisclosureFormPage6 } from "./DisclosureFormPage6";
 
 export type RequestingEntity = {
   name:string, authorizedIndividuals:User[]
@@ -53,6 +54,8 @@ export class DisclosureForm extends PdfForm implements IPdfForm {
     await new DisclosureFormPage4().draw({ doc, form, embeddedFonts });
 
     await new DisclosureFormPage5().draw({ doc, form, embeddedFonts });
+
+    await new DisclosureFormPage6().draw({ doc, form, embeddedFonts });
 
     const pdfBytes = await this.doc.save();
     return pdfBytes;

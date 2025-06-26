@@ -1,7 +1,7 @@
 import { writeFile } from "fs/promises";
 import { Color, PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
 import { DisclosureFormDrawParms } from "./DisclosureForm";
-import { DisclosureItemsGroup } from "./DisclosureItemsGroup";
+import { DisclosureItemsGroup, Misconduct } from "./DisclosureItemsGroup";
 import { IPdfForm, PdfForm } from "./PdfForm";
 import { EmbeddedFonts } from "./lib/EmbeddedFonts";
 import { Page } from "./lib/Page";
@@ -59,38 +59,59 @@ export class DisclosureFormPage4 extends PdfForm implements IPdfForm {
     await drawLogo(this.page);
 
     await drawTable();
-  }
+  
+    this.page.setLinkAnnotations();
+}
 
   private drawTable = async () => {
     const { drawParms, page, page: { basePage }, _return, font, boldfont } = this;
     _return();
     basePage.moveDown(60);
 
-    const misconduct = [
-      [
-        '<b>3a.</b> Race/ethnicity discrimination',
-        '<b>3b.</b> Acts or threats of hate, violence, or intimidation based on race/ethnicity',
-        '<b>3c.</b> Exposing people to racist content unnecessary for the work',
-        '<b>3d.</b> Stereotyping, bias, exclusion based on race or ethnicity',
-        '<b>3e.</b> Other under your policy:'
-      ],
-      [
-        '<b>4a.</b> Fabrication, falsification, or plagiarism',
-        '<b>4b.</b> Other failures to properly attributed authorship',
-        '<b>4c.</b> Other research or scientific misconduct under the Disclosing Entity’s polic(ies)',
-        '<b>4d.</b> Other under your policy:',
-      ],
-      [
-        '<b>5a.</b> Breaching professional licensing standards or professional ethics',
-        '<b>5b.</b> Other under your policy:',
-      ]
-    ]
+    const misconduct1 = [
+      { id:'3a',
+        name:'Race/ethnicity discrimination',
+        tooltip:'Adverse treatment of a person, including but not limited to reducing or foreclosing opportunities, where the person’s race/ethnicity was a contributing or determinative factor' },
+      { id:'3b',
+        name:'Acts or threats of hate, violence, or intimidation based on race/ethnicity' },
+      { id:'3c',
+        name:'Exposing people to racist content unnecessary for the work',
+        tooltip:'e.g., images, language/message, sounds', },
+      { id:'3d',
+        name:'Stereotyping, bias, exclusion based on race or ethnicity',
+        tooltip:'put-downs, insults, disrespect, or other marginalizing or exclusionary conduct based on race/ethnicity' },
+      { id:'3e',
+        name:'Other under your policy:',
+        tooltip:'If desired, insert a link to your policy or brief description.' },
+    ] as Misconduct[];
 
-    const misconductGroup1 = new DisclosureItemsGroup(4, misconduct[0], page, drawParms);
+    const misconduct2 = [
+      { id:'4a',
+        name:'Fabrication, falsification, or plagiarism', },
+      { id:'4b',
+        name:'Other failures to properly attributed authorship', },
+      { id:'4c',
+        name:'Other research or scientific misconduct under the Disclosing Entity’s polic(ies)', },
+      { id:'4d',
+        name:'Other under your policy:',
+        tooltip:'If desired, insert a link to your policy or brief description.' }
+    ] as Misconduct[];
 
-    const misconductGroup2 = new DisclosureItemsGroup(5, misconduct[1], page, drawParms);
+    const misconduct3 = [
+      { id:'5a',
+        name:'Breaching professional licensing standards or professional ethics',
+        tooltip:'e.g., medical, other health professions, mental health, legal, etc. ' },
+      { id:'5b',
+        name:'Other under your policy:',
+        tooltip:'If desired, insert a link to your policy or brief description.' }
+    ] as Misconduct[];
 
-    const misconductGroup3 = new DisclosureItemsGroup(6, misconduct[2], page, drawParms);
+
+    const misconductGroup1 = new DisclosureItemsGroup(4, misconduct1, page, drawParms);
+
+    const misconductGroup2 = new DisclosureItemsGroup(5, misconduct2, page, drawParms);
+
+    const misconductGroup3 = new DisclosureItemsGroup(6, misconduct3, page, drawParms);
 
     await new Table(this, 
       {
@@ -110,6 +131,7 @@ export class DisclosureFormPage4 extends PdfForm implements IPdfForm {
                 await misconductGroup1.drawYearsCell(55, 130, size, 100);
               }}  as CellDef,
               { width: 255, borderColor:orange, drawContent: async (color:Color, size:number) => {
+                page.addTooltips(misconduct1.map((mc) => mc.tooltip || ''));
                 await misconductGroup1.drawMisconductInnerTable({ raise:130, width:255, size });
               }}  as CellDef,
               { borderColor:orange, drawContent: async (color:Color, size:number) => {
@@ -126,6 +148,8 @@ export class DisclosureFormPage4 extends PdfForm implements IPdfForm {
                 await misconductGroup2.drawYearsCell(55, 130, size, 100);
               }}  as CellDef,
               { width: 255, borderColor:orange, drawContent: async (color:Color, size:number) => {
+                page.addTooltips(misconduct2.map((mc) => mc.tooltip || ''));                
+                misconductGroup2.setMisconductItemIndex(misconductGroup1.getMisconductItemIndex());
                 await misconductGroup2.drawMisconductInnerTable({ raise:100, width:255, size });
               }}  as CellDef,
               { borderColor:orange, drawContent: async (color:Color, size:number) => {
@@ -142,6 +166,8 @@ export class DisclosureFormPage4 extends PdfForm implements IPdfForm {
                 await misconductGroup3.drawYearsCell(50, 130, size, 100);
               }}  as CellDef,
               { width: 255, borderColor:orange, drawContent: async (color:Color, size:number) => {
+                page.addTooltips(misconduct3.map((mc) => mc.tooltip || ''));                
+                misconductGroup3.setMisconductItemIndex(misconductGroup2.getMisconductItemIndex());
                 await misconductGroup3.drawMisconductInnerTable({ raise:40, width:255, size });
               }}  as CellDef,
               { borderColor:orange, drawContent: async (color:Color, size:number) => {

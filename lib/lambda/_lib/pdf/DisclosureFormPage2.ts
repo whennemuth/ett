@@ -5,8 +5,10 @@ import { DisclosureFormDrawParms } from "./DisclosureForm";
 import { IPdfForm, PdfForm } from "./PdfForm";
 import { EmbeddedFonts } from "./lib/EmbeddedFonts";
 import { Page } from "./lib/Page";
-import { Margins, rgbPercent } from "./lib/Utils";
+import { Margins, rgbPercent, Align, VAlign } from "./lib/Utils";
 import { roleFullName, Roles } from "../dao/entity";
+import { Rectangle } from "./lib/Rectangle";
+
 
 const blue = rgbPercent(47, 84, 150) as Color;
 const orange = rgbPercent(196, 89, 17);
@@ -44,7 +46,7 @@ export class DisclosureFormPage2 extends PdfForm implements IPdfForm {
     this.doc = doc;
     this.form = form;
     this.embeddedFonts = embeddedFonts;
-    const { drawLogo, drawTitle, drawInstructionsBox, drawIfNothingBox, pageMargins } = this;
+    const { drawLogo, drawTitle, drawInstructionsBox, drawIfNothingBox, drawDisclosingEntity2, pageMargins } = this;
     
     // Create the page - use Letter size, but flipped on its side (Landscape)
     this.page = new Page(this.doc.addPage([792.0, 612.0]) as PDFPage, pageMargins, embeddedFonts);
@@ -55,6 +57,8 @@ export class DisclosureFormPage2 extends PdfForm implements IPdfForm {
 
     await drawLogo(this.page);
 
+    await drawDisclosingEntity2();
+
     await drawTitle();
 
     await drawInstructionsBox();
@@ -62,9 +66,52 @@ export class DisclosureFormPage2 extends PdfForm implements IPdfForm {
     await drawIfNothingBox();
   };
 
+  private drawDisclosingEntity2 = async () => {
+    let size = 10;
+    const { page, page: { basePage, bodyWidth }, font, boldfont, _return } = this;
+
+    // Draw the "IMPORTANT" rectangle
+    basePage.moveDown(70);
+    await new Rectangle({
+      text: "<b>IMPORTANT <i>(continued)</i>:</b>",
+      page,
+      align: Align.left,
+      valign: VAlign.top,
+      options: { color:grey, opacity:.2, borderWidth:1, borderColor:blue, width:bodyWidth, height:86 },
+      textOptions: { size, font, color:red },
+      margins: { top: 8, left: 8 } as Margins
+    }).draw();
+    _return();
+
+    // Move back up to the top of the rectangle
+    basePage.moveUp(52);
+    basePage.moveRight(8);
+    
+    // Draw the first 3 items in the IMPORTANT rectangle
+    const msgs = [
+      '4) Please choose a secure means of communicating the completed form <u>DIRECTLY</u> to the Requesting ' +
+      'Entity’s Representative(s) listed above.',
+      '    Some examples are a password protected PDF or website or live screen sharing. <u>Do not share</u>' +
+      '<u>this completed form with third parties.</u>',
+      `5) Please be sure to save a record of your completed Disclosure Form and copies of the ${roleFullName(Roles.CONSENTING_PERSON)}’s` +
+      '    completed Consent Form and',
+      '    Exhibit Form(both provided to you by ETT via email). ETT is not a record-keeper.',
+      '    <i>(The Disclosing Entity is a “Consent Recipient” referenced on the Consent Form and listed on the Exhibit Form.)</i>'
+    ]
+    for(let i=0; i<msgs.length-1; i++) {
+      await page.drawText(msgs[i], { size:9.5, font:boldfont, color:(i<5 ? red: undefined) }, 0);
+      _return;
+      if(i < msgs.length -1 && /^\d+\)/.test(msgs[i+1])) {
+        basePage.moveDown(4);
+      }
+    }
+
+    await page.drawText(msgs[msgs.length-1], { size:9.5, font }, 0);
+  }
+
   private drawTitle = async () => {
     const { page, boldfont } = this;
-    this._return();
+    this._return(50);
     await page.drawCenteredText('DISCLOSURE FORM', { size: 13, font:boldfont }, 4);
   }
 
@@ -122,7 +169,6 @@ export class DisclosureFormPage2 extends PdfForm implements IPdfForm {
           linePad: 2
         }
       );
-
     }
 
     await drawTitle();
@@ -181,7 +227,7 @@ export class DisclosureFormPage2 extends PdfForm implements IPdfForm {
 
     const rdoIfNothingReason = form.createRadioGroup('if.nothing.reason');
     await page.drawText(
-      '<b>IF NOTHING</b> is checked on the list (#1-8) below, check one of the following:',
+      '<b>IF NOTHING</b> is checked on the list (#1-10) below, check one of the following:',
       { size: 12, font, color:red }
     );
     const posId = markPosition();
