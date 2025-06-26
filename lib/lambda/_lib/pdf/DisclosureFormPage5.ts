@@ -1,7 +1,7 @@
 import { writeFile } from "fs/promises";
 import { Color, PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
 import { DisclosureFormDrawParms } from "./DisclosureForm";
-import { DisclosureItemsGroup } from "./DisclosureItemsGroup";
+import { DisclosureItemsGroup, Misconduct } from "./DisclosureItemsGroup";
 import { IPdfForm, PdfForm } from "./PdfForm";
 import { EmbeddedFonts } from "./lib/EmbeddedFonts";
 import { Page } from "./lib/Page";
@@ -60,6 +60,8 @@ export class DisclosureFormPage5 extends PdfForm implements IPdfForm {
     await drawLogo(this.page);
 
     await drawTable();
+  
+    this.page.setLinkAnnotations();
   }
 
   private drawTable = async () => {
@@ -67,33 +69,57 @@ export class DisclosureFormPage5 extends PdfForm implements IPdfForm {
     _return();
     basePage.moveDown(60);
 
-    const misconduct = [
-      [
-        '<b>6a.</b> Bribery',
-        '<b>6b.</b> Extortion',
-        '<b>6c.</b> Theft',
-        '<b>6d.</b> False Claim',
-        '<b>6e.</b> Reporting Errors',
-        '<b>6f.</b> Other under your policy:',
-      ],
-      [
-        '<b>7a.</b> Other under your policy:'
-      ],
-      [
-        '<b>8a.</b> Other under your policy:'
-      ],
-      [
-        '<b>9a.</b> Other under your policy:'
-      ],
-    ]
+    const misconduct1 = [{ 
+      id:'6a', 
+      name:'Bribery', 
+      tooltip:'improperly offering financial or other inducements to an internal or external person or entity to obtain a favor, benefit, decision, or other action'},
+    { 
+      id:'6b', 
+      name:'Extortion', 
+      tooltip:'obtaining funding or other valuable resources by threats or force'},
+    { 
+      id:'6c', 
+      name:'Theft', 
+      tooltip:'Knowingly improperly appropriating another’s property'},
+    { 
+      id:'6d', 
+      name:'False Claim', 
+      tooltip:'Intentionally or recklessly filing a false claim for or misapplying/misusing funding or other valuable resources '},
+    { 
+      id:'6e', 
+      name:'Reporting Errors', 
+      tooltip:'Negligent (unreasonably careless) errors that fail to properly report on funding or other valuable resources'},
+    { 
+      id:'6f', 
+      name:'Other under your policy:', 
+      tooltip:'If desired, insert a link to your policy or brief description.'},
+    ] as Misconduct[];
 
-    const misconductGroup1 = new DisclosureItemsGroup(7, misconduct[0], page, drawParms);
+    const misconduct2 = [{ 
+      id:'7a', 
+      name:'Other under your policy:', 
+      tooltip:'If desired, insert a link to your policy or brief description.'},
+    ] as Misconduct[];
 
-    const misconductGroup2 = new DisclosureItemsGroup(8, misconduct[1], page, drawParms);
+    const misconduct3 = [{ 
+      id:'8a', 
+      name:'Other under your policy:', 
+      tooltip:'If desired, insert a link to your policy or brief description.'},
+    ] as Misconduct[];
 
-    const misconductGroup3 = new DisclosureItemsGroup(9, misconduct[2], page, drawParms);
+    const misconduct4 = [{ 
+      id:'9a', 
+      name:'Other under your policy:', 
+      tooltip:'If desired, insert a link to your policy or brief description.'},
+    ] as Misconduct[];
 
-    const misconductGroup4 = new DisclosureItemsGroup(10, misconduct[3], page, drawParms);
+    const misconductGroup1 = new DisclosureItemsGroup(7, misconduct1, page, drawParms);
+
+    const misconductGroup2 = new DisclosureItemsGroup(8, misconduct2, page, drawParms);
+
+    const misconductGroup3 = new DisclosureItemsGroup(9, misconduct3, page, drawParms);
+
+    const misconductGroup4 = new DisclosureItemsGroup(10, misconduct4, page, drawParms);
 
     await new Table(this, 
       {
@@ -113,6 +139,7 @@ export class DisclosureFormPage5 extends PdfForm implements IPdfForm {
                 await misconductGroup1.drawYearsCell(55, 130, size, 100);
               }}  as CellDef,
               { width: 255, borderColor:orange, backgroundColor:salmon, drawContent: async (color:Color, size:number) => {
+                page.addTooltips(misconduct1.map((mc) => mc.tooltip || ''));
                 await misconductGroup1.drawMisconductInnerTable({ raise:120, width:255, size });
               }}  as CellDef,
               { borderColor:orange, backgroundColor:salmon, drawContent: async (color:Color, size:number) => {
@@ -129,6 +156,8 @@ export class DisclosureFormPage5 extends PdfForm implements IPdfForm {
                 await misconductGroup2.drawYearsCell(50, 130, size, 100);
               }}  as CellDef,
               { width: 255, borderColor:orange, backgroundColor:salmon, drawContent: async (color:Color, size:number) => {
+                page.addTooltips(misconduct2.map((mc) => mc.tooltip || ''));                
+                misconductGroup2.setMisconductItemIndex(misconductGroup1.getMisconductItemIndex());
                 await misconductGroup2.drawMisconductInnerTable({ raise:18, width:255, size, borderWidth:0 });
               }}  as CellDef,
               { borderColor:orange, backgroundColor:salmon, drawContent: async (color:Color, size:number) => {
@@ -145,6 +174,8 @@ export class DisclosureFormPage5 extends PdfForm implements IPdfForm {
                 await misconductGroup3.drawYearsCell(50, 130, size, 100);
               }}  as CellDef,
               { width: 255, borderColor:orange, backgroundColor:salmon, drawContent: async (color:Color, size:number) => {
+                page.addTooltips(misconduct3.map((mc) => mc.tooltip || ''));                
+                misconductGroup3.setMisconductItemIndex(misconductGroup2.getMisconductItemIndex());
                 await misconductGroup3.drawMisconductInnerTable({ raise:18, width:255, size, borderWidth:0 });
               }}  as CellDef,
               { borderColor:orange, backgroundColor:salmon, drawContent: async (color:Color, size:number) => {
@@ -161,6 +192,8 @@ export class DisclosureFormPage5 extends PdfForm implements IPdfForm {
                 await misconductGroup4.drawYearsCell(50, 130, size, 100);
               }}  as CellDef,
               { drawContent: async (color:Color, size:number) => {
+                page.addTooltips(misconduct4.map((mc) => mc.tooltip || ''));                
+                misconductGroup4.setMisconductItemIndex(misconductGroup3.getMisconductItemIndex());
                 await misconductGroup4.drawMisconductInnerTable({ 
                   raise:18, width:255, size, borderWidth:0, backgroundColor:lightgrey 
                 }, 306);

@@ -1,7 +1,7 @@
 import { writeFile } from "fs/promises";
 import { Color, PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
 import { DisclosureFormDrawParms } from "./DisclosureForm";
-import { DisclosureItemsGroup } from "./DisclosureItemsGroup";
+import { DisclosureItemsGroup, Misconduct } from "./DisclosureItemsGroup";
 import { IPdfForm, PdfForm } from "./PdfForm";
 import { EmbeddedFonts } from "./lib/EmbeddedFonts";
 import { Page } from "./lib/Page";
@@ -59,36 +59,64 @@ export class DisclosureFormPage3 extends PdfForm implements IPdfForm {
     await drawLogo(this.page);
 
     await drawTable();
+
+    this.page.setLinkAnnotations();
   }
 
   private drawTable = async () => {
     const { drawParms, page, page: { basePage }, _return, font, boldfont } = this;
     _return();
     basePage.moveDown(60);
+
+    const misconduct1 = [
+      { id:'1a',
+        name:'Rape', 
+        tooltip:'meaning non-consensual sexual intercourse or other sexual bodily penetration' },
+      { id:'1b',
+        name:'Other sexual battery', 
+        tooltip:'meaning unwelcome or non-consensual touching of a sexual nature' },
+      { id:'1c',
+        name:'Sexual assault', 
+        tooltip:'meaning threatening rape or sexual battery' },
+      { id:'1d',
+        name:'Sexual coercion', 
+        tooltip:'meaning using a power or influence differential, threat, or gaslighting to force a person to engage in sexual conduct or provide sexual favors (e.g., if you loved me—want my protection from)' },
+      { id:'1e',
+        name:'Quid pro quo sexual harassment', 
+        tooltip:'meaning threats or rewards (re: educational or professional benefits, relationships, support, or status—e.g., grade, reference, role, seat in a program, funding, mentor) the avoidance or receipt of which is conditioned on sexual conduct or favors' },
+      { id:'1f',
+        name:'Exposing person(s) to sexual content unnecessary for the work', 
+        tooltip:'sexual images, gestures, audio or visual recordings, or sexual innuendo, sounds or language' },
+      { id:'1g',
+        name:'Stereotyping, bias, exclusion based on sex or gender', 
+        tooltip:'put-downs, insults, disrespect, or other marginalizing or exclusionary language or conduct (put-downs, not come-ons) based on sex, sexual orientation, or gender identity or expression' },
+      { id:'1h',
+        name:'Unwelcome sexual attention', 
+        tooltip:'meaning unwelcome sexual attention (asking for dates, come-ons) that continues after rejection, no reciprocation, or warning to stop—or that is so severe once as to interfere with a reasonable person’s participation or performance in learning or work' },
+      { id:'1i',
+        name:'Sexual/gender discrimination', 
+        tooltip:'Adverse treatment of a person, including but not limited to reducing or foreclosing opportunities, where the person’s sex, sexual orientation, or gender identity or expression was a contributing or determinative factor' },
+      { id:'1j',
+        name:'Other under your policy', 
+        tooltip:'If desired, insert a link to your policy or brief description.' }
+    ] as Misconduct[];
+
+    const misconduct2 = [
+      { id:'2a',
+        name:'Stalking', 
+        tooltip:'Repeated actions or speech directed at a person or repeatedly pursuing a person in a manner that would cause the person to reasonably feel afraid, abused, or intimidated' },
+      { id:'2b',
+        name:'Voyeurism or Invasion of Privacy', 
+        tooltip:'Unconsented to viewing and/or audio or visual recording of a person in a locale or engaged in an activity when the person had a reasonable expectation of privacy — or unconsented to dissemination of an intimate or otherwise private recording of a person' },
+      { id:'2c',
+        name:'Other under your policy', 
+        tooltip:'If desired, insert a link to your policy or brief description.' }
+    ] as Misconduct[];
  
-    const misconduct = [
-      [
-        '<b>1a.</b> Rape',
-        '<b>1b.</b> Other sexual battery',
-        '<b>1c.</b> Sexual assault',
-        '<b>1d.</b> Sexual coercion',
-        '<b>1e.</b> Quid pro quo sexual harassment',
-        '<b>1e.</b> Exposing person(s) to sexual content unnecessary for the work',
-        '<b>1g.</b> Stereotyping, bias, exclusion based on sex or gender',
-        '<b>1h.</b> Unwelcome sexual attention',
-        '<b>1i.</b> Sexual/gender discrimination',
-        '<b>1j.</b> Other under your policy: ',
-      ],
-      [
-        '<b>2a.</b> Stalking', 
-        '<b>2b.</b> Voyeurism or Invasion of Privacy',  
-        '<b>2c.</b> Other under your policy: ',
-      ]
-    ]
+    const misconductGroup1 = new DisclosureItemsGroup(1, misconduct1, page, drawParms);
 
-    const misconductGroup1 = new DisclosureItemsGroup(1, misconduct[0], page, drawParms);
-
-    const misconductGroup2 = new DisclosureItemsGroup(2, misconduct[1], page, drawParms);
+    const misconductGroup2 = new DisclosureItemsGroup(2, misconduct2, page, drawParms);
+    
 
     await new Table(this, 
       {
@@ -107,7 +135,8 @@ export class DisclosureFormPage3 extends PdfForm implements IPdfForm {
               { width: 140, drawContent: async (color:Color, size:number) => {
                 await misconductGroup1.drawYearsCell(140, 130, size, 100);
               }}  as CellDef,
-              { width: 255, borderColor:orange, drawContent: async (color:Color, size:number) => {
+              { width: 255, borderColor:orange, drawContent: async (color:Color, size:number) => {                
+                page.addTooltips(misconduct1.map((mc) => mc.tooltip || 'No tooltip provided'));
                 await misconductGroup1.drawMisconductInnerTable({ raise:220, width:255, size });
               }}  as CellDef,
               { borderColor:orange, drawContent: async (color:Color, size:number) => {
@@ -124,6 +153,8 @@ export class DisclosureFormPage3 extends PdfForm implements IPdfForm {
                 await misconductGroup2.drawYearsCell(55, 130, size, 100);
               }}  as CellDef,
               { width: 255, borderColor:orange, drawContent: async (color:Color, size:number) => {
+                page.addTooltips(misconduct2.map((mc) => mc.tooltip || 'No tooltip provided'));                
+                misconductGroup2.setMisconductItemIndex(misconductGroup1.getMisconductItemIndex());
                 await misconductGroup2.drawMisconductInnerTable({ raise:60, width:255, size });
               }}  as CellDef,
               { borderColor:orange, drawContent: async (color:Color, size:number) => {

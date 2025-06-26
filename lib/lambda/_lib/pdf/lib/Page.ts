@@ -13,6 +13,7 @@ export class Page {
   private text:Text;
   private embeddedFonts:EmbeddedFonts;
   private linkAnnotations:PDFRef[] = [];
+  private tooltips:string[] = [];
   
   constructor(page:PDFPage, margins:Margins, embeddedFonts:EmbeddedFonts) {
     this.page = page;
@@ -46,7 +47,11 @@ export class Page {
   public setLinkAnnotations = ():void => {
     if(this.linkAnnotations.length > 0) {
       const { page: { doc }, basePage, linkAnnotations } = this;
-      basePage.node.set(PDFName.of('Annots'), doc.context.obj(linkAnnotations));
+      // basePage.node.set(PDFName.of('Annots'), doc.context.obj(linkAnnotations));
+      this.linkAnnotations.forEach((annotation:PDFRef) => {
+        basePage.node.addAnnot(annotation);
+      });
+      this.linkAnnotations = []; // Clear the annotations after setting them
     }
   }
         
@@ -62,6 +67,22 @@ export class Page {
   }
   public get remainingVerticalSpace():number {
     return this.page.getY() - this.margins.bottom;
+  }
+
+  public setTooltips = (tooltips:string[]):void => {
+    this.tooltips = tooltips;
+  }
+
+  public addTooltips = (tooltips:string[]):void => {
+    this.tooltips.push(...tooltips);
+  }
+
+  public getTooltip = (index:number|string):string => {
+    const idx = typeof index === 'number' ? index : parseInt(index);
+    if(idx < 0 || idx >= this.tooltips.length) {
+      return "ERROR: Tooltip index out of bounds";
+    }
+    return this.tooltips[idx];
   }
 
   public nextPage = (dimensions?:[number, number], extra?:() => void):PDFPage => {

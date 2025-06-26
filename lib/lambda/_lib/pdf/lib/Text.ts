@@ -108,6 +108,9 @@ export class Text {
       if(startTag == '<a>' && iLastStart == -1) {
         iLastStart = lastLine.lastIndexOf('<a href=');
       }
+      // else if(startTag == '<tooltip>' && iLastStart == -1) {
+      //   iLastStart = lastLine.lastIndexOf('<tooltip label=');
+      // }
 
       if(iLastStart > -1) {
         const iLastEnd = lastLine.lastIndexOf(endTag);
@@ -128,7 +131,7 @@ export class Text {
         lines.push({ text:line, options, padBottom:linePad });
         line = word.trim();
 
-        const tagnames = [ 'b', 'i', 'u', 'a', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'red', 'blue', 'lightblue' ];
+        const tagnames = [ 'b', 'i', 'u', 'a', 'tooltip', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'red', 'blue', 'lightblue' ];
         tagnames.forEach(tagname => checkTags(tagname));
       }
       else {

@@ -3,11 +3,12 @@ import { EmbeddedFonts } from "./EmbeddedFonts";
 import { Link } from "./Link";
 import { Page } from "./Page";
 import { Margins, rgbPercent } from "./Utils";
+import { Tooltip, TooltipOptions } from "./Tooltip";
 
 /** Represents, within the line of text, a segment with its own formatting */
 export type ParsedItem = { 
   text:string, italics:boolean, bold:boolean, underline:boolean, newfont:PDFFont, width:number, 
-  fontSize:number, yOffset:number, linkHref?:string, color?:Color
+  fontSize:number, yOffset:number, linkHref?:string, tooltipIndex?:number, color?:Color
 };
 
 /**
@@ -58,7 +59,7 @@ export class TextLine {
 
     const drawText = async (item:ParsedItem, opts:PDFPageDrawTextOptions) => {
       const { page } = this;
-      const { text, width, underline, linkHref } = item;
+      const { text, width, underline, linkHref, tooltipIndex } = item;
 
       const draw = () => {
         basePage.drawText(text, opts);
@@ -79,6 +80,20 @@ export class TextLine {
             resolve();
           })
         });
+      }
+      else if(tooltipIndex) {
+        const tooltip = new Tooltip(page.basePage.doc, page);
+        await tooltip.draw({
+          tooltipLabel: item.text,
+          tooltipText: page.getTooltip(tooltipIndex),
+          coord: { x: basePage.getX(), y:basePage.getY() },
+          textOptions: opts,
+          border: false,
+          customDrawText: async () => new Promise<void>((resolve) => {
+            draw();
+            resolve();
+          })
+        } as TooltipOptions);
       }
       else {
         draw();
@@ -145,6 +160,9 @@ export class TextLine {
     const items = text.split(tagRegex); 
     let italics = false, bold = false, underline = false, sizeDiff = 0, subSizeDiff = 0, yOffset = 0, color = undefined;
     let linkHref:string|undefined = undefined;
+    let tooltipIndex:string|undefined = undefined;
+    // let tooltipLabel:string|undefined = undefined;
+    // let tooltipTextWords:string[] = [];
     const parsedItems = [] as ParsedItem[];
 
     for(let i=0; i<items.length; i++) {
@@ -190,10 +208,23 @@ export class TextLine {
               }
               continue;
             }
+
+            // Check if the item is a tooltip markup tag.
+            const matchesTooltip = /^(<tooltip(\x20+index="(\d+)")?>|<\/tooltip>)$/.exec(item);
+            if(matchesTooltip) {
+              if(item == '</tooltip>') {
+                tooltipIndex = undefined;
+              }
+              else if(matchesTooltip.length > 3) {
+                tooltipIndex = matchesTooltip[3];
+              }
+              continue;
+            }
+
             
             // If we get here, then the item is a text segment between markup tags that will 
             // have applied to it the formatting that the markup wrapping it indicates.
-            const parsed = { text:item, bold, italics, underline, yOffset, linkHref, color } as ParsedItem;
+            const parsed = { text:item, bold, italics, underline, yOffset, linkHref, tooltipIndex, color } as ParsedItem;
             const newfont = await getFont(originalFont!, parsed);
             parsed.newfont = newfont;
             const width = newfont.widthOfTextAtSize(item, (size! + sizeDiff));
@@ -204,7 +235,7 @@ export class TextLine {
               parsed.linkHref = item;
               linkHref = undefined; // Reset the linkHref so that it does not carry over to the next item.
             }
-            parsedItems.push(parsed);          
+            parsedItems.push(parsed);         
           }
       }
     };
@@ -212,7 +243,7 @@ export class TextLine {
   }
 
   /**
-   * Since a line of text does not have to be homogenous with respect to is formatting all the way through,
+   * Since a line of text does not have to be homogenous with respect to its formatting all the way through,
    * the total width taken up by line of text will be a sum of the separately computed widths of all its
    * constituent and separately formatted segments.
    * @param text 
