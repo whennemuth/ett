@@ -71,7 +71,7 @@ export class ExhibitFormSingleBoth extends PdfForm implements IPdfForm {
  
     await drawAgreement();
 
-    await drawSignature('single exhibit Form');
+    await drawSignature('Single Exhibit Form');
 
     await drawReadyForSubmission();
 
@@ -95,23 +95,17 @@ export class ExhibitFormSingleBoth extends PdfForm implements IPdfForm {
    */
   private drawIntro = async () => {
     const { 
-      baseForm: { consentFormUrl, consenter: { firstname, middlename, lastname } }, 
-      page: { basePage, drawWrappedText, drawCenteredText }, font, boldfont, _return, getFullName 
+      baseForm: { consenter: { firstname, middlename, lastname } }, 
+      page: { basePage, drawWrappedText }, boldfont, getFullName 
     } = this;
     let fullname = getFullName(firstname, middlename, lastname);
     fullname = fullname ? `my <i>(${fullname})</i>` : 'my';
     const size = 9;
 
     await drawWrappedText({ 
-      text: `<b>This “<u>Single-Entity Exhibit Form</u>” is incorporated into ${fullname} Consent Form, at:</b>`, 
+      text: `<b>This “<u>Single-Entity Exhibit Form</u>” is incorporated into ${fullname} Consent Form, attached to this Exhibit Form.</b>`, 
       options: { size, font:boldfont }, linePad: 4, padBottom: 6 
     });
-
-    await drawCenteredText(
-      `<a>${consentFormUrl}</a>`, 
-      { font:boldfont, size:8, color:blue, lineHeight:14 }
-    );
-    _return();
 
     basePage.moveDown(8);
     await drawWrappedText({ 
@@ -184,9 +178,9 @@ export class ExhibitFormSingleBoth extends PdfForm implements IPdfForm {
 
     await drawBulletedItem({
       paragraphs: [ { text: 'Your ETT Registration Form and Consent Form will not expire and you will not ' +
-        'be able to rescind them or your Full or Single Entity Exhibit Forms in connection with the ' +
+        'be able to rescind them or your related Full or Single Entity Exhibit Forms in connection with the ' +
         'Privilege or Honor, Employment or Role for which the listed Registered Entity is considering you ' +
-        'at this time.  Your Consent Recipients will be relying on these forms to make disclosures to the ' +
+        'at this time.  Your Consent Recipients (Affiliates) will be relying on these forms to make disclosures to the ' +
         'Registered Entity.  Contact the Registered Entity directly if you want to withdraw from their ' +
         'consideration.', 
       options: { size:9, font:boldfont } 
@@ -236,7 +230,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/pdf/
 
     const form = testBlankForm ?
       ExhibitFormSingleBoth.getBlankForm() :
-      ExhibitFormSingleBoth.getInstance(SampleExhibitFormParms([ getSampleAffiliates().employer1 ]));
+      ExhibitFormSingleBoth.getInstance(SampleExhibitFormParms([ getSampleAffiliates().employerPrimary ]));
 
     await form.writeToDisk('./lib/lambda/_lib/pdf/ExhibitFormSingleBoth.pdf');
     console.log(`done`);

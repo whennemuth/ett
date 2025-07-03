@@ -70,7 +70,7 @@ export class ExhibitFormSingleOther extends PdfForm implements IPdfForm {
 
     await drawAgreement();
 
-    await drawSignature('single exhibit Form');
+    await drawSignature('Single Exhibit Form');
 
     await drawReadyForSubmission();
 
@@ -95,30 +95,26 @@ export class ExhibitFormSingleOther extends PdfForm implements IPdfForm {
   private drawIntro = async () => {
     const { 
       baseForm: { consentFormUrl, consenter: { firstname, middlename, lastname } }, 
-      page: { basePage, drawWrappedText, drawCenteredText }, font, boldfont, _return, getFullName 
+      page: { basePage, drawWrappedText }, boldfont, getFullName 
     } = this;
     let fullname = getFullName(firstname, middlename, lastname);
     fullname = fullname ? `my <i>(${fullname})</i>` : 'my';
     const size = 9;
 
     await drawWrappedText({ 
-      text: `<b>This “<u>Single-Entity Exhibit Form</u>” is incorporated into ${fullname} Consent Form, at:</b>`, 
+      text: `<b>This “<u>Single-Entity Exhibit Form</u>” is incorporated into ${fullname} Consent Form, attached to this Exhibit Form.</b>`, 
       options: { size, font:boldfont }, linePad: 4, padBottom: 6 
     });
 
-    await drawCenteredText(
-      `<a>${consentFormUrl}</a>`, 
-      { font:boldfont, size:8, color:blue, lineHeight:14 }
-    );
-    _return();
-
     basePage.moveDown(8);
     await drawWrappedText({ 
-      text: `<u>I agree that my ETT Registration Form and Consent Form will remain in effect to authorize ` +
-        `the Disclosure Form that the following entity completes and provides in response to the Disclosure ` +
-        `Request sent with this Form.</u>  The definitions in the Consent Form also apply to this Single Entity ` +
-        `Exhibit Form.  The following entity is one of my <u>Consent Recipients</u> (Affiliates) referenced in ` +
-        `and covered by my Consent Form:`, 
+      text: '<u>I agree that my ETT Registration Form and Consent Form authorizes (and will remain in effect ' +
+        'to authorize) the following entity to complete the Disclosure Form about me and provide it in ' +
+        'response to the Disclosure Request sent with this Form.</u> The following entity is also authorized ' +
+        'to disclose the information called for in the Disclosure Form about me in response to the ' +
+        'Disclosure Request, if preferred.  The definitions in the Consent Form also apply to this ' +
+        'Single Entity Exhibit Form. The following entity is one of my <u>Consent Recipients</u> (Affiliates) ' +
+        'referenced in and covered by my Consent Form:', 
       options: { size, font:boldfont }, linePad: 4, padBottom: 16 
     });
   }

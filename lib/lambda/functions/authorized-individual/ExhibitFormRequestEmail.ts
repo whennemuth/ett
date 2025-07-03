@@ -6,6 +6,9 @@ import { EmailParms, sendEmail } from "../../_lib/EmailWithAttachments";
 import { PdfForm } from "../../_lib/pdf/PdfForm";
 import { lookupCloudfrontDomain } from "../../Utils";
 import { AffilatePositionAcademic, AffilatePositionAcademicStrings, AffiliatePosition, AffiliatePositionCategory, AffiliatePositionCustom, AffiliatePositionEmployer, AffiliatePositionEmployerStrings, AffiliatePositionOther, AffiliatePositionOtherStrings, AffiliatePositionsCustom } from "./ExhibitFormRequest";
+import { ConsentForm, ConsentFormData } from "../../_lib/pdf/ConsentForm";
+import { FormName, getPublicFormApiUrl } from "../public/FormsDownload";
+import { PUBLIC_API_ROOT_URL_ENV_VAR } from "../../../PublicApi";
 
 export type ExhibitFormRequestEmailParms = {
   consenterEmail:string;
@@ -115,6 +118,15 @@ export class ExhibitFormRequestEmail {
       positionsMsg += `<li><b>${category}:</b> ${value}</li>`;
     });
     positionsMsg += `</ul>`;
+
+    const { PATHS: { 
+      PRIVACY_POLICY_PATH, CONSENTING_PERSON_PATH, ENTITY_INVENTORY_PATH, CONSENTING_PERSON_REGISTRATION_PATH
+    }} = context;
+    const { CLOUDFRONT_DOMAIN:domain } = process.env;
+    const privacyHref = `https://${domain}${PRIVACY_POLICY_PATH}`;
+    const dashboardHref = `https://${domain}${CONSENTING_PERSON_PATH}`;
+    const registrationHref = `https://${domain}${CONSENTING_PERSON_REGISTRATION_PATH}`;
+
     
     return sendEmail({
       subject: `ETT Exhibit Form Request`,
@@ -126,7 +138,23 @@ export class ExhibitFormRequestEmail {
         `Follow the link provided below to log in to your ETT account and to access the form:` + 
         `<p>${linkUri}</p>`,
       from,
-      pdfAttachments: []
+      pdfAttachments: [
+        {
+          pdf: new ConsentForm({ 
+            consenter: consenter as Consenter, 
+            entityName: 
+            entity_name, 
+            privacyHref, 
+            dashboardHref,
+            registrationHref,
+            exhibitFormLink: getPublicFormApiUrl(FormName.EXHIBIT_FORM_BOTH_FULL),
+            disclosureFormLink: getPublicFormApiUrl(FormName.DISCLOSURE_FORM),
+            entityInventoryLink: `https://${domain}${ENTITY_INVENTORY_PATH}`
+          } as ConsentFormData),
+          name: 'consent-form.pdf',
+          description: 'consent-form.pdf',
+        }
+      ]
     } as EmailParms);  
   }
 }
@@ -141,21 +169,23 @@ const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/authorized-individual/ExhibitFormRequestEmail.ts')) {
 
   const consenterEmail = 'cp1@warhen.work';
-  const entity_id = '8398e6c6-8e47-42d7-9bd6-9b6db54bd19c';
+  const entity_id = '54322755-3d89-4388-98c6-ed291ef74221';
 
   (async() => {
     // 1) Get context variables
     const context:IContext = await require('../../../../contexts/context.json');
     const { REGION, TAGS: { Landscape }} = context;
     process.env.REGION = REGION;
+    process.env[PUBLIC_API_ROOT_URL_ENV_VAR] = `https://${Landscape}.some-domain.com/some/path`; // Set a dummy value for the public api root url env var
 
-    // 1) Gt the cloudfront domain
+    // 2) Get the cloudfront domain
     const cloudfrontDomain = await lookupCloudfrontDomain(Landscape);
     if( ! cloudfrontDomain) {
       throw('Cloudfront domain lookup failure');
     }
     process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
     
+    // 3) Send the email
     await new ExhibitFormRequestEmail({ 
       consenterEmail, 
       entity_id, 
