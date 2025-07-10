@@ -12,23 +12,25 @@ const defaults = {
   ms: 1 
 }
 
-export const humanReadableFromMilliseconds = (duration:number): string => {
+export const humanReadableFromMilliseconds = (duration:number, daysOnly:boolean=true): string => {
   const { d, y } = defaults;
   let units = ["y", "mo", "w", "d", "h", "m", "s"];
-  if(duration >= d && duration < y) {
-    // favor expressing time in days even if it is greater than a week or a month, until you get to years.
-    units = [ "d", "h", "m", "s", "ms" ];
+  if(daysOnly) {
+    if(duration >= d && duration < y) {
+      // favor expressing time in days even if it is greater than a week or a month, until you get to years.
+      units = [ "d", "h", "m", "s", "ms" ];
+    }
   }
   return humanizeDuration(duration, { units });
 }
 
-export const humanReadableFromSeconds = (duration:number): string => humanReadableFromMilliseconds(duration * 1000);
+export const humanReadableFromSeconds = (duration:number, daysOnly:boolean=true): string => humanReadableFromMilliseconds(duration * 1000, daysOnly);
 
-export const humanReadableFromMinutes = (duration:number): string => humanReadableFromSeconds(duration * 60);
+export const humanReadableFromMinutes = (duration:number, daysOnly:boolean=true): string => humanReadableFromSeconds(duration * 60, daysOnly);
 
-export const humanReadableFromHours = (duration:number): string => humanReadableFromMinutes(duration * 60);
+export const humanReadableFromHours = (duration:number, daysOnly:boolean=true): string => humanReadableFromMinutes(duration * 60, daysOnly);
 
-export const humanReadableFromDays = (duration:number): string => humanReadableFromHours(duration * 24);
+export const humanReadableFromDays = (duration:number, daysOnly:boolean=true): string => humanReadableFromHours(duration * 24, daysOnly);
 
 /**
  * RUN MANUALLY

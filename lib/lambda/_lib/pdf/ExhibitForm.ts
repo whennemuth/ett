@@ -121,7 +121,7 @@ export class ExhibitForm extends PdfForm {
    * @returns The human readable period after which a first reminder is sent to an affiliate.
    */
   public getFirstReminderPeriod = async():Promise<string> => {
-    return humanReadableFromSeconds(await this.getFirsReminderSeconds());
+    return humanReadableFromSeconds(await this.getFirsReminderSeconds(), false);
   }
 
   /**
@@ -150,7 +150,7 @@ export class ExhibitForm extends PdfForm {
       throw new Error('The first reminder seconds must be less than the second reminder seconds. Check your configuration settings.');
     }
     const offset = secondSeconds - firstSeconds;
-    return humanReadableFromSeconds(offset);
+    return humanReadableFromSeconds(offset, false);
   }
 
   /**
