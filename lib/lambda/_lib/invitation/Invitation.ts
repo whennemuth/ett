@@ -94,10 +94,15 @@ export class UserInvitation {
           break;
     }
 
+    const { ETT_DOMAIN, ETT_EMAIL_FROM, OUTSIDE_LINKS: { 
+      SOCIETIES_CONSORTIUM_LINK, PREVENTION_LINK, REPORT_LINK 
+    } } = context;
     const howEttWorksImage = makeSafeHtml('<img src="cid:how-ett-works"/>');
     const ettLink = makeSafeHtml(`<a class="au" href="https://${this._domain}">Ethical Transparency Tool</a>`);
     const privacyLink = makeSafeHtml(`<a class="au" href="https://${this._domain}/privacy">Privacy Policy</a>`);
-    const societiesLink = makeSafeHtml(`<a class="au" href="https://societiesconsortium.com/">Societies Consortium to End Harassment in STEMM</a>`);
+    const societiesLink = makeSafeHtml(`<a class="au" href="${SOCIETIES_CONSORTIUM_LINK}">Societies Consortium to End Harassment in STEMM</a>`);
+    const preventionLink = makeSafeHtml(`<a class="au" href="${PREVENTION_LINK}">AAU's harassment prevention principles</a>`);
+    const reportLink = makeSafeHtml(`<a class="au" href="${REPORT_LINK}">NASEM’s June 2018 report on sexual harassment of women</a>`);
 
     const message = `
       <style>
@@ -116,21 +121,21 @@ export class UserInvitation {
         <div class="body1">
           <br>
           <b>ABOUT ETT</b><br>
-          ETT is an ethical and efficient communication tool for societies, colleges, and universities 
-          to lead by helping to create a norm of transparency about findings (not allegations) of 
-          misconduct about individuals (sexual/gender and race/ethnicity, as well as financial, 
+          Welcome to the Ethical Transparency Tool (ETT)! 
+          ETT is an ethical and efficient communication tool for societies, colleges, universities, and 
+          individuals to lead by helping to create a norm of transparency about findings (not allegations) of 
+          individuals’ misconduct (sexual/gender and race/ethnicity, as well as financial, 
           scientific/research, and licensure), wherever it occurs.  ETT is designed to implement 
-          AAU's harassment prevention principles and the recommendations of NASEM’s June 2018 report 
-          on sexual harassment of women in academia and to support inclusive learning and research 
-          for all talent.
+          ${preventionLink} and the recommendations of ${reportLink} in academia and to support inclusive 
+          learning and research for all talent.
         </div>
         <div class="body1">
           <br>
           <b>What are the benefits of ETT?</b><br>
           <ul>
             <li>
-              Creating a healthy climate for all - reducing awards and appointments for harassers, 
-              while recognizing that a person may learn and correct past behaviors, benefiting everyone.
+              Creating a healthy climate for all - avoiding awards and appointments for harassers, 
+              while recognizing that a person may learn, correct past behaviors, and regain trust, benefiting everyone.
             </li>
             <li>
               Ethically treating everyone - making it easier for an entity that made a misconduct 
@@ -145,9 +150,10 @@ export class UserInvitation {
               kind and date of a misconduct finding.
             </li>
             <li>
-              Enhancing efficiency in consenting to and requesting disclosures – a consent has a 
-              10-year life and can be used to request and provide disclosures throughout (unless 
-              rescinded early) and ETT automates requests for disclosures and reminders.
+              Enhancing efficiency in consenting to and requesting disclosures – a person’s single 
+              consent has a 10-year life. It can be used to request and provide disclosures throughout 
+              (by any ETT-Registered Entities and a consenting person’s professionally affiliated entities), 
+              unless a person rescinds their consent early. ETT automates requests for disclosures and reminders.
             </li>
             <li style="font-weight:bold;">
               ETT never receives disclosures–only the organizations that request them using 
@@ -165,9 +171,9 @@ export class UserInvitation {
           <b>What information is retained in the ETT?</b><br>
           Organizations’ and individuals’ registration to use ETT and individuals’ consent forms 
           are stored in ETT.  Candidate professional affiliations (their employers, appointing and 
-          honoring organizations, and societies) and organization requests for disclosures are 
-          deleted as soon as ETT sends them and two reminders. (A limited archival record of the 
-          transmission is kept behind a firewall.)  ETT is a conduit, not a records repository. 
+          honoring organizations, and societies - with contact information) and organization requests for disclosures are 
+          deleted as soon as ETT sends them requests and two reminders. (A limited archival record of making 
+          the transmission is kept behind a firewall.)  ETT is a conduit, not a records repository. 
           <p>
             Click these links for more information on the ${ettLink}, the ${privacyLink}, and the ${societiesLink}.
           </p>
@@ -177,7 +183,7 @@ export class UserInvitation {
       try {
         const sent = await sendEmail({
           subject: `${role == Roles.RE_ADMIN ? 'BU' : entity_name} Invitation to Register in ETT`,
-          from: `${context.ETT_EMAIL_FROM}@${context.ETT_DOMAIN}`, 
+          from: `${ETT_EMAIL_FROM}@${ETT_DOMAIN}`, 
           message,
           to: [ email ],
           pngAttachments: [
@@ -330,7 +336,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/invi
     const { REGION, TAGS: { Landscape }} = context;
 
     if(task == 'retract') {
-      const code = '384d1ee1-0e9a-48b1-a38b-5164b44aa868';
+      const code = '45e4b462-eacc-4660-b9b2-2a750ea19f47';
       try {
         await UserInvitation.retractInvitation(code);
         log(code, 'Invitation retracted');

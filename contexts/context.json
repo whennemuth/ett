@@ -18,6 +18,11 @@
     "PRIVACY_POLICY_PATH": "/privacy",
     "ENTITY_INVENTORY_PATH": "/registered-entities"
   },
+  "OUTSIDE_LINKS": {
+    "SOCIETIES_CONSORTIUM_LINK": "https://societiesconsortium.com/",
+    "PREVENTION_LINK": "https://www.aau.edu/key-issues/campus-climate-and-safety/aau-principles-preventing-sexual-harassment-academia",
+    "REPORT_LINK": "https://nap.nationalacademies.org/catalog/24994/sexual-harassment-of-women-climate-culture-and-consequences-in-academic"
+  },
   "CONFIG": {
     "useDatabase": true,
     "configs": [

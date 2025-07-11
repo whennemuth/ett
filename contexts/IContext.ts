@@ -14,6 +14,7 @@ export interface IContext {
   DEFAULT_ROOT_OBJECT:string;
   CONFIG: CONFIG;
   PATHS: Paths;
+  OUTSIDE_LINKS: OutsideLinks;
   TAGS:     Tags;
 }
 
@@ -26,6 +27,12 @@ export interface Paths {
   TERMS_OF_USE_PATH:string;
   PRIVACY_POLICY_PATH:string;
   ENTITY_INVENTORY_PATH:string;
+}
+
+export interface OutsideLinks {
+  SOCIETIES_CONSORTIUM_LINK: string;
+  PREVENTION_LINK: string;
+  REPORT_LINK: string;
 }
 
 export interface CONFIG {
