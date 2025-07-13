@@ -61,15 +61,6 @@ export class ExhibitFormRequestEmail {
       .replace(/&/g, "&amp;")
       .replace(/=/g, "=3D");  // Ensure '=' is properly handled in quoted-printable
 
-    // Prepare verbiage for the lookback period
-    let lookbackMsg = '';
-    if(/^\d+$/.test(`${lookback}`)) {
-      lookbackMsg = `Please limit the individuals you list to those you have had an association with in the last <b>${lookback} years</b>.`;
-    }
-    else {
-      lookbackMsg = `Please note, there is no limit for how far back your association with the individuals you list can go.`;
-    }
-
     // Prepare verbiage for the positions of interest
     let positionsMsg = '';
     type PositionData = { category:AffiliatePositionCategory, value:string }
@@ -127,16 +118,74 @@ export class ExhibitFormRequestEmail {
     const dashboardHref = `https://${domain}${CONSENTING_PERSON_PATH}`;
     const registrationHref = `https://${domain}${CONSENTING_PERSON_REGISTRATION_PATH}`;
 
-    
+    let paragraph1 = 
+      `${entity_name} uses the Ethnical Transparency Tool (ETT) when considering individuals for certain ` +
+      `privileges or honors, employment or other roles to help create a norm of transparency about whether or ` +
+      `not there have been findings (not allegations) of misconduct against a person (sexual/gender, ` +
+      `race/ethnicity, financial, scientific/research, and licensure). We seek to create a healthy climate ` +
+      `for everyone, while treating everyone, including candidates, ethically and recognizing people may ` +
+      `learn, correct past behaviors and regain trust. ETT is just a tool to gain some basic and reliable ` +
+      `information and does not address or dictate who is qualified or should be selected. We make those ` +
+      `assessments independently based on all relevant information and our own criteria and judgments. ` +
+      `See the end of this email for more information on ETT.`;
+
+    let paragraph2 = `At this stage of our process to consider you for one of the privileges or honors, ` +
+      `employment or other roles for which we use the Ethical Transparency Tool to gain some basic and ` +
+      `reliable information about you, we soon intend to make Disclosure Requests to your professionally ` +
+      `affiliated organizations that are covered by your ETT Consent Form. We intend to seek disclosures from `;
+
+    const paragraph3 = 'If you have any questions, please feel free to contact <b>respond to all who are ' +
+      'copied on this email</b> and we’ll provide help. <b>You will not be able to respond to ETT.</b>';
+
+    const paragraph4 = 'Thank you again for joining us in leading to help create a climate where everyone can thrive!';
+
+    switch(constraint) {
+      case BOTH:
+        paragraph2 += `all of your <b>current</b> professionally affiliated organizations (employers, other ` +
+          `appointing organizations, academic, professional and field-related honorary and membership ` +
+          `organizations), as well as your professionally affiliated organizations over the last ` +
+          `${lookback} years. Consequently, we ask you ` +
+          `at this time to very promptly complete Exhibit Forms at this link:</p><p>${linkUri}</p> to ` +
+          `pair with the Consent Form that you have already completed. Exhibit Forms provide an ` +
+          `up-to-date list of the name(s) and contact(s) for your known professional affiliates that ` +
+          `are covered by your consent and authorized by you to make disclosures directly to ${entity_name}.`;
+        break;
+      case CURRENT:
+        paragraph1 = `At this stage of our process to consider you for one of the privileges or honors, ` +
+          `employment or other roles for which we use the Ethical Transparency Tool to gain some basic and ` +
+          `reliable information about you, we soon intend to make Disclosure Requests to your <b>current</b> employers ` +
+          `and other <b>current</b> appointing organizations. Consequently, we ask you at this time to very promptly ` +
+          `complete Exhibit Forms at this link:</p><p>${linkUri}</p> to pair with the Consent Form that you have already ` +
+          `completed. Exhibit Forms provide an up-to-date list of the name(s) and contact(s) for your known ` +
+          `professional affiliates that are covered by your consent and authorized to make disclosures directly ` +
+          `to ${entity_name}.`;
+        paragraph2 = '';
+        break;
+      case OTHER:
+        paragraph2 += `first, to all of your <b>prior</b> employers and other <b>prior</b> appointing organizations ` +
+          `over the last ${lookback} years, as well as ` +
+          `to your <b>current and prior</b> (same look-back period) academic, professional and field-related ` +
+          `honorary and membership organizations. Consequently, we ask you at this time to very promptly ` +
+          `complete Exhibit Forms at this  link:</p><p>${linkUri}</p> to pair with the Consent Form that you have ` +
+          `already completed. Exhibit Forms provide an up-to-date list of the name(s) and contact(s) ` +
+          `for your known professional affiliates that are covered by your consent and authorized to make ` +
+          `disclosures directly to ${entity_name}<br><br>` +
+          `Later in our process, we may want to request disclosures from your current employers and ` +
+          `other current appointing organizations. If so, we’ll ask you to complete additional Exhibit ` +
+          `Forms for them.`;
+        break;
+      default:
+        throw new Error(`Unknown constraint: ${constraint}`);
+    }
+
     return sendEmail({
       subject: `ETT Exhibit Form Request`,
       to: [ consenterEmail ],
-      message: `Thank you ${consenterFullName} for registering with the Ethical Tranparency Tool.<br>` +
-        `${entity_name} is requesting you take the next step and fill out a current/prior contacts or "exhibit" form.<br>` +
-        `<p><b>${lookbackMsg}</b></p>` +
-        `<p><b>${positionsMsg}</b></p>` +
-        `Follow the link provided below to log in to your ETT account and to access the form:` + 
-        `<p>${linkUri}</p>`,
+      message: `<p>Dear ${consenterFullName},</p>` +
+        `<p>${paragraph1}</p>` +
+        (paragraph2 ? `<p>${paragraph2}</p>` : '') +
+        `<p>${paragraph3}</p>` + 
+        `<p>${paragraph4}</p>`,
       from,
       pdfAttachments: [
         {
@@ -169,7 +218,7 @@ const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/authorized-individual/ExhibitFormRequestEmail.ts')) {
 
   const consenterEmail = 'cp1@warhen.work';
-  const entity_id = '54322755-3d89-4388-98c6-ed291ef74221';
+  const entity_id = '45e4b462-eacc-4660-b9b2-2a750ea19f47';
 
   (async() => {
     // 1) Get context variables
@@ -190,7 +239,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
       consenterEmail, 
       entity_id, 
       linkUri:`https://${cloudfrontDomain}`, 
-      constraint:"both",
+      constraint: ExhibitFormConstraints.CURRENT,
       lookback: '5',
       positions: [ 
         { id:AffiliatePositionsCustom.EMPLOYER, value:'Manager of things and stuff' },
