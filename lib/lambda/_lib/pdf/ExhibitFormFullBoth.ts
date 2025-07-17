@@ -209,7 +209,7 @@ export class ExhibitFormFullBoth extends PdfForm implements IPdfForm {
   private drawOrderedItems = async () => {
     const { 
       page: { 
-        bodyWidth, drawWrappedText, drawText, nextPageIfNecessary 
+        bodyWidth, drawWrappedText, drawText, nextPageIfNecessary, nextPage 
       }, font, boldfont, _return, 
       baseForm: { 
         entityName='[entity/organization]', getStaleEntityPeriod, getFirstReminderPeriod, getSecondReminderPeriod, 
@@ -295,13 +295,14 @@ export class ExhibitFormFullBoth extends PdfForm implements IPdfForm {
       options: { size:9, font }, linePad: 6, padBottom: 16, horizontalRoom: bodyWidth - 20
     });
 
-    basePage = nextPageIfNecessary(50, () => _return(16));
-    await drawWrappedText({
-      text: '____Check if applicable: My name has changed since my affiliation with one or more of ' +
-        'the listed Consent Recipients/Affiliates above.  My prior name(s) known to them ' +
-        'were:__________________________________________________________________ [insert names].',
-      options: { size:9, font:boldfont }, linePad: 6, padBottom: 16, horizontalRoom: bodyWidth - 20
-    }); 
+    // basePage = nextPageIfNecessary(50, () => _return(16));
+    // await drawWrappedText({
+    //   text: '____Check if applicable: My name has changed since my affiliation with one or more of ' +
+    //     'the listed Consent Recipients/Affiliates above.  My prior name(s) known to them ' +
+    //     'were:__________________________________________________________________ [insert names].',
+    //   options: { size:9, font:boldfont }, linePad: 6, padBottom: 16, horizontalRoom: bodyWidth - 20
+    // });
+    nextPage();
   }
 
   private drawReadyForSubmission = async (includeSubmit:boolean=false) => {

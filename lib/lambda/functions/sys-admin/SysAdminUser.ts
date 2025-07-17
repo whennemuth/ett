@@ -109,6 +109,8 @@ export const handler = async (event:any):Promise<LambdaProxyIntegrationResponse>
           return await entityTeardown(parameters);
         case Task.SHORTCUT_CONSENTER_TEARDOWN:
           return await consenterTeardown(parameters);
+        default:
+          return invalidResponse(`Unknown task: ${task}`);
       } 
     }
   }

@@ -147,7 +147,7 @@ export class UserInvitation {
               Minimizing legal and enterprise risk for all involved: organizations maintain 
               independence in all policy- and decision making; candidates provide consent for 
               disclosures; and disclosures are limited to useful but hard to dispute facts—the 
-              kind and date of a misconduct finding.
+              kind and year of a misconduct finding.
             </li>
             <li>
               Enhancing efficiency in consenting to and requesting disclosures – a person’s single 
