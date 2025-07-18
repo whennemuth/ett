@@ -142,7 +142,8 @@ export const appendTimestamp = async (parms:AppendTimestampParms): Promise<Lambd
  */
 export const consentFormUrl = (consenterEmail:string):string => {
   const context:IContext = <IContext>ctx;
-  return `https://${process.env.CLOUDFRONT_DOMAIN}${context.PATHS.CONSENTING_PERSON_PATH}`;
+  const { CLOUDFRONT_DOMAIN, PRIMARY_DOMAIN } = process.env;
+  return `https://${PRIMARY_DOMAIN || CLOUDFRONT_DOMAIN}${context.PATHS.CONSENTING_PERSON_PATH}`;
 
   /**
    * TODO:

@@ -9,6 +9,7 @@ import { AffilatePositionAcademic, AffilatePositionAcademicStrings, AffiliatePos
 import { ConsentForm, ConsentFormData } from "../../_lib/pdf/ConsentForm";
 import { FormName, getPublicFormApiUrl } from "../public/FormsDownload";
 import { PUBLIC_API_ROOT_URL_ENV_VAR } from "../../../PublicApi";
+import { get } from "http";
 
 export type ExhibitFormRequestEmailParms = {
   consenterEmail:string;
@@ -113,7 +114,8 @@ export class ExhibitFormRequestEmail {
     const { PATHS: { 
       PRIVACY_POLICY_PATH, CONSENTING_PERSON_PATH, ENTITY_INVENTORY_PATH, CONSENTING_PERSON_REGISTRATION_PATH
     }} = context;
-    const { CLOUDFRONT_DOMAIN:domain } = process.env;
+    const { CLOUDFRONT_DOMAIN, PRIMARY_DOMAIN } = process.env;
+    const domain = PRIMARY_DOMAIN || CLOUDFRONT_DOMAIN;
     const privacyHref = `https://${domain}${PRIVACY_POLICY_PATH}`;
     const dashboardHref = `https://${domain}${CONSENTING_PERSON_PATH}`;
     const registrationHref = `https://${domain}${CONSENTING_PERSON_REGISTRATION_PATH}`;
@@ -233,13 +235,15 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
       throw('Cloudfront domain lookup failure');
     }
     process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
-    
+    const primaryDomain = getCustomDomain() || cloudfrontDomain;
+    process.env.PRIMARY_DOMAIN = primaryDomain;
+
     // 3) Send the email
     await new ExhibitFormRequestEmail({ 
       consenterEmail, 
       entity_id, 
-      linkUri:`https://${cloudfrontDomain}`, 
-      constraint: ExhibitFormConstraints.CURRENT,
+      linkUri:`https://${primaryDomain}`, 
+      constraint: ExhibitFormConstraints.OTHER,
       lookback: '5',
       positions: [ 
         { id:AffiliatePositionsCustom.EMPLOYER, value:'Manager of things and stuff' },

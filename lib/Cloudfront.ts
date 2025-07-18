@@ -1,5 +1,5 @@
 import { RemovalPolicy } from 'aws-cdk-lib';
-import { CachePolicy, CfnDistribution, CfnOriginAccessControl, Distribution, LambdaEdgeEventType, experimental } from 'aws-cdk-lib/aws-cloudfront';
+import { CachePolicy, CfnDistribution, CfnOriginAccessControl, Distribution, DistributionProps, LambdaEdgeEventType, experimental } from 'aws-cdk-lib/aws-cloudfront';
 import { HttpOrigin, S3Origin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { Code, Function, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
@@ -8,6 +8,7 @@ import { Construct } from 'constructs';
 import { IContext } from '../contexts/IContext';
 import path = require('path');
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { Certificate, ICertificate } from 'aws-cdk-lib/aws-certificatemanager';
 
 export interface CloudfrontConstructProps {
   bootstrapBucket: Bucket,
@@ -36,13 +37,13 @@ export class CloudfrontConstruct extends Construct {
     this.props = props;
     const { 
       context: { TAGS: { Landscape:landscape }, STACK_ID, 
-      REDIRECT_PATH_WEBSITE, DEFAULT_ROOT_OBJECT
+      REDIRECT_PATH_WEBSITE, DEFAULT_ROOT_OBJECT, ETT_DOMAIN_CERTIFICATE_ARN, ETT_DOMAIN
     } } = this;
     const  defaultBehavior = { 
       origin: new HttpOrigin('dummy-origin.com', { originId: 'dummy-origin' })
     }
 
-    this.distribution = new Distribution(this, 'Distribution', {
+    let distProps = {
       defaultBehavior,
       comment: `${STACK_ID}-${landscape}-distribution`,
       defaultRootObject: DEFAULT_ROOT_OBJECT,
@@ -51,7 +52,19 @@ export class CloudfrontConstruct extends Construct {
         autoDeleteObjects: true,
         objectOwnership: ObjectOwnership.OBJECT_WRITER
       }),
-    });
+
+    } as DistributionProps;
+
+    // Alternate domains
+    if(ETT_DOMAIN_CERTIFICATE_ARN && ETT_DOMAIN) {
+      const certificate:ICertificate = Certificate.fromCertificateArn(this, `${STACK_ID}-${landscape}--acm-cert`, ETT_DOMAIN_CERTIFICATE_ARN);
+      distProps = Object.assign({
+        certificate, 
+        domainNames: [ETT_DOMAIN]
+      }, distProps);
+    }
+
+    this.distribution = new Distribution(this, 'Distribution', distProps);
 
     const behaviors = new CloudfrontBehaviors(this);
 

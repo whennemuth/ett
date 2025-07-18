@@ -25,7 +25,8 @@ export const StackDescription = 'Ethical transparency tool';
 const app = new App();
 app.node.setContext('stack-parms', context);
 const { 
-  STACK_ID, ACCOUNT:account, REGION:region, TAGS: { Function, Landscape, Service }, REDIRECT_PATH_WEBSITE
+  STACK_ID, ACCOUNT:account, REGION:region, TAGS: { Function, Landscape, Service }, REDIRECT_PATH_WEBSITE,
+  ETT_DOMAIN, ETT_DOMAIN_CERTIFICATE_ARN
 } = context;
 const stackName = `${STACK_ID}-${Landscape}`;
 
@@ -80,6 +81,9 @@ const buildAll = () => {
 
   // Set up the cloudfront distribution, origins, behaviors, and oac
   const cloudfront = new CloudfrontConstruct(stack, 'Cloudfront', { bootstrapBucket, websiteBucket } as CloudfrontConstructProps);
+  
+  // Set the primary domain to the ETT_DOMAIN if it is set, otherwise use the cloudfront distribution domain name.
+  const primaryDomain = (ETT_DOMAIN && ETT_DOMAIN_CERTIFICATE_ARN) ? ETT_DOMAIN : cloudfront.getDistributionDomainName();
 
   // Set up the cognito userpool and userpool client
   const cognito = new CognitoConstruct({
@@ -88,6 +92,7 @@ const buildAll = () => {
     exhibitFormsBucket,
     handleStaleEntityVacancyLambdaArn: `arn:aws:lambda:${region}:${account}:function:${stackName}-${DelayedExecutions.HandleStaleEntityVacancy.coreName}`,
     cloudfrontDomain: cloudfront.getDistributionDomainName(),
+    primaryDomain,
   } as CognitoConstructParms);
 
   // Set up the dynamodb table for users.
@@ -96,12 +101,14 @@ const buildAll = () => {
   // Create the api for the public pdf forms download
   const publicApi = new PublicApiConstruct(stack, 'PublicApi', {
     cloudfrontDomain: cloudfront.getDistributionDomainName(),
+    primaryDomain,
     dynamodb
   } as PublicApiConstructParms);
 
   // Create all the delayed execution lambda functions
   const delayedExecutionLambdas = new DelayedExecutionLambdas(stack, 'DelayedExecution', {
     cloudfrontDomain: cloudfront.getDistributionDomainName(),
+    primaryDomain,
     exhibitFormsBucket,
     userPoolId:cognito.getUserPool().userPoolId,
     publicApiDomainNameEnvVar: { name:PUBLIC_API_ROOT_URL_ENV_VAR, value: publicApi.url },
@@ -110,6 +117,7 @@ const buildAll = () => {
   // Set up the public api register endpoints for "pre-signup" that are called before any cognito signup occurs.
   const signupApi = new SignupApiConstruct(stack, 'SignupApi', {
     cloudfrontDomain: cloudfront.getDistributionDomainName(),
+    primaryDomain,
     userPool:cognito.getUserPool(),
     exhibitFormsBucket,
     purgeConsenterLambdaArn: delayedExecutionLambdas.consenterPurgeLambda.functionArn,
@@ -121,6 +129,7 @@ const buildAll = () => {
     userPoolName: cognito.getUserPoolName(),  
     userPoolDomain: cognito.getUserPoolDomain(),  
     cloudfrontDomain: cloudfront.getDistributionDomainName(),
+    primaryDomain,
     redirectPath: REDIRECT_PATH_WEBSITE,
     landscape: Landscape,
     exhibitFormsBucket,
@@ -142,6 +151,7 @@ const buildAll = () => {
       distributionId: cloudfront.getDistributionId(),
       cloudfrontDomain: cloudfront.getDistributionDomainName(),
       cognitoDomain: cognito.getUserPoolDomain(),
+      primaryDomain,
       cognitoUserpoolRegion: region,
       registerEntityApiUri: signupApi.registerEntityApiUri,
       registerConsenterApiUri: signupApi.registerConsenterApiUri,

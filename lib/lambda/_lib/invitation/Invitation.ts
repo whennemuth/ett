@@ -57,7 +57,8 @@ export class UserInvitation {
     this._code = code;
     // Add the code to the link and prevent any '&' or '=' characters from being misinterpreted as HTML.
     this._link = `${this._link}&code=${this._code}`
-    this._domain = process.env.CLOUDFRONT_DOMAIN ?? new URL(this._link).hostname;
+    const { CLOUDFRONT_DOMAIN, PRIMARY_DOMAIN } = process.env;
+    this._domain = PRIMARY_DOMAIN || CLOUDFRONT_DOMAIN || new URL(this._link).hostname;
   }
 
   public send = async (parms:SendParms):Promise<boolean> => {

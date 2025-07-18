@@ -50,9 +50,11 @@ The full list of context settings is as follows:
 
 - **ETT_EMAIL_FROM:** To invite a new school/university to participate in ETT, an email is sent by a system administrator to an individual who acts as an "Administrative Support Professional" (ASP/RE_ADMIN) for that institution. This value will be used as the from address for such emails.
 
-- **ETT_DOMAIN:** The domain or subdomain for the ETT app. If this value is not supplied, the app defaults to the cloudfront default domain for reaching the app over http.
+- **ETT_DOMAIN:** The domain or subdomain for the ETT app. If this value is not supplied, the app defaults to the default domain of the cloudfront distribution for reaching the app over http. This value pairs with the ETT_DOMAIN_CERTIFICATE_ARN configuration value.
 
-- **REDIRECT_PATH_BOOTSTRAP:** ETT is essentially a web service built out of lambda function. It is intended to be deployed in combination with a separate front-end/client app. However, a built in client app based on (Bootstrap)[https://getbootstrap.com/] comes "out-of-the-box" with the backend. This value serves as the path relative to the root for how you would reach this bootstrap front-end. It also informs building of [Cognito endpoints](https://docs.aws.amazon.com/cognito/latest/developerguide/federation-endpoints.html) specific to the bootstrap front-end.
+- **ETT_DOMAIN_CERTIFICATE_ARN:** The ARN of the [AWS Certificates Manager (ACM) certificate](https://docs.aws.amazon.com/acm/latest/userguide/gs.html) for ETT. This value pairs with the ETT_DOMAIN configuration value.
+
+- **REDIRECT_PATH_BOOTSTRAP:** ETT is essentially a web service built out of lambda function. It is intended to be deployed in combination with a separate front-end/client app. However, a built in client app based on [Bootstrap](https://getbootstrap.com/) comes "out-of-the-box" with the backend. This value serves as the path relative to the root for how you would reach this bootstrap front-end. It also informs building of [Cognito endpoints](https://docs.aws.amazon.com/cognito/latest/developerguide/federation-endpoints.html) specific to the bootstrap front-end.
 
 - **REDIRECT_PATH_WEBSITE:** This is the path after ETT_DOMAIN that points to the root of the official front-end for ETT. This default to `"/"`
 

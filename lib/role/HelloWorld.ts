@@ -11,6 +11,7 @@ import { IContext } from "../../contexts/IContext";
 export interface HelloWorldParms {
   userPool: UserPool, 
   cloudfrontDomain: string,
+  primaryDomain: string,
   landscape: string
 }
 
@@ -24,7 +25,7 @@ export class HelloWorldApi extends AbstractRole {
 
     const context:IContext = scope.node.getContext('stack-parms');
     const { STACK_ID} = context;
-    const { userPool, cloudfrontDomain, landscape } = parms;
+    const { userPool, cloudfrontDomain, primaryDomain, landscape } = parms;
     const functionName = `${STACK_ID}-${landscape}-${Roles.HELLO_WORLD}-user`;
 
     const lambdaFunction = new Function(scope, `${constructId}Lambda`, {
@@ -43,7 +44,7 @@ export class HelloWorldApi extends AbstractRole {
           statusCode: 200,
           headers: {
               "Access-Control-Allow-Headers" : "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent",
-              "Access-Control-Allow-Origin": "https://${cloudfrontDomain}",
+              "Access-Control-Allow-Origin": "https://${primaryDomain || cloudfrontDomain}",
               "Access-Control-Allow-Methods": "OPTIONS,POST,GET",
               "Access-Control-Allow-Credentials": "true"
           },
@@ -63,6 +64,7 @@ export class HelloWorldApi extends AbstractRole {
     
     this.api = new AbstractRoleApi(scope, `${constructId}Api`, {
       cloudfrontDomain,
+      primaryDomain,
       lambdaFunction,
       userPool,
       role: Roles.HELLO_WORLD,
