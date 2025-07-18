@@ -72,9 +72,10 @@ export class ExhibitFormRequest {
    * @returns 
    */
   private getDefaultLinkUri = ():string|void => {
-    const cloudfrontDomain = process.env.CLOUDFRONT_DOMAIN;
-    if( ! cloudfrontDomain) return;
-    return `https://${process.env.CLOUDFRONT_DOMAIN}`
+    const { CLOUDFRONT_DOMAIN, PRIMARY_DOMAIN } = process.env;
+    const domain = PRIMARY_DOMAIN || CLOUDFRONT_DOMAIN;
+    if( ! domain) return;
+    return `https://${domain}`
   }
 
   /**

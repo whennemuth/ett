@@ -30,9 +30,12 @@ export class InvitablePerson {
   public invite = async (): Promise<LambdaProxyIntegrationResponse> => {
     let { inviterRole, linkGenerator, inviterCognitoUserName, invitee: { email, entity_id, role } } = this.parms;
     if(email) email = email.toLowerCase();
-    const cloudfrontDomain = process.env.CLOUDFRONT_DOMAIN;
-    if(cloudfrontDomain) {
-
+    const { CLOUDFRONT_DOMAIN, PRIMARY_DOMAIN } = process.env;
+    const primaryDomain = PRIMARY_DOMAIN || CLOUDFRONT_DOMAIN;
+    if( ! primaryDomain) {
+      return errorResponse(`Unable to determine the url for ${role} signup`);
+    }
+    else {
       let entity:Entity|null = null;
       const invitedByReAdmin = () => inviterRole == Roles.RE_ADMIN;
       const invitedToWaitingRoom = () => entity_id == ENTITY_WAITING_ROOM;
@@ -189,9 +192,6 @@ export class InvitablePerson {
         const msg = `Invitation failure: ${emailInvite.code}`;
         return errorResponse(msg);
       } 
-    }
-    else {
-      return errorResponse(`Unable to determine the url for ${role} signup`);
     }
   }
 }

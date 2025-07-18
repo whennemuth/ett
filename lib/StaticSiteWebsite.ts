@@ -1,13 +1,11 @@
-import { Function, Runtime, Code } from 'aws-cdk-lib/aws-lambda';
-import { Provider } from 'aws-cdk-lib/custom-resources';
 import { RemovalPolicy } from "aws-cdk-lib";
 import { Effect, PolicyStatement, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { BlockPublicAccess, Bucket } from "aws-cdk-lib/aws-s3";
 import { BucketDeployment, Source } from "aws-cdk-lib/aws-s3-deployment";
+import { CfnCondition, CfnResource, Fn } from 'aws-cdk-lib/core';
 import { Construct } from "constructs";
 import { StaticSiteConstruct, StaticSiteConstructParms } from "./StaticSite";
 import path = require("node:path");
-import { CfnCondition, Fn, CfnResource, CustomResource } from 'aws-cdk-lib/core';
 
 /**
  * This construct is for an s3 bucket that is to host the single page app html file and related

@@ -18,6 +18,8 @@ export type EnvVar = { name:string, value:string };
  */
 const addCorsHeaders = (headers:any) => {
 
+  const domain = process.env.PRIMARY_DOMAIN || process.env.CLOUDFRONT_DOMAIN;
+
   const allowHeaders = [
     'Content-Type',
     'X-Amz-Date',
@@ -29,7 +31,7 @@ const addCorsHeaders = (headers:any) => {
 
   headers['Access-Control-Allow-Headers'] = allowHeaders.join(',');
 
-  headers['Access-Control-Allow-Origin'] = `https://${process.env.CLOUDFRONT_DOMAIN}`;
+  headers['Access-Control-Allow-Origin'] = `https://${domain}`;
 
   headers['Access-Control-Allow-Methods'] = 'OPTIONS,POST,GET';
 

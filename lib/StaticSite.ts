@@ -7,6 +7,7 @@ export interface StaticSiteConstructParms {
   bucket: Bucket,
   distributionId: string,
   cloudfrontDomain: string,
+  primaryDomain: string,
   cognitoDomain: string,
   cognitoUserpoolRegion: string,
   registerEntityApiUri: string,
@@ -52,7 +53,10 @@ export abstract class StaticSiteConstruct extends Construct {
    * @param parms 
    * @returns A parameter object comprising all values client apps need to authenticate and talk with the backend.
    */
-  public static buildSiteParmObject = (parms: StaticSiteConstructParms, redirectPath:string):any => {
+  public static buildSiteParmObject = (parms: StaticSiteConstructParms, redirectPath:string):any => {    
+    const { cloudfrontDomain, primaryDomain } = parms;
+    const domain = primaryDomain || cloudfrontDomain;
+
     if(redirectPath.startsWith('/')) {
       redirectPath = redirectPath.substring(1);
     }
@@ -69,7 +73,7 @@ export abstract class StaticSiteConstruct extends Construct {
     parms.apis.forEach((api:AbstractRoleApi) => {
       jsonObj.ROLES[api.getRole()] = {
         CLIENT_ID: api.getUserPoolClientId(),
-        REDIRECT_URI: `https://${parms.cloudfrontDomain}/${redirectPath}`,
+        REDIRECT_URI: `https://${domain}/${redirectPath}`,
         API_URI: api.getRestApiUrl(),
         FULLNAME: api.getRoleFullName()
       }

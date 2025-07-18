@@ -19,11 +19,12 @@ export class ReAdminUserApi extends AbstractRole {
 
     super(scope, constructId);
 
-    const { userPool, cloudfrontDomain } = parms;
+    const { userPool, cloudfrontDomain, primaryDomain } = parms;
     const lambdaFunction = new LambdaFunction(scope, `${constructId}Lambda`, parms);
 
     this.api = new AbstractRoleApi(scope, `${constructId}Api`, {
       cloudfrontDomain,
+      primaryDomain,
       lambdaFunction,
       userPool,
       role: Roles.RE_ADMIN,
@@ -62,7 +63,7 @@ export class LambdaFunction extends AbstractFunction {
     const context:IContext = scope.node.getContext('stack-parms');
     const { ACCOUNT, REGION, CONFIG, STACK_ID } = context;
     const { 
-      userPool, cloudfrontDomain, landscape, exhibitFormsBucket, 
+      userPool, cloudfrontDomain, primaryDomain,landscape, exhibitFormsBucket, 
       disclosureRequestReminderLambdaArn, 
       handleStaleEntityVacancyLambdaArn,
       removeStaleInvitations,
@@ -163,6 +164,7 @@ export class LambdaFunction extends AbstractFunction {
       environment: {
         REGION: REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
+        PRIMARY_DOMAIN: primaryDomain,
         USERPOOL_ID: userPoolId,
         PREFIX: prefix,
         [ExhibitFormsBucketEnvironmentVariableName]: exhibitFormsBucket.bucketName,

@@ -10,6 +10,7 @@ import { AbstractFunction } from "./AbstractFunction";
 import { TableBaseNames } from "./DynamoDb";
 import { Configurations } from "./lambda/_lib/config/Config";
 import { ExhibitFormsBucketEnvironmentVariableName } from "./lambda/functions/consenting-person/BucketItemMetadata";
+import { PriceClass } from "@aws-sdk/client-cloudfront";
 
 
 export type DelayedExecutionNames = {
@@ -44,6 +45,7 @@ export const DelayedExecutions = {
 
 export type DelayedExecutionLambdaParms = {
   cloudfrontDomain: string,
+  primaryDomain: string,
   exhibitFormsBucket: Bucket,
   userPoolId: string,
   publicApiDomainNameEnvVar: EnvVar
@@ -90,7 +92,7 @@ export class DelayedExecutionLambdas extends Construct {
 
   private createDatabaseExhibitFormPurgeLambda = () => {
     const { 
-      constructId, parms: { cloudfrontDomain }, scheduleGroupName,
+      constructId, parms: { cloudfrontDomain, primaryDomain }, scheduleGroupName,
       context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } 
     } = this;
     const baseId = `${constructId}DatabaseExhibitFormPurge`;
@@ -145,6 +147,7 @@ export class DelayedExecutionLambdas extends Construct {
       environment: {
         REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
+        PRIMARY_DOMAIN: primaryDomain,
         PREFIX: prefix,
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
@@ -153,7 +156,7 @@ export class DelayedExecutionLambdas extends Construct {
 
   private createDisclosureRequestReminderLambda = () => {
     const { 
-      constructId, parms: { cloudfrontDomain, exhibitFormsBucket: { bucketArn, bucketName }, publicApiDomainNameEnvVar }, 
+      constructId, parms: { cloudfrontDomain, primaryDomain, exhibitFormsBucket: { bucketArn, bucketName }, publicApiDomainNameEnvVar }, 
       context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID }, scheduleGroupName
     } = this;
     const baseId = `${constructId}DisclosureRequestReminder`;
@@ -228,6 +231,7 @@ export class DelayedExecutionLambdas extends Construct {
       environment: {
         REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
+        PRIMARY_DOMAIN: primaryDomain,
         PREFIX: prefix,
         [ExhibitFormsBucketEnvironmentVariableName]: bucketName,
         [publicApiDomainNameEnvVar.name]: publicApiDomainNameEnvVar.value,
@@ -238,7 +242,7 @@ export class DelayedExecutionLambdas extends Construct {
 
   private createBucketExhibitFormPurgeLambda = () => {
     const { 
-      constructId, parms: { cloudfrontDomain, exhibitFormsBucket: { bucketArn, bucketName } }, 
+      constructId, parms: { cloudfrontDomain, primaryDomain, exhibitFormsBucket: { bucketArn, bucketName } }, 
       context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID }, scheduleGroupName 
     } = this;
     const baseId = `${constructId}BucketPurge`;
@@ -301,6 +305,7 @@ export class DelayedExecutionLambdas extends Construct {
       environment: {
         REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
+        PRIMARY_DOMAIN: primaryDomain,
         PREFIX: prefix,
         [ExhibitFormsBucketEnvironmentVariableName]: bucketName,
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
@@ -311,6 +316,7 @@ export class DelayedExecutionLambdas extends Construct {
   private createHandleStaleEntityVacancyLambda = () => {
     const { constructId, parms: { 
       cloudfrontDomain, 
+      primaryDomain,
       userPoolId, 
       exhibitFormsBucket: { bucketArn, bucketName } }, scheduleGroupName,
       context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } 
@@ -401,6 +407,7 @@ export class DelayedExecutionLambdas extends Construct {
       environment: {
         REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
+        PRIMARY_DOMAIN: primaryDomain,
         USERPOOL_ID: userPoolId,
         PREFIX: prefix,
         [ExhibitFormsBucketEnvironmentVariableName]: bucketName,
@@ -410,7 +417,7 @@ export class DelayedExecutionLambdas extends Construct {
   }
 
   private createConsenterPurgeLambda = () => {
-    const { constructId, parms: { cloudfrontDomain, userPoolId }, scheduleGroupName,
+    const { constructId, parms: { cloudfrontDomain, primaryDomain, userPoolId }, scheduleGroupName,
       context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } 
     } = this;
     const baseId = `${constructId}PurgeConsenter`;
@@ -484,6 +491,7 @@ export class DelayedExecutionLambdas extends Construct {
       environment: {
         REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
+        PRIMARY_DOMAIN: primaryDomain,
         USERPOOL_ID: userPoolId,
         PREFIX: prefix,
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
@@ -492,7 +500,7 @@ export class DelayedExecutionLambdas extends Construct {
   }
 
   private createStaleInvitationsLambda = () => {
-    const { constructId, parms: { cloudfrontDomain, userPoolId }, scheduleGroupName,
+    const { constructId, parms: { cloudfrontDomain, primaryDomain,userPoolId }, scheduleGroupName,
       context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID }
     } = this;
     const baseId = `${constructId}RemoveStaleInvitations`;
@@ -557,6 +565,7 @@ export class DelayedExecutionLambdas extends Construct {
       environment: {
         REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
+        PRIMARY_DOMAIN: primaryDomain,
         USERPOOL_ID: userPoolId,
         PREFIX: prefix,
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()

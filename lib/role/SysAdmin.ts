@@ -20,11 +20,12 @@ export class SysAdminApi extends AbstractRole {
 
     super(scope, constructId);
 
-    const { userPool, cloudfrontDomain } = parms;
+    const { userPool, cloudfrontDomain, primaryDomain } = parms;
     const lambdaFunction = new LambdaFunction(scope, `${constructId}Lambda`, parms);
 
     this.api = new AbstractRoleApi(scope, `${constructId}Api`, {
       cloudfrontDomain,
+      primaryDomain,
       lambdaFunction,
       userPool,
       role: Roles.SYS_ADMIN,
@@ -63,9 +64,9 @@ export class LambdaFunction extends AbstractFunction {
     const context:IContext = scope.node.getContext('stack-parms');
     const { ACCOUNT, CONFIG, REGION, TAGS: { Landscape:landscape }, STACK_ID } = context;
     const config = new Configurations(CONFIG);
-    const { userPool, userPoolName, userPoolDomain, cloudfrontDomain, redirectPath, exhibitFormsBucket, removeStaleInvitations, publicApiDomainNameEnvVar } = parms;
+    const { userPool, userPoolName, userPoolDomain, cloudfrontDomain, primaryDomain, redirectPath, exhibitFormsBucket, removeStaleInvitations, publicApiDomainNameEnvVar } = parms;
     const { userPoolArn, userPoolId } = userPool;
-    const redirectUri = `https://${(cloudfrontDomain + '/' + redirectPath).replace('//', '/')}`;
+    const redirectUri = `https://${((primaryDomain || cloudfrontDomain) + '/' + redirectPath).replace('//', '/')}`;
     const prefix = `${STACK_ID}-${landscape}`;
     const scheduleGroupName = `${prefix}-scheduler-group`;
 
@@ -166,6 +167,7 @@ export class LambdaFunction extends AbstractFunction {
         USERPOOL_NAME: userPoolName,
         COGNITO_DOMAIN: userPoolDomain,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
+        PRIMARY_DOMAIN: primaryDomain,
         REDIRECT_URI: redirectUri,
         [ExhibitFormsBucketEnvironmentVariableName]: exhibitFormsBucket.bucketName,
         [DelayedExecutions.RemoveStaleInvitations.targetArnEnvVarName]: removeStaleInvitations,

@@ -15,6 +15,7 @@ export type ApiConstructParms = {
   userPoolName: string,
   userPoolDomain: string,
   cloudfrontDomain: string,
+  primaryDomain: string,
   redirectPath: string,
   landscape: string,
   exhibitFormsBucket: Bucket,

@@ -27,7 +27,8 @@ export class ConsentFormEmail {
     const { ETT_DOMAIN, PATHS: {
       PRIVACY_POLICY_PATH, CONSENTING_PERSON_PATH,  ENTITY_INVENTORY_PATH, CONSENTING_PERSON_REGISTRATION_PATH 
     }} = context;
-    const { CLOUDFRONT_DOMAIN:domain } = process.env;
+    const { CLOUDFRONT_DOMAIN, PRIMARY_DOMAIN } = process.env;
+    const domain = PRIMARY_DOMAIN || CLOUDFRONT_DOMAIN;
     const privacyHref = `https://${domain}${PRIVACY_POLICY_PATH}`;
     const dashboardHref = `https://${domain}${CONSENTING_PERSON_PATH}`;
     const registrationHref = `https://${domain}${CONSENTING_PERSON_REGISTRATION_PATH}`;

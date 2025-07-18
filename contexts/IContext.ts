@@ -5,6 +5,7 @@ export interface IContext {
   ACCOUNT:  string;
   REGION:   string;
   LOCALHOST?: string;
+  ETT_DOMAIN_CERTIFICATE_ARN?: string;
   ETT_DOMAIN?: string;
   ETT_EMAIL_FROM?: string;
   CLOUDFRONT_DOMAIN?: string;

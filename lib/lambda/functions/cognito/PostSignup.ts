@@ -524,8 +524,8 @@ export const sendEntityRegistrationForm = async (data:SendEntityRegistrationForm
  * @returns 
  */
 export const getDashboardHref = (role?:Role):string => {
-  const { CLOUDFRONT_DOMAIN:domain } = process.env;
-  const url = new URL(`https://${domain}`);
+  const { CLOUDFRONT_DOMAIN, PRIMARY_DOMAIN } = process.env;
+  const url = new URL(`https://${PRIMARY_DOMAIN || CLOUDFRONT_DOMAIN}`);
   if(role) {
     const pathname = process.env[`${role}_PATH`];
     url.pathname = pathname!;
@@ -534,17 +534,17 @@ export const getDashboardHref = (role?:Role):string => {
 }
 
 export const getTermsHref = ():string => {
-  const { CLOUDFRONT_DOMAIN:domain } = process.env;
+  const { CLOUDFRONT_DOMAIN, PRIMARY_DOMAIN } = process.env;
   const pathname = process.env.TERMS_OF_USE_PATH;
-  const url = new URL(`https://${domain}`);
+  const url = new URL(`https://${PRIMARY_DOMAIN || CLOUDFRONT_DOMAIN}`);
   url.pathname = pathname!;
   return url.href;
 }
 
 export const getPrivacyHref = ():string => {
-  const { CLOUDFRONT_DOMAIN:domain } = process.env;
+  const { CLOUDFRONT_DOMAIN, PRIMARY_DOMAIN } = process.env;
   const pathname = process.env.PRIVACY_POLICY_PATH;
-  const url = new URL(`https://${domain}`);
+  const url = new URL(`https://${PRIMARY_DOMAIN || CLOUDFRONT_DOMAIN}`);
   url.pathname = pathname!;
   return url.href;
 }
