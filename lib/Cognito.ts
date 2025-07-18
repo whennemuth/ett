@@ -17,7 +17,8 @@ export type CognitoConstructParms = {
   constructId:string, 
   exhibitFormsBucket:Bucket, 
   handleStaleEntityVacancyLambdaArn:string,
-  cloudfrontDomain:string
+  cloudfrontDomain:string,
+  primaryDomain:string
 }
 export class CognitoConstruct extends Construct {
 
@@ -31,10 +32,11 @@ export class CognitoConstruct extends Construct {
   private handleStaleEntityVacancyLambdaArn:string;
   private prefix:string;
   private cloudfrontDomain:string;
+  private primaryDomain:string;
   private scheduleGroupName:string;
 
   constructor(parms:CognitoConstructParms) {
-    const { scope, constructId, exhibitFormsBucket, handleStaleEntityVacancyLambdaArn, cloudfrontDomain } = parms;
+    const { scope, constructId, exhibitFormsBucket, handleStaleEntityVacancyLambdaArn, cloudfrontDomain, primaryDomain } = parms;
 
     super(scope, constructId);
 
@@ -48,6 +50,7 @@ export class CognitoConstruct extends Construct {
     this.handleStaleEntityVacancyLambdaArn = handleStaleEntityVacancyLambdaArn;
     this.userPoolName = `${this.prefix}-${this.constructId.toLowerCase()}-userpool`;
     this.cloudfrontDomain = cloudfrontDomain;
+    this.primaryDomain = primaryDomain;
     this.buildResources();
   }
 
@@ -57,7 +60,7 @@ export class CognitoConstruct extends Construct {
       context: { PATHS: {
         CONSENTING_PERSON_PATH, RE_ADMIN_PATH, RE_AUTH_IND_PATH, TERMS_OF_USE_PATH, PRIVACY_POLICY_PATH }
       },
-      constructId, landscape, exhibitFormsBucket, handleStaleEntityVacancyLambdaArn, cloudfrontDomain
+      constructId, landscape, exhibitFormsBucket, handleStaleEntityVacancyLambdaArn, cloudfrontDomain, primaryDomain
     } = this;
     const { CONFIG, CONSENTERS, ENTITIES, INVITATIONS, USERS } = TableBaseNames;
     const { getTableName } = DynamoDbConstruct;
@@ -226,6 +229,7 @@ export class CognitoConstruct extends Construct {
       environment: {
         ...environment, 
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
+        PRIMARY_DOMAIN: primaryDomain,
         CONSENTING_PERSON_PATH, RE_ADMIN_PATH, RE_AUTH_IND_PATH, TERMS_OF_USE_PATH, PRIVACY_POLICY_PATH
       }
     });

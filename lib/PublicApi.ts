@@ -14,6 +14,7 @@ export const PUBLIC_API_ROOT_URL_ENV_VAR = 'PUBLIC_API_ROOT_URL';
 
 export type PublicApiConstructParms = {
   cloudfrontDomain: string,
+  primaryDomain: string,
   dynamodb?:DynamoDbConstruct
 };
 
@@ -33,7 +34,7 @@ export class PublicApiConstruct extends Construct {
 
     const context = scope.node.getContext('stack-parms');
     const { REGION, CONFIG, TAGS: { Landscape:landscape }, STACK_ID } = context as IContext;
-    const { cloudfrontDomain, dynamodb } = parms;
+    const { cloudfrontDomain, primaryDomain, dynamodb } = parms;
     const stageName = landscape;
     const prefix = `${STACK_ID}-${landscape}`;
 
@@ -53,6 +54,7 @@ export class PublicApiConstruct extends Construct {
       environment: {
         REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
+        PRIMARY_DOMAIN: primaryDomain,
         PREFIX: prefix,
         [Configurations.ENV_VAR_NAME]: new Configurations(CONFIG).getJson()
       }
@@ -91,12 +93,17 @@ export class PublicApiConstruct extends Construct {
     // Add the download path element
     const actionPath = formsPath.addResource('download');
 
+    const allowOrigins = [ `https://${primaryDomain}` ];
+    if( cloudfrontDomain !== primaryDomain ) {
+      allowOrigins.push(`https://${cloudfrontDomain}`);
+    }
+
     // Add the form name path element
     const formNamePath = actionPath.addResource(`{${PublicApiConstruct.FORM_NAME_PATH_PARAM}}`);
     formNamePath.addMethod('GET');
     formNamePath.addMethod('POST');
     formNamePath.addCorsPreflight({
-      allowOrigins: [ `https://${cloudfrontDomain}` ],
+      allowOrigins,
       // allowHeaders: Cors.DEFAULT_HEADERS.concat('Is a header needed?'),
       allowMethods: [ 'POST', 'GET', 'OPTIONS' ],
       maxAge: Duration.minutes(10),
@@ -108,7 +115,7 @@ export class PublicApiConstruct extends Construct {
     entityTaskPath.addMethod('GET');
     entityTaskPath.addMethod('POST');
     entityTaskPath.addCorsPreflight({
-      allowOrigins: [ `https://${cloudfrontDomain}` ],
+      allowOrigins,
       // allowHeaders: Cors.DEFAULT_HEADERS.concat('Is a header needed?'),
       allowMethods: [ 'POST', 'GET', 'OPTIONS' ],
       maxAge: Duration.minutes(10),

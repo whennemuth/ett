@@ -17,6 +17,7 @@ import { roleFullName, Roles } from "./lambda/_lib/dao/entity";
 export type SignupApiConstructParms = {
   userPool: UserPool,
   cloudfrontDomain: string,
+  primaryDomain: string,
   exhibitFormsBucket: Bucket
   purgeConsenterLambdaArn: string
 };
@@ -57,7 +58,7 @@ export class SignupApiConstruct extends Construct {
   private createRegisterEntityApi = () => {
     const { 
       constructId, context: { REGION, ACCOUNT, CONFIG, TAGS: { Landscape:landscape }, STACK_ID }, scheduleGroupName,
-      parms: { cloudfrontDomain, userPool: { userPoolArn, userPoolId }, exhibitFormsBucket }, stageName 
+      parms: { cloudfrontDomain, primaryDomain, userPool: { userPoolArn, userPoolId }, exhibitFormsBucket }, stageName 
     } = this;
     const basename = `${constructId}RegisterEntity`;
     const description = 'for checking invitation code and registering a new user has signed and registered';
@@ -154,6 +155,7 @@ export class SignupApiConstruct extends Construct {
       environment: {
         REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
+        PRIMARY_DOMAIN: primaryDomain,
         USERPOOL_ID: userPoolId,
         PREFIX: prefix,
         [ExhibitFormsBucketEnvironmentVariableName]: exhibitFormsBucket.bucketName,
@@ -174,6 +176,11 @@ export class SignupApiConstruct extends Construct {
       proxy: false
     });
 
+    const allowOrigins = [ `https://${primaryDomain}` ];
+    if( cloudfrontDomain !== primaryDomain ) {
+      allowOrigins.push(`https://${cloudfrontDomain}`);
+    }
+
     // Add the root resource path element of "${Actions.register_entity}"
     const registerEntityPath = api.root.addResource(Actions.register_entity);
     // Add the task path element
@@ -183,7 +190,7 @@ export class SignupApiConstruct extends Construct {
     invitationCodePath.addMethod('GET');   // GET /${Actions.register_entity}/task/{invitation-code}
     invitationCodePath.addMethod('POST');
     invitationCodePath.addCorsPreflight({
-      allowOrigins: [ `https://${cloudfrontDomain}` ],
+      allowOrigins,
       // allowHeaders: Cors.DEFAULT_HEADERS.concat('Is a header needed?'),
       allowMethods: [ 'POST', 'GET', 'OPTIONS' ],
       maxAge: Duration.minutes(10),
@@ -198,7 +205,7 @@ export class SignupApiConstruct extends Construct {
    */
   private createRegisterConsenterApi = () => {
     const { 
-      constructId, parms: { cloudfrontDomain, purgeConsenterLambdaArn }, stageName, 
+      constructId, parms: { cloudfrontDomain, primaryDomain,purgeConsenterLambdaArn }, stageName, 
       context: { REGION, ACCOUNT, TAGS: { Landscape:landscape }, STACK_ID }, scheduleGroupName, 
     } = this;
     const basename = `${constructId}RegisterConsenter`;
@@ -261,6 +268,7 @@ export class SignupApiConstruct extends Construct {
       environment: {
         REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
+        PRIMARY_DOMAIN: primaryDomain,
         PREFIX: `${STACK_ID}-${landscape}`,
         [DelayedExecutions.ConsenterPurge.targetArnEnvVarName]: purgeConsenterLambdaArn,
         [Configurations.ENV_VAR_NAME]: new Configurations(this.context.CONFIG).getJson()
@@ -280,13 +288,18 @@ export class SignupApiConstruct extends Construct {
       proxy: false
     });
 
+    const allowOrigins = [ `https://${primaryDomain}` ];
+    if( cloudfrontDomain !== primaryDomain ) {
+      allowOrigins.push(`https://${cloudfrontDomain}`);
+    }
+
     // Add the root resource path element of "${Actions.register_consenter}"
     const registrationPath = api.root.addResource(Actions.register_consenter);
     registrationPath.addMethod
     registrationPath.addMethod('GET');   // GET /${Actions.register_consenter}
     registrationPath.addMethod('POST');
     registrationPath.addCorsPreflight({
-      allowOrigins: [ `https://${cloudfrontDomain}` ],
+      allowOrigins,
       allowHeaders: Cors.DEFAULT_HEADERS.concat([AbstractRoleApi.ETTPayloadHeader]),
       allowMethods: [ 'POST', 'GET', 'OPTIONS' ],
       maxAge: Duration.minutes(10),

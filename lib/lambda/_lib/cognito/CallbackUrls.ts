@@ -15,12 +15,19 @@ export class CallbackUrlFactory {
   private rootUrl:URL
   private role:Role;
   private token:string;
+  private pathname:string;
 
   private static TEMP_HOST: string = 'temphost.com';
 
   constructor(host:string, pathname:string, role:Role) {
     this.context = <IContext>ctx;
     this.role = role;
+    this.pathname = pathname;
+    this.setHost(host);
+  }
+
+  public setHost = (host:string) => {
+    const { pathname } = this;
     if(host.startsWith("${Token")) {
       // These callback urls are being constructed during creation by the CDK of the cloudformation template.
       // This means that the host is actually a token "placeholder" for the domain name of a cloudformation 
@@ -243,12 +250,21 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/cogn
     [ SYS_ADMIN, RE_ADMIN, RE_AUTH_IND, CONSENTING_PERSON ].forEach((role:Role) => {
       const callbackUrls = [] as string[];
       const logoutUrls = [] as string[];
+
       let factory = new CallbackUrlFactory(host, REDIRECT_PATH_BOOTSTRAP, role);
       callbackUrls.push(...factory.getCallbackUrls());
       logoutUrls.push(...factory.getLogoutUrls());
+      factory.setHost('anotherHost.com');
+      callbackUrls.push(...factory.getCallbackUrls());
+      logoutUrls.push(...factory.getLogoutUrls());
+
       factory = new CallbackUrlFactory(host, REDIRECT_PATH_WEBSITE, role);
       callbackUrls.push(...factory.getCallbackUrls());
       logoutUrls.push(...factory.getLogoutUrls());
+      factory.setHost('yetAnotherHost.com');
+      callbackUrls.push(...factory.getCallbackUrls());
+      logoutUrls.push(...factory.getLogoutUrls());
+
       utils.log({ role, callbackUrls, logoutUrls });
     });
   })();

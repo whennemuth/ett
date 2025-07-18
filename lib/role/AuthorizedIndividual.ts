@@ -20,11 +20,12 @@ export class AuthorizedIndividualApi extends AbstractRole {
 
     super(scope, constructId);
 
-    const { userPool, cloudfrontDomain } = parms;
+    const { userPool, cloudfrontDomain, primaryDomain } = parms;
     const lambdaFunction = new LambdaFunction(scope, `${constructId}Lambda`, parms);
 
     this.api = new AbstractRoleApi(scope, `${constructId}Api`, {
       cloudfrontDomain,
+      primaryDomain,
       lambdaFunction,
       userPool,
       role: Roles.RE_AUTH_IND,
@@ -64,7 +65,7 @@ export class LambdaFunction extends AbstractFunction {
     const { STACK_ID, ACCOUNT, REGION, CONFIG, TAGS: { Landscape } } = context;
     const scheduleGroupName = `${STACK_ID}-${Landscape}-scheduler-group`;
     const { 
-      userPool, cloudfrontDomain, landscape, exhibitFormsBucket, 
+      userPool, cloudfrontDomain, primaryDomain,landscape, exhibitFormsBucket, 
       disclosureRequestReminderLambdaArn, 
       handleStaleEntityVacancyLambdaArn,
       removeStaleInvitations,
@@ -163,6 +164,7 @@ export class LambdaFunction extends AbstractFunction {
       environment: {
         REGION,
         CLOUDFRONT_DOMAIN: cloudfrontDomain,
+        PRIMARY_DOMAIN: primaryDomain,
         USERPOOL_ID: userPoolId,
         PREFIX: prefix,
         [ExhibitFormsBucketEnvironmentVariableName]: exhibitFormsBucket.bucketName,

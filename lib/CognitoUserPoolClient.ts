@@ -24,12 +24,17 @@ export class EttUserPoolClient extends UserPoolClient {
   public static buildCustomScopedClient(userPool: UserPool, id: string, props: EttUserPoolClientProps): EttUserPoolClient {
     
     const context: IContext = userPool.node.getContext('stack-parms');
-    const { TAGS: {Landscape }, STACK_ID, REDIRECT_PATH_BOOTSTRAP, REDIRECT_PATH_WEBSITE } = context;
+    const { 
+      TAGS: { Landscape }, STACK_ID, REDIRECT_PATH_BOOTSTRAP, REDIRECT_PATH_WEBSITE, 
+      ETT_DOMAIN, ETT_DOMAIN_CERTIFICATE_ARN 
+    } = context;
     let scopes:OAuthScope[] = [ OAuthScope.EMAIL, OAuthScope.PHONE, OAuthScope.PROFILE ];
     const {customScopes, callbackDomainName, role } = props;
     if(customScopes) {
       scopes = scopes.concat(customScopes);
     }
+
+    const customDomain = ETT_DOMAIN && ETT_DOMAIN_CERTIFICATE_ARN;
 
     let factory = new CallbackUrlFactory(callbackDomainName, REDIRECT_PATH_BOOTSTRAP, role);
     // Urls to the app location that cognito will "callback" or redirect to upon successful signin.
@@ -37,10 +42,22 @@ export class EttUserPoolClient extends UserPoolClient {
     // Urls to the app location that cognito will redirect to upon successful signout
     const logoutUrls = factory.getLogoutUrls();
 
+    if(customDomain) {
+      factory.setHost(ETT_DOMAIN);
+      callbackUrls.push(...factory.getCallbackUrls());
+      logoutUrls.push(...factory.getLogoutUrls());
+    }
+
     factory = new CallbackUrlFactory(callbackDomainName, REDIRECT_PATH_WEBSITE, role);
     callbackUrls.push(...factory.getCallbackUrls());
-    logoutUrls.push(...factory.getLogoutUrls())
+    logoutUrls.push(...factory.getLogoutUrls());
 
+    if(customDomain) {
+      factory.setHost(ETT_DOMAIN);
+      callbackUrls.push(...factory.getCallbackUrls());
+      logoutUrls.push(...factory.getLogoutUrls());
+    }
+    
     const client = new EttUserPoolClient(userPool, id, {
       userPool,
       userPoolClientName: `${role}-${STACK_ID}-${Landscape}-userpool-client`,

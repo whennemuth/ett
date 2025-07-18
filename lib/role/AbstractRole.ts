@@ -11,6 +11,7 @@ import { Role } from '../lambda/_lib/dao/entity';
 export interface ApiParms {
   userPool: UserPool, 
   cloudfrontDomain: string,
+  primaryDomain: string,
   lambdaFunction: Function,
   role: Role,
   roleFullName: string,
@@ -70,6 +71,8 @@ export class AbstractRoleApi extends Construct {
   private lambdaFunction: Function;
   private role: Role;
   private roleFullName: string;
+  private primaryDomain: string;
+
 
   /** Name of the header in incoming api call requests for task specific parameters. 
    * NOTE: Must be lowercase, because api gateway will convert it to lowercase and any lambda function
@@ -83,7 +86,7 @@ export class AbstractRoleApi extends Construct {
     
     const context: IContext = scope.node.getContext('stack-parms');
     const { TAGS: { Landscape:stageName }, STACK_ID } = context;
-    const { userPool, cloudfrontDomain, lambdaFunction, role, role:resourceServerId, roleFullName, description, bannerImage, resourceId, scopes, methods } = parms;
+    const { userPool, cloudfrontDomain, primaryDomain, lambdaFunction, role, role:resourceServerId, roleFullName, description, bannerImage, resourceId, scopes, methods } = parms;
     this.role = role;
     this.roleFullName = roleFullName;
     this.lambdaFunction = lambdaFunction;
@@ -95,6 +98,10 @@ export class AbstractRoleApi extends Construct {
     });
 
     // Create the api gateway REST api.
+    const allowOrigins = [ `https://${primaryDomain}` ];
+    if( cloudfrontDomain !== primaryDomain ) {
+      allowOrigins.push(`https://${cloudfrontDomain}`);
+    }
     const api = new RestApi(this, `LambdaRestApi`, {
       description,
       restApiName: `${STACK_ID}-${stageName}-${role}-rest-api`,
@@ -109,7 +116,7 @@ export class AbstractRoleApi extends Construct {
         description
       },      
       defaultCorsPreflightOptions: {
-        allowOrigins: [ `https://${cloudfrontDomain}` ],
+        allowOrigins,
         allowHeaders: Cors.DEFAULT_HEADERS.concat([AbstractRoleApi.ETTPayloadHeader]),
         allowMethods: [ 'POST', 'GET', 'OPTIONS' ],
         maxAge: Duration.minutes(10),
@@ -154,7 +161,7 @@ export class AbstractRoleApi extends Construct {
 
     // Create a user pool client for this role and its scopes.
     this.userPoolClient = EttUserPoolClient.buildCustomScopedClient(userPool, role, {
-      callbackDomainName: cloudfrontDomain,
+      callbackDomainName: primaryDomain || cloudfrontDomain,
       role,
       customScopes: scopes.map((scope: ResourceServerScope) => {
         return OAuthScope.resourceServer(resourceServer, scope)
@@ -178,7 +185,7 @@ export class AbstractRoleApi extends Construct {
             background-repeat: no-repeat;
             background-size: 230px;
             background-color: white;
-            background-image: url('https://${cloudfrontDomain}/${bannerImage}');
+            background-image: url('https://${primaryDomain || cloudfrontDomain}/${bannerImage}');
           }
         `        
         // css: fs.readFileSync('./cognito-hosted-ui.css').toString('utf-8')
@@ -204,7 +211,7 @@ export class AbstractRoleApi extends Construct {
 
   public getRoleFullName(): string {
     return this.roleFullName;
-  }
+  } 
 }
 
 export abstract class AbstractRole extends Construct {

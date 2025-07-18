@@ -118,7 +118,8 @@ export class SignupLink {
         }
       }
       else {
-        link = `https://${process.env.CLOUDFRONT_DOMAIN}`;
+        const { CLOUDFRONT_DOMAIN, PRIMARY_DOMAIN } = process.env;
+        link = `https://${PRIMARY_DOMAIN || CLOUDFRONT_DOMAIN}`;
       }
       resolve(link);
     });
