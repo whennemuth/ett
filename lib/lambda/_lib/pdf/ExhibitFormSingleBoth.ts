@@ -95,17 +95,27 @@ export class ExhibitFormSingleBoth extends PdfForm implements IPdfForm {
    */
   private drawIntro = async () => {
     const { 
-      baseForm: { consenter: { firstname, middlename, lastname } }, 
-      page: { basePage, drawWrappedText }, boldfont, getFullName 
+      baseForm: { consenter: { firstname, middlename, lastname }, consentFormUrl, isBlankForm, _return }, 
+      page: { basePage, drawWrappedText, drawCenteredText }, boldfont, getFullName 
     } = this;
     let fullname = getFullName(firstname, middlename, lastname);
     fullname = fullname ? `my <i>(${fullname})</i>` : 'my';
     const size = 9;
 
     await drawWrappedText({ 
-      text: `<b>This “<u>Single-Entity Exhibit Form</u>” is incorporated into ${fullname} Consent Form, attached to this Exhibit Form.</b>`, 
+      text: isBlankForm ? 
+        `<b>This “<u>Single-Entity Exhibit Form</u>” is incorporated into ${fullname} Consent Form, at:</b>` : 
+        `<b>This “<u>Single-Entity Exhibit Form</u>” is incorporated into ${fullname} Consent Form, attached to this Exhibit Form.</b>`, 
       options: { size, font:boldfont }, linePad: 4, padBottom: 6 
     });
+
+    if(isBlankForm) {
+      await drawCenteredText(
+        consentFormUrl, 
+        { font:boldfont, size:8, color:blue, lineHeight:14 }
+      );
+      _return();
+    }
 
     basePage.moveDown(8);
     await drawWrappedText({ 
@@ -137,13 +147,13 @@ export class ExhibitFormSingleBoth extends PdfForm implements IPdfForm {
       options: { size:9, font }, linePad: 6, padBottom: 16, horizontalRoom: bodyWidth - 20
     });
 
-    basePage = nextPageIfNecessary(50);
-    await drawWrappedText({
-      text: '____Check if applicable:  I am the person known to you as __________________________ ' +
-        '[insert Individual’s prior name] and I have signed this Single Entity Exhibit Form below and my ' +
-        'linked Consent Form using my updated name.',
-      options: { size:9, font:boldfont }, linePad: 6, padBottom: 16, horizontalRoom: bodyWidth - 20
-    }); 
+    // basePage = nextPageIfNecessary(50);
+    // await drawWrappedText({
+    //   text: '____Check if applicable:  I am the person known to you as __________________________ ' +
+    //     '[insert Individual’s prior name] and I have signed this Single Entity Exhibit Form below and my ' +
+    //     'linked Consent Form using my updated name.',
+    //   options: { size:9, font:boldfont }, linePad: 6, padBottom: 16, horizontalRoom: bodyWidth - 20
+    // }); 
   }
 
   private drawReadyForSubmission = async () => {
