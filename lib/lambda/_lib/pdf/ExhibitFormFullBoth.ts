@@ -121,17 +121,27 @@ export class ExhibitFormFullBoth extends PdfForm implements IPdfForm {
    */
   private drawIntro = async () => {
     const { 
-      baseForm: { consenter: { firstname, middlename, lastname } }, 
-      page: { basePage, drawWrappedText }, font, getFullName 
+      baseForm: { consentFormUrl, isBlankForm, consenter: { firstname, middlename, lastname }, _return }, 
+      page: { basePage, drawWrappedText, drawCenteredText }, font, boldfont, getFullName 
     } = this;
     let fullname = getFullName(firstname, middlename, lastname);
     fullname = fullname ? `my <i>(${fullname})</i>` : 'my';
     const size = 9;
 
     await drawWrappedText({ 
-      text: `<b>This Full Exhibit Form is incorporated into ${fullname} Consent Form, attached to this Exhibit Form</b>.`, 
+      text: isBlankForm ?
+      `<b>This Full Exhibit Form is incorporated into ${fullname} Consent Form, at:</b>` :
+      `<b>This Full Exhibit Form is incorporated into ${fullname} Consent Form, attached to this Exhibit Form</b>.`, 
       options: { size, font }, linePad: 4, padBottom: 6 
     });
+
+    if(isBlankForm) {
+      await drawCenteredText(
+        consentFormUrl, 
+        { font:boldfont, size:8, color:blue, lineHeight:14 }
+      );
+      _return();
+    }
 
     basePage.moveDown(8);
     await drawWrappedText({ 
