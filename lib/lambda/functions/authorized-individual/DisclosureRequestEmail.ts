@@ -1,5 +1,6 @@
 import * as ctx from '../../../../contexts/context.json';
 import { IContext } from "../../../../contexts/IContext";
+import { PUBLIC_API_ROOT_URL_ENV_VAR } from '../../../PublicApi';
 import { DAOFactory } from "../../_lib/dao/dao";
 import { UserCrud } from '../../_lib/dao/dao-user';
 import { Consenter, Entity, ExhibitFormConstraints, ExhibitForm as ExhibitFormData, Roles, User, YN } from "../../_lib/dao/entity";
@@ -27,7 +28,7 @@ export type DisclosureEmailParms = DisclosureItemsParms & {
 }
 
 export type Recipients = {
-  to:string[], cc:string[], bcc:string[]
+  to:string[], cc:string[], bcc:string[], users: User[]
 }
 
 /**
@@ -83,7 +84,7 @@ export class BasicDisclosureRequest {
       exhibitData, exhibitData: { constraint, affiliates=[] }, data, data: { 
         consenter, 
         consenter: { email:consenterEmail }, 
-        requestingEntity: { name:entity_name },
+        requestingEntity: { name:entity_name, authorizedIndividuals=[] },
         disclosingEntity: { representatives }
       } 
     } = this;
@@ -119,7 +120,15 @@ export class BasicDisclosureRequest {
     const disclosureForm = new DisclosureForm(data);
 
     return send({ 
-      recipients, consenter, consenterEmail, emailType:'request', disclosureForm, singleExhibitForm, entity_name, correctionForms: []
+      recipients, 
+      consenter, 
+      consenterEmail, 
+      emailType:'request', 
+      disclosureForm, 
+      singleExhibitForm, 
+      entity_name, 
+      correctionForms: [],
+      authorizedIndividuals
     });
   }
 }
@@ -171,7 +180,7 @@ export class RecipientListGenerator {
 
     switch(emailType) {
       case 'reminder': case 'request': default:
-        return { to: [ affiliateEmail ], cc, bcc } as Recipients
+        return { to: [ affiliateEmail ], cc, bcc, users } as Recipients
     }
   }
 }
@@ -247,15 +256,19 @@ type EmailParameters = {
   disclosureForm:IPdfForm, 
   singleExhibitForm:IPdfForm, 
   correctionForms:IPdfForm[],
-  entity_name:string
+  entity_name:string,
+  authorizedIndividuals?: User[]
 }
+
 /**
  * Send the disclosure request/reminder email
  * @param parms 
  * @returns 
  */
 const send = async (parms:EmailParameters):Promise<boolean> => {
-  let { recipients, consenterEmail, consenter, emailType, entity_name, disclosureForm, singleExhibitForm, correctionForms } = parms;
+  let { 
+    recipients, consenterEmail, consenter, emailType, entity_name, disclosureForm, singleExhibitForm, 
+    correctionForms, authorizedIndividuals=[] } = parms;
 
   if( ! consenter) {
     // Lookup the consenter in the database
@@ -266,7 +279,7 @@ const send = async (parms:EmailParameters):Promise<boolean> => {
       return false;
     }
   }
-  const { firstname, middlename, lastname } = consenter ?? {};
+  const { firstname, middlename, lastname, phone_number:consenterPhone } = consenter ?? {};
   const { fullName } = PdfForm;
   const consenterFullName = fullName(firstname, middlename, lastname);
   const context:IContext = <IContext>ctx;
@@ -315,14 +328,65 @@ const send = async (parms:EmailParameters):Promise<boolean> => {
     })
   };
 
-  const { to, cc=[], bcc=[] } = recipients;
+  const { to, cc=[], bcc=[], users=[] } = recipients;
+
+  let subject = `Consent of ${consenterFullName} & Limited Request for Disclosure of Any Misconduct Findings`;
+  if(emailType == 'reminder') {
+    subject = `Reminder: ${subject}`;
+  }
+
+  let message = `<p><b>With the attached Consent of ${consenterFullName}, ${consenterEmail}, ${consenterPhone} ` +
+    ` (Consenting Individual) and its Exhibit covering your organization, ${entity_name}, by its following ` +
+    `Authorized Individuals:</b>`;
+
+  let ais = users.filter(user => user.role == Roles.RE_AUTH_IND);
+  if( ! ais || ais.length == 0) {
+    // Probably debugging - authorized individuals are provided in this manner as an alternative to database lookup.
+    ais = authorizedIndividuals;
+  }
+
+  if(ais && ais.length > 0) {
+    message += `<ul>`;
+    for(const user of ais) {
+      const { fullname, email, title, phone_number } = user;
+      message += `<li>${fullname}, ${title}, ${phone_number}, ${email}</li>`;
+    }
+    for(const user of ais) {
+      const { delegate: { fullname, email, title, phone_number } = {} } = user;
+      if( ! fullname) continue;
+      message += `<li>${fullname}, ${title}, ${phone_number}, ${email}</li>`;
+    }
+    message += `</ul>`;
+  } 
+  else {
+    message += `<p><i>No Authorized Individuals found for this entity.</i></p>`;
+  }
+
+  message += `<b>asks that you please complete the attached simple “check the box” Disclosure Form</b> to inform ` +
+    `us of any finding of misconduct of the types listed in the Form that your organization has made against the ` +
+    `Consenting Individual and the year of any such finding — or to let us know that your organization has not made ` +
+    `such a finding.</p>`;
+
+  message += `<p>Note that we are not asking for allegations, only findings — as your organization defines that term.</p>`;
+
+  message += `<p><b>Also, please return the completed Disclosure Form to our listed Authorized Individuals in a ` +
+    `confidential manner of your choice.</b> (Examples include: encrypted email, a link to an encrypted website ` +
+    `where we can view it, or feel free to contact any of our listed Authorized Individuals to arrange a time ` +
+    `for a virtual meeting to screen share the completed Form.)</p>`;
+
+  message += `<p><b>We are considering the Consenting Individual for an honor, award, employment or other role ` +
+    `and would greatly appreciate your prompt response.</b></p>`;
+
+  message += `<p><b>We are using an automated tool, the Ethical Transparency Tool (ETT), to make this request — ` +
+    `Please do not reply to this email — only to our listed Authorized Individuals. If you have any questions, ` +
+    `please contact any of our listed Authorized Individuals.</b></p>`;
+
+  message += `<p>Thank you for your assistance.</p>`;
 
   return sendEmail({
-    subject: `ETT Disclosure ${emailType}`,
+    subject,
     from: `noreply@${context.ETT_DOMAIN}`,
-    message: `Please find enclosed a disclosure form from ${entity_name}, including a consent form from ` +
-      `${consenterFullName} who is the subject of the disclosure and their original exhibit form ` +
-      `naming you to disclose.`,
+    message,
     to, cc, bcc,
     pdfAttachments: attachments
   } as EmailParms);
@@ -365,6 +429,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     cc: [ abrahamlincoln.email, bingcrosby.email ], // 2 ai's
     bcc: [ bugsbunny.email ] // asp
   } as Recipients;
+
+  process.env[PUBLIC_API_ROOT_URL_ENV_VAR] = `https://${ctx.ETT_DOMAIN}/api/public`;
 
   new BasicDisclosureRequest(test_disclosure_data, test_exhibit_data).send(recipients)
     .then(success => {
