@@ -130,7 +130,13 @@ export const bingcrosby = {
   fullname: 'Bing Crosby',
   sub: 'bingcrosby_cognito_sub',
   phone_number: '+1234567893',
-  title: 'Singer'
+  title: 'Singer',
+  delegate: {
+    email: 'delegate2@anytown-university.com',
+    fullname: 'Delegate One',
+    phone_number: '+6174446666',
+    title: 'Bing Crosbys Delegate'
+  }
 } as User;
 
 export const entity = {
