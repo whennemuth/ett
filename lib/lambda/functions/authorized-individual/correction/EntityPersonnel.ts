@@ -236,7 +236,8 @@ export class Personnel {
     await new EntityCorrectionEmail(replaceable, replacer).send();
 
     // Notify any other active user in the entity of the amendment who neither the replacer nor the replaceable.
-    const others:User[] = users.filter(u => u.email != replaceableEmail && u.email != replacerEmail);
+    const others:User[] = users.filter(
+      u => u.email != replaceableEmail && u.email != replacerEmail && u.active == YN.Yes);
     for(const user of others) {
       await new EntityCorrectionEmail(replaceable, replacer).send(user.email);
     }
