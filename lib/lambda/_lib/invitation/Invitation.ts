@@ -88,9 +88,11 @@ export class UserInvitation {
       case Roles.RE_AUTH_IND:
         heading = `<b>${heading}Register for An ETT Account:<br>` +
           `Your University, College, or Society is being invited to register to use ETT. You are one of two ` +
-          `senior Authorized Individuals who will represent your organization in using this tool, authorize ` +
-          `initiation of Disclosure Requests, directly receive completed Disclosure Forms, and decide who at ` +
-          `the organization needs the disclosed information.<br>Follow this link to complete registration:` +
+          `senior Authorized Individuals who will represent your organization in using this tool, initiate ` +
+          `(or authorize the Administrative Support Professional to initiate) Disclosure Requests, directly ` +
+          `receive completed Disclosure Forms, and decide who at the organization needs the disclosed ` +
+          `information (or confer with the organization official who has that authority).<br>Follow this link ` +
+          `to complete registration:` +
           `<p>${makeSafeHtml('<a href="' + _link + '">' + _link + '</a>')}</p>`;
           break;
     }
