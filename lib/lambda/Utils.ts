@@ -302,6 +302,24 @@ export const lookupCloudfrontDomain = async (landscape:string):Promise<string|un
   return summary?.DomainName;
 }
 
+export const getCustomDomain = ():string|undefined => {
+  const context:IContext = <IContext>ctx;
+  const { ETT_DOMAIN, ETT_DOMAIN_CERTIFICATE_ARN } = context;
+  if(ETT_DOMAIN && ETT_DOMAIN_CERTIFICATE_ARN) {
+    return ETT_DOMAIN;
+  }
+  return undefined;
+}
+
+export const lookupDomain = async (landscape:string):Promise<string|undefined> => {
+  const customDomain = getCustomDomain();
+  if(customDomain) {
+    return customDomain;
+  }
+  return lookupCloudfrontDomain(landscape);
+}
+
+
 export const lookupCloudfrontDistributionId = async (landscape:string):Promise<string|undefined> => {
   const summary = await lookupDistributionSummary(landscape);
   return summary?.Id;
