@@ -9,7 +9,7 @@ import { Config, ConfigNames, Entity, EntityFields, Role, Roles, User, YN } from
 import { EntityToAutomate } from '../../_lib/EntityAutomation';
 import { InvitablePerson, InvitablePersonParms } from '../../_lib/invitation/InvitablePerson';
 import { SignupLink } from '../../_lib/invitation/SignupLink';
-import { debugLog, error, errorResponse, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
+import { debugLog, error, errorResponse, getCustomDomain, invalidResponse, log, lookupCloudfrontDomain, okResponse } from "../../Utils";
 import { getConsenterList } from '../consenting-person/ConsentingPersonUtils';
 import { EntityToDemolish } from '../../_lib/demolition/Demolition';
 import { deleteConsenter, getConsenterForms } from '../consenting-person/ConsentingPerson';
@@ -301,8 +301,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
   (async () => {
 
     try {
-      // const task = ReAdminTasks.INVITE_USER as ReAdminTasks | Task;
-      const task = Task.GET_CONSENTER_FORMS as ReAdminTasks | Task;
+      const task = ReAdminTasks.INVITE_USER as ReAdminTasks | Task;
+      // const task = Task.GET_CONSENTER_FORMS as ReAdminTasks | Task;
       let payload: IncomingPayload;
       let _event: any;
       let retval: LambdaProxyIntegrationResponse;
@@ -382,13 +382,15 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
           }
 
           const cloudfrontDomain:string|undefined = await lookupCloudfrontDomain(Landscape);
+          const primaryDomain = getCustomDomain() ?? cloudfrontDomain;
           if( ! cloudfrontDomain) {
             throw('Cloudfront domain lookup failure');
           }
 
           process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
-          process.env.REDIRECT_URI = `https://${cloudfrontDomain}/bootstrap/index.htm`;
-          // process.env.REDIRECT_URI = `https://${cloudfrontDomain}/index.html`;
+          process.env.PRIMARY_DOMAIN = primaryDomain;
+          process.env.REDIRECT_URI = `https://${primaryDomain}/bootstrap/index.htm`;
+          // process.env.REDIRECT_URI = `https://${primaryDomain}/index.html`;
 
           payload = {
             task, parameters: {

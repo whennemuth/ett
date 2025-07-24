@@ -1,5 +1,5 @@
 import { LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
-import { errorResponse, invalidResponse, log, lookupPendingInvitations, lookupSingleActiveEntity, lookupSingleUser, lookupUser, okResponse } from "../../Utils";
+import { errorResponse, invalidResponse, log, lookupPendingInvitations, lookupSingleActiveEntity, lookupSingleEntity, lookupSingleUser, lookupUser, okResponse } from "../../Utils";
 import { lookupEmail } from "../cognito/Lookup";
 import { Configurations } from "../config/Config";
 import { ENTITY_WAITING_ROOM } from "../dao/dao-entity";
@@ -114,8 +114,22 @@ export class InvitablePerson {
         entity = { entity_id, active: YN.Yes, entity_name:entity_id } as Entity
       }
 
+      // Lookup the user to be invited
+      let user: User | null = null;
+      if(entity_id == ENTITY_WAITING_ROOM && role != Roles.SYS_ADMIN) {
+        const users = await lookupUser(email) ?? [];
+        if(users.length > 0) {
+          user = users[0];
+        }
+        if(user) {
+          entity = await lookupSingleEntity(user?.entity_id);
+        }
+      }
+      else {
+        user = await lookupSingleUser(email, entity_id);
+      }
+
       // Prevent inviting the user if they already have an account with the specified entity.
-      const user = await lookupSingleUser(email, entity_id);
       if(user && user.active == YN.Yes) {
         return invalidResponse(`Invitee ${email} has already accepted invitation for entity ${entity?.entity_name}`);
       }
