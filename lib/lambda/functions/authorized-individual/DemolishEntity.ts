@@ -1,6 +1,6 @@
 import { SendEmailCommand, SendEmailCommandInput, SendEmailResponse, SESv2Client } from "@aws-sdk/client-sesv2";
 import { LambdaProxyIntegrationResponse } from "../../../role/AbstractRole";
-import { Entity, roleFullName, Roles, User } from "../../_lib/dao/entity";
+import { Entity, roleFullName, Roles, User, YN } from "../../_lib/dao/entity";
 import { DemolitionRecord, EntityToDemolish } from "../../_lib/demolition/Demolition";
 import { errorResponse, invalidResponse, log, okResponse } from "../../Utils";
 import { IContext } from "../../../../contexts/IContext";
@@ -30,11 +30,11 @@ export const demolishEntity = async (entity_id:string, notify:boolean, dryRun?:b
       return invalidResponse(`Bad Request: Invalid entity_id: ${entity_id}`);
     }
     
-    // For every user deleted by the demolish operation, notify them it happened by email.
+    // For every user deleted by the demolish operation who was not already inactive, notify them it happened by email.
     if(notify) {
       const isEmail = (email:string|undefined) => /@/.test(email||'');
       const emailAddresses:string[] = entityToDemolish.deletedUsers
-        .map((user:User) => { return isEmail(user.email) ? user.email : ''; })
+        .map((user:User) => { return (isEmail(user.email) && user.active == YN.Yes) ? user.email : ''; })
         .filter((email:string) => email);
 
       for(var i=0; i<emailAddresses.length; i++) {
