@@ -4,7 +4,7 @@ import { DAOFactory } from "../../_lib/dao/dao";
 import { Consenter, Entity, ExhibitFormConstraints, YN } from "../../_lib/dao/entity";
 import { EmailParms, sendEmail } from "../../_lib/EmailWithAttachments";
 import { PdfForm } from "../../_lib/pdf/PdfForm";
-import { lookupCloudfrontDomain } from "../../Utils";
+import { getCustomDomain, lookupCloudfrontDomain } from "../../Utils";
 import { AffilatePositionAcademic, AffilatePositionAcademicStrings, AffiliatePosition, AffiliatePositionCategory, AffiliatePositionCustom, AffiliatePositionEmployer, AffiliatePositionEmployerStrings, AffiliatePositionOther, AffiliatePositionOtherStrings, AffiliatePositionsCustom } from "./ExhibitFormRequest";
 import { ConsentForm, ConsentFormData } from "../../_lib/pdf/ConsentForm";
 import { FormName, getPublicFormApiUrl } from "../public/FormsDownload";
@@ -103,8 +103,7 @@ export class ExhibitFormRequestEmail {
       }
     }
 
-    positionsMsg = 'Please note, we are interested in individuals who hold/held the following positions:';
-    positionsMsg += `<ul>`;
+    positionsMsg = `<ul>`;
     positions.forEach((position) => {
       const { category, value } = getPositionData(position);
       positionsMsg += `<li><b>${category}:</b> ${value}</li>`;
@@ -146,8 +145,8 @@ export class ExhibitFormRequestEmail {
         paragraph2 += `all of your <b>current</b> professionally affiliated organizations (employers, other ` +
           `appointing organizations, academic, professional and field-related honorary and membership ` +
           `organizations), as well as your professionally affiliated organizations over the last ` +
-          `${lookback} years. Consequently, we ask you ` +
-          `at this time to very promptly complete Exhibit Forms at this link:</p><p>${linkUri}</p> to ` +
+          `${lookback} years for individuals who hold/held the following positions: ${positionsMsg}` +
+          `Consequently, we ask you at this time to very promptly complete Exhibit Forms at this link:</p><p>${linkUri}</p> to ` +
           `pair with the Consent Form that you have already completed. Exhibit Forms provide an ` +
           `up-to-date list of the name(s) and contact(s) for your known professional affiliates that ` +
           `are covered by your consent and authorized by you to make disclosures directly to ${entity_name}.`;
@@ -156,7 +155,9 @@ export class ExhibitFormRequestEmail {
         paragraph1 = `At this stage of our process to consider you for one of the privileges or honors, ` +
           `employment or other roles for which we use the Ethical Transparency Tool to gain some basic and ` +
           `reliable information about you, we soon intend to make Disclosure Requests to your <b>current</b> employers ` +
-          `and other <b>current</b> appointing organizations. Consequently, we ask you at this time to very promptly ` +
+          `and other <b>current</b> appointing organizations, and we are interested in the following positions: ` +
+          `${positionsMsg}` +
+          `Consequently, we ask you at this time to very promptly ` +
           `complete Exhibit Forms at this link:</p><p>${linkUri}</p> to pair with the Consent Form that you have already ` +
           `completed. Exhibit Forms provide an up-to-date list of the name(s) and contact(s) for your known ` +
           `professional affiliates that are covered by your consent and authorized to make disclosures directly ` +
@@ -167,7 +168,8 @@ export class ExhibitFormRequestEmail {
         paragraph2 += `first, to all of your <b>prior</b> employers and other <b>prior</b> appointing organizations ` +
           `over the last ${lookback} years, as well as ` +
           `to your <b>current and prior</b> (same look-back period) academic, professional and field-related ` +
-          `honorary and membership organizations. Consequently, we ask you at this time to very promptly ` +
+          `honorary and membership organizations. We are interested in the followint positions: ${positionsMsg}` +
+          `Consequently, we ask you at this time to very promptly ` +
           `complete Exhibit Forms at this  link:</p><p>${linkUri}</p> to pair with the Consent Form that you have ` +
           `already completed. Exhibit Forms provide an up-to-date list of the name(s) and contact(s) ` +
           `for your known professional affiliates that are covered by your consent and authorized to make ` +
@@ -220,7 +222,7 @@ const { argv:args } = process;
 if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions/authorized-individual/ExhibitFormRequestEmail.ts')) {
 
   const consenterEmail = 'cp1@warhen.work';
-  const entity_id = '45e4b462-eacc-4660-b9b2-2a750ea19f47';
+  const entity_id = 'ce913211-ba2a-4d85-aab8-4c0728c7cff0';
 
   (async() => {
     // 1) Get context variables
@@ -229,7 +231,7 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
     process.env.REGION = REGION;
     process.env[PUBLIC_API_ROOT_URL_ENV_VAR] = `https://${Landscape}.some-domain.com/some/path`; // Set a dummy value for the public api root url env var
 
-    // 2) Get the cloudfront domain
+    // 2) Get the app domain
     const cloudfrontDomain = await lookupCloudfrontDomain(Landscape);
     if( ! cloudfrontDomain) {
       throw('Cloudfront domain lookup failure');
@@ -246,9 +248,9 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
       constraint: ExhibitFormConstraints.OTHER,
       lookback: '5',
       positions: [ 
-        { id:AffiliatePositionsCustom.EMPLOYER, value:'Manager of things and stuff' },
-        { id:'fc' },
-        { id:'nc' }
+        { id:AffiliatePositionsCustom.ACADEMIC, value:'Manager of things and stuff' },
+        { id:'bs' },
+        { id:'ac' }
       ]
     } as ExhibitFormRequestEmailParms).send();
 
