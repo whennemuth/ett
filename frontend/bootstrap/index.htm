@@ -1480,9 +1480,10 @@
                         <span>
                           <select id="lbxAffiliatePositionsCurrent" class="form-control" onchange="affiliatePositionChange(event)">
                             <option value=""><- Select One -></option>
-                            <option value="hr">HR Professional</option>
-                            <option value="mg">Manager / Direct Report</option>
-                            <option value="co">Co-worker / Peer</option>
+                            <option value="hr">HR professional</option>
+                            <option value="du">Department / Unit Head</option>
+                            <option value="ds">Direct Supervisor</option>
+                            <option value="co">Colleague / Coworker</option>
                             <option value="custom">Other</option>
                           </select>
                           <input id="txtAffiliatePositionsCurrentCustom" type="text" placeholder='Type "Other" entry here...' class="form-control">
@@ -1500,9 +1501,10 @@
                         <span>
                           <select id="lbxAffiliatePositionsOtherEmployer" class="form-control" onchange="affiliatePositionChange(event)">
                             <option value=""><- Select One -></option>
-                            <option value="hr">HR Professional</option>
-                            <option value="mg">Manager / Direct Report</option>
-                            <option value="co">Colleague / Co-worker</option>
+                            <option value="hr">HR professional</option>
+                            <option value="du">Department / Unit Head</option>
+                            <option value="ds">Direct Supervisor</option>
+                            <option value="co">Colleague / Coworker</option>
                             <option value="custom">Other</option>
                           </select>
                           <input id="txtAffiliatePositionsOtherEmployerCustom" type="text" placeholder='Type "Other" entry here...' class="form-control">                        
@@ -1512,14 +1514,9 @@
                         <span>
                           <select id="lbxAffiliatePositionsOtherAcademic" class="form-control" onchange="affiliatePositionChange(event)">
                             <option value=""><- Select One -></option>
-                            <option value="ao">Academic Officer</option>
-                            <option value="vp">Vice Provost / Associate Provost for Academic Affairs</option>
-                            <option value="df">Dean of Faculty / Associate Dean</option>
-                            <option value="dc">Department Chair / Head</option>
-                            <option value="fc">Faculty Affairs Coordinator</option>
-                            <option value="ro">Institutional Research Officer</option>
-                            <option value="gs">Graduate Studies Coordinator</option>
-                            <option value="at">Affiliations or Titles Administrator</option>
+                            <option value="pr">President</option>
+                            <option value="pv">Provost</option>
+                            <option value="vp">Vice President or Vice Provost</option>
                             <option value="custom">Other</option>
                           </select>
                           <input id="txtAffiliatePositionsOtherAcademicCustom" type="text" placeholder='Type "Other" entry here...' class="form-control">                        
@@ -1528,15 +1525,19 @@
                         <span>
                           <select id="lbxAffiliatePositionsOtherOther" class="form-control" onchange="affiliatePositionChange(event)">
                             <option value=""><- Select One -></option>
-                            <option value="pr">President / Vice President</option>
-                            <option value="ed">Executive Director</option>
-                            <option value="bm">Board Member / Chair</option>
-                            <option value="sb">Secretary of the Board</option>
-                            <option value="sc">Steering Committee Member</option>
-                            <option value="mc">Membership Chair / Officer</option>
-                            <option value="nc">Nominations Committee Member / Chair</option>
-                            <option value="cc">Fellowship Committee Chair (e.g., in scholarly societies)</option>
-                            <option value="ac">Advisory Council Member</option>
+                            <option value="ed">Executive Director/CEO</option>
+                            <option value="bc">Board Chair / Vice Chair</option>
+                            <option value="bm">Board Member</option>
+                            <option value="bs">Board Secretary</option>
+                            <option value="ec">Executive Committee Chair / Vice Chair</option>
+                            <option value="em">Executive Committee Member</option>
+                            <option value="mc">Membership Committee Chair / Officer</option>
+                            <option value="hn">Honors / Awards Nominations Committee Chair</option>
+                            <option value="hm">Honors / Awards Nominations Committee Member</option>
+                            <option value="fc">Fellowship Committee Chair</option>
+                            <option value="fm">Fellowship Committee Member</option>
+                            <option value="ac">Advisory Council Chair</option>
+                            <option value="am">Advisory Council Member</option>
                             <option value="custom">Other</option>
                           </select>
                           <input id="txtAffiliatePositionsOtherOtherCustom" type="text" placeholder='Type "Other" entry here...' class="form-control">                        
@@ -1554,9 +1555,10 @@
                         <span>
                           <select id="lbxAffiliatePositionsBothCurrent" class="form-control" onchange="affiliatePositionChange(event)">
                             <option value=""><- Select One -></option>
-                            <option value="hr">HR Professional</option>
-                            <option value="mg">Manager / Direct Report</option>
-                            <option value="co">Co-worker / Peer</option>
+                            <option value="hr">HR professional</option>
+                            <option value="du">Department / Unit Head</option>
+                            <option value="ds">Direct Supervisor</option>
+                            <option value="co">Colleague / Coworker</option>
                             <option value="custom">Other</option>
                           </select>
                           <input id="txtAffiliatePositionsBothCurrentCustom" type="text" placeholder='Type "Other" entry here...' class="form-control">                        
@@ -1566,14 +1568,9 @@
                         <span>
                           <select id="lbxAffiliatePositionsBothAcademic" class="form-control" onchange="affiliatePositionChange(event)">
                             <option value=""><- Select One -></option>
-                            <option value="ao">Academic Officer</option>
-                            <option value="vp">Vice Provost / Associate Provost for Academic Affairs</option>
-                            <option value="df">Dean of Faculty / Associate Dean</option>
-                            <option value="dc">Department Chair / Head</option>
-                            <option value="fc">Faculty Affairs Coordinator</option>
-                            <option value="ro">Institutional Research Officer</option>
-                            <option value="gs">Graduate Studies Coordinator</option>
-                            <option value="at">Affiliations or Titles Administrator</option>
+                            <option value="pr">President</option>
+                            <option value="pv">Provost</option>
+                            <option value="vp">Vice President or Vice Provost</option>
                             <option value="custom">Other</option>
                           </select>
                           <input id="txtAffiliatePositionsBothAcademicCustom" type="text" placeholder='Type "Other" entry here...' class="form-control">                        
@@ -1583,15 +1580,19 @@
                         <span>
                           <select id="lbxAffiliatePositionsBothOther" class="form-control" onchange="affiliatePositionChange(event)">
                             <option value=""><- Select One -></option>
-                            <option value="pr">President / Vice President</option>
-                            <option value="ed">Executive Director</option>
-                            <option value="bm">Board Member / Chair</option>
-                            <option value="sb">Secretary of the Board</option>
-                            <option value="sc">Steering Committee Member</option>
-                            <option value="mc">Membership Chair / Officer</option>
-                            <option value="nc">Nominations Committee Member / Chair</option>
-                            <option value="cc">Fellowship Committee Chair (e.g., in scholarly societies)</option>
-                            <option value="ac">Advisory Council Member</option>
+                            <option value="ed">Executive Director/CEO</option>
+                            <option value="bc">Board Chair / Vice Chair</option>
+                            <option value="bm">Board Member</option>
+                            <option value="bs">Board Secretary</option>
+                            <option value="ec">Executive Committee Chair / Vice Chair</option>
+                            <option value="em">Executive Committee Member</option>
+                            <option value="mc">Membership Committee Chair / Officer</option>
+                            <option value="hn">Honors / Awards Nominations Committee Chair</option>
+                            <option value="hm">Honors / Awards Nominations Committee Member</option>
+                            <option value="fc">Fellowship Committee Chair</option>
+                            <option value="fm">Fellowship Committee Member</option>
+                            <option value="ac">Advisory Council Chair</option>
+                            <option value="am">Advisory Council Member</option>
                             <option value="custom">Other</option>
                           </select>
                           <input id="txtAffiliatePositionsBothOtherCustom" type="text" placeholder='Type "Other" entry here...' class="form-control">                        

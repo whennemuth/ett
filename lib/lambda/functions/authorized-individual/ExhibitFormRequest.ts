@@ -5,30 +5,31 @@ import { ExhibitFormRequestEmail } from "./ExhibitFormRequestEmail";
 
 export enum AffiliatePositionEmployer {
   hr = 'HR professional',
-  mg = 'Manager / Direct Report',
+  du = 'Department / Unit Head',
+  ds = 'Direct Supervisor',
   co = 'Colleague / Coworker',
 }
 export enum AffilatePositionAcademic {
-  ao = 'Academic Officer', 
-  vp = 'Vice Provost / Associate Provost for Academic Affairs', 
-  df = 'Dean of Faculty / Associate Dean', 
-  dc = 'Department Chair / Head', 
-  fc = 'Faculty Affairs Coordinator', 
-  ro = 'Institutional Research Officer', 
-  gs = 'Graduate Studies Coordinator', 
-  at = 'Affiliations or Titles Administrator'
+  pr = 'President',
+  pv = 'Provost',
+  vp = 'Vice President or Vice Provost',
 }
 export enum AffiliatePositionOther {
-  pr = 'President / Vice President',
-  ed = 'Executive Director',
-  bm = 'Board Member / Chair',
-  sb = 'Secretary of the Board',
-  sc = 'Steering Committee Member',
-  mc = 'Membership Chair / Officer',
-  nc = 'Nominations Committee Member / Chair',
-  cc = 'Fellowship Committee Chair (e.g., in scholarly societies)',
-  ac = 'Advisory Council Member'
+  ed = 'Executive Director/CEO',
+  bc = 'Board Chair / Vice Chair',
+  bm = 'Board Member',
+  bs = 'Board Secretary',
+  ec = 'Executive Committee Chair / Vice Chair',
+  em = 'Executive Committee Member',
+  mc = 'Membership Committee Chair / Officer',
+  hn = 'Honors / Awards Nominations Committee Chair',
+  hm = 'Honors / Awards Nominations Committee Member',
+  fc = 'Fellowship Committee Chair',
+  fm = 'Fellowship Committee Member',
+  ac = 'Advisory Council Chair',
+  am = 'Advisory Council Member'
 }
+
 export enum AffiliatePositionsCustom {
   EMPLOYER = 'custom-employer',
   ACADEMIC = 'custom-academic',
