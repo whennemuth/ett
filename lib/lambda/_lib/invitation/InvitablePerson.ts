@@ -3,7 +3,7 @@ import { errorResponse, invalidResponse, log, lookupPendingInvitations, lookupSi
 import { lookupEmail } from "../cognito/Lookup";
 import { Configurations } from "../config/Config";
 import { ENTITY_WAITING_ROOM } from "../dao/dao-entity";
-import { ConfigNames, Entity, Invitation, Role, Roles, User, YN } from "../dao/entity"
+import { ConfigNames, Entity, Invitation, Role, roleFullName, Roles, User, YN } from "../dao/entity"
 import { UserInvitation } from "./Invitation";
 
 export type InvitablePersonParms = {
@@ -116,8 +116,8 @@ export class InvitablePerson {
 
       // Lookup the user to be invited
       let user: User | null = null;
+      const users = await lookupUser(email) ?? [];
       if(entity_id == ENTITY_WAITING_ROOM && role != Roles.SYS_ADMIN) {
-        const users = await lookupUser(email) ?? [];
         if(users.length > 0) {
           user = users[0];
         }
@@ -126,7 +126,31 @@ export class InvitablePerson {
         }
       }
       else {
-        user = await lookupSingleUser(email, entity_id);
+        user = users.find((u:User) => u.entity_id == entity_id) ?? null;
+      }
+
+      // Prevent inviting the user if they are already registered with a different entity.
+      if( ! user && users.length > 0) {
+        const alreadyRegistered = users.filter((u:User) => u.active == YN.Yes);
+        const { entity_id:otherEntityId, role:otherRole } = alreadyRegistered[0];
+        const otherEntity = await lookupSingleEntity(otherEntityId);
+
+        if(otherEntity) {
+          return invalidResponse(`Invitee ${email} already performs the role of ${roleFullName(otherRole)} ` +
+            `for ${otherEntity.entity_name}. For the same person to assume any role for another entity, ` +
+            `you must use a different email address owned by that individual`);
+        }
+        else {
+          // Resort to looking up in cognito any entry for the email of the invitee.
+          const { USERPOOL_ID, REGION } = process.env;
+          const cognitoEmail = await lookupEmail( USERPOOL_ID || '', email, REGION || '');
+          if(cognitoEmail) {
+            // At this point, if the email is found in cognito, then the user must be a consenting person.
+            return invalidResponse(`Invitee ${email} already has an account with ETT as a consenting person. ` +
+              `For the same person to assume any role for another entity, you must use a different email ` +
+              `address owned by that individual`);
+          }
+        }
       }
 
       // Prevent inviting the user if they already have an account with the specified entity.
