@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { IContext } from '../../../../contexts/IContext';
 import * as ctx from '../../../../contexts/context.json';
 import { DelayedExecutions } from '../../../DelayedExecution';
-import { error, log, lookupCloudfrontDomain } from '../../Utils';
+import { error, getCustomDomain, log, lookupCloudfrontDomain } from '../../Utils';
 import { ID as scheduleTypeId, Description as scheduleDescription, StaleInvitationLambdaParms } from '../../functions/delayed-execution/RemoveStaleInvitations';
 import { makeSafeHtml, sendEmail } from '../EmailWithAttachments';
 import { Configurations } from '../config/Config';
@@ -64,10 +64,13 @@ export class UserInvitation {
   public send = async (parms:SendParms):Promise<boolean> => {
     const { expires=true, persist=true } = parms;
     const context:IContext = <IContext>ctx;
+    const { ETT_DOMAIN, ETT_EMAIL_FROM, OUTSIDE_LINKS: { 
+      SOCIETIES_CONSORTIUM_LINK, PREVENTION_LINK, REPORT_LINK 
+    } } = context;
     let { invitation, entity_name, _link, messageId, persist:_persist, setDelayedExecutionToPurge } = this;
     let { role, email } = invitation;
-
-    let heading:string = `Welcome to the Ethical Transparency Tool (ETT)!<br>`;
+    const societiesLinkAbbr = makeSafeHtml(`<a class="au" href="${SOCIETIES_CONSORTIUM_LINK}">ETT</a>`);
+    let heading:string = `Welcome to the Ethical Transparency Tool (${societiesLinkAbbr})!<br>`;
 
     switch(role) {
 
@@ -97,9 +100,6 @@ export class UserInvitation {
           break;
     }
 
-    const { ETT_DOMAIN, ETT_EMAIL_FROM, OUTSIDE_LINKS: { 
-      SOCIETIES_CONSORTIUM_LINK, PREVENTION_LINK, REPORT_LINK 
-    } } = context;
     const howEttWorksImage = makeSafeHtml('<img src="cid:how-ett-works"/>');
     const ettLink = makeSafeHtml(`<a class="au" href="https://${this._domain}">Ethical Transparency Tool</a>`);
     const privacyLink = makeSafeHtml(`<a class="au" href="https://${this._domain}/privacy">Privacy Policy</a>`);
@@ -124,7 +124,7 @@ export class UserInvitation {
         <div class="body1">
           <br>
           <b>ABOUT ETT</b><br>
-          Welcome to the Ethical Transparency Tool (ETT)! 
+          Welcome to the Ethical Transparency Tool (${societiesLinkAbbr})!<br>
           ETT is an ethical and efficient communication tool for societies, colleges, universities, and 
           individuals to lead by helping to create a norm of transparency about findings (not allegations) of 
           individuals’ misconduct (sexual/gender and race/ethnicity, as well as financial, 
@@ -359,6 +359,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/invi
     // Set environment variables
     process.env.REGION = REGION;
     process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
+    const primaryDomain = getCustomDomain() || cloudfrontDomain;
+    process.env.PRIMARY_DOMAIN = primaryDomain;
 
     // Get the inviter
     const inviters = await UserCrud({ userinfo: { email:inviterEmail } as User }).read() as User[];
@@ -373,8 +375,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/_lib/invi
 
     // Get the link to put in the invitation email
     const entity_id = inviters[0].entity_id;
-    // const registrationUri = 'https://' + cloudfrontDomain + '/bootstrap/index.htm';
-    const registrationUri = 'https://' + cloudfrontDomain + '/entity/register';
+    // const registrationUri = 'https://' + primaryDomain + '/bootstrap/index.htm';
+    const registrationUri = 'https://' + primaryDomain + '/entity/register';
     const link = await new SignupLink().getRegistrationLink({ email:inviteeEmail, entity_id, registrationUri });
     
     // Get the entity
