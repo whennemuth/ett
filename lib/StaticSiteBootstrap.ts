@@ -36,7 +36,7 @@ export class StaticSiteBootstrapConstruct extends StaticSiteConstruct {
       handler: 'handler',
       logRetention: 7,
       cleanup: true,
-      entry: path.join(__dirname, `lambda/functions/injector-event/injector.mjs`),
+      entry: path.join(__dirname, `lambda/functions/injector-event/Injector.mjs`),
       // code: Code.fromAsset(path.join(__dirname, `lambda/functions/injector-event`)),
       environment: {
         STATIC_PARAMETERS: staticParms
