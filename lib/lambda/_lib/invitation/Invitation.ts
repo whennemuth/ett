@@ -75,7 +75,8 @@ export class UserInvitation {
     switch(role) {
 
       case Roles.SYS_ADMIN:
-        heading = `${heading}Follow this link to establish a system administrator account with ETT:<br>`;
+        heading = `${heading}Follow this link to establish a system administrator account with ETT:<br>` +
+        `<p>${makeSafeHtml('<a href="' + _link + '">' + _link + '</a>')}</p>`;
         break;
 
       case Roles.RE_ADMIN:
