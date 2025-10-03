@@ -160,7 +160,17 @@ Build the entire application and AWS infrastructure from scratch.
 
      
 
-13. **Invite the initial system administrator**
+13. **Set up Identities in SES**
+    Before you can send emails with the ETT app, the recipients need to have been set up in the AWS simple email service as one of the following:
+    
+    - An [email identity](https://docs.aws.amazon.com/ses/latest/dg/creating-identities.html#verify-email-addresses-procedure)
+    - A [domain identity](https://docs.aws.amazon.com/ses/latest/dg/creating-identities.html#verify-domain-procedure)
+
+    In either case, the recipients *(either a single address, or a domain owner)* have been involved in the setup process by granting consent via email to receive further emails from SES.
+    Initially, for testing, you would set up an identity for each email address you intend to receive emails using the ETT app.
+    Later, you will want to [request production access](https://docs.aws.amazon.com/ses/latest/dg/request-production-access.html)
+    
+14. **Invite the initial system administrator**
     At this point, the website public landing page should be reachable from the browser on the ETT domain.
     However, there are no users in the database. Normally users who are either a system administrator or an a member of an entity who uses the app are invited by other users. But in this case, there is nobody to log in and perform such an action, so it must be done from your terminal via an api call. In vscode:
 
@@ -189,13 +199,13 @@ Build the entire application and AWS infrastructure from scratch.
 
     7.  When logged in as this system administrator, you can invite other system administrators, or an Authorized Support Person for the first entity.
 
-14. **[OPTIONAL] Backend utilities and tweaks**
+15. **[OPTIONAL] Backend utilities and tweaks**
     The system administrator will primarily be used to invite other system administrators and administrative support persons.
     However, there are other actions a system administrator can do that mostly apply in a testing or repair context.
     These functions may not be available in whatever separately developed front-end is used for the website, but there is a hidden dashboard that is deployed as part of the backend that is written in bootstrap that does contain the full system administrator menu of tasks.
     `https://[ett-domain]/bootstrap/index.htm`
     Select "System Administrator" from the radio selection and log in.
-    
+
     - **Invitation**
        You can invite via email another system administrator, an administrative support person, or an authorized individual
     - **Configuration**
