@@ -174,30 +174,11 @@ Build the entire application and AWS infrastructure from scratch.
     At this point, the website public landing page should be reachable from the browser on the ETT domain.
     However, there are no users in the database. Normally users who are either a system administrator or an a member of an entity who uses the app are invited by other users. But in this case, there is nobody to log in and perform such an action, so it must be done from your terminal via an api call. In vscode:
 
-    1. Open `lib/lambda/functions/sys-admin/SysAdminUser.ts`
+    ```
+    npm run invite-sysadmin ett-sysadmin@gmail.com
+    ```
 
-    2. At the bottom of the file there is a section of code for manually running system administrator tasks.
-       Make sure the task reflects the proper value:
-
-       ```
-       const task = ReAdminTasks.INVITE_USER as ReAdminTasks | Task;
-       ```
-
-    3. The prior step designates the proper case in a large case statement.
-       Now, make modify the email address of the system administrator being invited to the correct value:
-
-       ```
-       case ReAdminTasks.INVITE_USER:
-               const email = 'changeme@some.domain.com';
-       ```
-
-    4.  With `SysAdminUser.ts` remaining the active file in vscode, select "Run current file" from the "Run and Debug" view and run it.
-
-    5.  After completion, you should see an invitation email appear in the email inbox of the invitee.
-
-    6.  Use the invitation link in the email to set up the first system administrator.
-
-    7.  When logged in as this system administrator, you can invite other system administrators, or an Authorized Support Person for the first entity.
+    Replace "ett-sysadmin@gmail.com" with the actual email address.
 
 15. **[OPTIONAL] Backend utilities and tweaks**
     The system administrator will primarily be used to invite other system administrators and administrative support persons.

@@ -21,7 +21,8 @@
     "trimcache": "sh bin/trim-cache.sh",
     "clearcache": "rm -rf cdk.out/* && rm -rf cdk.out/.cache/*.zip",
     "publish": "sh bin/publish.sh",
-    "load-bucket": "ts-node bin/load-bucket.ts"
+    "load-bucket": "ts-node bin/load-bucket.ts",
+    "invite-sysadmin": "ts-node lib/lambda/functions/sys-admin/Invite.ts --email"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.352.0",

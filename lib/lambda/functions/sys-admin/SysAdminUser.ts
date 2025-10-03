@@ -17,6 +17,7 @@ import { Task as ReAdminTasks, correctUser, createEntity, deactivateEntity, invi
 import { DynamoDbTableOutput } from './DynamoDbTableOutput';
 import { HtmlTableView } from './view/HtmlTableView';
 import { sendEntityRegistrationForm } from '../cognito/PostSignup';
+import { generateInvitePayload } from './Invite';
 
 export enum Task {
   REPLACE_RE_ADMIN = 'replace-re-admin',
@@ -353,51 +354,8 @@ if(args.length > 2 && args[2].replace(/\\/g, '/').endsWith('lib/lambda/functions
         case ReAdminTasks.PING: break;
         case ReAdminTasks.INVITE_USER:
           const email = 'sysadmin1@warhen.work';
-          const context:IContext = await require('../../../../contexts/context.json');
-          const { STACK_ID, REGION, TAGS: { Landscape } } = context;
-          const prefix = `${STACK_ID}-${Landscape}`;
-          
-          process.env.USERPOOL_NAME = `${prefix}-cognito-userpool`; 
-          process.env.COGNITO_DOMAIN = `${prefix}.auth.${REGION}.amazoncognito.com`;
-          process.env.REGION = REGION;
-          process.env.DEBUG = 'true';
-
-          const daoEntityRead = DAOFactory.getInstance({ 
-            DAOType: 'entity',
-            Payload: { [EntityFields.entity_id]: ENTITY_WAITING_ROOM }
-          }) as DAOEntity;
-
-          let entity:(Entity|null)|Entity[] = await daoEntityRead.read();
-          if( ! entity) {
-            const daoEntityCreate = DAOFactory.getInstance({ 
-              DAOType: 'entity', 
-              Payload: { 
-                [EntityFields.entity_id]: ENTITY_WAITING_ROOM, 
-                [EntityFields.entity_name]: ENTITY_WAITING_ROOM, 
-                [EntityFields.description]: 'The "waiting room", a pseudo-entity for new users not associated yet with a real entity.',
-                [EntityFields.active]: YN.Yes,
-              }
-            }) as DAOEntity;
-            entity = await daoEntityCreate.create();
-          }
-
-          const cloudfrontDomain:string|undefined = await lookupCloudfrontDomain(Landscape);
-          const primaryDomain = getCustomDomain() ?? cloudfrontDomain;
-          if( ! cloudfrontDomain) {
-            throw('Cloudfront domain lookup failure');
-          }
-
-          process.env.CLOUDFRONT_DOMAIN = cloudfrontDomain;
-          process.env.PRIMARY_DOMAIN = primaryDomain;
-          process.env.REDIRECT_URI = `https://${primaryDomain}/bootstrap/index.htm`;
-          // process.env.REDIRECT_URI = `https://${primaryDomain}/index.html`;
-
-          payload = {
-            task, parameters: {
-              email,
-              role: Roles.SYS_ADMIN
-            }
-          } as IncomingPayload;
+          const parameters = await generateInvitePayload(email);
+          payload = { task, parameters } as IncomingPayload;
 
           _event = {
             headers: {
