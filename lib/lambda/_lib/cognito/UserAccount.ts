@@ -36,25 +36,33 @@ export class UserAccount {
    */
   public static getInstance = async (cognitoAttributes:CognitoStandardAttributes, role:Role):Promise<UserAccount> => {
     const user = new UserAccount();
+    const { REGION, PREFIX, USERPOOL_ID } = process.env;
+    if( ! REGION) {
+      throw new Error('UserAccount.getInstance: Environment variable REGION is not defined');
+    }
 
     user.role = role;
-    user.region = process.env.REGION ?? 'us-east-2';
+    user.region = REGION;
     user.UserAttributes.push(...UserAccount.getUserAttributes(cognitoAttributes));
 
-
     // Get userpool ID directly from the environment
-    let id = process.env.USERPOOL_ID;
+    let id = USERPOOL_ID;
     if(id) {
       user.UserPoolId = id;
       return user;    
     }
 
+    if( ! PREFIX) {
+      throw new Error('UserAccount.getInstance: Environment variable PREFIX is not defined');
+    }
+
     // If undefined, get userpool ID by looking it up against the userpool name
-    const prefix = process.env.PREFIX;
-    const userPoolName = `${prefix}-cognito-userpool`;
+    const userPoolName = `${PREFIX}-cognito-userpool`;
     id = await lookupUserPoolId(userPoolName, user.region);
     if( ! id) {
-      throw new Error('Userpool ID lookup failed!');
+      throw new Error(`Userpool ID lookup failed! UserAccount.getInstance(${JSON.stringify({
+        cognitoAttributes, role
+      }, null, 2)})`);
     }
 
     user.UserPoolId = id;
