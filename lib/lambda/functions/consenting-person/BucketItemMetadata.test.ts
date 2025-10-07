@@ -8,6 +8,7 @@ const { EXHIBIT, CORRECTION_FORM } = ItemType;
 const testdate = new Date(testISOString);
 const { fromBucketObjectKey, toBucketFileKey, toBucketFolderKey } = BucketItemMetadata;
 Date.now = () => { return new Date(defaultISOString).getTime(); }
+process.env.REGION = 'us-east-2';
 
 const performStardardAssert = (parsed:BucketItemMetadataParms, unparsedFile:string, unparsedFolder:string) => {
   it(`Should produce the expected s3 object key from specified metadata`, () => {

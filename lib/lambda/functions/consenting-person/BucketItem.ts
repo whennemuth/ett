@@ -32,7 +32,11 @@ export class BucketItem {
 
   constructor(bucketName?:string) {
     this.bucketName = bucketName ?? process.env[ExhibitFormsBucketEnvironmentVariableName];
-    this.region = process.env.REGION ?? 'us-east-2';
+    const { region} = process.env;
+    if( ! region) {
+      throw new Error('Region not specified in environment variable REGION');
+    }
+    this.region = region;
   }
 
 
@@ -42,7 +46,7 @@ export class BucketItem {
    */
   public deleteSingleItem = async (metadata: BucketItemMetadataParms|string):Promise<boolean> => {
     const { toBucketFileKey: toBucketFileKey } = BucketItemMetadata;
-    const { bucketName:Bucket } = this;
+    const { bucketName:Bucket, region } = this;
     let Key:string;
     if(typeof metadata == 'string') {
       Key = metadata;
@@ -55,7 +59,6 @@ export class BucketItem {
       log(`Cannot delete ${Key} as it does not refer to a single file.`);
       return false;
     }
-    const region = process.env.REGION ?? 'us-east-2';
     const s3 = new S3({ region });
     const output = await s3.deleteObject({ Bucket, Key }) as DeleteObjectCommandOutput;
     return output.DeleteMarker ?? true;
