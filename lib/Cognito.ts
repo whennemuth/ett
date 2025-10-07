@@ -80,6 +80,7 @@ export class CognitoConstruct extends Construct {
 
     const environment = {
       PREFIX: prefix,
+      REGION,
       DYNAMODB_USER_TABLE_NAME: getTableName(USERS),
       DYNAMODB_INVITATION_TABLE_NAME: getTableName(INVITATIONS),
       DYNAMODB_ENTITY_TABLE_NAME: getTableName(ENTITIES),
