@@ -212,3 +212,14 @@ Build the entire application and AWS infrastructure from scratch.
     - **Clean sheet of paper**
        This is a "nuclear option" for developers/testers to bring the state of the app back to "factory settings".
        *NOTE: Probably a good idea not to go near this tab in any production deployment*
+    
+16. **Teardown the stack**
+    In the event that you want to remove the entire ett stack, you will run into trouble doing attempting a stack deletion directly from the AWS management console. This is because cloudformation will not be able to delete the [lambda@edge](functions) functions associated with the cloudfront distribution because these are replicated to other regions. The lambda functions need to be disassociated from the distribution first, which lead to an automatic  purge of the replicated resources over time. Both cloudfront and cloudformation need to see that these edge functions are free and clear of their replicated content before being able to start deleting the remaining cloudfront resources.
+    Therefore, delete the stack like this:
+
+    ```
+    npm run teardown
+    ```
+
+    This runs some scripting with the SDK that will disassociate the lambda functions from cloudfront, and engages a polling cycle that repeats lookups for both cloudfront and cloudformation until the replicated resources no longer show up in the lookup results.
+    Once the polling comes to that point, the main stack deletion command is executed.
